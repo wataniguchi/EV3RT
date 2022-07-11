@@ -99,6 +99,10 @@ extern Plotter*     plotter;
 #define JUMP                    0
 #endif
 
+#ifndef JUMPC
+#define JUMPC                   1
+#endif
+
 #ifndef LOG_INTERVAL
 #define LOG_INTERVAL            0
 #endif
@@ -118,6 +122,7 @@ enum Color {
     CL_GREEN,
     CL_GRAY,
     CL_WHITE,
+    CL_BLUE2,
 };
 
 enum BoardItem {
@@ -130,7 +135,11 @@ enum State {
     ST_INITIAL,
     ST_CALIBRATION,
     ST_RUN,
-    ST_BLOCK,
+    ST_BLOCK_R,
+    ST_BLOCK_G,
+    ST_BLOCK_B,
+    ST_BLOCK_Y,
+    ST_BLOCK_D,
     ST_ENDING,
     ST_END,
 };

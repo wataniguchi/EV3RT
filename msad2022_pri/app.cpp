@@ -35,7 +35,11 @@ Plotter*        plotter;
 
 BrainTree::BehaviorTree* tr_calibration = nullptr;
 BrainTree::BehaviorTree* tr_run         = nullptr;
-BrainTree::BehaviorTree* tr_block       = nullptr;
+BrainTree::BehaviorTree* tr_block_r     = nullptr;
+BrainTree::BehaviorTree* tr_block_g     = nullptr;
+BrainTree::BehaviorTree* tr_block_b     = nullptr;
+BrainTree::BehaviorTree* tr_block_y     = nullptr;
+BrainTree::BehaviorTree* tr_block_d     = nullptr;
 State state = ST_INITIAL;
 
 /*
@@ -275,38 +279,44 @@ public:
                 }
                 break;
             case CL_BLUE:
-                if (cur_rgb.b - cur_rgb.r > 45 && cur_rgb.b <= 255 && cur_rgb.r <= 255) {
+                if (cur_rgb.b - cur_rgb.r > 25 && cur_rgb.g >= 65 && cur_rgb.b <= 100) {
                     _log("ODO=%05d, CL_BLUE detected.", plotter->getDistance());
                     return Status::Success;
                 }
                 break;
             case CL_RED:
-                if (cur_rgb.r - cur_rgb.b >= 40 && cur_rgb.g < 60 && cur_rgb.r - cur_rgb.g > 30) {
+                if (cur_rgb.r - cur_rgb.b >= 30 && cur_rgb.r > 90 && cur_rgb.g < 40) {
                     _log("ODO=%05d, CL_RED detected.", plotter->getDistance());
                     return Status::Success;
                 }
                 break;
             case CL_YELLOW:
-                if (cur_rgb.r + cur_rgb.g - cur_rgb.b >= 130 &&  cur_rgb.r - cur_rgb.g <= 30) {
+                if (cur_rgb.r >= 100 &&  cur_rgb.g >= 100 && cur_rgb.b <= 70) {
                     _log("ODO=%05d, CL_YELLOW detected.", plotter->getDistance());
                     return Status::Success;
                 }
                 break;
             case CL_GREEN:
-                if (cur_rgb.r <= 10 && cur_rgb.b <= 35 && cur_rgb.g > 43) {
+                if (cur_rgb.g - cur_rgb.r > 20 && cur_rgb.g >= 50 && cur_rgb.r <= 100) {
                     _log("ODO=%05d, CL_GREEN detected.", plotter->getDistance());
                     return Status::Success;
-                }
+                }   
                 break;
             case CL_GRAY:
-                if (cur_rgb.r <=80 && cur_rgb.g <=75 && cur_rgb.b <=105) {
+                if (cur_rgb.r >= 43 && cur_rgb.g <=55 && cur_rgb.b <= 60 && cur_rgb.r <= 45 && cur_rgb.b >= 55) {
                     _log("ODO=%05d, CL_GRAY detected.", plotter->getDistance());
                     return Status::Success;
                 }
                 break;
             case CL_WHITE:
-                if (cur_rgb.r >= 82 && cur_rgb.b >= 112 && cur_rgb.g >= 78) {
+                if (cur_rgb.r <= 20 && cur_rgb.g <= 55 && cur_rgb.b >= 55 && cur_rgb.b - cur_rgb.r > 20) {
                     _log("ODO=%05d, CL_WHITE detected.", plotter->getDistance());
+                    return Status::Success;
+                }
+                break;
+            case CL_BLUE2:
+                if (cur_rgb.r <= 20 && cur_rgb.g <= 55 && cur_rgb.b >= 55 && cur_rgb.b - cur_rgb.r > 20) {
+                    _log("ODO=%05d, CL_BLUE2 detected.", plotter->getDistance());
                     return Status::Success;
                 }
                 break;
@@ -610,24 +620,289 @@ void main_task(intptr_t unused) {
             ToDo: earned distance is not calculated properly parhaps because the task is NOT invoked every 10ms as defined in app.h on RasPike.
               Identify a realistic PERIOD_UPD_TSK.  It also impacts PID calculation.
             */
-            .leaf<IsDistanceEarned>(1000)
+            .leaf<IsTimeEarned>(10000000)
             .composite<BrainTree::MemSequence>()
-                .leaf<IsColorDetected>(CL_BLACK)
                 .leaf<IsColorDetected>(CL_BLUE)
             .end()
-            .leaf<TraceLine>(SPEED_NORM, GS_TARGET, P_CONST, I_CONST, D_CONST, 0.0, TS_NORMAL)
+            .leaf<TraceLine>(50, GS_TARGET, P_CONST, I_CONST, D_CONST, 0.0, TS_NORMAL)
         .end()
         .build();
 
-    tr_block = (BrainTree::BehaviorTree*) BrainTree::Builder()
+    tr_block_r = (BrainTree::BehaviorTree*) BrainTree::Builder()
         .composite<BrainTree::MemSequence>()
-            .leaf<StopNow>()
-            .leaf<IsTimeEarned>(3000000) // wait 3 seconds
             .composite<BrainTree::ParallelSequence>(1,3)
-                .leaf<IsTimeEarned>(10000000) // break after 10 seconds
-                .leaf<RunAsInstructed>(-50,-25,0.5)
+                .leaf<IsTimeEarned>(1650000) // 後ろ向き走行。狙いは黒線。
+                .leaf<RunAsInstructed>(-40,-83,0.0)      
+            .end()
+            .composite<BrainTree::ParallelSequence>(1,3)
+                .leaf<IsTimeEarned>(4000000) // 後ろ向き走行。狙いは黒線。
+                .leaf<RunAsInstructed>(-50,-50,0.0)    
+                .leaf<IsColorDetected>(CL_BLACK)  
+            .end()
+            .composite<BrainTree::ParallelSequence>(1,3)
+                .leaf<IsTimeEarned>(890000) // 黒線検知後、ライントレース準備
+                .leaf<RunAsInstructed>(-30,75,0.0)      
+            .end()
+            .composite<BrainTree::ParallelSequence>(1,3)
+                .leaf<TraceLine>(40, GS_TARGET, P_CONST, I_CONST, D_CONST, 0.0, TS_NORMAL)  
+                .leaf<IsColorDetected>(CL_GRAY) //グレー検知までライントレース 
+            .end()
+            .composite<BrainTree::ParallelSequence>(1,3)
+                .leaf<IsTimeEarned>(500000) // break after 10 seconds
+                .leaf<RunAsInstructed>(50,50,0.0)  //グレー検知後、丸穴あき部分があるため少し前進    
+            .end()
+            .composite<BrainTree::ParallelSequence>(1,3)
+                .leaf<IsTimeEarned>(1700000) // 本線ラインに戻ってくる
+                .leaf<RunAsInstructed>(70,40,0.0)      
+            .end()
+            .composite<BrainTree::ParallelSequence>(1,3)
+                .leaf<IsTimeEarned>(1000000) // 本線ラインに戻ってくる
+                .leaf<RunAsInstructed>(50,50,0.0)     
+            .end()
+             .composite<BrainTree::ParallelSequence>(1,3)
+                .leaf<IsTimeEarned>(5000000) // 本線ラインに戻ってくる。黒ラインか青ライン検知
+                .leaf<RunAsInstructed>(50,50,0.0)    
+                .leaf<IsColorDetected>(CL_BLACK)  
+                .leaf<IsColorDetected>(CL_BLUE2)     
+            .end()
+            .composite<BrainTree::ParallelSequence>(1,3)
+                .leaf<IsTimeEarned>(1000000) // 検知後、斜め右前まで回転(ブロックを離さないように)
+                .leaf<RunAsInstructed>(-65,70,0.0)      
+            .end()
+            .composite<BrainTree::ParallelSequence>(1,3)
+                .leaf<IsColorDetected>(CL_YELLOW)    
+                .leaf<IsTimeEarned>(5000000) // 全身しながら大きく左に向けて旋回。黄色を目指す。
+                .leaf<RunAsInstructed>(40,90,0.0)      
+            .end()
+            .composite<BrainTree::ParallelSequence>(1,3)   
+                .leaf<IsTimeEarned>(1000000) // 黄色検知後、方向立て直す。
+                .leaf<RunAsInstructed>(40,80,0.0)      
+            .end()
+            .composite<BrainTree::ParallelSequence>(1,3) 
+                .leaf<IsColorDetected>(CL_RED)  //赤検知までまっすぐ進む。
+                .leaf<RunAsInstructed>(50,50,0.0)      
             .end()
             .leaf<StopNow>()
+            .leaf<IsTimeEarned>(30000000) // wait 3 seconds
+        .end()
+        .build();
+
+    tr_block_g = (BrainTree::BehaviorTree*) BrainTree::Builder()
+        .composite<BrainTree::MemSequence>()
+            .composite<BrainTree::ParallelSequence>(1,3)
+                .leaf<IsTimeEarned>(1650000) // 後ろ向き走行。狙いは黒線。
+                .leaf<RunAsInstructed>(-40,-83,0.0)      
+            .end()
+            .composite<BrainTree::ParallelSequence>(1,3)
+                .leaf<IsTimeEarned>(4000000) // 後ろ向き走行。狙いは黒線。
+                .leaf<RunAsInstructed>(-50,-50,0.0)    
+                .leaf<IsColorDetected>(CL_BLACK)  
+            .end()
+            .composite<BrainTree::ParallelSequence>(1,3)
+                .leaf<IsTimeEarned>(890000) // 黒線検知後、ライントレース準備
+                .leaf<RunAsInstructed>(-30,75,0.0)      
+            .end()
+            .composite<BrainTree::ParallelSequence>(1,3)
+                .leaf<TraceLine>(40, GS_TARGET, P_CONST, I_CONST, D_CONST, 0.0, TS_NORMAL)  
+                .leaf<IsColorDetected>(CL_GRAY)  //グレー検知までライントレース 
+            .end()
+            .composite<BrainTree::ParallelSequence>(1,3)
+                .leaf<IsTimeEarned>(500000) //グレー検知後、丸穴あき部分があるため少し前進
+                .leaf<RunAsInstructed>(50,50,0.0)      
+            .end()
+            .composite<BrainTree::ParallelSequence>(1,3)
+                .leaf<IsTimeEarned>(700000) // break after 10 seconds
+                .leaf<RunAsInstructed>(-60,60,0.0) //左に旋回。ライントレース準備。
+            .end()
+            .composite<BrainTree::ParallelSequence>(1,3)
+                .leaf<IsTimeEarned>(500000) //少し前進。ライントレース準備。
+                .leaf<RunAsInstructed>(50,50,0.0)      
+            .end()
+            .composite<BrainTree::ParallelSequence>(1,3)
+                .leaf<IsTimeEarned>(5000000)
+                .leaf<TraceLine>(47, GS_TARGET, P_CONST, I_CONST, D_CONST, 0.0, TS_NORMAL)  
+                .leaf<IsColorDetected>(CL_BLUE2)  //純粋な青検知までライントレース
+            .end()
+            .composite<BrainTree::ParallelSequence>(1,3)
+                .leaf<IsTimeEarned>(450000) // break after 10 seconds
+                .leaf<RunAsInstructed>(70,-70,0.0) //青検知後は大きく右に旋回    
+            .end()
+            .composite<BrainTree::ParallelSequence>(1,3)
+                .leaf<IsTimeEarned>(1000000)
+                .leaf<RunAsInstructed>(50,50,0.0)   //前進。次の青検知を目指す。
+            .end() 
+            .composite<BrainTree::ParallelSequence>(1,3)
+                .leaf<IsTimeEarned>(5000000)
+                .leaf<RunAsInstructed>(45,45,0.0)   
+                .leaf<IsColorDetected>(CL_BLUE2)  //前進。次の青検知を目指す。
+            .end()
+            .composite<BrainTree::ParallelSequence>(1,3)
+                .leaf<IsTimeEarned>(1000000) //青検知後、大きく右旋回。向きを整える。
+                .leaf<RunAsInstructed>(72,-57,0.0)      
+            .end()
+            .composite<BrainTree::ParallelSequence>(1,3)
+                .leaf<IsTimeEarned>(3000000)
+                .leaf<RunAsInstructed>(50,50,0.0)  //目的の色検知まで前進
+            .end() 
+            .composite<BrainTree::ParallelSequence>(1,3)
+                .leaf<IsTimeEarned>(5000000)
+                .leaf<RunAsInstructed>(50,50,0.0)   
+                .leaf<IsColorDetected>(CL_GREEN)  //検知後、停止。
+            .end()
+            .leaf<StopNow>()
+            .leaf<IsTimeEarned>(30000000) // wait 3 seconds
+            .leaf<SetArmPosition>(10, 40)
+        .end()
+        .build();
+
+    tr_block_b = (BrainTree::BehaviorTree*) BrainTree::Builder()
+        .composite<BrainTree::MemSequence>()
+            .composite<BrainTree::ParallelSequence>(1,3)
+                .leaf<IsTimeEarned>(1650000) // 後ろ向き走行。狙いは黒線。
+                .leaf<RunAsInstructed>(-40,-83,0.0)      
+            .end()
+            .composite<BrainTree::ParallelSequence>(1,3)
+                .leaf<IsTimeEarned>(4000000) // 後ろ向き走行。狙いは黒線。
+                .leaf<RunAsInstructed>(-50,-50,0.0)    
+                .leaf<IsColorDetected>(CL_BLACK)  
+            .end()
+            .composite<BrainTree::ParallelSequence>(1,3)
+                .leaf<IsTimeEarned>(890000) // 黒線検知後、ライントレース準備
+                .leaf<RunAsInstructed>(-30,75,0.0)      
+            .end()
+            .composite<BrainTree::ParallelSequence>(1,3)
+                .leaf<TraceLine>(40, GS_TARGET, P_CONST, I_CONST, D_CONST, 0.0, TS_NORMAL)  
+                .leaf<IsColorDetected>(CL_GRAY)  //グレー検知までライントレース 
+            .end()
+            .composite<BrainTree::ParallelSequence>(1,3)
+                .leaf<IsTimeEarned>(500000) //グレー検知後、丸穴あき部分があるため少し前進
+                .leaf<RunAsInstructed>(50,50,0.0)      
+            .end()
+            .composite<BrainTree::ParallelSequence>(1,3)
+                .leaf<IsTimeEarned>(700000) // break after 10 seconds
+                .leaf<RunAsInstructed>(-60,60,0.0) //左に旋回。ライントレース準備。
+            .end()
+            .composite<BrainTree::ParallelSequence>(1,3)
+                .leaf<IsTimeEarned>(500000) //少し前進。ライントレース準備。
+                .leaf<RunAsInstructed>(50,50,0.0)      
+            .end()
+            .composite<BrainTree::ParallelSequence>(1,3)
+                .leaf<IsTimeEarned>(5000000)
+                .leaf<TraceLine>(47, GS_TARGET, P_CONST, I_CONST, D_CONST, 0.0, TS_NORMAL)  
+                .leaf<IsColorDetected>(CL_BLUE2)  //純粋な青検知までライントレース
+            .end()
+            .composite<BrainTree::ParallelSequence>(1,3)
+                .leaf<IsTimeEarned>(450000) // break after 10 seconds
+                .leaf<RunAsInstructed>(70,-70,0.0) //青検知後は大きく右に旋回    
+            .end()
+            .composite<BrainTree::ParallelSequence>(1,3)
+                .leaf<IsTimeEarned>(1000000)
+                .leaf<RunAsInstructed>(50,50,0.0)   //前進。次の青検知を目指す。
+            .end() 
+            .composite<BrainTree::ParallelSequence>(1,3)
+                .leaf<IsTimeEarned>(5000000)
+                .leaf<RunAsInstructed>(45,45,0.0)   
+                .leaf<IsColorDetected>(CL_BLUE2)  //前進。次の青検知を目指す。
+            .end()
+            .composite<BrainTree::ParallelSequence>(1,3)
+                .leaf<IsTimeEarned>(1000000) //青検知後、大きく右旋回。向きを整える。
+                .leaf<RunAsInstructed>(72,-57,0.0)      
+            .end()
+            .composite<BrainTree::ParallelSequence>(1,3)
+                .leaf<IsTimeEarned>(3000000)
+                .leaf<RunAsInstructed>(50,50,0.0)  //目的の色検知まで前進
+            .end() 
+            .composite<BrainTree::ParallelSequence>(1,3)
+                .leaf<IsTimeEarned>(5000000)
+                .leaf<RunAsInstructed>(50,50,0.0) 
+                .leaf<IsColorDetected>(CL_BLUE2)  
+            .end()
+            .leaf<StopNow>()
+            .leaf<IsTimeEarned>(30000000) // wait 3 seconds
+            .leaf<SetArmPosition>(10, 40)
+        .end()
+        .build();
+
+    tr_block_y = (BrainTree::BehaviorTree*) BrainTree::Builder()
+        .composite<BrainTree::MemSequence>()
+            .composite<BrainTree::ParallelSequence>(1,3)
+                .leaf<IsTimeEarned>(1650000) // 後ろ向き走行。狙いは黒線。
+                .leaf<RunAsInstructed>(-40,-83,0.0)      
+            .end()
+            .composite<BrainTree::ParallelSequence>(1,3)
+                .leaf<IsTimeEarned>(4000000) // 後ろ向き走行。狙いは黒線。
+                .leaf<RunAsInstructed>(-50,-50,0.0)    
+                .leaf<IsColorDetected>(CL_BLACK)  
+            .end()
+            .composite<BrainTree::ParallelSequence>(1,3)
+                .leaf<IsTimeEarned>(890000) // 黒線検知後、ライントレース準備
+                .leaf<RunAsInstructed>(-30,75,0.0)      
+            .end()
+            .composite<BrainTree::ParallelSequence>(1,3)
+                .leaf<TraceLine>(40, GS_TARGET, P_CONST, I_CONST, D_CONST, 0.0, TS_NORMAL)  
+                .leaf<IsColorDetected>(CL_GRAY)  //グレー検知までライントレース 
+            .end()
+            .composite<BrainTree::ParallelSequence>(1,3)
+                .leaf<IsTimeEarned>(500000) //グレー検知後、丸穴あき部分があるため少し前進
+                .leaf<RunAsInstructed>(50,50,0.0)      
+            .end()
+            .composite<BrainTree::ParallelSequence>(1,3)
+                .leaf<IsTimeEarned>(700000) // break after 10 seconds
+                .leaf<RunAsInstructed>(-60,60,0.0) //左に旋回。ライントレース準備。
+            .end()
+            .composite<BrainTree::ParallelSequence>(1,3)
+                .leaf<IsTimeEarned>(500000) //少し前進。ライントレース準備。
+                .leaf<RunAsInstructed>(50,50,0.0)      
+            .end()
+            .composite<BrainTree::ParallelSequence>(1,3)
+                .leaf<IsTimeEarned>(5000000)
+                .leaf<TraceLine>(47, GS_TARGET, P_CONST, I_CONST, D_CONST, 0.0, TS_NORMAL)  
+                .leaf<IsColorDetected>(CL_BLUE2)  //純粋な青検知までライントレース
+            .end()
+            .composite<BrainTree::ParallelSequence>(1,3)
+                .leaf<IsTimeEarned>(450000) // break after 10 seconds
+                .leaf<RunAsInstructed>(70,-70,0.0) //青検知後は大きく右に旋回    
+            .end()
+            .composite<BrainTree::ParallelSequence>(1,3)
+                .leaf<IsTimeEarned>(1000000)
+                .leaf<RunAsInstructed>(50,50,0.0)   //前進。次の青検知を目指す。
+            .end() 
+            .composite<BrainTree::ParallelSequence>(1,3)
+                .leaf<IsTimeEarned>(5000000)
+                .leaf<RunAsInstructed>(45,45,0.0)   
+                .leaf<IsColorDetected>(CL_BLUE2)  //前進。次の青検知を目指す。
+            .end()
+            .composite<BrainTree::ParallelSequence>(1,3)
+                .leaf<IsTimeEarned>(1000000) //青検知後、大きく右旋回。向きを整える。
+                .leaf<RunAsInstructed>(72,-57,0.0)      
+            .end()
+            .composite<BrainTree::ParallelSequence>(1,3)
+                .leaf<IsTimeEarned>(3000000)
+                .leaf<RunAsInstructed>(50,50,0.0)  //目的の色検知まで前進
+            .end() 
+            .composite<BrainTree::ParallelSequence>(1,3)
+                .leaf<IsTimeEarned>(5000000)
+                .leaf<RunAsInstructed>(50,50,0.0) 
+                .leaf<IsColorDetected>(CL_YELLOW)  
+            .end()
+            .leaf<StopNow>()
+            .leaf<IsTimeEarned>(30000000) // wait 3 seconds
+            .leaf<SetArmPosition>(10, 40)
+        .end()
+        .build();
+
+    tr_block_d = (BrainTree::BehaviorTree*) BrainTree::Builder()
+        .composite<BrainTree::MemSequence>()
+            .composite<BrainTree::ParallelSequence>(1,3)
+                .leaf<SetArmPosition>(10, 40) 
+                .leaf<IsTimeEarned>(500000) 
+            .end()
+            .composite<BrainTree::ParallelSequence>(1,3)
+                .leaf<TraceLine>(40, GS_TARGET, P_CONST, I_CONST, D_CONST, 0.0, TS_NORMAL)  
+                .leaf<IsTimeEarned>(1000000) 
+            .end()
+            .leaf<StopNow>()
+            .leaf<IsTimeEarned>(30000000) // wait 3 seconds
         .end()
         .build();
 
@@ -656,7 +931,11 @@ void main_task(intptr_t unused) {
     /* deregister cyclic handler from EV3RT */
     stp_cyc(CYC_UPD_TSK);
     /* destroy behavior tree */
-    delete tr_block;
+    delete tr_block_r;
+    delete tr_block_g;
+    delete tr_block_b;
+    delete tr_block_y;
+    delete tr_block_d;
     delete tr_run;
     delete tr_calibration;
     /* destroy EV3 objects */
@@ -687,6 +966,9 @@ void update_task(intptr_t unused) {
     ER ercd;
 
     colorSensor->sense();
+    rgb_raw_t cur_rgb;
+    colorSensor->getRawColor(cur_rgb);
+    _log("r=%d g=%d b=%d",cur_rgb.r,cur_rgb.g,cur_rgb.b);
     plotter->plot();
 
 /*
@@ -703,7 +985,7 @@ void update_task(intptr_t unused) {
             case BrainTree::Node::Status::Success:
                 switch (JUMP) { /* JUMP = 1... is for testing only */
                     case 1:
-                        state = ST_BLOCK;
+                        state = ST_BLOCK_D;
                         _log("State changed: ST_CALIBRATION to ST_BLOCK");
                         break;
                     default:
@@ -726,8 +1008,28 @@ void update_task(intptr_t unused) {
             status = tr_run->update();
             switch (status) {
             case BrainTree::Node::Status::Success:
-                state = ST_BLOCK;
-                _log("State changed: ST_RUN to ST_BLOCK");
+                switch (JUMPC) { /* JUMP = 1... is for testing only */
+                    case 1:
+                        state = ST_BLOCK_R;
+                        _log("State changed: ST_CALIBRATION to ST_BLOCK_R");
+                        break;
+                    case 2:
+                        state = ST_BLOCK_G;
+                        _log("State changed: ST_CALIBRATION to ST_BLOCK_G");
+                        break;
+                    case 3:
+                        state = ST_BLOCK_B;
+                        _log("State changed: ST_CALIBRATION to ST_BLOCK_B");
+                        break;
+                    case 4:
+                        state = ST_BLOCK_Y;
+                        _log("State changed: ST_CALIBRATION to ST_BLOCK_Y");
+                        break;
+                    default:
+                        state = ST_BLOCK_G;
+                        _log("State changed: ST_CALIBRATION to ST_BLOCK_X");
+                        break;
+                }
                 break;
             case BrainTree::Node::Status::Failure:
                 state = ST_ENDING;
@@ -738,9 +1040,65 @@ void update_task(intptr_t unused) {
             }
         }
         break;
-    case ST_BLOCK:
-        if (tr_block != nullptr) {
-            status = tr_block->update();
+    case ST_BLOCK_R:
+        if (tr_block_r != nullptr) {
+            status = tr_block_r->update();
+            switch (status) {
+            case BrainTree::Node::Status::Success:
+            case BrainTree::Node::Status::Failure:
+                state = ST_ENDING;
+                _log("State changed: ST_BLOCK to ST_ENDING");
+                break;
+            default:
+                break;
+            }
+        }
+        break;
+    case ST_BLOCK_G:
+        if (tr_block_g != nullptr) {
+            status = tr_block_g->update();
+            switch (status) {
+            case BrainTree::Node::Status::Success:
+            case BrainTree::Node::Status::Failure:
+                state = ST_ENDING;
+                _log("State changed: ST_BLOCK to ST_ENDING");
+                break;
+            default:
+                break;
+            }
+        }
+        break;
+    case ST_BLOCK_B:
+        if (tr_block_b != nullptr) {
+            status = tr_block_b->update();
+            switch (status) {
+            case BrainTree::Node::Status::Success:
+            case BrainTree::Node::Status::Failure:
+                state = ST_ENDING;
+                _log("State changed: ST_BLOCK to ST_ENDING");
+                break;
+            default:
+                break;
+            }
+        }
+        break;
+    case ST_BLOCK_Y:
+        if (tr_block_y != nullptr) {
+            status = tr_block_y->update();
+            switch (status) {
+            case BrainTree::Node::Status::Success:
+            case BrainTree::Node::Status::Failure:
+                state = ST_ENDING;
+                _log("State changed: ST_BLOCK to ST_ENDING");
+                break;
+            default:
+                break;
+            }
+        }
+        break;
+    case ST_BLOCK_D:
+        if (tr_block_d != nullptr) {
+            status = tr_block_d->update();
             switch (status) {
             case BrainTree::Node::Status::Success:
             case BrainTree::Node::Status::Failure:
