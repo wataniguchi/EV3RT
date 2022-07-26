@@ -307,7 +307,7 @@ public:
                 break;
             case CL_JETBLACK_YMNK:
                 if (cur_rgb.r <=10 && cur_rgb.g <=10 && cur_rgb.b <=10) { 
-                    _log("ODO=%05d, CL_JETBLACK detected.", plotter->getDistance());
+                    _log("ODO=%05d, CL_JETBLACK_YMNK detected.", plotter->getDistance());
                     return Status::Success;
                 }
                 break;

@@ -118,6 +118,7 @@ static int _COURSE;
 
 enum Color {
     CL_JETBLACK,
+    CL_JETBLACK_YMNK,
     CL_BLACK,
     CL_BLUE,
     CL_RED,
