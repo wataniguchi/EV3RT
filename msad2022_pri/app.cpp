@@ -3,6 +3,7 @@
     Copyright © 2022 MSAD Mode2P. All rights reserved.
 */
 #include "BrainTree.h"
+#include "Profile.hpp"
 /*
     BrainTree.h must present before ev3api.h on RasPike environment.
     Note that ev3api.h is included by app.h.
@@ -20,6 +21,7 @@ extern "C" void __sync_synchronize() {}
 
 /* global variables */
 FILE*           bt;
+Profile*        prof;
 Clock*          ev3clock;
 TouchSensor*    touchSensor;
 SonarSensor*    sonarSensor;
@@ -299,6 +301,12 @@ public:
         switch(color){
             case CL_JETBLACK:
                 if (cur_rgb.r <=35 && cur_rgb.g <=35 && cur_rgb.b <=50) { 
+                    _log("ODO=%05d, CL_JETBLACK detected.", plotter->getDistance());
+                    return Status::Success;
+                }
+                break;
+            case CL_JETBLACK_YMNK:
+                if (cur_rgb.r <=10 && cur_rgb.g <=10 && cur_rgb.b <=10) { 
                     _log("ODO=%05d, CL_JETBLACK detected.", plotter->getDistance());
                     return Status::Success;
                 }
@@ -615,8 +623,8 @@ void task_activator(intptr_t tskid) {
 
 /* The main task */
 void main_task(intptr_t unused) {
-    bt = ev3_serial_open_file(EV3_SERIAL_BT);
     // temp fix 2022/6/20 W.Taniguchi, as Bluetooth not implemented yet
+    //bt = ev3_serial_open_file(EV3_SERIAL_BT);
     //assert(bt != NULL);
     /* create and initialize EV3 objects */
     ev3clock    = new Clock();
@@ -629,7 +637,15 @@ void main_task(intptr_t unused) {
     rightMotor  = new FilteredMotor(PORT_B);
     armMotor    = new Motor(PORT_A);
     plotter     = new Plotter(leftMotor, rightMotor, gyroSensor);
-
+    /* read profile file and make the profile object ready */
+    prof        = new Profile("msad2022_pri/profile.txt");
+    /* determine the course L or R */
+    if (prof->getValueAsStr("COURSE") == "R") {
+      _COURSE = -1;
+    } else {
+      _COURSE = 1;
+    }
+ 
     /* FIR parameters for a low-pass filter with normalized cut-off frequency of 0.2
         using a function of the Hamming Window */
     const int FIR_ORDER = 4; 
@@ -669,28 +685,94 @@ void main_task(intptr_t unused) {
 /*
     DEFINE ROBOT BEHAVIOR AFTER START
     FOR THE RIGHT AND LEFT COURSE SEPARATELY
-    #if defined(MAKE_RIGHT)
-    #else
-    #endif
+
+    if (prof->getValueAsStr("COURSE") == "R") {
+    } else {
+    }
 */ 
 
-#if defined(MAKE_RIGHT) /* BEHAVIOR FOR THE RIGHT COURSE STARTS HERE */
-    tr_run = nullptr;
-    tr_slalom_first = nullptr;
-    tr_slalom_check = nullptr;
-    tr_slalom_second_a = nullptr;
-    tr_slalom_second_b = nullptr;
+    /* BEHAVIOR FOR THE RIGHT COURSE STARTS HERE */
+    if (prof->getValueAsStr("COURSE") == "R") {
+      tr_run = nullptr;
+      tr_slalom_first = nullptr;
+      tr_slalom_check = nullptr;
+      tr_slalom_second_a = nullptr;
+      tr_slalom_second_b = nullptr;
+      tr_block = nullptr;
 
-#else /* BEHAVIOR FOR THE LEFT COURSE STARTS HERE */
-    tr_run = (BrainTree::BehaviorTree*) BrainTree::Builder()
+    } else { /* BEHAVIOR FOR THE LEFT COURSE STARTS HERE */
+      tr_run = (BrainTree::BehaviorTree*) BrainTree::Builder()
         .composite<BrainTree::ParallelSequence>(1,2)
             .leaf<IsBackOn>()
-/*
-    ToDo: earned distance is not calculated properly parhaps because the task is NOT invoked every 10ms as defined in app.h on RasPike.
-    dentify a realistic PERIOD_UPD_TSK.  It also impacts PID calculation.
-*/
-            .leaf<IsDistanceEarned>(0)
-            .leaf<TraceLine>(40, GS_TARGET, P_CONST, I_CONST, D_CONST, 0.0, TS_OPPOSITE)
+            .composite<BrainTree::MemSequence>()
+    /*
+    to the first cross
+    */
+                .composite<BrainTree::ParallelSequence>(1,2)
+                   .leaf<IsColorDetected>(CL_JETBLACK_YMNK)
+                   .leaf<IsTimeEarned>(18000000)
+                   .leaf<TraceLine>(45, GS_TARGET, P_CONST, I_CONST, D_CONST, 0.0, TS_OPPOSITE)
+                .end()
+    /*
+    go straight
+    */
+                .composite<BrainTree::ParallelSequence>(1,2)
+                   .leaf<IsTimeEarned>(1070000)
+                   .leaf<RunAsInstructed>(50,50, 0.0)
+                .end()
+    /*
+    turn right
+    */
+                .composite<BrainTree::ParallelSequence>(1,2)
+                   .leaf<IsTimeEarned>(900000)
+                   .leaf<RunAsInstructed>(65,45, 0.0)
+                .end()
+    /*
+    till detect black,go right
+    */
+                .composite<BrainTree::ParallelSequence>(1,2)
+                   .leaf<IsColorDetected>(CL_BLACK)
+                   .leaf<RunAsInstructed>(65,40, 0.0)
+                .end()
+                .composite<BrainTree::ParallelSequence>(1,2)
+                   .leaf<IsTimeEarned>(2000000)
+                   .leaf<TraceLine>(40, GS_TARGET, P_CONST, I_CONST, D_CONST, 0.0, TS_NORMAL)
+                .end()
+    /*
+    line trace till,next cross
+    */
+                .composite<BrainTree::ParallelSequence>(1,2)
+                   .leaf<IsColorDetected>(CL_JETBLACK_YMNK)
+                   .leaf<IsTimeEarned>(65000000)
+                   .leaf<TraceLine>(50, GS_TARGET, P_CONST, I_CONST, D_CONST, 0.0, TS_NORMAL)
+                .end()
+    /*
+    go straight
+    */
+                .composite<BrainTree::ParallelSequence>(1,2)
+                   .leaf<IsTimeEarned>(1620000)
+                   .leaf<RunAsInstructed>(60,74, 0.0)
+                .end()
+    /*
+    to the final trace
+    */
+                .composite<BrainTree::ParallelSequence>(1,2)
+                   .leaf<IsTimeEarned>(150000000)
+                   .leaf<IsColorDetected>(CL_BLACK)
+                   .leaf<RunAsInstructed>(50,50, 0.0)
+                .end()
+                .composite<BrainTree::ParallelSequence>(1,2)
+                   .leaf<IsTimeEarned>(1900000)
+                   .leaf<TraceLine>(35, GS_TARGET, P_CONST, I_CONST, D_CONST, 0.0, TS_OPPOSITE)
+                .end()
+                .composite<BrainTree::ParallelSequence>(1,2)
+                   .composite<BrainTree::MemSequence>()
+                      .leaf<IsColorDetected>(CL_BLACK)
+                      .leaf<IsColorDetected>(CL_BLUE)
+                   .end()
+                   .leaf<TraceLine>(45, GS_TARGET, P_CONST, I_CONST, D_CONST, 0.0, TS_OPPOSITE)
+                .end()
+            .end()
         .end()
     .build();
 
@@ -842,7 +924,8 @@ void main_task(intptr_t unused) {
         .end()
     .build();
 
-    tr_block = (BrainTree::BehaviorTree*) BrainTree::Builder()
+
+      tr_block = (BrainTree::BehaviorTree*) BrainTree::Builder()
         .composite<BrainTree::MemSequence>()
             .leaf<StopNow>()
             .leaf<IsTimeEarned>(100000) // wait 0.1 seconds
@@ -854,7 +937,7 @@ void main_task(intptr_t unused) {
         .end()
     .build();
 
-#endif /* if defined(MAKE_RIGHT) */
+    } /* if (prof->getValueAsStr("COURSE") == "R") */
 
 /*
     === BEHAVIOR TREE DEFINITION ENDS HERE ===
@@ -886,6 +969,8 @@ void main_task(intptr_t unused) {
     delete tr_slalom_second_a;
     delete tr_slalom_second_b;
     delete tr_calibration;
+    /* destroy profile object */
+    delete prof;
     /* destroy EV3 objects */
     delete lpf_b;
     delete lpf_g;
@@ -1105,4 +1190,3 @@ void update_task(intptr_t unused) {
 
     //logger->outputLog(LOG_INTERVAL);
 }
-
