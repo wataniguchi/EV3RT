@@ -5,6 +5,7 @@
 */
 #include "BrainTree.h"
 #include "Profile.hpp"
+#include "Video.hpp"
 /*
     BrainTree.h must present before ev3api.h on RasPike environment.
     Note that ev3api.h is included by app.h.
@@ -34,6 +35,7 @@ SRLF*           srlfR;
 FilteredMotor*  rightMotor;
 Motor*          armMotor;
 Plotter*        plotter;
+Video*          video;
 
 BrainTree::BehaviorTree* tr_calibration = nullptr;
 BrainTree::BehaviorTree* tr_run         = nullptr;
@@ -525,6 +527,19 @@ private:
 };
 
 /*
+    usage:
+    ".leaf<MonitorVideo>()"
+    is to monitor captured image on X server.
+*/
+class MonitorVideo : public BrainTree::Node {
+public:
+    Status update() override {
+        video->writeFrame(video->readFrame());
+        return Status::Running;
+    }
+};
+
+/*
     === NODE CLASS DEFINITION ENDS HERE ===
 */
 
@@ -545,6 +560,7 @@ void main_task(intptr_t unused) {
     //assert(bt != NULL);
     /* create and initialize EV3 objects */
     ev3clock    = new Clock();
+    video       = new Video();
     touchSensor = new TouchSensor(PORT_1);
     // temp fix 2022/6/20 W.Taniguchi, new SonarSensor() blocks apparently
     //sonarSensor = new SonarSensor(PORT_3);
@@ -610,8 +626,16 @@ void main_task(intptr_t unused) {
 
     /* BEHAVIOR FOR THE RIGHT COURSE STARTS HERE */
     if (prof->getValueAsStr("COURSE") == "R") {
-      tr_run = nullptr;
-      tr_block = nullptr;
+      tr_run = (BrainTree::BehaviorTree*) BrainTree::Builder()
+        .composite<BrainTree::ParallelSequence>(1,3)
+            .leaf<TraceLine>(SPEED_NORM, GS_TARGET, P_CONST, I_CONST, D_CONST, 0.0, TS_NORMAL)
+	    .leaf<MonitorVideo>()
+	    .leaf<IsDistanceEarned>(1000)
+        .end()
+        .build();
+      tr_block = (BrainTree::BehaviorTree*) BrainTree::Builder()
+	.leaf<StopNow>()
+	.build();
 
     } else { /* BEHAVIOR FOR THE LEFT COURSE STARTS HERE */
       tr_run = (BrainTree::BehaviorTree*) BrainTree::Builder()
@@ -684,6 +708,7 @@ void main_task(intptr_t unused) {
     delete colorSensor;
     delete sonarSensor;
     delete touchSensor;
+    delete video;
     delete ev3clock;
     _log("being terminated...");
     // temp fix 2022/6/20 W.Taniguchi, as Bluetooth not implemented yet
@@ -700,6 +725,7 @@ void update_task(intptr_t unused) {
     ER ercd;
 
     colorSensor->sense();
+    video->capture();
     plotter->plot();
 
 /*
@@ -785,6 +811,7 @@ void update_task(intptr_t unused) {
     === STATE MACHINE DEFINITION ENDS HERE ===
 */
 
+    video->show();
     rightMotor->drive();
     leftMotor->drive();
 
