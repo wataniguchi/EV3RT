@@ -93,7 +93,7 @@ void Video::writeFrame(Mat f) {
 
 void Video::show() {
   sprintf(strbuf[0], "x=%+04d,y=%+04d", plotter->getLocX(), plotter->getLocY());
-  sprintf(strbuf[1], "dist=%+05d", plotter->getDistance(), plotter->getDegree());
+  sprintf(strbuf[1], "dist=%+05d", plotter->getDistance());
   sprintf(strbuf[2], "deg=%03d,gyro=%+03d", plotter->getDegree(), gyroSensor->getAngle());
   XPutImage(disp, win, gc, ximg, 0, 0, 0, 0, X11_FRAME_WIDTH, 2*X11_FRAME_HEIGHT);
   XDrawString(disp, win, gc, 10, X11_FRAME_HEIGHT+10, strbuf[0], strlen(strbuf[0]));
