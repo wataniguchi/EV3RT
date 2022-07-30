@@ -589,6 +589,7 @@ void main_task(intptr_t unused) {
     Filter *lpf_b = new FIR_Transposed(hn, FIR_ORDER);
     colorSensor->setRawColorFilters(lpf_r, lpf_g, lpf_b);
 
+    gyroSensor->reset();
     leftMotor->reset();
     srlfL = new SRLF(0.0);
     leftMotor->setPWMFilter(srlfL);

@@ -42,6 +42,7 @@ protected:
   unsigned long* buf;
   int imat;
   Font font;
+  char strbuf[4][40];
 public:
   Video();
   void capture();

@@ -22,7 +22,7 @@ Video::Video() {
   
   unsigned long black=BlackPixel(disp, 0);
   unsigned long white=WhitePixel(disp, 0);
-  win = XCreateSimpleWindow(disp, RootWindow(disp,0), 0, 0, X11_FRAME_WIDTH, X11_FRAME_HEIGHT, 1, black, white);
+  win = XCreateSimpleWindow(disp, RootWindow(disp,0), 0, 0, X11_FRAME_WIDTH, 2*X11_FRAME_HEIGHT, 1, black, white);
 
   XSetWindowAttributes attr;
   attr.override_redirect = True;
@@ -33,9 +33,20 @@ Video::Video() {
   gc = XCreateGC(disp, win, 0, 0);
   XSetForeground(disp, gc, white);
   XSetFont(disp, gc, font);
-  gbuf = malloc(sizeof(unsigned long) * X11_FRAME_WIDTH * X11_FRAME_HEIGHT);
-  ximg = XCreateImage(disp, vis, 24, ZPixmap, 0, (char*)gbuf, X11_FRAME_WIDTH, X11_FRAME_HEIGHT, BitmapUnit(disp), 0);
+  gbuf = malloc(sizeof(unsigned long) * X11_FRAME_WIDTH * 2*X11_FRAME_HEIGHT);
+  /* initialize gbuf with zero */
+  for (int j = 0; j < 2*X11_FRAME_HEIGHT; j++) {
+    for (int i = 0; i < X11_FRAME_WIDTH; i++) {
+      buf = (unsigned long*)gbuf + i + j*X11_FRAME_WIDTH;
+      *buf = 0;
+    }
+  }
+  ximg = XCreateImage(disp, vis, 24, ZPixmap, 0, (char*)gbuf, X11_FRAME_WIDTH, 2*X11_FRAME_HEIGHT, BitmapUnit(disp), 0);
   XInitImage(ximg);
+  
+#if !defined(WITH_OPENCV)
+  frame = nullptr;
+#endif
 }
 
 Video::~Video() {
@@ -81,6 +92,12 @@ void Video::writeFrame(Mat f) {
 }
 
 void Video::show() {
-  XPutImage(disp, win, gc, ximg, 0, 0, 0, 0, X11_FRAME_WIDTH, X11_FRAME_HEIGHT);
+  sprintf(strbuf[0], "x=%+04d,y=%+04d", plotter->getLocX(), plotter->getLocY());
+  sprintf(strbuf[1], "dist=%+05d", plotter->getDistance(), plotter->getDegree());
+  sprintf(strbuf[2], "deg=%03d,gyro=%+03d", plotter->getDegree(), gyroSensor->getAngle());
+  XPutImage(disp, win, gc, ximg, 0, 0, 0, 0, X11_FRAME_WIDTH, 2*X11_FRAME_HEIGHT);
+  XDrawString(disp, win, gc, 10, X11_FRAME_HEIGHT+10, strbuf[0], strlen(strbuf[0]));
+  XDrawString(disp, win, gc, 10, X11_FRAME_HEIGHT+40, strbuf[1], strlen(strbuf[1]));
+  XDrawString(disp, win, gc, 10, X11_FRAME_HEIGHT+70, strbuf[2], strlen(strbuf[2]));
   XFlush(disp);
 }
