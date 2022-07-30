@@ -527,19 +527,6 @@ private:
 };
 
 /*
-    usage:
-    ".leaf<MonitorVideo>()"
-    is to monitor captured image on X server.
-*/
-class MonitorVideo : public BrainTree::Node {
-public:
-    Status update() override {
-        video->writeFrame(video->readFrame());
-        return Status::Running;
-    }
-};
-
-/*
     === NODE CLASS DEFINITION ENDS HERE ===
 */
 
@@ -589,6 +576,7 @@ void main_task(intptr_t unused) {
     Filter *lpf_b = new FIR_Transposed(hn, FIR_ORDER);
     colorSensor->setRawColorFilters(lpf_r, lpf_g, lpf_b);
 
+    gyroSensor->reset();
     leftMotor->reset();
     srlfL = new SRLF(0.0);
     leftMotor->setPWMFilter(srlfL);
@@ -627,13 +615,12 @@ void main_task(intptr_t unused) {
     /* BEHAVIOR FOR THE RIGHT COURSE STARTS HERE */
     if (prof->getValueAsStr("COURSE") == "R") {
       tr_run = (BrainTree::BehaviorTree*) BrainTree::Builder()
-        .composite<BrainTree::ParallelSequence>(1,3)
+        .composite<BrainTree::ParallelSequence>(1,2)
             .leaf<TraceLine>(prof->getValueAsNum("SPEED"),
 			     prof->getValueAsNum("GS_TARGET"),
 			     prof->getValueAsNum("P_CONST"),
 			     prof->getValueAsNum("I_CONST"),
 			     prof->getValueAsNum("D_CONST"), 0.0, TS_NORMAL)
-	    .leaf<MonitorVideo>()
 	    .leaf<IsDistanceEarned>(2000)
         .end()
         .build();
@@ -677,6 +664,7 @@ void main_task(intptr_t unused) {
 */
 
     /* register cyclic handler to EV3RT */
+    sta_cyc(CYC_VIDEO_TSK);
     sta_cyc(CYC_UPD_TSK);
 
     /* indicate initialization completion by LED color */
@@ -694,6 +682,11 @@ void main_task(intptr_t unused) {
 
     /* deregister cyclic handler from EV3RT */
     stp_cyc(CYC_UPD_TSK);
+    stp_cyc(CYC_VIDEO_TSK);
+    _log("wait for update task to cease, going to sleep 3 secs");
+    ev3clock->sleep(3000000);
+    _log("wait finished");
+
     /* destroy behavior tree */
     delete tr_block;
     delete tr_run;
@@ -723,13 +716,20 @@ void main_task(intptr_t unused) {
     ext_tsk();
 }
 
+/* periodic task to handle video */
+void video_task(intptr_t unused) {
+    ER ercd;
+    video->capture();
+    video->writeFrame(video->readFrame());    
+    video->show();
+}
+    
 /* periodic task to update the behavior tree */
 void update_task(intptr_t unused) {
     BrainTree::Node::Status status;
     ER ercd;
 
     colorSensor->sense();
-    video->capture();
     plotter->plot();
 
 /*
@@ -815,9 +815,7 @@ void update_task(intptr_t unused) {
     === STATE MACHINE DEFINITION ENDS HERE ===
 */
 
-    video->show();
     rightMotor->drive();
     leftMotor->drive();
-
     //logger->outputLog(LOG_INTERVAL);
 }
