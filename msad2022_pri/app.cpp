@@ -365,14 +365,7 @@ public:
                 }
             case CL_BLUE2:
                 if (cur_rgb.r <= 30 && cur_rgb.g <= 60 && cur_rgb.b >= 50 && cur_rgb.b - cur_rgb.r > 20) {
-                    _log("ODO=%05d, CL_BLUE2 detected.", plotter->getDistance());
-                    return Status::Success;
-                }
-                break;
-            default:
-                break;
-            case CL_BLUE2:
-                if (cur_rgb.r <= 20 && cur_rgb.g <= 55 && cur_rgb.b >= 55 && cur_rgb.b - cur_rgb.r > 20) {
+//                if (cur_rgb.r <= 20 && cur_rgb.g <= 55 && cur_rgb.b >= 55 && cur_rgb.b - cur_rgb.r > 20) {
                     _log("ODO=%05d, CL_BLUE2 detected.", plotter->getDistance());
                     return Status::Success;
                 }
@@ -1483,7 +1476,7 @@ void update_task(intptr_t unused) {
                 if (DetectSlalomPattern::isSlalomPatternA == true) {
                     // for test
                     if (JUMP_SLALOM == true) {
-                        _log("test only ST_SLALOM_CHECK.);
+                        _log("test only ST_SLALOM_CHECK.");
                         if (DetectSlalomPattern::earnedDistance == 0) {
                             _log("Failed to check slalom pattern.");
                         }
@@ -1501,7 +1494,7 @@ void update_task(intptr_t unused) {
                 } else {
                     // for test
                     if (JUMP_SLALOM == true) {
-                        _log("test only ST_SLALOM_CHECK.);
+                        _log("test only ST_SLALOM_CHECK.");
                         state = ST_ENDING;
                         _log("Distance %d is detected by sonar and chose pattern B.", DetectSlalomPattern::earnedDistance);
                         _log("State changed: ST_SLALOM_CHECK to ST_ENDING");
