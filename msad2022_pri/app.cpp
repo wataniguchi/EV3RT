@@ -628,9 +628,13 @@ void main_task(intptr_t unused) {
     if (prof->getValueAsStr("COURSE") == "R") {
       tr_run = (BrainTree::BehaviorTree*) BrainTree::Builder()
         .composite<BrainTree::ParallelSequence>(1,3)
-            .leaf<TraceLine>(SPEED_NORM, GS_TARGET, P_CONST, I_CONST, D_CONST, 0.0, TS_NORMAL)
+            .leaf<TraceLine>(prof->getValueAsNum("SPEED"),
+			     prof->getValueAsNum("GS_TARGET"),
+			     prof->getValueAsNum("P_CONST"),
+			     prof->getValueAsNum("I_CONST"),
+			     prof->getValueAsNum("D_CONST"), 0.0, TS_NORMAL)
 	    .leaf<MonitorVideo>()
-	    .leaf<IsDistanceEarned>(1000)
+	    .leaf<IsDistanceEarned>(2000)
         .end()
         .build();
       tr_block = (BrainTree::BehaviorTree*) BrainTree::Builder()
