@@ -106,6 +106,10 @@ static int _COURSE;
 #define JUMP                    2
 #endif
 
+#ifndef JUMPC
+#define JUMPC                   1
+#endif
+
 #ifndef LOG_INTERVAL
 #define LOG_INTERVAL            0
 #endif
@@ -127,6 +131,7 @@ enum Color {
     CL_GRAY,
     CL_WHITE,
     CL_BLUE_SL,
+    CL_BLUE2,
 };
 
 enum BoardItem {
@@ -143,7 +148,11 @@ enum State {
     ST_SLALOM_CHECK,
     ST_SLALOM_SECOND_A,
     ST_SLALOM_SECOND_B,
-    ST_BLOCK,
+    ST_BLOCK_R,
+    ST_BLOCK_G,
+    ST_BLOCK_B,
+    ST_BLOCK_Y,
+    ST_BLOCK_D,
     ST_ENDING,
     ST_END,
 };
