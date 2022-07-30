@@ -23,22 +23,12 @@ endif
 
 APPL_DIRS += $(mkfile_path)app $(mkfile_path)unit
 
-ifdef WITH_OPENCV
+ifdef ETROBO_WITH_OPENCV
 
 INCLUDES += \
 	-I$(mkfile_path)app \
 	-I$(mkfile_path)unit \
 	-I/usr/local/include/opencv4
-
-else
-
-INCLUDES += \
-	-I$(mkfile_path)app \
-	-I$(mkfile_path)unit
-
-endif
-
-ifdef WITH_OPENCV
 
 APPL_LIBS += -lm -lX11 \
         -lopencv_gapi -lopencv_stitching -lopencv_alphamat -lopencv_aruco -lopencv_barcode \
@@ -53,11 +43,17 @@ APPL_LIBS += -lm -lX11 \
         -lopencv_xobjdetect -lopencv_objdetect -lopencv_calib3d -lopencv_imgcodecs -lopencv_features2d \
         -lopencv_dnn -lopencv_flann -lopencv_xphoto -lopencv_photo -lopencv_imgproc -lopencv_core
 
-else
+COPTS += -DWITH_OPENCV
+
+else # ifdef WITH_OPENCV
+
+INCLUDES += \
+	-I$(mkfile_path)app \
+	-I$(mkfile_path)unit
 
 APPL_LIBS += -lm -lX11 \
 
-endif
+endif # ifdef WITH_OPENCV
 
 #COPTS += -fno-use-cxa-atexit
 #COPTS += -DNDEBUG -std=gnu++11
