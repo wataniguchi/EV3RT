@@ -102,12 +102,16 @@ static int _COURSE;
 #define D_CONST                 0.08D
 #endif
 
-#ifndef JUMP
-#define JUMP                    2
+#ifndef JUMP_CALIBRATION
+#define JUMP_CALIBRATION        7
 #endif
 
-#ifndef JUMPC
-#define JUMPC                   1
+#ifndef JUMP_SLALOM
+#define JUMP_SLALOM             false
+#endif
+
+#ifndef JUMP_BLOCK
+#define JUMP_BLOCK              5
 #endif
 
 #ifndef LOG_INTERVAL
