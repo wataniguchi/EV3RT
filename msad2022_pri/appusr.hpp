@@ -103,7 +103,7 @@ static int _COURSE;
 #endif
 
 #ifndef JUMP_CALIBRATION
-#define JUMP_CALIBRATION        7
+#define JUMP_CALIBRATION        1
 #endif
 
 #ifndef JUMP_SLALOM
@@ -111,7 +111,7 @@ static int _COURSE;
 #endif
 
 #ifndef JUMP_BLOCK
-#define JUMP_BLOCK              5
+#define JUMP_BLOCK              0
 #endif
 
 #ifndef LOG_INTERVAL
@@ -129,13 +129,16 @@ enum Color {
     CL_JETBLACK_YMNK,
     CL_BLACK,
     CL_BLUE,
-    CL_RED,
-    CL_YELLOW,
-    CL_GREEN,
-    CL_GRAY,
-    CL_WHITE,
     CL_BLUE_SL,
     CL_BLUE2,
+    CL_RED,
+    CL_RED_SL,
+    CL_YELLOW,
+    CL_YELLOW_SL,
+    CL_GREEN,
+    CL_GREEN_SL,
+    CL_GRAY,
+    CL_WHITE,
 };
 
 enum BoardItem {
