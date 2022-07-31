@@ -292,6 +292,7 @@ protected:
 */
 class IsColorDetected : public BrainTree::Node {
 public:
+    static Color garageColor;
     IsColorDetected(Color c) : color(c) {
         updated = false;
     }
@@ -327,10 +328,30 @@ public:
                     _log("ODO=%05d, CL_BLUE detected.", plotter->getDistance());
                     return Status::Success;
                 }
+            case CL_BLUE_SL:
+                if (cur_rgb.b - cur_rgb.r > 20 && cur_rgb.g <= 100 && cur_rgb.b <= 120) {
+                    garageColor = CL_BLUE_SL;
+                    _log("ODO=%05d, CL_BLUE_SL detected.", plotter->getDistance());
+                    return Status::Success;
+                }
+                break;
+            case CL_BLUE2:
+                if (cur_rgb.r <= 30 && cur_rgb.g <= 60 && cur_rgb.b >= 50 && cur_rgb.b - cur_rgb.r > 20) {
+//                if (cur_rgb.r <= 20 && cur_rgb.g <= 55 && cur_rgb.b >= 55 && cur_rgb.b - cur_rgb.r > 20) {
+                    _log("ODO=%05d, CL_BLUE2 detected.", plotter->getDistance());
+                    return Status::Success;
+                }
                 break;
             case CL_RED:
                 if (cur_rgb.r - cur_rgb.b >= 30 && cur_rgb.r > 80 && cur_rgb.g < 45) {
                     _log("ODO=%05d, CL_RED detected.", plotter->getDistance());
+                    return Status::Success;
+                }
+                break;
+            case CL_RED_SL:
+                if (cur_rgb.r - cur_rgb.b >= 25 && cur_rgb.r > 85 && cur_rgb.g < 60) {
+                    garageColor = CL_RED_SL;
+                    _log("ODO=%05d, CL_RED_SL detected.", plotter->getDistance());
                     return Status::Success;
                 }
                 break;
@@ -340,9 +361,22 @@ public:
                     return Status::Success;
                 }
                 break;
+            case CL_YELLOW_SL:
+                if (cur_rgb.r >= 110 &&  cur_rgb.g >= 90 && cur_rgb.b >= 50 && cur_rgb.b <= 120 ) {
+                    garageColor = CL_YELLOW_SL;
+                    _log("ODO=%05d, CL_YELLOW_SL detected.", plotter->getDistance());
+                    return Status::Success;
+                }
+                break;
             case CL_GREEN:
                 if (cur_rgb.g - cur_rgb.r > 20 && cur_rgb.g >= 50 && cur_rgb.r <= 100) {
                     _log("ODO=%05d, CL_GREEN detected.", plotter->getDistance());
+                    return Status::Success;
+                }
+            case CL_GREEN_SL:
+                if (cur_rgb.b - cur_rgb.r < 30 && cur_rgb.g >= 30 && cur_rgb.b <= 80) {
+                    garageColor = CL_GREEN_SL;
+                    _log("ODO=%05d, CL_GREEN_SL detected.", plotter->getDistance());
                     return Status::Success;
                 }   
                 break;
@@ -358,18 +392,6 @@ public:
                     return Status::Success;
                 }
                 break;
-            case CL_BLUE_SL:
-                if (cur_rgb.b - cur_rgb.r > 20 && cur_rgb.g <= 100 && cur_rgb.b <= 120) {
-                    _log("ODO=%05d, CL_BLUE_SL detected.", plotter->getDistance());
-                    return Status::Success;
-                }
-            case CL_BLUE2:
-                if (cur_rgb.r <= 30 && cur_rgb.g <= 60 && cur_rgb.b >= 50 && cur_rgb.b - cur_rgb.r > 20) {
-//                if (cur_rgb.r <= 20 && cur_rgb.g <= 55 && cur_rgb.b >= 55 && cur_rgb.b - cur_rgb.r > 20) {
-                    _log("ODO=%05d, CL_BLUE2 detected.", plotter->getDistance());
-                    return Status::Success;
-                }
-                break;
             default:
                 break;
         }
@@ -379,6 +401,7 @@ protected:
     Color color;
     bool updated;
 };
+Color IsColorDetected::garageColor = CL_BLUE_SL;    // define default color as blue
 
 /*
     usage:
@@ -547,7 +570,7 @@ public:
     ClimbBoard(int direction, int count) : dir(direction), cnt(count) {}
     Status update() override {
         curAngle = gyroSensor->getAngle();
-            if(cnt >= 1){
+            if (cnt >= 1) {
                 leftMotor->setPWM(0);
                 rightMotor->setPWM(0);
                 armMotor->setPWM(-50);
@@ -556,15 +579,15 @@ public:
                     return Status::Success;
                 }
                 return Status::Running;
-            }else{
+            } else {
                 armMotor->setPWM(30);
                 leftMotor->setPWM(23);
                 rightMotor->setPWM(23);
 
-                if(curAngle < -9){
+                if (curAngle < -9) {
                     prevAngle = curAngle;
                 }
-                if (prevAngle < -9 && curAngle >= 0){
+                if (prevAngle < -9 && curAngle >= 0) {
                     ++cnt;
                     _log("ON BOARD");
                 }
@@ -795,12 +818,39 @@ void main_task(intptr_t unused) {
         .composite<BrainTree::ParallelSequence>(1,2)
             .leaf<IsBackOn>()
             .composite<BrainTree::MemSequence>()
-            /*
+                // ライントレースから引継ぎして、直前の青線まで走る
                 .composite<BrainTree::ParallelSequence>(1,2)
-                    .leaf<IsTimeEarned>(1000000) // wait 1 seconds
-                    .leaf<RunAsInstructed>(0, 0, 0.0)
+                   .leaf<IsTimeEarned>(1000000)
+                   .leaf<TraceLine>(45, GS_TARGET, P_CONST, I_CONST, D_CONST, 0.0, TS_OPPOSITE)
                 .end()
-            */
+                .composite<BrainTree::ParallelSequence>(1,2)
+                   .composite<BrainTree::MemSequence>()
+                      .leaf<IsColorDetected>(CL_BLACK)
+                      .leaf<IsColorDetected>(CL_BLUE)
+                   .end()
+                   .leaf<TraceLine>(35, GS_TARGET, P_CONST, I_CONST, D_CONST, 0.0, TS_OPPOSITE)
+                .end()
+                // 台にのる　勢いが必要
+                .composite<BrainTree::ParallelSequence>(1,2)
+//                    .leaf<IsDistanceEarned>(150)
+                    .leaf<IsTimeEarned>(150000)
+                    .leaf<RunAsInstructed>(70, 70, 0.0)
+                .end()
+/*
+                // 勢いを殺す
+                .composite<BrainTree::MemSequence>()
+                    .leaf<StopNow>()
+                    .leaf<IsTimeEarned>(200000) //sonar 0.2 sec
+                .end()
+*/           
+/*
+                .composite<BrainTree::ParallelSequence>(1,2)
+                   .composite<BrainTree::MemSequence>()
+                      .leaf<ClimbBoard>()
+                   .end()
+                   .leaf<TraceLine>(45, GS_TARGET, P_CONST, I_CONST, D_CONST, 0.0, TS_OPPOSITE)
+                .end()
+*/
                 .composite<BrainTree::ParallelSequence>(1,2)//初期位置調整のために、台上で短距離ライントレース
                     .leaf<IsDistanceEarned>(30)
                     .leaf<TraceLine>(30, GS_TARGET, P_CONST, I_CONST, D_CONST, 0.0, TS_OPPOSITE)
@@ -838,7 +888,6 @@ void main_task(intptr_t unused) {
                     .leaf<IsDistanceEarned>(160)
                     .leaf<TraceLine>(30, 47, P_CONST, I_CONST, D_CONST, 0.0, TS_OPPOSITE)
                 .end()
-
                 .composite<BrainTree::ParallelSequence>(1,2)//ライントレースおもてなし
                     .leaf<IsDistanceEarned>(20)
                     .leaf<RunAsInstructed>(15, 50, 0.0)
@@ -868,9 +917,13 @@ void main_task(intptr_t unused) {
                     .leaf<IsDistanceEarned>(60)
                     .leaf<RunAsInstructed>(15, 50, 0.0)
                 .end()
+                // 色検知
                 .composite<BrainTree::ParallelSequence>(1,2)
                     //.leaf<IsDistanceEarned>(50)
                     .leaf<IsColorDetected>(CL_BLUE_SL)
+                    .leaf<IsColorDetected>(CL_RED_SL)
+                    .leaf<IsColorDetected>(CL_YELLOW_SL)
+                    .leaf<IsColorDetected>(CL_GREEN_SL)
                     .leaf<RunAsInstructed>(30, 30, 0.0)
                 .end()
             .end()
@@ -882,6 +935,14 @@ void main_task(intptr_t unused) {
         .composite<BrainTree::ParallelSequence>(1,2)
             .leaf<IsBackOn>()
             .composite<BrainTree::MemSequence>()
+                // 色検知 for test
+                .composite<BrainTree::ParallelSequence>(1,2)
+                    .leaf<IsColorDetected>(CL_BLUE_SL)
+                    .leaf<IsColorDetected>(CL_RED_SL)
+                    .leaf<IsColorDetected>(CL_YELLOW_SL)
+                    .leaf<IsColorDetected>(CL_GREEN_SL)
+                    .leaf<IsTimeEarned>(100000)
+                .end()
                 //move back
                 .composite<BrainTree::ParallelSequence>(1,2)
                     .leaf<IsTimeEarned>(600000) //param SJ:700000,IS:550000,600000
@@ -1284,6 +1345,7 @@ void main_task(intptr_t unused) {
         .end()
         .build();
 
+    // テストでの値取得用
     tr_block_d = (BrainTree::BehaviorTree*) BrainTree::Builder()
         .composite<BrainTree::MemSequence>()
             .composite<BrainTree::ParallelSequence>(1,3)
@@ -1292,7 +1354,7 @@ void main_task(intptr_t unused) {
             .end()
             .composite<BrainTree::ParallelSequence>(1,3)
                 .leaf<TraceLine>(40, GS_TARGET, P_CONST, I_CONST, D_CONST, 0.0, TS_NORMAL)  
-                .leaf<IsTimeEarned>(1000000) 
+                .leaf<IsTimeEarned>(1000000)
             .end()
             .leaf<StopNow>()
             .leaf<IsTimeEarned>(30000000) // wait 3 seconds
@@ -1367,8 +1429,24 @@ void update_task(intptr_t unused) {
     colorSensor->sense();
     rgb_raw_t cur_rgb;
     colorSensor->getRawColor(cur_rgb);
-    _log("r=%d g=%d b=%d",cur_rgb.r,cur_rgb.g,cur_rgb.b);
+
+    // for test
     plotter->plot();
+
+    int32_t distance = plotter->getDistance();
+    int16_t azimuth = plotter->getAzimuth();
+    int16_t degree = plotter->getDegree();
+    int32_t locX = plotter->getLocX();
+    int32_t locY = plotter->getLocY();
+    int32_t ang = plotter->getAngL();
+    int32_t angR = plotter->getAngR();
+
+    int32_t sonarDistance = sonarSensor->getDistance();
+
+    _log("r=%d g=%d b=%d",cur_rgb.r,cur_rgb.g,cur_rgb.b);
+
+    _log("dist=%d azi=%d deg=%d locX=%d locY=%d ang=%d angR=d%",distance,azimuth,degree,locX,locY,ang,angR);
+    _log("sonar=%d",sonarDistance);
     
 /*
     === STATE MACHINE DEFINITION STARTS HERE ===
