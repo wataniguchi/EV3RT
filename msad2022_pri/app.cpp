@@ -547,6 +547,7 @@ void main_task(intptr_t unused) {
     //assert(bt != NULL);
     /* create and initialize EV3 objects */
     ev3clock    = new Clock();
+    _log("initialization started.");
     video       = new Video();
     touchSensor = new TouchSensor(PORT_1);
     // temp fix 2022/6/20 W.Taniguchi, new SonarSensor() blocks apparently
@@ -615,6 +616,8 @@ void main_task(intptr_t unused) {
     /* BEHAVIOR FOR THE RIGHT COURSE STARTS HERE */
     if (prof->getValueAsStr("COURSE") == "R") {
       tr_run = (BrainTree::BehaviorTree*) BrainTree::Builder()
+	.leaf<IsTimeEarned>(10000000)
+	/*
         .composite<BrainTree::ParallelSequence>(1,2)
             .leaf<TraceLine>(prof->getValueAsNum("SPEED"),
 			     prof->getValueAsNum("GS_TARGET"),
@@ -623,6 +626,7 @@ void main_task(intptr_t unused) {
 			     prof->getValueAsNum("D_CONST"), 0.0, TS_NORMAL)
 	    .leaf<IsDistanceEarned>(2000)
         .end()
+	*/
         .build();
       tr_block = (BrainTree::BehaviorTree*) BrainTree::Builder()
 	.leaf<StopNow>()
@@ -664,12 +668,13 @@ void main_task(intptr_t unused) {
 */
 
     /* register cyclic handler to EV3RT */
+    _log("starting cyclic tasks...");
     sta_cyc(CYC_VIDEO_TSK);
     sta_cyc(CYC_UPD_TSK);
 
     /* indicate initialization completion by LED color */
     _log("initialization completed.");
-    ev3_led_set_color(LED_ORANGE);
+    //ev3_led_set_color(LED_ORANGE);
     state = ST_CALIBRATION;
 
     /* the main task sleep until being waken up and let the registered cyclic handler to traverse the behavir trees */
@@ -683,8 +688,8 @@ void main_task(intptr_t unused) {
     /* deregister cyclic handler from EV3RT */
     stp_cyc(CYC_UPD_TSK);
     stp_cyc(CYC_VIDEO_TSK);
-    _log("wait for update task to cease, going to sleep 3 secs");
-    ev3clock->sleep(3000000);
+    _log("wait for update task to cease, going to sleep 500 milli secs");
+    ev3clock->sleep(500000);
     _log("wait finished");
 
     /* destroy behavior tree */
@@ -706,8 +711,8 @@ void main_task(intptr_t unused) {
     delete sonarSensor;
     delete touchSensor;
     delete video;
-    delete ev3clock;
     _log("being terminated...");
+    delete ev3clock;
     // temp fix 2022/6/20 W.Taniguchi, as Bluetooth not implemented yet
     //fclose(bt);
 #if defined(MAKE_SIM)    
@@ -720,7 +725,8 @@ void main_task(intptr_t unused) {
 void video_task(intptr_t unused) {
     ER ercd;
     video->capture();
-    video->writeFrame(video->readFrame());    
+    video->writeFrame(video->calculateTarget(video->readFrame(), 0, 100, 0));    
+    //video->writeFrame(video->readFrame());    
     video->show();
 }
     
