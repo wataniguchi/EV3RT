@@ -197,8 +197,11 @@ Mat Video::calculateTarget(Mat f, int gsmin, int gsmax, int side) {
   circle(f, Point(mx, FRAME_HEIGHT-10), 20, Scalar(0,0,255), -1);
 #endif /* defined(WITH_OPENCV) */
   uint64_t t_end = ev3clock->now();
-  _log("elaps: %04d msec", (int)(t_end - t_sta)/1000);
-  assert((t_end - t_sta) <  PERIOD_VIDEO_TSK);
+  int t_elapsed = t_end - t_sta;
+  if (t_elapsed > PERIOD_VIDEO_TSK) {
+    _log("elapsed: %04d > PERIOD_VIDEO_TSK: %04d msec", t_elapsed/1000, PERIOD_VIDEO_TSK/1000);
+    assert(0);
+  }
 
   return f;
 }
