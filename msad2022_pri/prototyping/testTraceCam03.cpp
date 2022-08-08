@@ -13,6 +13,7 @@
 
 #include <iostream>
 #include <opencv2/opencv.hpp>
+#include <opencv2/core/utils/logger.hpp>
 #include <thread>
 #include <cmath>
 
@@ -20,17 +21,34 @@ using namespace std;
 using namespace cv;
 using std::this_thread::sleep_for;
 
-#define FRAME_WIDTH  640
-#define FRAME_HEIGHT 480
-#define ROI_BOUNDARY 50
+/* frame size for Raspberry Pi camera capture */
+#define IN_FRAME_WIDTH  640
+#define IN_FRAME_HEIGHT 480
+
+/* frame size for OpenCV */
+//#define FRAME_WIDTH  640
+//#define FRAME_HEIGHT 480
+#define FRAME_WIDTH  160
+#define FRAME_HEIGHT 120
+
+#define ROI_BOUNDARY int(FRAME_WIDTH/16)
+#define LINE_THICKNESS int(FRAME_WIDTH/80)
+#define CIRCLE_RADIUS int(FRAME_WIDTH/40)
+
+/* frame size for X11 painting */
+#define OUT_FRAME_WIDTH  160
+#define OUT_FRAME_HEIGHT 120
 
 int gs_min=0,gs_max=100,edge=0;
 
 int main() {
+  utils::logging::setLogLevel(utils::logging::LOG_LEVEL_WARNING);
+  /* set number of threads */
+  setNumThreads(0);
   /* prepare the camera */
   VideoCapture cap(0);
-  cap.set(CAP_PROP_FRAME_WIDTH,FRAME_WIDTH);
-  cap.set(CAP_PROP_FRAME_HEIGHT,FRAME_HEIGHT);
+  cap.set(CAP_PROP_FRAME_WIDTH,IN_FRAME_WIDTH);
+  cap.set(CAP_PROP_FRAME_HEIGHT,IN_FRAME_HEIGHT);
   cap.set(CAP_PROP_FPS,90);
 
   if (!cap.isOpened()) {
@@ -57,15 +75,25 @@ int main() {
     gs_max = getTrackbarPos("GS_max", "testTrace1");
     edge   = getTrackbarPos("Edge",   "testTrace1");
 
-    Mat img, img_orig, img_gray, img_bin, img_bin_mor, img_comm;
+    Mat frame, img_orig, img_gray, img_bin, img_bin_mor;
     int c;
 
     sleep_for(chrono::milliseconds(10));
 
-    cap.read(img);
+    cap.read(frame);
 
-    /* clone the image (not necessary in this sample but necessary in Toppers) */
-    img_orig = img.clone();
+    /* clone the frame if exists, otherwise use the previous image */
+    if (!frame.empty()) {
+      img_orig = frame.clone();
+    }
+    /* resize the image for OpenCV processing */
+    if (FRAME_WIDTH != IN_FRAME_WIDTH || FRAME_HEIGHT != IN_FRAME_HEIGHT) {
+      Mat img_resized;
+      resize(img_orig, img_resized, Size(), (double)FRAME_WIDTH/IN_FRAME_WIDTH, (double)FRAME_HEIGHT/IN_FRAME_HEIGHT);
+      assert(img_resized.size().width == FRAME_WIDTH);
+      assert(img_resized.size().height == FRAME_HEIGHT);
+      img_orig = img_resized;
+    }
     /* convert the image from BGR to grayscale */
     cvtColor(img_orig, img_gray, COLOR_BGR2GRAY);
     /* mask the upper half of the grayscale image */
@@ -98,7 +126,8 @@ int main() {
 	}
       }
       /* draw the largest contour on the original image */
-      drawContours(img_orig, (vector<vector<Point>>){contours[i_area_max]}, 0, Scalar(0,255,0), 10);
+      //drawContours(img_orig, (vector<vector<Point>>){contours[i_area_max]}, 0, Scalar(0,255,0), LINE_THICKNESS);
+      polylines(img_orig, (vector<vector<Point>>){contours[i_area_max]}, 0, Scalar(0,255,0), LINE_THICKNESS);
 
       /* calculate the bounding box around the largest contour
 	 and set it as the new region of interest */ 
@@ -127,7 +156,7 @@ int main() {
       Mat img_cnt_gray;
       cvtColor(img_cnt, img_cnt_gray, COLOR_BGR2GRAY);
       /* scan the line really close to the image bottom to find edges */
-      Mat scan_line = img_cnt_gray.row(img_cnt_gray.size().height -10);
+      Mat scan_line = img_cnt_gray.row(img_cnt_gray.size().height - LINE_THICKNESS);
       /* convert the Mat to a NumCpp array */
       auto scan_line_nc = nc::NdArray<nc::uint8>(scan_line.data, scan_line.rows, scan_line.cols);
       auto edges = scan_line_nc.flatnonzero();
@@ -147,23 +176,27 @@ int main() {
     }
 
     /* draw the area of interest on the original image */
-    rectangle(img_orig, Point(roi.x,roi.y), Point(roi.x+roi.width,roi.y+roi.height), Scalar(255,0,0), 10);
+    rectangle(img_orig, Point(roi.x,roi.y), Point(roi.x+roi.width,roi.y+roi.height), Scalar(255,0,0), LINE_THICKNESS);
     /* draw the trace target on the image */
-    circle(img_orig, Point(mx, FRAME_HEIGHT-10), 20, Scalar(0,0,255), -1);
+    circle(img_orig, Point(mx, FRAME_HEIGHT-LINE_THICKNESS), CIRCLE_RADIUS, Scalar(0,0,255), -1);
     /* calculate variance of mx from the center in pixel */
     int vxp = mx - (int)(FRAME_WIDTH/2);
     /* convert the variance from pixel to milimeters
        72 is length of the closest horizontal line on ground within the camera vision */
-    float vxm = vxp * 72 / 640;
+    float vxm = vxp * 72 / FRAME_WIDTH;
     /* calculate the rotation in radians (z-axis)
        284 is distance from axle to the closest horizontal line on ground the camera can see */
     float theta = atan(vxm / 284);
     cout << "mx = " << mx << ", vxm = " << vxm << ", theta = " << theta << endl;
 
-    /* shrink the concatinated image to avoid delay in transmission */
-    resize(img_orig, img_comm, Size(), 0.25, 0.25);
+    /* shrink the image to avoid delay in transmission */
+    if (OUT_FRAME_WIDTH != FRAME_WIDTH || OUT_FRAME_HEIGHT != FRAME_HEIGHT) {
+      Mat img_resized;
+      resize(img_orig, img_resized, Size(), (double)OUT_FRAME_WIDTH/FRAME_WIDTH, (double)OUT_FRAME_HEIGHT/FRAME_HEIGHT);
+      img_orig = img_resized;
+    }
     /* transmit and display the image */
-    imshow("testTrace2", img_comm);
+    imshow("testTrace2", img_orig);
 
     c = waitKey(1);
     if ( c == 'q' || c == 'Q' ) break;

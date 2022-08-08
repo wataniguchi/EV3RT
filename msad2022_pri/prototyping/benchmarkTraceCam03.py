@@ -4,12 +4,51 @@ import cv2
 import math
 import numpy as np
 import time
+import argparse
+import pandas as pd
 
-# constants
+scenarios = pd.DataFrame({'thread': ['single','multi','single','multi'],
+                          'frame':  ['large', 'large','small', 'small']})
+
+parser = argparse.ArgumentParser(description='OpenCV benchmarking')
+parser.add_argument('arg1', help='specify a nubmer 1-4', type=int)
+args = parser.parse_args()
+if args.arg1 <= 0 or args.arg1 > 4:
+    print("specified number is invalid")
+    scenario = scenarios.iloc[0]
+else:
+    scenario = scenarios.iloc[args.arg1-1]
+print(f"benchmarking with {scenario['thread']}-thread and {scenario['frame']} frames")
+
+cv2.setLogLevel(3) # LOG_LEVEL_WARNING
+# set number of threads
+if scenario['thread'] == 'multi':
+    cv2.setNumThreads(4)
+else:
+    cv2.setNumThreads(1)
+
+# frame size for OpenCV
+if scenario['frame'] == 'large':
+    FRAME_WIDTH  = 640
+    FRAME_HEIGHT = 480
+else:
+    FRAME_WIDTH  = 160
+    FRAME_HEIGHT = 120
+
+# number of sampling
 LOOP = 100
-FRAME_WIDTH = 640
-FRAME_HEIGHT = 480
-ROI_BOUNDARY = 50
+
+# frame size for Raspberry Pi camera capture
+IN_FRAME_WIDTH  = 640
+IN_FRAME_HEIGHT = 480
+
+ROI_BOUNDARY   = int(FRAME_WIDTH/16)
+LINE_THICKNESS = int(FRAME_WIDTH/80)
+CIRCLE_RADIUS  = int(FRAME_WIDTH/40)
+
+# frame size for X11 painting
+OUT_FRAME_WIDTH  = 160
+OUT_FRAME_HEIGHT = 120
 
 # callback function for trackbars
 def nothing(x):
@@ -43,12 +82,18 @@ for n in range(LOOP):
 
     time.sleep(0.01)
 
-    ret, img = cap.read()
+    ret, frame = cap.read()
 
     ### START elapse measurement
     time_sta = time.time()
-    # clone the image (not necessary in this sample but necessary in Toppers)
-    img_orig = img.copy()
+    # clone the image if exists, otherwise use the previous image
+    if len(frame) != 0:
+        img_orig = frame.copy()
+    # resize the image for OpenCV processing
+    if FRAME_WIDTH != IN_FRAME_WIDTH or FRAME_HEIGHT != IN_FRAME_HEIGHT:
+        img_orig = cv2.resize(img_orig, (FRAME_WIDTH,FRAME_HEIGHT))
+        if img_orig.shape[1] != FRAME_WIDTH or img_orig.shape[0] != FRAME_HEIGHT:
+            sys.exit(-1)
     # convert the image from BGR to grayscale
     img_gray = cv2.cvtColor(img_orig, cv2.COLOR_BGR2GRAY)
     # mask the upper half of the grayscale image
@@ -74,7 +119,8 @@ for n in range(LOOP):
                 area_max = area
                 i_area_max = i
         # draw the largest contour on the original image
-        img_orig = cv2.drawContours(img_orig, [contours[i_area_max]], 0, (0,255,0), 10)
+        #img_orig = cv2.drawContours(img_orig, [contours[i_area_max]], 0, (0,255,0), LINE_THICKNESS)
+        img_orig = cv2.polylines(img_orig, [contours[i_area_max]], 0, (0,255,0), LINE_THICKNESS)
 
         # calculate the bounding box around the largest contour 
         x, y, w, h = cv2.boundingRect(contours[i_area_max])
@@ -99,7 +145,7 @@ for n in range(LOOP):
         img_cnt = cv2.drawContours(img_cnt, [contours[i_area_max]], 0, (0,255,0), 1)
         img_cnt_gray = cv2.cvtColor(img_cnt, cv2.COLOR_BGR2GRAY)
         # scan the line really close to the image bottom to find edges
-        scan_line = img_cnt_gray[img_cnt_gray.shape[0] - 10]
+        scan_line = img_cnt_gray[img_cnt_gray.shape[0] - LINE_THICKNESS]
         edges = np.flatnonzero(scan_line)
         # calculate the trace target using the edges
         if len(edges) >= 2:
@@ -116,9 +162,9 @@ for n in range(LOOP):
 
     # draw the area of interest on the original image
     x, y, w, h = roi
-    cv2.rectangle(img_orig, (x,y), (x+w,y+h), (255,0,0), 10)
+    cv2.rectangle(img_orig, (x,y), (x+w,y+h), (255,0,0), LINE_THICKNESS)
     # draw the trace target on the image
-    cv2.circle(img_orig, (mx, FRAME_HEIGHT-10), 20, (0,0,255), -1)
+    cv2.circle(img_orig, (mx, FRAME_HEIGHT-LINE_THICKNESS), CIRCLE_RADIUS, (0,0,255), -1)
     ### END elapse measurement
     time_end = time.time()
     ms_elapsed = 1000 * (time_end - time_sta)
@@ -134,9 +180,10 @@ for n in range(LOOP):
     #print(f"mx = {mx}, vxm = {vxm}, theta = {theta}")
 
     # shrink the image to avoid delay in transmission
-    img_comm = cv2.resize(img_orig, (int(img_orig.shape[1]/4), int(img_orig.shape[0]/4)))
+    if OUT_FRAME_WIDTH != FRAME_WIDTH or OUT_FRAME_HEIGHT != FRAME_HEIGHT:
+        img_orig = cv2.resize(img_orig, (OUT_FRAME_WIDTH,OUT_FRAME_HEIGHT))
     # transmit and display the image
-    cv2.imshow("testTrace2", img_comm)
+    cv2.imshow("testTrace2", img_orig)
 
     c = cv2.waitKey(1) # show the window
     if c == ord('q') or c == ord('Q'):
