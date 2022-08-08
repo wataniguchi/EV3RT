@@ -4,7 +4,6 @@
 */
 #include "Video.hpp"
 #include "appusr.hpp"
-#include "app.h" /* necessary for task period assertion */
 
 Video::Video() {
 #if !defined(WITHOUT_X11)
@@ -16,7 +15,7 @@ Video::Video() {
   
   unsigned long black=BlackPixel(disp, 0);
   unsigned long white=WhitePixel(disp, 0);
-  win = XCreateSimpleWindow(disp, RootWindow(disp,0), 0, 0, X11_FRAME_WIDTH, 2*X11_FRAME_HEIGHT, 1, black, white);
+  win = XCreateSimpleWindow(disp, RootWindow(disp,0), 0, 0, OUT_FRAME_WIDTH, 2*OUT_FRAME_HEIGHT, 1, black, white);
 
   XSetWindowAttributes attr;
   attr.override_redirect = True;
@@ -29,17 +28,17 @@ Video::Video() {
   XSetFont(disp, gc, font);
 #endif
 
-  gbuf = malloc(sizeof(unsigned long) * X11_FRAME_WIDTH * 2*X11_FRAME_HEIGHT);
+  gbuf = malloc(sizeof(unsigned long) * OUT_FRAME_WIDTH * 2*OUT_FRAME_HEIGHT);
   /* initialize gbuf with zero */
-  for (int j = 0; j < 2*X11_FRAME_HEIGHT; j++) {
-    for (int i = 0; i < X11_FRAME_WIDTH; i++) {
-      buf = (unsigned long*)gbuf + i + j*X11_FRAME_WIDTH;
+  for (int j = 0; j < 2*OUT_FRAME_HEIGHT; j++) {
+    for (int i = 0; i < OUT_FRAME_WIDTH; i++) {
+      buf = (unsigned long*)gbuf + i + j*OUT_FRAME_WIDTH;
       *buf = 0;
     }
   }
 
 #if !defined(WITHOUT_X11)
-  ximg = XCreateImage(disp, vis, 24, ZPixmap, 0, (char*)gbuf, X11_FRAME_WIDTH, 2*X11_FRAME_HEIGHT, BitmapUnit(disp), 0);
+  ximg = XCreateImage(disp, vis, 24, ZPixmap, 0, (char*)gbuf, OUT_FRAME_WIDTH, 2*OUT_FRAME_HEIGHT, BitmapUnit(disp), 0);
   XInitImage(ximg);
 #endif
 
@@ -47,17 +46,20 @@ Video::Video() {
   mx = (int)(FRAME_WIDTH/2);
   
 #if defined(WITH_OPENCV)
+  utils::logging::setLogLevel(utils::logging::LOG_LEVEL_DEBUG);
+  /* set number of threads */
   setNumThreads(0);
+  /* prepare the camera */
   cap = VideoCapture(0);
-  cap.set(CAP_PROP_FRAME_WIDTH,FRAME_WIDTH);
-  cap.set(CAP_PROP_FRAME_HEIGHT,FRAME_HEIGHT);
-  cap.set(CAP_PROP_FPS,90);
-  assert(cap.isOpened());
+  //cap.set(CAP_PROP_FRAME_WIDTH,IN_FRAME_WIDTH);
+  //cap.set(CAP_PROP_FRAME_HEIGHT,IN_FRAME_HEIGHT);
+  //cap.set(CAP_PROP_FPS,90);
+  //assert(cap.isOpened());
   
   /* initial region of interest */
   roi = Rect(0, 0, FRAME_WIDTH, FRAME_HEIGHT);
   /* prepare and keep kernel for morphology */
-  kernel = Mat::zeros(Size(7,7), CV_8UC1);
+  //kernel = Mat::zeros(Size(7,7), CV_8UC1);
   //kernel = Mat(Size(7,7), CV_8UC1, Scalar(0));
 #else
   frame = nullptr;
@@ -66,7 +68,7 @@ Video::Video() {
 
 Video::~Video() {
 #if defined(WITH_OPENCV)
-  cap.release();
+  //cap.release();
 #endif
 
 #if !defined(WITHOUT_X11)
@@ -78,29 +80,75 @@ Video::~Video() {
 
 void Video::capture() {
 #if defined(WITH_OPENCV)
-  cap.read(frame);
+  //ER ercd = tloc_mtx(MTX1, 1000U); /* test and lock the mutex */
+  //if (ercd == E_OK) { /* if successfully locked, process the frame and unlock the mutex;
+  //			 otherwise, do nothing */
+    cap.read(frame);
+    //ercd = unl_mtx(MTX1);
+    //assert(ercd == E_OK);
+    //} else {
+    //if (ercd != E_TMOUT) {
+    //_log("mutex lock failed with %d", ercd);
+    //assert(0);
+    //}
+    //}
 #endif
 }
 
-Mat Video::readFrame() { return frame; }
+Mat Video::readFrame() {
+  Mat f;
+#if defined(WITH_OPENCV)
+  //ER ercd = tloc_mtx(MTX1, 1000U); /* test and lock the mutex */
+  //if (ercd == E_OK) { /* if successfully locked, process the frame and unlock the mutex;
+  //			 otherwise, return the previous image */
+    f = frame.clone();
+    //ercd = unl_mtx(MTX1);
+    //assert(ercd == E_OK);
+    
+    /* resize the image for OpenCV processing if exists, otherwise use the previous image */
+    if (!f.empty()) {
+      if (FRAME_WIDTH != IN_FRAME_WIDTH || FRAME_HEIGHT != IN_FRAME_HEIGHT) {
+	Mat img_resized;
+	resize(f, img_resized, Size(), (double)FRAME_WIDTH/IN_FRAME_WIDTH, (double)FRAME_HEIGHT/IN_FRAME_HEIGHT);
+	assert(img_resized.size().width == FRAME_WIDTH);
+	assert(img_resized.size().height == FRAME_HEIGHT);
+	f = img_resized;
+      }
+      frame_prev = f; /* keep the image in case capture() fails to capture a new frame */
+    } else {
+      f = frame_prev;
+    }
+    //} else {
+    //_log("mutex lock failed with %d", ercd);
+    //assert(ercd == E_TMOUT);
+    //f = frame_prev;
+    //}
+#endif
+  return f;
+}
 
 void Video::writeFrame(Mat f) {
 #if defined(WITH_OPENCV)
   if (f.empty()) return;
-  if (f.size().width != FRAME_WIDTH || f.size().height != FRAME_HEIGHT) {
-    _log("frame size mismatch, w = %d(should be %d), h = %d(should be %d)", f.size().width, FRAME_WIDTH, f.size().height, FRAME_HEIGHT);
+
+  if (OUT_FRAME_WIDTH != FRAME_WIDTH || OUT_FRAME_HEIGHT != FRAME_HEIGHT) {
+    Mat img_resized;
+    resize(f, img_resized, Size(), (double)OUT_FRAME_WIDTH/FRAME_WIDTH, (double)OUT_FRAME_HEIGHT/FRAME_HEIGHT);
+    f = img_resized;
+  }
+
+  if (f.size().width != OUT_FRAME_WIDTH || f.size().height != OUT_FRAME_HEIGHT) {
+    _log("frame size mismatch, w = %d(should be %d), h = %d(should be %d)", f.size().width, OUT_FRAME_WIDTH, f.size().height, OUT_FRAME_HEIGHT);
     return;
   }
 
-  Mat f_s;
-  resize(f, f_s, Size(), 0.25, 0.25);
-  for (int j = 0; j < X11_FRAME_HEIGHT; j++) {
-    for (int i = 0; i < X11_FRAME_WIDTH; i++) {
-      buf = (unsigned long*)gbuf + i + j*X11_FRAME_WIDTH;
-      imat = j*f_s.step + i*f_s.elemSize();
-      *buf = ((f_s.data[imat+2] << 16) |
-	      (f_s.data[imat+1] << 8) |
-	      f_s.data[imat] );
+  for (int j = 0; j < OUT_FRAME_HEIGHT; j++) {
+    for (int i = 0; i < OUT_FRAME_WIDTH; i++) {
+      buf = (unsigned long*)gbuf + i + j*OUT_FRAME_WIDTH;
+      int imat = j*f.step + i*f.elemSize();
+      *buf = ((f.data[imat+2] << 16) |
+	      (f.data[imat+1] << 8) |
+	      f.data[imat] );
     }
   }
 #else
@@ -110,7 +158,6 @@ void Video::writeFrame(Mat f) {
 }
 
 Mat Video::calculateTarget(Mat f, int gsmin, int gsmax, int side) {
-  uint64_t t_sta = ev3clock->now();
 #if defined(WITH_OPENCV)
   if (f.empty()) return f;
   
@@ -118,6 +165,12 @@ Mat Video::calculateTarget(Mat f, int gsmin, int gsmax, int side) {
 
   /* convert the image from BGR to grayscale */
   cvtColor(f, img_gray, COLOR_BGR2GRAY);
+  /* mask the upper half of the grayscale image */
+  for (int i = 0; i < (int)(FRAME_HEIGHT/2); i++) {
+    for (int j = 0; j < FRAME_WIDTH; j++) {
+      img_gray.at<uchar>(i,j) = 255; /* type = CV_8U */
+    }
+  }
   /* binarize the image */
   inRange(img_gray, gsmin, gsmax, img_bin);
   /* remove noise */
@@ -128,9 +181,7 @@ Mat Video::calculateTarget(Mat f, int gsmin, int gsmax, int side) {
   /* find contours in the roi with offset */
   vector<vector<Point>> contours;
   vector<Vec4i> hierarchy;
-
   findContours(img_roi, contours, hierarchy, RETR_EXTERNAL, CHAIN_APPROX_SIMPLE, Point(roi.x,roi.y));
-
   /* identify the largest contour */
   if (contours.size() >= 1) {
     int i_area_max = 0;
@@ -143,7 +194,7 @@ Mat Video::calculateTarget(Mat f, int gsmin, int gsmax, int side) {
       }
     }
     /* draw the largest contour on the original image */
-    drawContours(f, (vector<vector<Point>>){contours[i_area_max]}, 0, Scalar(0,255,0), 10);
+    polylines(f, (vector<vector<Point>>){contours[i_area_max]}, 0, Scalar(0,255,0), LINE_THICKNESS);
 
     /* calculate the bounding box around the largest contour
        and set it as the new region of interest */ 
@@ -174,7 +225,7 @@ Mat Video::calculateTarget(Mat f, int gsmin, int gsmax, int side) {
     drawContours(img_cnt, (vector<vector<Point>>){contours[i_area_max]}, 0, Scalar(0,255,0), 1);
     cvtColor(img_cnt, img_cnt_gray, COLOR_BGR2GRAY);
     /* scan the line really close to the image bottom to find edges */
-    scan_line = img_cnt_gray.row(img_cnt_gray.size().height -10);
+    scan_line = img_cnt_gray.row(img_cnt_gray.size().height - LINE_THICKNESS);
     /* convert the Mat to a NumCpp array */
     auto scan_line_nc = nc::NdArray<nc::uint8>(scan_line.data, scan_line.rows, scan_line.cols);
     auto edges = scan_line_nc.flatnonzero();
@@ -192,16 +243,10 @@ Mat Video::calculateTarget(Mat f, int gsmin, int gsmax, int side) {
   }
 
   /* draw the area of interest on the original image */
-  rectangle(f, Point(roi.x,roi.y), Point(roi.x+roi.width,roi.y+roi.height), Scalar(255,0,0), 10);
+  rectangle(f, Point(roi.x,roi.y), Point(roi.x+roi.width,roi.y+roi.height), Scalar(255,0,0), LINE_THICKNESS);
   /* draw the trace target on the image */
-  circle(f, Point(mx, FRAME_HEIGHT-10), 20, Scalar(0,0,255), -1);
+  circle(f, Point(mx, FRAME_HEIGHT-LINE_THICKNESS), CIRCLE_RADIUS, Scalar(0,0,255), -1);
 #endif /* defined(WITH_OPENCV) */
-  uint64_t t_end = ev3clock->now();
-  int t_elapsed = t_end - t_sta;
-  if (t_elapsed > PERIOD_VIDEO_TSK) {
-    _log("elapsed: %04d > PERIOD_VIDEO_TSK: %04d msec", t_elapsed/1000, PERIOD_VIDEO_TSK/1000);
-    assert(0);
-  }
 
   return f;
 }
@@ -212,10 +257,10 @@ void Video::show() {
   sprintf(strbuf[2], "deg=%03d,gyro=%+03d", plotter->getDegree(), gyroSensor->getAngle());
 
 #if !defined(WITHOUT_X11)
-  XPutImage(disp, win, gc, ximg, 0, 0, 0, 0, X11_FRAME_WIDTH, 2*X11_FRAME_HEIGHT);
-  XDrawString(disp, win, gc, 10, X11_FRAME_HEIGHT+10, strbuf[0], strlen(strbuf[0]));
-  XDrawString(disp, win, gc, 10, X11_FRAME_HEIGHT+40, strbuf[1], strlen(strbuf[1]));
-  XDrawString(disp, win, gc, 10, X11_FRAME_HEIGHT+70, strbuf[2], strlen(strbuf[2]));
+  XPutImage(disp, win, gc, ximg, 0, 0, 0, 0, OUT_FRAME_WIDTH, 2*OUT_FRAME_HEIGHT);
+  XDrawString(disp, win, gc, 10, OUT_FRAME_HEIGHT+10, strbuf[0], strlen(strbuf[0]));
+  XDrawString(disp, win, gc, 10, OUT_FRAME_HEIGHT+40, strbuf[1], strlen(strbuf[1]));
+  XDrawString(disp, win, gc, 10, OUT_FRAME_HEIGHT+70, strbuf[2], strlen(strbuf[2]));
   XFlush(disp);
 #endif
 }

@@ -616,8 +616,7 @@ void main_task(intptr_t unused) {
     /* BEHAVIOR FOR THE RIGHT COURSE STARTS HERE */
     if (prof->getValueAsStr("COURSE") == "R") {
       tr_run = (BrainTree::BehaviorTree*) BrainTree::Builder()
-	.leaf<IsTimeEarned>(10000000)
-	/*
+	//.leaf<IsTimeEarned>(10000000)
         .composite<BrainTree::ParallelSequence>(1,2)
             .leaf<TraceLine>(prof->getValueAsNum("SPEED"),
 			     prof->getValueAsNum("GS_TARGET"),
@@ -626,7 +625,6 @@ void main_task(intptr_t unused) {
 			     prof->getValueAsNum("D_CONST"), 0.0, TS_NORMAL)
 	    .leaf<IsDistanceEarned>(2000)
         .end()
-	*/
         .build();
       tr_block = (BrainTree::BehaviorTree*) BrainTree::Builder()
 	.leaf<StopNow>()
@@ -668,7 +666,11 @@ void main_task(intptr_t unused) {
 */
 
     /* register cyclic handler to EV3RT */
-    _log("starting cyclic tasks...");
+    _log("starting video task...");
+    sta_cyc(CYC_VCAP_TSK);
+    _log("wait for video task to be ready, going to sleep 500 milli secs");
+    ev3clock->sleep(500000);    
+    _log("starting other syclic tasks...");
     sta_cyc(CYC_VIDEO_TSK);
     sta_cyc(CYC_UPD_TSK);
 
@@ -688,8 +690,9 @@ void main_task(intptr_t unused) {
     /* deregister cyclic handler from EV3RT */
     stp_cyc(CYC_UPD_TSK);
     stp_cyc(CYC_VIDEO_TSK);
-    _log("wait for update task to cease, going to sleep 500 milli secs");
-    ev3clock->sleep(500000);
+    stp_cyc(CYC_VCAP_TSK);
+    _log("wait for update task to cease, going to sleep 100 milli secs");
+    ev3clock->sleep(100000);
     _log("wait finished");
 
     /* destroy behavior tree */
@@ -723,17 +726,35 @@ void main_task(intptr_t unused) {
 
 /* periodic task to handle video */
 void video_task(intptr_t unused) {
-    ER ercd;
-    video->capture();
-    video->writeFrame(video->calculateTarget(video->readFrame(), 0, 100, 0));    
+    uint64_t t_sta = ev3clock->now();
+    //video->writeFrame(video->calculateTarget(video->readFrame(), 0, 100, 0));    
     //video->writeFrame(video->readFrame());    
-    video->show();
+    //video->show();
+    uint64_t t_end = ev3clock->now();
+    int t_elapsed = t_end - t_sta;
+    if (t_elapsed > PERIOD_VIDEO_TSK) {
+      _log("elapsed: %04d > PERIOD_VIDEO_TSK: %04d msec", t_elapsed/1000, PERIOD_VIDEO_TSK/1000);
+      assert(0);
+    }
+}
+    
+/* periodic task to capture video frames */
+void vcap_task(intptr_t unused) {
+    uint64_t t_sta = ev3clock->now();
+    //video->capture();
+    uint64_t t_end = ev3clock->now();
+    int t_elapsed = t_end - t_sta;
+    if (t_elapsed > PERIOD_VCAP_TSK) {
+      _log("elapsed: %04d > PERIOD_VCAP_TSK: %04d msec", t_elapsed/1000, PERIOD_VCAP_TSK/1000);
+      assert(0);
+    }
 }
     
 /* periodic task to update the behavior tree */
 void update_task(intptr_t unused) {
     BrainTree::Node::Status status;
     ER ercd;
+    uint64_t t_sta = ev3clock->now();
 
     colorSensor->sense();
     plotter->plot();
@@ -824,4 +845,11 @@ void update_task(intptr_t unused) {
     rightMotor->drive();
     leftMotor->drive();
     //logger->outputLog(LOG_INTERVAL);
+
+    uint64_t t_end = ev3clock->now();
+    int t_elapsed = t_end - t_sta;
+    if (t_elapsed > PERIOD_UPD_TSK) {
+      _log("elapsed: %04d > PERIOD_UPD_TSK: %04d msec", t_elapsed/1000, PERIOD_UPD_TSK/1000);
+      if (state != ST_INITIAL) assert(0);
+    }
 }

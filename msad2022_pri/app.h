@@ -16,12 +16,14 @@ extern "C" {
 
 /* task priorities (smaller number has higher priority) */
 #define PRIORITY_UPD_TSK    TMIN_APP_TPRI
-#define PRIORITY_VIDEO_TSK  (TMIN_APP_TPRI + 1)
-#define PRIORITY_MAIN_TASK  (TMIN_APP_TPRI + 2)
+#define PRIORITY_VCAP_TSK   (TMIN_APP_TPRI + 1)
+#define PRIORITY_VIDEO_TSK  (TMIN_APP_TPRI + 2)
+#define PRIORITY_MAIN_TASK  (TMIN_APP_TPRI + 3)
 
 /* task periods in micro seconds */
 #define PERIOD_UPD_TSK      (10 * 1000)
-#define PERIOD_VIDEO_TSK    (25 * 1000) /* video capture in 90 FPS (every 12 ms) but video::calculateTarget takes 22 ms at most */ 
+#define PERIOD_VCAP_TSK     (10 * 1000) /* video capture in 90 FPS (every 11 ms) */
+#define PERIOD_VIDEO_TSK    (15 * 1000) /* Video::calculateTarget() takes 11 ms max */
 
 /* default task stack size in bytes */
 #ifndef STACK_SIZE
@@ -33,6 +35,7 @@ extern "C" {
 
 extern void main_task(intptr_t unused);
 extern void update_task(intptr_t unused);
+extern void vcap_task(intptr_t unused);
 extern void video_task(intptr_t unused);
 extern void task_activator(intptr_t tskid);
 

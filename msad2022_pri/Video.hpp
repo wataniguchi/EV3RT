@@ -14,6 +14,7 @@
 
 #if defined(WITH_OPENCV)
 #include <opencv2/opencv.hpp>
+#include <opencv2/core/utils/logger.hpp>
 using namespace cv;
 #else
 #define Mat void*
@@ -27,12 +28,21 @@ using namespace std;
 #undef Status
 #undef Success
 
-#define FRAME_WIDTH  640
-#define FRAME_HEIGHT 480
-#define ROI_BOUNDARY 50
+/* frame size for Raspberry Pi camera capture */
+#define IN_FRAME_WIDTH  640
+#define IN_FRAME_HEIGHT 480
 
-#define X11_FRAME_WIDTH  int(FRAME_WIDTH/4)
-#define X11_FRAME_HEIGHT int(FRAME_HEIGHT/4)
+/* frame size for OpenCV */
+#define FRAME_WIDTH  128
+#define FRAME_HEIGHT 96
+
+#define ROI_BOUNDARY int(FRAME_WIDTH/16)
+#define LINE_THICKNESS int(FRAME_WIDTH/80)
+#define CIRCLE_RADIUS int(FRAME_WIDTH/40)
+
+/* frame size for X11 painting */
+#define OUT_FRAME_WIDTH  160
+#define OUT_FRAME_HEIGHT 120
 
 class Video {
 protected:
@@ -48,10 +58,9 @@ protected:
   XImage* ximg;
   void* gbuf;
   Mat frame;
-  Mat frame_out;
+  Mat frame_prev;
   Mat kernel;
   unsigned long* buf;
-  int imat;
   Font font;
   char strbuf[4][40];
   int mx;
