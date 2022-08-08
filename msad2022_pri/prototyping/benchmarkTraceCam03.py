@@ -7,13 +7,13 @@ import time
 import argparse
 import pandas as pd
 
-scenarios = pd.DataFrame({'thread': ['single','multi','single','multi'],
-                          'frame':  ['large', 'large','small', 'small']})
+scenarios = pd.DataFrame({'thread': ['single','multi','single','multi', 'single','multi'],
+                          'frame':  ['large', 'large','medium','medium','small', 'small']})
 
 parser = argparse.ArgumentParser(description='OpenCV benchmarking')
-parser.add_argument('arg1', help='specify a nubmer 1-4', type=int)
+parser.add_argument('arg1', help='specify a nubmer 1-6', type=int)
 args = parser.parse_args()
-if args.arg1 <= 0 or args.arg1 > 4:
+if args.arg1 <= 0 or args.arg1 > 6:
     print("specified number is invalid")
     scenario = scenarios.iloc[0]
 else:
@@ -31,9 +31,12 @@ else:
 if scenario['frame'] == 'large':
     FRAME_WIDTH  = 640
     FRAME_HEIGHT = 480
-else:
+elif scenario['frame'] == 'medium':
     FRAME_WIDTH  = 160
     FRAME_HEIGHT = 120
+else:
+    FRAME_WIDTH  = 128
+    FRAME_HEIGHT = 96
 
 # number of sampling
 LOOP = 100
