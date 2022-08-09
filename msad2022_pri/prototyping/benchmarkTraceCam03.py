@@ -64,31 +64,50 @@ cap.set(cv2.CAP_PROP_FRAME_HEIGHT,FRAME_HEIGHT)
 cap.set(cv2.CAP_PROP_FPS,90)
 
 # create trackbars
-cv2.namedWindow("testTrace1")
-
-cv2.createTrackbar("GS_min", "testTrace1", 0, 255, nothing)
-cv2.createTrackbar("GS_max", "testTrace1", 100, 255, nothing)
-cv2.createTrackbar("Edge",  "testTrace1", 0, 2, nothing)
+#cv2.namedWindow("testTrace1")
+#
+#cv2.createTrackbar("GS_min", "testTrace1", 0, 255, nothing)
+#cv2.createTrackbar("GS_max", "testTrace1", 100, 255, nothing)
+#cv2.createTrackbar("Edge",  "testTrace1", 0, 2, nothing)
+# these variables are fixed, instead of being given by trackbars, for benchmarking
+gs_min = 0
+gs_max = 100
+edge = 0
 
 # initial region of interest
 roi = (0, 0, FRAME_WIDTH, FRAME_HEIGHT)
 # initial trace target
 mx = int(FRAME_WIDTH/2)
-# list to record elapsed time
-ms_elapsed_list = []
+# dictionary to record elapsed time
+elapsed_dic = {
+    'total':[],
+    'capture':[],
+    'process':[],
+    'transmit':[],
+    }
 
 for n in range(LOOP):
+    ### START elapse measurement 0 - total
+    time0_sta = time.time()
+    
     # obtain values from the trackbars
-    gs_min = cv2.getTrackbarPos("GS_min", "testTrace1")
-    gs_max = cv2.getTrackbarPos("GS_max", "testTrace1")
-    edge  = cv2.getTrackbarPos("Edge",  "testTrace1")
+    #gs_min = cv2.getTrackbarPos("GS_min", "testTrace1")
+    #gs_max = cv2.getTrackbarPos("GS_max", "testTrace1")
+    #edge  = cv2.getTrackbarPos("Edge",  "testTrace1")
 
-    time.sleep(0.01)
+    ### START elapse measurement 1 - capture
+    time1_sta = time.time()
 
     ret, frame = cap.read()
 
-    ### START elapse measurement
-    time_sta = time.time()
+    ### END elapse measurement 1 - capture
+    time1_end = time.time()
+    elapsed1 = 1000 * (time1_end - time1_sta)
+    elapsed_dic['capture'].append(elapsed1)
+    
+    ### START elapse measurement 2 - process
+    time2_sta = time.time()
+
     # clone the image if exists, otherwise use the previous image
     if len(frame) != 0:
         img_orig = frame.copy()
@@ -168,10 +187,7 @@ for n in range(LOOP):
     cv2.rectangle(img_orig, (x,y), (x+w,y+h), (255,0,0), LINE_THICKNESS)
     # draw the trace target on the image
     cv2.circle(img_orig, (mx, FRAME_HEIGHT-LINE_THICKNESS), CIRCLE_RADIUS, (0,0,255), -1)
-    ### END elapse measurement
-    time_end = time.time()
-    ms_elapsed = 1000 * (time_end - time_sta)
-    ms_elapsed_list.append(ms_elapsed)
+
     # calculate variance of mx from the center in pixel
     vxp = mx - int(FRAME_WIDTH/2)
     # convert the variance from pixel to milimeters
@@ -182,6 +198,13 @@ for n in range(LOOP):
     theta = math.atan(vxm / 284) 
     #print(f"mx = {mx}, vxm = {vxm}, theta = {theta}")
 
+    ### END elapse measurement 2 - capture
+    time2_end = time.time()
+    elapsed2 = 1000 * (time2_end - time2_sta)
+    elapsed_dic['process'].append(elapsed2)
+    ### START elapse measurement 3 - transmit
+    time3_sta = time.time()
+
     # shrink the image to avoid delay in transmission
     if OUT_FRAME_WIDTH != FRAME_WIDTH or OUT_FRAME_HEIGHT != FRAME_HEIGHT:
         img_orig = cv2.resize(img_orig, (OUT_FRAME_WIDTH,OUT_FRAME_HEIGHT))
@@ -189,9 +212,20 @@ for n in range(LOOP):
     cv2.imshow("testTrace2", img_orig)
 
     c = cv2.waitKey(1) # show the window
+
+    ### END elapse measurement 3 - transmit
+    time3_end = time.time()
+    elapsed3 = 1000 * (time3_end - time3_sta)
+    elapsed_dic['transmit'].append(elapsed3)
+    ### END elapse measurement 0 - total
+    time0_end = time.time()
+    elapsed0 = 1000 * (time0_end - time0_sta)
+    elapsed_dic['total'].append(elapsed0)
+
     if c == ord('q') or c == ord('Q'):
         break
 
 cv2.destroyAllWindows
-x = np.array([ms_elapsed_list])
-print(f"n = {x.shape[1]}, max = {np.max(x):.2f}, min = {np.min(x):.2f}, mean = {np.mean(x):.2f}, median = {np.median(x):.2f}")
+for key, value in elapsed_dic.items():
+    x = np.array([value])
+    print(f"{key}: n = {x.shape[1]}, max = {np.max(x):.2f}, min = {np.min(x):.2f}, mean = {np.mean(x):.2f}, median = {np.median(x):.2f}")
