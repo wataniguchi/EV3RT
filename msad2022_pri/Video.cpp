@@ -46,20 +46,20 @@ Video::Video() {
   mx = (int)(FRAME_WIDTH/2);
   
 #if defined(WITH_OPENCV)
-  utils::logging::setLogLevel(utils::logging::LOG_LEVEL_DEBUG);
+  utils::logging::setLogLevel(utils::logging::LOG_LEVEL_INFO);
   /* set number of threads */
   setNumThreads(0);
   /* prepare the camera */
   cap = VideoCapture(0);
-  //cap.set(CAP_PROP_FRAME_WIDTH,IN_FRAME_WIDTH);
-  //cap.set(CAP_PROP_FRAME_HEIGHT,IN_FRAME_HEIGHT);
-  //cap.set(CAP_PROP_FPS,90);
-  //assert(cap.isOpened());
+  cap.set(CAP_PROP_FRAME_WIDTH,IN_FRAME_WIDTH);
+  cap.set(CAP_PROP_FRAME_HEIGHT,IN_FRAME_HEIGHT);
+  cap.set(CAP_PROP_FPS,90);
+  assert(cap.isOpened());
   
   /* initial region of interest */
   roi = Rect(0, 0, FRAME_WIDTH, FRAME_HEIGHT);
   /* prepare and keep kernel for morphology */
-  //kernel = Mat::zeros(Size(7,7), CV_8UC1);
+  kernel = Mat::zeros(Size(7,7), CV_8UC1);
   //kernel = Mat(Size(7,7), CV_8UC1, Scalar(0));
 #else
   frame = nullptr;
@@ -68,7 +68,7 @@ Video::Video() {
 
 Video::~Video() {
 #if defined(WITH_OPENCV)
-  //cap.release();
+  cap.release();
 #endif
 
 #if !defined(WITHOUT_X11)
@@ -83,7 +83,10 @@ void Video::capture() {
   //ER ercd = tloc_mtx(MTX1, 1000U); /* test and lock the mutex */
   //if (ercd == E_OK) { /* if successfully locked, process the frame and unlock the mutex;
   //			 otherwise, do nothing */
+  vector<int> ready_index;
+  if (VideoCapture::waitAny({cap}, ready_index, 1)) {
     cap.read(frame);
+    }
     //ercd = unl_mtx(MTX1);
     //assert(ercd == E_OK);
     //} else {

@@ -728,25 +728,31 @@ void main_task(intptr_t unused) {
 void video_task(intptr_t unused) {
     uint64_t t_sta = ev3clock->now();
     //video->writeFrame(video->calculateTarget(video->readFrame(), 0, 100, 0));    
-    //video->writeFrame(video->readFrame());    
-    //video->show();
+    video->writeFrame(video->readFrame());
     uint64_t t_end = ev3clock->now();
     int t_elapsed = t_end - t_sta;
+    if (t_elapsed > PERIOD_VIDEO_TSK - 10000) {
+      _log("skipping image transmission - elapsed: %04d > PERIOD_VIDEO_TSK: %04d msec", t_elapsed/1000, PERIOD_VIDEO_TSK/1000);
+    } else {
+      video->show();
+    }
+    t_end = ev3clock->now();
+    t_elapsed = t_end - t_sta;
     if (t_elapsed > PERIOD_VIDEO_TSK) {
       _log("elapsed: %04d > PERIOD_VIDEO_TSK: %04d msec", t_elapsed/1000, PERIOD_VIDEO_TSK/1000);
-      assert(0);
+      if (state != ST_INITIAL) assert(0);
     }
 }
     
 /* periodic task to capture video frames */
 void vcap_task(intptr_t unused) {
     uint64_t t_sta = ev3clock->now();
-    //video->capture();
+    video->capture();
     uint64_t t_end = ev3clock->now();
     int t_elapsed = t_end - t_sta;
     if (t_elapsed > PERIOD_VCAP_TSK) {
       _log("elapsed: %04d > PERIOD_VCAP_TSK: %04d msec", t_elapsed/1000, PERIOD_VCAP_TSK/1000);
-      assert(0);
+      if (state != ST_INITIAL) assert(0);
     }
 }
     

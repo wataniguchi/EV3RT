@@ -57,4 +57,8 @@ endif # ifdef WITH_OPENCV
 
 #COPTS += -fno-use-cxa-atexit
 #COPTS += -DNDEBUG -std=gnu++11
-COPTS += -std=gnu++14 -g $(USER_COPTS)
+#
+# DO NOT add -g option
+# -g makes robot to loose control on motors when initializing OpenCV in some cases
+#
+COPTS += -std=gnu++14 $(USER_COPTS)

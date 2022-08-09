@@ -22,12 +22,12 @@ extern "C" {
 
 /* task periods in micro seconds */
 #define PERIOD_UPD_TSK      (10 * 1000)
-#define PERIOD_VCAP_TSK     (10 * 1000) /* video capture in 90 FPS (every 11 ms) */
-#define PERIOD_VIDEO_TSK    (15 * 1000) /* Video::calculateTarget() takes 11 ms max */
+#define PERIOD_VCAP_TSK     (12 * 1000) /* video capture in 90 FPS (every 11 ms) */
+#define PERIOD_VIDEO_TSK    (30 * 1000) /* Video::calculateTarget() takes 11 ms max */
 
 /* default task stack size in bytes */
 #ifndef STACK_SIZE
-#define STACK_SIZE          8192
+#define STACK_SIZE          4096
 #endif /* STACK_SIZE */
     
 /* prototypes for configuration */
