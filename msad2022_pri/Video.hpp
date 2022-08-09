@@ -39,10 +39,7 @@ using namespace std;
 #define ROI_BOUNDARY int(FRAME_WIDTH/16)
 #define LINE_THICKNESS int(FRAME_WIDTH/80)
 #define CIRCLE_RADIUS int(FRAME_WIDTH/40)
-
-/* frame size for X11 painting */
-#define OUT_FRAME_WIDTH  160
-#define OUT_FRAME_HEIGHT 120
+#define DATA_INDENT int(FRAME_HEIGHT/12)
 
 class Video {
 protected:

@@ -6,6 +6,26 @@
 #include "appusr.hpp"
 
 Video::Video() {
+#if defined(WITH_OPENCV)
+  utils::logging::setLogLevel(utils::logging::LOG_LEVEL_INFO);
+  /* set number of threads */
+  setNumThreads(0);
+  /* prepare the camera */
+  cap = VideoCapture(0);
+  cap.set(CAP_PROP_FRAME_WIDTH,IN_FRAME_WIDTH);
+  cap.set(CAP_PROP_FRAME_HEIGHT,IN_FRAME_HEIGHT);
+  cap.set(CAP_PROP_FPS,60);
+  assert(cap.isOpened());
+  
+  /* initial region of interest */
+  roi = Rect(0, 0, FRAME_WIDTH, FRAME_HEIGHT);
+  /* prepare and keep kernel for morphology */
+  kernel = Mat::zeros(Size(7,7), CV_8UC1);
+  //kernel = Mat(Size(7,7), CV_8UC1, Scalar(0));
+#else
+  frame = nullptr;
+#endif
+
 #if !defined(WITHOUT_X11)
   XInitThreads();
   disp = XOpenDisplay(NULL);
@@ -15,7 +35,7 @@ Video::Video() {
   
   unsigned long black=BlackPixel(disp, 0);
   unsigned long white=WhitePixel(disp, 0);
-  win = XCreateSimpleWindow(disp, RootWindow(disp,0), 0, 0, OUT_FRAME_WIDTH, 2*OUT_FRAME_HEIGHT, 1, black, white);
+  win = XCreateSimpleWindow(disp, RootWindow(disp,0), 0, 0, FRAME_WIDTH, 2*FRAME_HEIGHT, 1, black, white);
 
   XSetWindowAttributes attr;
   attr.override_redirect = True;
@@ -28,42 +48,22 @@ Video::Video() {
   XSetFont(disp, gc, font);
 #endif
 
-  gbuf = malloc(sizeof(unsigned long) * OUT_FRAME_WIDTH * 2*OUT_FRAME_HEIGHT);
+  gbuf = malloc(sizeof(unsigned long) * FRAME_WIDTH * 2*FRAME_HEIGHT);
   /* initialize gbuf with zero */
-  for (int j = 0; j < 2*OUT_FRAME_HEIGHT; j++) {
-    for (int i = 0; i < OUT_FRAME_WIDTH; i++) {
-      buf = (unsigned long*)gbuf + i + j*OUT_FRAME_WIDTH;
+  for (int j = 0; j < 2*FRAME_HEIGHT; j++) {
+    for (int i = 0; i < FRAME_WIDTH; i++) {
+      buf = (unsigned long*)gbuf + i + j*FRAME_WIDTH;
       *buf = 0;
     }
   }
 
 #if !defined(WITHOUT_X11)
-  ximg = XCreateImage(disp, vis, 24, ZPixmap, 0, (char*)gbuf, OUT_FRAME_WIDTH, 2*OUT_FRAME_HEIGHT, BitmapUnit(disp), 0);
+  ximg = XCreateImage(disp, vis, 24, ZPixmap, 0, (char*)gbuf, FRAME_WIDTH, 2*FRAME_HEIGHT, BitmapUnit(disp), 0);
   XInitImage(ximg);
 #endif
 
   /* initial trace target */
   mx = (int)(FRAME_WIDTH/2);
-  
-#if defined(WITH_OPENCV)
-  utils::logging::setLogLevel(utils::logging::LOG_LEVEL_INFO);
-  /* set number of threads */
-  setNumThreads(0);
-  /* prepare the camera */
-  cap = VideoCapture(0);
-  cap.set(CAP_PROP_FRAME_WIDTH,IN_FRAME_WIDTH);
-  cap.set(CAP_PROP_FRAME_HEIGHT,IN_FRAME_HEIGHT);
-  cap.set(CAP_PROP_FPS,90);
-  assert(cap.isOpened());
-  
-  /* initial region of interest */
-  roi = Rect(0, 0, FRAME_WIDTH, FRAME_HEIGHT);
-  /* prepare and keep kernel for morphology */
-  kernel = Mat::zeros(Size(7,7), CV_8UC1);
-  //kernel = Mat(Size(7,7), CV_8UC1, Scalar(0));
-#else
-  frame = nullptr;
-#endif
 }
 
 Video::~Video() {
@@ -83,10 +83,24 @@ void Video::capture() {
   //ER ercd = tloc_mtx(MTX1, 1000U); /* test and lock the mutex */
   //if (ercd == E_OK) { /* if successfully locked, process the frame and unlock the mutex;
   //			 otherwise, do nothing */
-  vector<int> ready_index;
-  if (VideoCapture::waitAny({cap}, ready_index, 1)) {
-    cap.read(frame);
+  //vector<int> ready_index;
+  //if (VideoCapture::waitAny({cap}, ready_index, 1)) {
+  Mat f;
+  cap.read(f);
+  /* resize the image for OpenCV processing if exists, otherwise use the previous image */
+  if (!f.empty()) {
+    if (FRAME_WIDTH != IN_FRAME_WIDTH || FRAME_HEIGHT != IN_FRAME_HEIGHT) {
+      Mat img_resized;
+      resize(f, img_resized, Size(), (double)FRAME_WIDTH/IN_FRAME_WIDTH, (double)FRAME_HEIGHT/IN_FRAME_HEIGHT);
+      assert(img_resized.size().width == FRAME_WIDTH);
+      assert(img_resized.size().height == FRAME_HEIGHT);
+      frame = img_resized;
     }
+    frame_prev = frame; /* keep the image in case capture() fails to capture a new frame */
+  } else {
+    frame = frame_prev;
+  }
+    //}
     //ercd = unl_mtx(MTX1);
     //assert(ercd == E_OK);
     //} else {
@@ -108,19 +122,6 @@ Mat Video::readFrame() {
     //ercd = unl_mtx(MTX1);
     //assert(ercd == E_OK);
     
-    /* resize the image for OpenCV processing if exists, otherwise use the previous image */
-    if (!f.empty()) {
-      if (FRAME_WIDTH != IN_FRAME_WIDTH || FRAME_HEIGHT != IN_FRAME_HEIGHT) {
-	Mat img_resized;
-	resize(f, img_resized, Size(), (double)FRAME_WIDTH/IN_FRAME_WIDTH, (double)FRAME_HEIGHT/IN_FRAME_HEIGHT);
-	assert(img_resized.size().width == FRAME_WIDTH);
-	assert(img_resized.size().height == FRAME_HEIGHT);
-	f = img_resized;
-      }
-      frame_prev = f; /* keep the image in case capture() fails to capture a new frame */
-    } else {
-      f = frame_prev;
-    }
     //} else {
     //_log("mutex lock failed with %d", ercd);
     //assert(ercd == E_TMOUT);
@@ -134,20 +135,14 @@ void Video::writeFrame(Mat f) {
 #if defined(WITH_OPENCV)
   if (f.empty()) return;
 
-  if (OUT_FRAME_WIDTH != FRAME_WIDTH || OUT_FRAME_HEIGHT != FRAME_HEIGHT) {
-    Mat img_resized;
-    resize(f, img_resized, Size(), (double)OUT_FRAME_WIDTH/FRAME_WIDTH, (double)OUT_FRAME_HEIGHT/FRAME_HEIGHT);
-    f = img_resized;
-  }
-
-  if (f.size().width != OUT_FRAME_WIDTH || f.size().height != OUT_FRAME_HEIGHT) {
-    _log("frame size mismatch, w = %d(should be %d), h = %d(should be %d)", f.size().width, OUT_FRAME_WIDTH, f.size().height, OUT_FRAME_HEIGHT);
+  if (f.size().width != FRAME_WIDTH || f.size().height != FRAME_HEIGHT) {
+    _log("frame size mismatch, w = %d(should be %d), h = %d(should be %d)", f.size().width, FRAME_WIDTH, f.size().height, FRAME_HEIGHT);
     return;
   }
 
-  for (int j = 0; j < OUT_FRAME_HEIGHT; j++) {
-    for (int i = 0; i < OUT_FRAME_WIDTH; i++) {
-      buf = (unsigned long*)gbuf + i + j*OUT_FRAME_WIDTH;
+  for (int j = 0; j < FRAME_HEIGHT; j++) {
+    for (int i = 0; i < FRAME_WIDTH; i++) {
+      buf = (unsigned long*)gbuf + i + j*FRAME_WIDTH;
       int imat = j*f.step + i*f.elemSize();
       *buf = ((f.data[imat+2] << 16) |
 	      (f.data[imat+1] << 8) |
@@ -255,15 +250,15 @@ Mat Video::calculateTarget(Mat f, int gsmin, int gsmax, int side) {
 }
 
 void Video::show() {
-  sprintf(strbuf[0], "x=%+04d,y=%+04d", plotter->getLocX(), plotter->getLocY());
-  sprintf(strbuf[1], "dist=%+05d", plotter->getDistance());
-  sprintf(strbuf[2], "deg=%03d,gyro=%+03d", plotter->getDegree(), gyroSensor->getAngle());
+  sprintf(strbuf[0], "x=%+05d,y=%+05d", plotter->getLocX(), plotter->getLocY());
+  sprintf(strbuf[1], "dist=%+06d", plotter->getDistance());
+  sprintf(strbuf[2], "deg=%03d,gyro=%+04d", plotter->getDegree(), gyroSensor->getAngle());
 
 #if !defined(WITHOUT_X11)
-  XPutImage(disp, win, gc, ximg, 0, 0, 0, 0, OUT_FRAME_WIDTH, 2*OUT_FRAME_HEIGHT);
-  XDrawString(disp, win, gc, 10, OUT_FRAME_HEIGHT+10, strbuf[0], strlen(strbuf[0]));
-  XDrawString(disp, win, gc, 10, OUT_FRAME_HEIGHT+40, strbuf[1], strlen(strbuf[1]));
-  XDrawString(disp, win, gc, 10, OUT_FRAME_HEIGHT+70, strbuf[2], strlen(strbuf[2]));
+  XPutImage(disp, win, gc, ximg, 0, 0, 0, 0, FRAME_WIDTH, 2*FRAME_HEIGHT);
+  XDrawString(disp, win, gc, DATA_INDENT, FRAME_HEIGHT+2*DATA_INDENT, strbuf[0], strlen(strbuf[0]));
+  XDrawString(disp, win, gc, DATA_INDENT, FRAME_HEIGHT+5*DATA_INDENT, strbuf[1], strlen(strbuf[1]));
+  XDrawString(disp, win, gc, DATA_INDENT, FRAME_HEIGHT+8*DATA_INDENT, strbuf[2], strlen(strbuf[2]));
   XFlush(disp);
 #endif
 }
