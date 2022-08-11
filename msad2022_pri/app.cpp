@@ -46,9 +46,18 @@ BrainTree::BehaviorTree* tr_run         = nullptr;
 BrainTree::BehaviorTree* tr_block       = nullptr;
 State state = ST_INITIAL;
 
-std::mutex mut1, mut2;
+int vcap_thd_count = 0;
+int video_process_count = 0;
+int vshow_thd_count = 0;
+/* variables for critical section 1 */
+std::mutex mut1;
 Mat frame_in;
+std::chrono::system_clock::time_point t_sta1;
+/* variables for critical section 2 */
+std::mutex mut2;
 Mat frame_out;
+std::chrono::system_clock::time_point t_sta1copy, t_sta2;
+
 
 /*
     === NODE CLASS DEFINITION STARTS HERE ===
@@ -544,38 +553,50 @@ public:
   void operator()(int unused) {
     Mat f;
     while (state != ST_END) {
+      std::chrono::system_clock::time_point t_sta = std::chrono::system_clock::now();
       f = video->readFrame();
       /* critical section 1 */
       if ( mut1.try_lock() ) {
 #if defined(WITH_OPENCV)
 	frame_in = f.clone();
 #endif
+	t_sta1 = t_sta;
+	vcap_thd_count++;
 	mut1.unlock();
       }
       std::this_thread::yield();
-      //std::this_thread::sleep_for( std::chrono::milliseconds( 11 ) );
     }
-    _log("sub-thread ready to join");
+    _log("sub-thread ready to join. # of execution = %d", vcap_thd_count);
   }
 };
 
 class vshow_thd {
 public:
   void operator()(int unused) {
-    Mat f;
+    std::chrono::system_clock::time_point t_sta1_local;
     while (state != ST_END) {
+      std::chrono::system_clock::time_point t_sta2_local, t_end;
+      Mat f;
       /* critical section 2 */
       if ( mut2.try_lock() ) {
+	if (t_sta1copy != t_sta1_local) { /* new frame? */
 #if defined(WITH_OPENCV)
-	f = frame_out.clone();
+	  f = frame_out.clone();
 #endif
-	mut2.unlock();
-	video->writeFrame(f);
-	video->show();
+	  t_sta1_local = t_sta1copy;
+	  t_sta2_local = t_sta2;
+	  mut2.unlock();
+	  video->writeFrame(f);
+	  video->show();
+	  t_end = std::chrono::system_clock::now();
+	  vshow_thd_count++;
+	} else {
+	  mut2.unlock();
+	}
 	std::this_thread::yield();
       }
     }
-    _log("sub-thread ready to join");
+    _log("sub-thread ready to join. # of execution = %d", vshow_thd_count);
   }
 };
 
@@ -737,33 +758,36 @@ void main_task(intptr_t unused) {
     //ev3_led_set_color(LED_ORANGE);
     state = ST_CALIBRATION;
 
-    /* the main task sleep until being waken up and let the registered cyclic handler to traverse the behavir trees */
-    /*
-    _log("going to sleep...");
-    ER ercd = slp_tsk();
-    assert(ercd == E_OK);
-    if (ercd != E_OK) {
-        syslog(LOG_NOTICE, "slp_tsk() returned %d", ercd);
-    }
-    */
+    /* the main task goes into loop until ST_ENDING while the registered cyclic handler traversing the behavir trees */
+    std::chrono::system_clock::time_point t_temp;
     while (state != ST_ENDING && state != ST_END) {
+      std::chrono::system_clock::time_point t_sta = std::chrono::system_clock::now();
       Mat f;
       /* critical section 1 */
       mut1.lock();
+      if (t_sta1 != t_temp) { /* new frame? */
 #if defined(WITH_OPENCV)
-      f = frame_in.clone();
+	f = frame_in.clone();
 #endif
-      mut1.unlock();
-      f = video->calculateTarget(f, 0, 100, 0);    
-      /* critical section 2 */
-      if ( mut2.try_lock() ) {
+	t_temp = t_sta1;
+	mut1.unlock();
+	f = video->calculateTarget(f, 0, 100, 0);
+	/* critical section 2 */
+	if ( mut2.try_lock() ) {
 #if defined(WITH_OPENCV)
-	frame_out = f.clone();
+	  frame_out = f.clone();
 #endif
-	mut2.unlock();
+	  t_sta1copy = t_temp;
+	  t_sta2 = t_sta;
+	  video_process_count++;
+	  mut2.unlock();
+	}
+      }	else {
+	mut1.unlock();
       }
       ev3clock->sleep(1);
     }
+    _log("video process loop exited. # of execution = %d", video_process_count);
 
     _log("wait for update task to change the state to ST_END, going to sleep 10 milli secs");
     ev3clock->sleep(10000);
@@ -879,15 +903,6 @@ void update_task(intptr_t unused) {
         }
         break;
     case ST_ENDING:
-      //_log("waking up main...");
-        /* wake up the main task */
-      /*
-        ercd = wup_tsk(MAIN_TASK);
-        assert(ercd == E_OK);
-        if (ercd != E_OK) {
-            syslog(LOG_NOTICE, "wup_tsk() returned %d", ercd);
-        }
-      */
         state = ST_END;
         _log("State changed: ST_ENDING to ST_END");
         break;    
