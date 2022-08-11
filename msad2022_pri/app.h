@@ -15,15 +15,11 @@ extern "C" {
 #include "target_test.h"
 
 /* task priorities (smaller number has higher priority) */
-#define PRIORITY_UPD_TSK    (TMIN_APP_TPRI + 0)
-#define PRIORITY_VCAP_TSK   (TMIN_APP_TPRI + 1)
-#define PRIORITY_VIDEO_TSK  (TMIN_APP_TPRI + 2)
-#define PRIORITY_MAIN_TASK  (TMIN_APP_TPRI + 3)
+#define PRIORITY_UPD_TSK    TMIN_APP_TPRI
+#define PRIORITY_MAIN_TASK  (TMIN_APP_TPRI + 1)
 
 /* task periods in micro seconds */
 #define PERIOD_UPD_TSK      (10 * 1000)
-#define PERIOD_VCAP_TSK     (17 * 1000) /* video capture in 60 FPS (every 17 ms) */
-#define PERIOD_VIDEO_TSK    (30 * 1000) /* Video::calculateTarget() takes 11 ms max */
 
 /* default task stack size in bytes */
 #ifndef STACK_SIZE
@@ -35,8 +31,6 @@ extern "C" {
 
 extern void main_task(intptr_t unused);
 extern void update_task(intptr_t unused);
-extern void vcap_task(intptr_t unused);
-extern void video_task(intptr_t unused);
 extern void task_activator(intptr_t tskid);
 
 #endif /* TOPPERS_MACRO_ONLY */

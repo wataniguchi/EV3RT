@@ -54,7 +54,6 @@ protected:
   GC gc;
   XImage* ximg;
   void* gbuf;
-  Mat frame;
   Mat frame_prev;
   Mat kernel;
   unsigned long* buf;
@@ -63,7 +62,6 @@ protected:
   int mx;
 public:
   Video();
-  void capture();
   Mat readFrame();
   void writeFrame(Mat f);
   Mat calculateTarget(Mat f, int gsmin, int gsmax, int side);

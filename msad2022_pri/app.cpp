@@ -13,6 +13,10 @@
 #include "app.h"
 #include "appusr.hpp"
 #include <iostream>
+#include <thread>
+#include <mutex>
+#include <vector>
+#include <chrono>
 #include <list>
 #include <numeric>
 #include <math.h>
@@ -41,6 +45,9 @@ BrainTree::BehaviorTree* tr_calibration = nullptr;
 BrainTree::BehaviorTree* tr_run         = nullptr;
 BrainTree::BehaviorTree* tr_block       = nullptr;
 State state = ST_INITIAL;
+
+std::mutex mut;
+Mat frame;
 
 /*
     === NODE CLASS DEFINITION STARTS HERE ===
@@ -530,6 +537,43 @@ private:
     === NODE CLASS DEFINITION ENDS HERE ===
 */
 
+/* classes running as sub-threads */
+class vcap_thd {
+public:
+  void operator()(int unused) {
+    Mat f;
+    while(state != ST_ENDING && state != ST_END) {
+      f = video->readFrame();
+      /* critical section */
+      if ( mut.try_lock() ) {
+#if defined(WITH_OPENCV)
+	frame = f.clone();
+#endif
+	mut.unlock();
+      }
+      std::this_thread::sleep_for( std::chrono::milliseconds( 11 ) );
+    }
+  }
+};
+
+class video_thd {
+public:
+  void operator()(int unused) {
+    Mat f;
+    while(state != ST_ENDING && state != ST_END) {
+      /* critical section */
+      mut.lock();
+#if defined(WITH_OPENCV)
+      f = frame.clone();
+#endif
+      mut.unlock();
+      video->writeFrame(video->calculateTarget(f, 0, 100, 0));    
+      //video->writeFrame(f);
+      video->show();
+      std::this_thread::yield();
+    }
+  }
+};
 
 /* a cyclic handler to activate a task */
 void task_activator(intptr_t tskid) {
@@ -665,13 +709,23 @@ void main_task(intptr_t unused) {
     === BEHAVIOR TREE DEFINITION ENDS HERE ===
 */
 
+    /* start sub-threads not managed by ASP */
+    _log("starting sub-threads...");
+    sigset_t ss;  
+    sigemptyset(&ss);
+    sigaddset(&ss, SIGUSR2);
+    sigaddset(&ss, SIGALRM);
+    sigaddset(&ss, SIGPOLL);
+
+    std::vector<std::thread> thds;
+    int iUnused = 0;
+    pthread_sigmask(SIG_BLOCK, &ss, 0);
+    thds.emplace_back(vcap_thd(), iUnused);
+    thds.emplace_back(video_thd(), iUnused);
+    pthread_sigmask(SIG_UNBLOCK, &ss, 0); /* let ASP manage the main thread */
+    
     /* register cyclic handler to EV3RT */
-    _log("starting video task...");
-    sta_cyc(CYC_VCAP_TSK);
-    _log("wait for video task to be ready, going to sleep 500 milli secs");
-    ev3clock->sleep(500000);    
-    _log("starting other syclic tasks...");
-    sta_cyc(CYC_VIDEO_TSK);
+    _log("starting update task...");
     sta_cyc(CYC_UPD_TSK);
 
     /* indicate initialization completion by LED color */
@@ -689,11 +743,15 @@ void main_task(intptr_t unused) {
 
     /* deregister cyclic handler from EV3RT */
     stp_cyc(CYC_UPD_TSK);
-    stp_cyc(CYC_VIDEO_TSK);
-    stp_cyc(CYC_VCAP_TSK);
     _log("wait for update task to cease, going to sleep 100 milli secs");
     ev3clock->sleep(100000);
     _log("wait finished");
+
+    /* join the sub-threads */
+    _log("joining sub-threads...");
+    for (auto& t : thds) {
+      t.join();
+    }
 
     /* destroy behavior tree */
     delete tr_block;
@@ -724,38 +782,6 @@ void main_task(intptr_t unused) {
     ext_tsk();
 }
 
-/* periodic task to handle video */
-void video_task(intptr_t unused) {
-    uint64_t t_sta = ev3clock->now();
-    //video->writeFrame(video->calculateTarget(video->readFrame(), 0, 100, 0));    
-    video->writeFrame(video->readFrame());
-    uint64_t t_end = ev3clock->now();
-    int t_elapsed = t_end - t_sta;
-    if (t_elapsed > PERIOD_VIDEO_TSK - 10000) {
-      _log("skipping image transmission - elapsed: %04d > PERIOD_VIDEO_TSK: %04d msec", t_elapsed/1000, PERIOD_VIDEO_TSK/1000);
-    } else {
-      video->show();
-    }
-    t_end = ev3clock->now();
-    t_elapsed = t_end - t_sta;
-    if (t_elapsed > PERIOD_VIDEO_TSK) {
-      _log("elapsed: %04d > PERIOD_VIDEO_TSK: %04d msec", t_elapsed/1000, PERIOD_VIDEO_TSK/1000);
-      if (state != ST_INITIAL) assert(0);
-    }
-}
-    
-/* periodic task to capture video frames */
-void vcap_task(intptr_t unused) {
-    uint64_t t_sta = ev3clock->now();
-    video->capture();
-    uint64_t t_end = ev3clock->now();
-    int t_elapsed = t_end - t_sta;
-    if (t_elapsed > PERIOD_VCAP_TSK) {
-      _log("elapsed: %04d > PERIOD_VCAP_TSK: %04d msec", t_elapsed/1000, PERIOD_VCAP_TSK/1000);
-      if (state != ST_INITIAL) assert(0);
-    }
-}
-    
 /* periodic task to update the behavior tree */
 void update_task(intptr_t unused) {
     BrainTree::Node::Status status;

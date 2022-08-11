@@ -22,8 +22,6 @@ Video::Video() {
   /* prepare and keep kernel for morphology */
   kernel = Mat::zeros(Size(7,7), CV_8UC1);
   //kernel = Mat(Size(7,7), CV_8UC1, Scalar(0));
-#else
-  frame = nullptr;
 #endif
 
 #if !defined(WITHOUT_X11)
@@ -78,14 +76,9 @@ Video::~Video() {
 #endif
 }
 
-void Video::capture() {
-#if defined(WITH_OPENCV)
-  //ER ercd = tloc_mtx(MTX1, 1000U); /* test and lock the mutex */
-  //if (ercd == E_OK) { /* if successfully locked, process the frame and unlock the mutex;
-  //			 otherwise, do nothing */
-  //vector<int> ready_index;
-  //if (VideoCapture::waitAny({cap}, ready_index, 1)) {
+Mat Video::readFrame() {
   Mat f;
+#if defined(WITH_OPENCV)
   cap.read(f);
   /* resize the image for OpenCV processing if exists, otherwise use the previous image */
   if (!f.empty()) {
@@ -94,39 +87,14 @@ void Video::capture() {
       resize(f, img_resized, Size(), (double)FRAME_WIDTH/IN_FRAME_WIDTH, (double)FRAME_HEIGHT/IN_FRAME_HEIGHT);
       assert(img_resized.size().width == FRAME_WIDTH);
       assert(img_resized.size().height == FRAME_HEIGHT);
-      frame = img_resized;
+      f = img_resized;
     }
-    frame_prev = frame; /* keep the image in case capture() fails to capture a new frame */
+    frame_prev = f; /* keep the image in case capture() fails to capture a new frame */
   } else {
-    frame = frame_prev;
+    f = frame_prev;
   }
-    //}
-    //ercd = unl_mtx(MTX1);
-    //assert(ercd == E_OK);
-    //} else {
-    //if (ercd != E_TMOUT) {
-    //_log("mutex lock failed with %d", ercd);
-    //assert(0);
-    //}
-    //}
-#endif
-}
-
-Mat Video::readFrame() {
-  Mat f;
-#if defined(WITH_OPENCV)
-  //ER ercd = tloc_mtx(MTX1, 1000U); /* test and lock the mutex */
-  //if (ercd == E_OK) { /* if successfully locked, process the frame and unlock the mutex;
-  //			 otherwise, return the previous image */
-    f = frame.clone();
-    //ercd = unl_mtx(MTX1);
-    //assert(ercd == E_OK);
-    
-    //} else {
-    //_log("mutex lock failed with %d", ercd);
-    //assert(ercd == E_TMOUT);
-    //f = frame_prev;
-    //}
+#else
+  f = nullptr;
 #endif
   return f;
 }
