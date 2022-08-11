@@ -25,7 +25,7 @@ Video::Video() {
 #endif
 
 #if !defined(WITHOUT_X11)
-  XInitThreads();
+  //XInitThreads();
   disp = XOpenDisplay(NULL);
   sc = DefaultScreenOfDisplay(disp);
   vis = DefaultVisualOfScreen(sc);

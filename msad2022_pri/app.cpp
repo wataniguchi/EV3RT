@@ -46,8 +46,9 @@ BrainTree::BehaviorTree* tr_run         = nullptr;
 BrainTree::BehaviorTree* tr_block       = nullptr;
 State state = ST_INITIAL;
 
-std::mutex mut;
-Mat frame;
+std::mutex mut1, mut2;
+Mat frame_in;
+Mat frame_out;
 
 /*
     === NODE CLASS DEFINITION STARTS HERE ===
@@ -542,37 +543,39 @@ class vcap_thd {
 public:
   void operator()(int unused) {
     Mat f;
-    while(state != ST_ENDING && state != ST_END) {
+    while (state != ST_END) {
       f = video->readFrame();
-      /* critical section */
-      if ( mut.try_lock() ) {
+      /* critical section 1 */
+      if ( mut1.try_lock() ) {
 #if defined(WITH_OPENCV)
-	frame = f.clone();
+	frame_in = f.clone();
 #endif
-	mut.unlock();
+	mut1.unlock();
       }
       std::this_thread::yield();
       //std::this_thread::sleep_for( std::chrono::milliseconds( 11 ) );
     }
+    _log("sub-thread ready to join");
   }
 };
 
-class video_thd {
+class vshow_thd {
 public:
   void operator()(int unused) {
     Mat f;
-    while(state != ST_ENDING && state != ST_END) {
-      /* critical section */
-      mut.lock();
+    while (state != ST_END) {
+      /* critical section 2 */
+      if ( mut2.try_lock() ) {
 #if defined(WITH_OPENCV)
-      f = frame.clone();
+	f = frame_out.clone();
 #endif
-      mut.unlock();
-      video->writeFrame(video->calculateTarget(f, 0, 100, 0));    
-      //video->writeFrame(f);
-      video->show();
-      std::this_thread::yield();
+	mut2.unlock();
+	video->writeFrame(f);
+	video->show();
+	std::this_thread::yield();
+      }
     }
+    _log("sub-thread ready to join");
   }
 };
 
@@ -722,7 +725,7 @@ void main_task(intptr_t unused) {
     int iUnused = 0;
     pthread_sigmask(SIG_BLOCK, &ss, 0);
     thds.emplace_back(vcap_thd(), iUnused);
-    thds.emplace_back(video_thd(), iUnused);
+    thds.emplace_back(vshow_thd(), iUnused);
     pthread_sigmask(SIG_UNBLOCK, &ss, 0); /* let ASP manage the main thread */
     
     /* register cyclic handler to EV3RT */
@@ -735,18 +738,38 @@ void main_task(intptr_t unused) {
     state = ST_CALIBRATION;
 
     /* the main task sleep until being waken up and let the registered cyclic handler to traverse the behavir trees */
+    /*
     _log("going to sleep...");
     ER ercd = slp_tsk();
     assert(ercd == E_OK);
     if (ercd != E_OK) {
         syslog(LOG_NOTICE, "slp_tsk() returned %d", ercd);
     }
+    */
+    while (state != ST_ENDING && state != ST_END) {
+      Mat f;
+      /* critical section 1 */
+      mut1.lock();
+#if defined(WITH_OPENCV)
+      f = frame_in.clone();
+#endif
+      mut1.unlock();
+      f = video->calculateTarget(f, 0, 100, 0);    
+      /* critical section 2 */
+      if ( mut2.try_lock() ) {
+#if defined(WITH_OPENCV)
+	frame_out = f.clone();
+#endif
+	mut2.unlock();
+      }
+      ev3clock->sleep(1);
+    }
 
+    _log("wait for update task to change the state to ST_END, going to sleep 10 milli secs");
+    ev3clock->sleep(10000);
+    _log("stopping update task...");
     /* deregister cyclic handler from EV3RT */
     stp_cyc(CYC_UPD_TSK);
-    _log("wait for update task to cease, going to sleep 100 milli secs");
-    ev3clock->sleep(100000);
-    _log("wait finished");
 
     /* join the sub-threads */
     _log("joining sub-threads...");
@@ -856,13 +879,15 @@ void update_task(intptr_t unused) {
         }
         break;
     case ST_ENDING:
-        _log("waking up main...");
+      //_log("waking up main...");
         /* wake up the main task */
+      /*
         ercd = wup_tsk(MAIN_TASK);
         assert(ercd == E_OK);
         if (ercd != E_OK) {
             syslog(LOG_NOTICE, "wup_tsk() returned %d", ercd);
         }
+      */
         state = ST_END;
         _log("State changed: ST_ENDING to ST_END");
         break;    
