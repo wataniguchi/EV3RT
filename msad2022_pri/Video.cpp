@@ -14,7 +14,7 @@ Video::Video() {
   cap = VideoCapture(0);
   cap.set(CAP_PROP_FRAME_WIDTH,IN_FRAME_WIDTH);
   cap.set(CAP_PROP_FRAME_HEIGHT,IN_FRAME_HEIGHT);
-  cap.set(CAP_PROP_FPS,60);
+  cap.set(CAP_PROP_FPS,90);
   assert(cap.isOpened());
   
   /* initial region of interest */
