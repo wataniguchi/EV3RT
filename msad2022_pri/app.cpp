@@ -46,17 +46,21 @@ BrainTree::BehaviorTree* tr_run         = nullptr;
 BrainTree::BehaviorTree* tr_block       = nullptr;
 State state = ST_INITIAL;
 
+int upd_process_count = 0;
+std::chrono::system_clock::time_point ts_upd;
+std::vector<std::uint32_t> upd_interval;
+
 int vcap_thd_count = 0;
 int video_process_count = 0;
 int vshow_thd_count = 0;
 /* variables for critical section 1 */
 std::mutex mut1;
 Mat frame_in;
-std::chrono::system_clock::time_point t_sta1;
+std::chrono::system_clock::time_point te_cap;
 /* variables for critical section 2 */
 std::mutex mut2;
 Mat frame_out;
-std::chrono::system_clock::time_point t_sta1copy, t_sta2;
+std::chrono::system_clock::time_point te_cap_copy, te_cal;
 
 
 /*
@@ -553,16 +557,16 @@ public:
   void operator()(int unused) {
     Mat f;
     while (state != ST_END) {
-      std::chrono::system_clock::time_point t_sta = std::chrono::system_clock::now();
       f = video->readFrame();
+      std::chrono::system_clock::time_point te_cap_local = std::chrono::system_clock::now();
       /* critical section 1 */
       if ( mut1.try_lock() ) {
 #if defined(WITH_OPENCV)
 	frame_in = f.clone();
 #endif
-	t_sta1 = t_sta;
-	vcap_thd_count++;
+	te_cap = te_cap_local;
 	mut1.unlock();
+	vcap_thd_count++;
       }
       std::this_thread::yield();
     }
@@ -573,22 +577,24 @@ public:
 class vshow_thd {
 public:
   void operator()(int unused) {
-    std::chrono::system_clock::time_point t_sta1_local;
+    std::vector<std::uint32_t> elaps_till_show;
+    std::chrono::system_clock::time_point te_cap_local;
     while (state != ST_END) {
-      std::chrono::system_clock::time_point t_sta2_local, t_end;
+      std::chrono::system_clock::time_point te_cal_local, te_show;
       Mat f;
       /* critical section 2 */
       if ( mut2.try_lock() ) {
-	if (t_sta1copy != t_sta1_local) { /* new frame? */
+	if (te_cap_copy != te_cap_local) { /* new frame? */
 #if defined(WITH_OPENCV)
 	  f = frame_out.clone();
 #endif
-	  t_sta1_local = t_sta1copy;
-	  t_sta2_local = t_sta2;
+	  te_cap_local = te_cap_copy;
+	  te_cal_local = te_cal;
 	  mut2.unlock();
 	  video->writeFrame(f);
 	  video->show();
-	  t_end = std::chrono::system_clock::now();
+	  te_show = std::chrono::system_clock::now();
+	  elaps_till_show.push_back(std::chrono::duration_cast<std::chrono::microseconds>(te_show - te_cap_local).count());
 	  vshow_thd_count++;
 	} else {
 	  mut2.unlock();
@@ -597,6 +603,10 @@ public:
       }
     }
     _log("sub-thread ready to join. # of execution = %d", vshow_thd_count);
+    _log("elapsed time from capture to transmission (micro sec): max = %d, min = %d, mean = %d",
+	 (int)(*std::max_element(std::begin(elaps_till_show),std::end(elaps_till_show))),
+	 (int)(*std::min_element(std::begin(elaps_till_show),std::end(elaps_till_show))),
+	 (int)(std::accumulate(std::begin(elaps_till_show),std::end(elaps_till_show),0) / vshow_thd_count));
   }
 };
 
@@ -692,7 +702,7 @@ void main_task(intptr_t unused) {
 			     prof->getValueAsNum("P_CONST"),
 			     prof->getValueAsNum("I_CONST"),
 			     prof->getValueAsNum("D_CONST"), 0.0, TS_NORMAL)
-	    .leaf<IsDistanceEarned>(2000)
+	    .leaf<IsDistanceEarned>(8000)
         .end()
         .build();
       tr_block = (BrainTree::BehaviorTree*) BrainTree::Builder()
@@ -755,32 +765,33 @@ void main_task(intptr_t unused) {
 
     /* indicate initialization completion by LED color */
     _log("initialization completed.");
-    //ev3_led_set_color(LED_ORANGE);
     state = ST_CALIBRATION;
 
     /* the main task goes into loop until ST_ENDING while the registered cyclic handler traversing the behavir trees */
-    std::chrono::system_clock::time_point t_temp;
+    std::vector<std::uint32_t> elaps_till_cal;
+    std::chrono::system_clock::time_point te_cap_local;
     while (state != ST_ENDING && state != ST_END) {
-      std::chrono::system_clock::time_point t_sta = std::chrono::system_clock::now();
       Mat f;
       /* critical section 1 */
       mut1.lock();
-      if (t_sta1 != t_temp) { /* new frame? */
+      if (te_cap != te_cap_local) { /* new frame? */
 #if defined(WITH_OPENCV)
 	f = frame_in.clone();
 #endif
-	t_temp = t_sta1;
+	te_cap_local = te_cap;
 	mut1.unlock();
 	f = video->calculateTarget(f, 0, 100, 0);
+	std::chrono::system_clock::time_point te_cal_local = std::chrono::system_clock::now();
 	/* critical section 2 */
 	if ( mut2.try_lock() ) {
 #if defined(WITH_OPENCV)
 	  frame_out = f.clone();
 #endif
-	  t_sta1copy = t_temp;
-	  t_sta2 = t_sta;
-	  video_process_count++;
+	  te_cap_copy = te_cap_local;
+	  te_cal = te_cal_local;
 	  mut2.unlock();
+	  elaps_till_cal.push_back(std::chrono::duration_cast<std::chrono::microseconds>(te_cal_local - te_cap_local).count());
+	  video_process_count++;
 	}
       }	else {
 	mut1.unlock();
@@ -788,12 +799,25 @@ void main_task(intptr_t unused) {
       ev3clock->sleep(1);
     }
     _log("video process loop exited. # of execution = %d", video_process_count);
+    _log("elapsed time from capture to calculation (micro sec): max = %d, min = %d, mean = %d",
+	 (int)(*std::max_element(std::begin(elaps_till_cal),std::end(elaps_till_cal))),
+	 (int)(*std::min_element(std::begin(elaps_till_cal),std::end(elaps_till_cal))),
+	 (int)(std::accumulate(std::begin(elaps_till_cal),std::end(elaps_till_cal),0) / video_process_count));
 
     _log("wait for update task to change the state to ST_END, going to sleep 10 milli secs");
     ev3clock->sleep(10000);
+    
     _log("stopping update task...");
     /* deregister cyclic handler from EV3RT */
     stp_cyc(CYC_UPD_TSK);
+
+    _log("wait for update task to cease, going to sleep 50 milli secs");
+    ev3clock->sleep(50000);
+    _log("update process stopped. # of execution = %d", upd_process_count);
+    _log("update process interval (micro sec): max = %d, min = %d, mean = %d",
+	 (int)(*std::max_element(std::begin(upd_interval),std::end(upd_interval))),
+	 (int)(*std::min_element(std::begin(upd_interval),std::end(upd_interval))),
+	 (int)(std::accumulate(std::begin(upd_interval),std::end(upd_interval),0) / upd_process_count));
 
     /* join the sub-threads */
     _log("joining sub-threads...");
@@ -833,8 +857,12 @@ void main_task(intptr_t unused) {
 /* periodic task to update the behavior tree */
 void update_task(intptr_t unused) {
     BrainTree::Node::Status status;
-    ER ercd;
-    uint64_t t_sta = ev3clock->now();
+    std::chrono::system_clock::time_point ts_upd_local = std::chrono::system_clock::now();
+    if ( ts_upd.time_since_epoch().count() != 0 ) {
+      upd_interval.push_back(std::chrono::duration_cast<std::chrono::microseconds>(ts_upd_local - ts_upd).count());
+    }
+    ts_upd = ts_upd_local;
+    upd_process_count++;
 
     colorSensor->sense();
     plotter->plot();
@@ -919,9 +947,10 @@ void update_task(intptr_t unused) {
     leftMotor->drive();
     //logger->outputLog(LOG_INTERVAL);
 
-    uint64_t t_end = ev3clock->now();
-    int t_elapsed = t_end - t_sta;
-    if (t_elapsed > PERIOD_UPD_TSK) {
+    /* ensure that the execution of update task is taking too long */
+    std::chrono::system_clock::time_point te_upd_local = std::chrono::system_clock::now();
+    std::uint32_t t_elapsed = std::chrono::duration_cast<std::chrono::microseconds>(te_upd_local - ts_upd_local).count();
+    if ( t_elapsed > PERIOD_UPD_TSK ) {
       _log("elapsed: %04d > PERIOD_UPD_TSK: %04d msec", t_elapsed/1000, PERIOD_UPD_TSK/1000);
       if (state != ST_INITIAL) assert(0);
     }
