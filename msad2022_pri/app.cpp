@@ -347,6 +347,72 @@ protected:
 
 /*
     usage:
+    ".leaf<TraceLineCam>(speed, p, i, d, gs_min, gs_max, srew_rate, trace_side)"
+    is to instruct the robot to trace the line in backward at the given speed.
+    p, i, d are constants for PID control.
+    gs_min, gs_max are grayscale threshold for line recognition binalization.
+    srew_rate = 0.0 indidates NO tropezoidal motion.
+    srew_rate = 0.5 instructs FilteredMotor to change 1 pwm every two executions of update()
+    until the current speed gradually reaches the instructed target speed.
+    trace_side = TS_NORMAL   when in R(L) course and tracing the right(left) side of the line.
+    trace_side = TS_OPPOSITE when in R(L) course and tracing the left(right) side of the line.
+    trace_side = TS_CENTER   when tracing the center of the line.
+*/
+class TraceLineCam : public BrainTree::Node {
+public:
+  TraceLineCam(int s, double p, double i, double d, int gs_min, int gs_max, double srew_rate, TraceSide trace_side) : speed(s),gsmin(gs_min),gsmax(gs_max),srewRate(srew_rate),side(trace_side) {
+        updated = false;
+        ltPid = new PIDcalculator(p, i, d, PERIOD_UPD_TSK, -speed, speed);
+    }
+    ~TraceLineCam() {
+        delete ltPid;
+    }
+    Status update() override {
+        if (!updated) {
+            /* The following code chunk is to properly set prevXin in SRLF */
+            srlfL->setRate(0.0);
+            leftMotor->setPWM(leftMotor->getPWM());
+            srlfR->setRate(0.0);
+            rightMotor->setPWM(rightMotor->getPWM());
+            _log("ODO=%05d, Camera Trace run started.", plotter->getDistance());
+            updated = true;
+        }
+
+	/* calculate variance of mx from the center in pixel */
+	int vxp = video->getMx() - (int)(FRAME_WIDTH/2);
+	/* convert the variance from pixel to milimeters
+	   72 is length of the closest horizontal line on ground within the camera vision */
+	float vxm = vxp * 72 / FRAME_WIDTH;
+	/* calculate the rotation in degree (z-axis)
+	   284 is distance from axle to the closest horizontal line on ground the camera can see */
+	float theta = 180 * atan(vxm / 284) / M_PI;
+	//_log("mx = %d, vxm = %d, theta = %d", mx, (int)vxm, (int)theta);
+	
+        int8_t backward, turn, pwmL, pwmR;
+
+        /* compute necessary amount of steering by PID control */
+        turn = (-1) * _COURSE * ltPid->compute(theta, 0); /* 0 is the center */
+        backward = -speed;
+        /* steer EV3 by setting different speed to the motors */
+        pwmL = backward - turn;
+        pwmR = backward + turn;
+        srlfL->setRate(srewRate);
+        leftMotor->setPWM(pwmL);
+        srlfR->setRate(srewRate);
+        rightMotor->setPWM(pwmR);
+        return Status::Running;
+    }
+protected:
+    int speed, gsmin, gsmax, mx;
+    PIDcalculator* ltPid;
+    double srewRate;
+    TraceSide side;
+    bool updated;
+};
+
+
+/*
+    usage:
     ".leaf<TraceLine>(speed, target, p, i, d, srew_rate, trace_side)"
     is to instruct the robot to trace the line at the given speed.
     p, i, d are constants for PID control.
@@ -594,7 +660,9 @@ public:
 	  video->writeFrame(f);
 	  video->show();
 	  te_show = std::chrono::system_clock::now();
+#if defined(BENCHMARK)
 	  elaps_till_show.push_back(std::chrono::duration_cast<std::chrono::microseconds>(te_show - te_cap_local).count());
+#endif
 	  vshow_thd_count++;
 	} else {
 	  mut2.unlock();
@@ -603,10 +671,12 @@ public:
       }
     }
     _log("sub-thread ready to join. # of execution = %d", vshow_thd_count);
+#if defined(BENCHMARK)
     _log("elapsed time from capture to transmission (micro sec): max = %d, min = %d, mean = %d",
 	 (int)(*std::max_element(std::begin(elaps_till_show),std::end(elaps_till_show))),
 	 (int)(*std::min_element(std::begin(elaps_till_show),std::end(elaps_till_show))),
 	 (int)(std::accumulate(std::begin(elaps_till_show),std::end(elaps_till_show),0) / vshow_thd_count));
+#endif
   }
 };
 
@@ -695,15 +765,16 @@ void main_task(intptr_t unused) {
     /* BEHAVIOR FOR THE RIGHT COURSE STARTS HERE */
     if (prof->getValueAsStr("COURSE") == "R") {
       tr_run = (BrainTree::BehaviorTree*) BrainTree::Builder()
-	//.leaf<IsTimeEarned>(10000000)
-        .composite<BrainTree::ParallelSequence>(1,2)
+        .composite<BrainTree::MemSequence>()
+          .composite<BrainTree::ParallelSequence>(1,2)
             .leaf<TraceLine>(prof->getValueAsNum("SPEED"),
 			     prof->getValueAsNum("GS_TARGET"),
 			     prof->getValueAsNum("P_CONST"),
 			     prof->getValueAsNum("I_CONST"),
 			     prof->getValueAsNum("D_CONST"), 0.0, TS_NORMAL)
-	    .leaf<IsDistanceEarned>(8000)
-        .end()
+	    .leaf<IsDistanceEarned>(2000)
+          .end()
+	.end()
         .build();
       tr_block = (BrainTree::BehaviorTree*) BrainTree::Builder()
 	.leaf<StopNow>()
@@ -711,32 +782,22 @@ void main_task(intptr_t unused) {
 
     } else { /* BEHAVIOR FOR THE LEFT COURSE STARTS HERE */
       tr_run = (BrainTree::BehaviorTree*) BrainTree::Builder()
-        .composite<BrainTree::ParallelSequence>(1,3)
-            .leaf<IsBackOn>()
-            /*
-            ToDo: earned distance is not calculated properly parhaps because the task is NOT invoked every 10ms as defined in app.h on RasPike.
-              Identify a realistic PERIOD_UPD_TSK.  It also impacts PID calculation.
-            */
-            .leaf<IsDistanceEarned>(1000)
-            .composite<BrainTree::MemSequence>()
-                .leaf<IsColorDetected>(CL_BLACK)
-                .leaf<IsColorDetected>(CL_BLUE)
-            .end()
-            .leaf<TraceLine>(SPEED_NORM, GS_TARGET, P_CONST, I_CONST, D_CONST, 0.0, TS_NORMAL)
-        .end()
-        .build();
-
-      tr_block = (BrainTree::BehaviorTree*) BrainTree::Builder()
         .composite<BrainTree::MemSequence>()
-            .leaf<StopNow>()
-            .leaf<IsTimeEarned>(3000000) // wait 3 seconds
-            .composite<BrainTree::ParallelSequence>(1,3)
-                .leaf<IsTimeEarned>(10000000) // break after 10 seconds
-                .leaf<RunAsInstructed>(-50,-25,0.5)
-            .end()
-            .leaf<StopNow>()
-        .end()
+          .composite<BrainTree::ParallelSequence>(1,2)
+            .leaf<TraceLineCam>(prof->getValueAsNum("CAM_SPEED"),
+			     prof->getValueAsNum("CAM_P_CONST"),
+			     prof->getValueAsNum("CAM_I_CONST"),
+			     prof->getValueAsNum("CAM_D_CONST"),
+			     prof->getValueAsNum("CAM_GS_MIN"),
+			     prof->getValueAsNum("CAM_GS_MAX"), 0.0,
+			     (TraceSide)prof->getValueAsNum("CAM_TS"))
+	    .leaf<IsTimeEarned>(prof->getValueAsNum("CAM_TIME"))
+	  .end()
+	.end()
         .build();
+      tr_block = (BrainTree::BehaviorTree*) BrainTree::Builder()
+	.leaf<StopNow>()
+	.build();
 
     } /* if (prof->getValueAsStr("COURSE") == "R") */
 
@@ -790,7 +851,9 @@ void main_task(intptr_t unused) {
 	  te_cap_copy = te_cap_local;
 	  te_cal = te_cal_local;
 	  mut2.unlock();
+#if defined(BENCHMARK)
 	  elaps_till_cal.push_back(std::chrono::duration_cast<std::chrono::microseconds>(te_cal_local - te_cap_local).count());
+#endif
 	  video_process_count++;
 	}
       }	else {
@@ -799,10 +862,12 @@ void main_task(intptr_t unused) {
       ev3clock->sleep(1);
     }
     _log("video process loop exited. # of execution = %d", video_process_count);
+#if defined(BENCHMARK)
     _log("elapsed time from capture to calculation (micro sec): max = %d, min = %d, mean = %d",
 	 (int)(*std::max_element(std::begin(elaps_till_cal),std::end(elaps_till_cal))),
 	 (int)(*std::min_element(std::begin(elaps_till_cal),std::end(elaps_till_cal))),
 	 (int)(std::accumulate(std::begin(elaps_till_cal),std::end(elaps_till_cal),0) / video_process_count));
+#endif
 
     _log("wait for update task to change the state to ST_END, going to sleep 10 milli secs");
     ev3clock->sleep(10000);
@@ -814,11 +879,13 @@ void main_task(intptr_t unused) {
     _log("wait for update task to cease, going to sleep 50 milli secs");
     ev3clock->sleep(50000);
     _log("update process stopped. # of execution = %d", upd_process_count);
+#if defined(BENCHMARK)
     _log("update process interval (micro sec): max = %d, min = %d, mean = %d",
 	 (int)(*std::max_element(std::begin(upd_interval),std::end(upd_interval))),
 	 (int)(*std::min_element(std::begin(upd_interval),std::end(upd_interval))),
 	 (int)(std::accumulate(std::begin(upd_interval),std::end(upd_interval),0) / upd_process_count));
-
+#endif
+    
     /* join the sub-threads */
     _log("joining sub-threads...");
     for (auto& t : thds) {
@@ -859,7 +926,9 @@ void update_task(intptr_t unused) {
     BrainTree::Node::Status status;
     std::chrono::system_clock::time_point ts_upd_local = std::chrono::system_clock::now();
     if ( ts_upd.time_since_epoch().count() != 0 ) {
+#if defined(BENCHMARK)
       upd_interval.push_back(std::chrono::duration_cast<std::chrono::microseconds>(ts_upd_local - ts_upd).count());
+#endif
     }
     ts_upd = ts_upd_local;
     upd_process_count++;

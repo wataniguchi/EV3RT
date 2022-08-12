@@ -132,11 +132,11 @@ Mat Video::calculateTarget(Mat f, int gsmin, int gsmax, int side) {
   /* convert the image from BGR to grayscale */
   cvtColor(f, img_gray, COLOR_BGR2GRAY);
   /* mask the upper half of the grayscale image */
-  for (int i = 0; i < (int)(FRAME_HEIGHT/2); i++) {
-    for (int j = 0; j < FRAME_WIDTH; j++) {
-      img_gray.at<uchar>(i,j) = 255; /* type = CV_8U */
-    }
-  }
+  //for (int i = 0; i < (int)(FRAME_HEIGHT/2); i++) {
+  //  for (int j = 0; j < FRAME_WIDTH; j++) {
+  //    img_gray.at<uchar>(i,j) = 255; /* type = CV_8U */
+  //  }
+  //}
   /* binarize the image */
   inRange(img_gray, gsmin, gsmax, img_bin);
   /* remove noise */
@@ -192,6 +192,7 @@ Mat Video::calculateTarget(Mat f, int gsmin, int gsmax, int side) {
     cvtColor(img_cnt, img_cnt_gray, COLOR_BGR2GRAY);
     /* scan the line really close to the image bottom to find edges */
     scan_line = img_cnt_gray.row(img_cnt_gray.size().height - LINE_THICKNESS);
+    //scan_line = img_cnt_gray.row(roi.y + (int)roi.height/2);
     /* convert the Mat to a NumCpp array */
     auto scan_line_nc = nc::NdArray<nc::uint8>(scan_line.data, scan_line.rows, scan_line.cols);
     auto edges = scan_line_nc.flatnonzero();
@@ -221,12 +222,18 @@ void Video::show() {
   sprintf(strbuf[0], "x=%+05d,y=%+05d", plotter->getLocX(), plotter->getLocY());
   sprintf(strbuf[1], "dist=%+06d", plotter->getDistance());
   sprintf(strbuf[2], "deg=%03d,gyro=%+04d", plotter->getDegree(), gyroSensor->getAngle());
+  sprintf(strbuf[3], "pwR=%+04d,pwL=%+04d", rightMotor->getPWM(), leftMotor->getPWM());
 
 #if !defined(WITHOUT_X11)
   XPutImage(disp, win, gc, ximg, 0, 0, 0, 0, FRAME_WIDTH, 2*FRAME_HEIGHT);
   XDrawString(disp, win, gc, DATA_INDENT, FRAME_HEIGHT+2*DATA_INDENT, strbuf[0], strlen(strbuf[0]));
   XDrawString(disp, win, gc, DATA_INDENT, FRAME_HEIGHT+5*DATA_INDENT, strbuf[1], strlen(strbuf[1]));
   XDrawString(disp, win, gc, DATA_INDENT, FRAME_HEIGHT+8*DATA_INDENT, strbuf[2], strlen(strbuf[2]));
+  XDrawString(disp, win, gc, DATA_INDENT, FRAME_HEIGHT+11*DATA_INDENT, strbuf[3], strlen(strbuf[3]));
   XFlush(disp);
 #endif
+}
+
+int Video::getMx() {
+  return mx;
 }

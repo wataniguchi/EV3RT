@@ -28,6 +28,10 @@ using namespace std;
 #undef Status
 #undef Success
 
+#include "FilteredMotor.hpp"
+extern FilteredMotor*       leftMotor;
+extern FilteredMotor*       rightMotor;
+
 /* frame size for Raspberry Pi camera capture */
 #define IN_FRAME_WIDTH  640
 #define IN_FRAME_HEIGHT 480
@@ -66,6 +70,7 @@ public:
   void writeFrame(Mat f);
   Mat calculateTarget(Mat f, int gsmin, int gsmax, int side);
   void show();
+  int getMx();
   ~Video();
 };
 
