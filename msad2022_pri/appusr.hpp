@@ -81,7 +81,7 @@ extern Plotter*     plotter;
     static const int _COURSE = 1;
   #endif /* defined(MAKE_RIGHT) */
 #else
-static int _COURSE;
+static int _COURSE = 1;
 #endif
 
 /* these parameters are intended to be given as a compiler directive,
