@@ -63,14 +63,16 @@ protected:
   unsigned long* buf;
   Font font;
   char strbuf[4][40];
-  int mx;
+  int mx, gsmin, gsmax, side;
 public:
   Video();
   Mat readFrame();
   void writeFrame(Mat f);
-  Mat calculateTarget(Mat f, int gsmin, int gsmax, int side);
+  Mat calculateTarget(Mat f);
   void show();
   int getMx();
+  void setThresholds(int gsMin, int gsMax);
+  void setTraceSide(int traceSide);
   ~Video();
 };
 

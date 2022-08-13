@@ -360,9 +360,25 @@ protected:
 */
 class TraceLineCam : public BrainTree::Node {
 public:
-  TraceLineCam(int s, double p, double i, double d, int gs_min, int gs_max, double srew_rate, TraceSide trace_side) : speed(s),gsmin(gs_min),gsmax(gs_max),srewRate(srew_rate),side(trace_side) {
+  TraceLineCam(int s, double p, double i, double d, int gs_min, int gs_max, double srew_rate, TraceSide trace_side) : speed(s),srewRate(srew_rate) {
         updated = false;
         ltPid = new PIDcalculator(p, i, d, PERIOD_UPD_TSK, -speed, speed);
+	video->setThresholds(gs_min, gs_max);
+	if (trace_side == TS_NORMAL) {
+	  if (_COURSE == -1) { /* right course */
+	    video->setTraceSide(1);
+	  } else {
+	    video->setTraceSide(0);
+	  }
+	} else if (trace_side == TS_OPPOSITE) {
+	  if (_COURSE == -1) { /* right course */
+	    video->setTraceSide(0);
+	  } else {
+	    video->setTraceSide(1);
+	  }
+	} else {
+	  video->setTraceSide(2);
+	}
     }
     ~TraceLineCam() {
         delete ltPid;
@@ -386,12 +402,12 @@ public:
 	/* calculate the rotation in degree (z-axis)
 	   284 is distance from axle to the closest horizontal line on ground the camera can see */
 	float theta = 180 * atan(vxm / 284) / M_PI;
-	//_log("mx = %d, vxm = %d, theta = %d", mx, (int)vxm, (int)theta);
+	//_log("mx = %d, vxm = %d, theta = %d", video->getMx(), (int)vxm, (int)theta);
 	
         int8_t backward, turn, pwmL, pwmR;
 
         /* compute necessary amount of steering by PID control */
-        turn = (-1) * _COURSE * ltPid->compute(theta, 0); /* 0 is the center */
+        turn = (-1) * ltPid->compute(theta, 0); /* 0 is the center */
         backward = -speed;
         /* steer EV3 by setting different speed to the motors */
         pwmL = backward - turn;
@@ -403,10 +419,9 @@ public:
         return Status::Running;
     }
 protected:
-    int speed, gsmin, gsmax, mx;
+    int speed;
     PIDcalculator* ltPid;
     double srewRate;
-    TraceSide side;
     bool updated;
 };
 
@@ -622,7 +637,7 @@ class vcap_thd {
 public:
   void operator()(int unused) {
     Mat f;
-    while (state != ST_END) {
+    while (state != ST_END && state != ST_ENDING) {
       f = video->readFrame();
       std::chrono::system_clock::time_point te_cap_local = std::chrono::system_clock::now();
       /* critical section 1 */
@@ -645,7 +660,7 @@ public:
   void operator()(int unused) {
     std::vector<std::uint32_t> elaps_till_show;
     std::chrono::system_clock::time_point te_cap_local;
-    while (state != ST_END) {
+    while (state != ST_END && state != ST_ENDING) {
       std::chrono::system_clock::time_point te_cal_local, te_show;
       Mat f;
       /* critical section 2 */
@@ -764,25 +779,20 @@ void main_task(intptr_t unused) {
 
     /* BEHAVIOR FOR THE RIGHT COURSE STARTS HERE */
     if (prof->getValueAsStr("COURSE") == "R") {
+      _COURSE = -1;
       tr_run = (BrainTree::BehaviorTree*) BrainTree::Builder()
         .composite<BrainTree::MemSequence>()
+	/*
           .composite<BrainTree::ParallelSequence>(1,2)
             .leaf<TraceLine>(prof->getValueAsNum("SPEED"),
 			     prof->getValueAsNum("GS_TARGET"),
 			     prof->getValueAsNum("P_CONST"),
 			     prof->getValueAsNum("I_CONST"),
-			     prof->getValueAsNum("D_CONST"), 0.0, TS_NORMAL)
-	    .leaf<IsDistanceEarned>(2000)
-          .end()
-	.end()
-        .build();
-      tr_block = (BrainTree::BehaviorTree*) BrainTree::Builder()
-	.leaf<StopNow>()
-	.build();
-
-    } else { /* BEHAVIOR FOR THE LEFT COURSE STARTS HERE */
-      tr_run = (BrainTree::BehaviorTree*) BrainTree::Builder()
-        .composite<BrainTree::MemSequence>()
+			     prof->getValueAsNum("D_CONST"), 0.0,
+			     (TraceSide)prof->getValueAsNum("TR_TS"))
+	    .leaf<IsDistanceEarned>(prof->getValueAsNum("TR_DIST"))
+	  .end()
+	*/
           .composite<BrainTree::ParallelSequence>(1,2)
             .leaf<TraceLineCam>(prof->getValueAsNum("CAM_SPEED"),
 			     prof->getValueAsNum("CAM_P_CONST"),
@@ -791,7 +801,40 @@ void main_task(intptr_t unused) {
 			     prof->getValueAsNum("CAM_GS_MIN"),
 			     prof->getValueAsNum("CAM_GS_MAX"), 0.0,
 			     (TraceSide)prof->getValueAsNum("CAM_TS"))
-	    .leaf<IsTimeEarned>(prof->getValueAsNum("CAM_TIME"))
+	    .leaf<IsDistanceEarned>(prof->getValueAsNum("TR_DIST"))
+	    //.leaf<IsTimeEarned>(prof->getValueAsNum("CAM_TIME"))
+          .end()
+	.end()
+        .build();
+      tr_block = (BrainTree::BehaviorTree*) BrainTree::Builder()
+	.leaf<StopNow>()
+	.build();
+
+    } else { /* BEHAVIOR FOR THE LEFT COURSE STARTS HERE */
+      _COURSE = 1;
+      tr_run = (BrainTree::BehaviorTree*) BrainTree::Builder()
+        .composite<BrainTree::MemSequence>()
+	/*
+          .composite<BrainTree::ParallelSequence>(1,2)
+            .leaf<TraceLine>(prof->getValueAsNum("SPEED"),
+			     prof->getValueAsNum("GS_TARGET"),
+			     prof->getValueAsNum("P_CONST"),
+			     prof->getValueAsNum("I_CONST"),
+			     prof->getValueAsNum("D_CONST"), 0.0,
+			     (TraceSide)prof->getValueAsNum("TR_TS"))
+	    .leaf<IsDistanceEarned>(prof->getValueAsNum("TR_DIST"))
+	  .end()
+	*/
+          .composite<BrainTree::ParallelSequence>(1,2)
+            .leaf<TraceLineCam>(prof->getValueAsNum("CAM_SPEED"),
+			     prof->getValueAsNum("CAM_P_CONST"),
+			     prof->getValueAsNum("CAM_I_CONST"),
+			     prof->getValueAsNum("CAM_D_CONST"),
+			     prof->getValueAsNum("CAM_GS_MIN"),
+			     prof->getValueAsNum("CAM_GS_MAX"), 0.0,
+			     (TraceSide)prof->getValueAsNum("CAM_TS"))
+	    .leaf<IsDistanceEarned>(prof->getValueAsNum("TR_DIST"))
+	    //.leaf<IsTimeEarned>(prof->getValueAsNum("CAM_TIME"))
 	  .end()
 	.end()
         .build();
@@ -841,7 +884,7 @@ void main_task(intptr_t unused) {
 #endif
 	te_cap_local = te_cap;
 	mut1.unlock();
-	f = video->calculateTarget(f, 0, 100, 0);
+	f = video->calculateTarget(f);
 	std::chrono::system_clock::time_point te_cal_local = std::chrono::system_clock::now();
 	/* critical section 2 */
 	if ( mut2.try_lock() ) {
@@ -869,15 +912,12 @@ void main_task(intptr_t unused) {
 	 (int)(std::accumulate(std::begin(elaps_till_cal),std::end(elaps_till_cal),0) / video_process_count));
 #endif
 
-    _log("wait for update task to change the state to ST_END, going to sleep 10 milli secs");
-    ev3clock->sleep(10000);
-    
     _log("stopping update task...");
     /* deregister cyclic handler from EV3RT */
     stp_cyc(CYC_UPD_TSK);
 
-    _log("wait for update task to cease, going to sleep 50 milli secs");
-    ev3clock->sleep(50000);
+    _log("wait for update task to cease, going to sleep 100 milli secs");
+    ev3clock->sleep(100000);
     _log("update process stopped. # of execution = %d", upd_process_count);
 #if defined(BENCHMARK)
     _log("update process interval (micro sec): max = %d, min = %d, mean = %d",

@@ -62,6 +62,10 @@ Video::Video() {
 
   /* initial trace target */
   mx = (int)(FRAME_WIDTH/2);
+  /* default values */
+  gsmin = 0;
+  gsmax = 100;
+  side = 0;
 }
 
 Video::~Video() {
@@ -123,7 +127,7 @@ void Video::writeFrame(Mat f) {
 #endif
 }
 
-Mat Video::calculateTarget(Mat f, int gsmin, int gsmax, int side) {
+Mat Video::calculateTarget(Mat f) {
 #if defined(WITH_OPENCV)
   if (f.empty()) return f;
   
@@ -150,21 +154,52 @@ Mat Video::calculateTarget(Mat f, int gsmin, int gsmax, int side) {
   findContours(img_roi, contours, hierarchy, RETR_EXTERNAL, CHAIN_APPROX_SIMPLE, Point(roi.x,roi.y));
   /* identify the largest contour */
   if (contours.size() >= 1) {
-    int i_area_max = 0;
-    double area_max = 0.0;
-    for (int i = 0; i < (int)contours.size(); i++) {
-      double area = contourArea(contours[i]);
-      if (area > area_max) {
-	area_max = area;
-	i_area_max = i;
+    int i_target = 0;
+    if (contours.size() >= 2) {
+      vector<vector<int>> contAreas;
+      for (int i = 0; i < (int)contours.size(); i++) {
+	vector<int> contArea;
+	contArea.push_back((int)contourArea(contours[i])); /* first element - area of the contour */
+	contArea.push_back(i); /* second element - index to contours */
+	contAreas.push_back(contArea);
+      }
+      /* sort contAreas in descending order by area size */
+      sort(contAreas.begin(),contAreas.end(),[](const vector<int> &alpha,const vector<int> &beta){return alpha[0] > beta[0];});
+      /* calculate the bounding box around the two largest contours,
+         either of which is to be set as the new region of interest */
+      Rect bb1st = boundingRect(contours[contAreas[0][1]]);
+      Rect bb2nd = boundingRect(contours[contAreas[1][1]]);
+      if ( (bb2nd.y + bb2nd.height >= roi.height) && /* the second largest contour touches the roi bottom? */
+	   (2*contAreas[1][0] >= contAreas[0][0]) ) { /* the second largest contour is large enough? */
+	/* yes then compare the x location of 1st and 2nd bounding rectangles */
+	if (side == 0) { /* tracing the left edge needs the rectanble on the left */
+	  if (bb1st.x <= bb2nd.x) {
+	    i_target = contAreas[0][1];
+	    roi = bb1st;
+	  } else {
+	    i_target = contAreas[1][1];
+	    roi = bb2nd;
+	  }
+	} else if (side == 1) { /* tracing the right edge needs the rectangle on the right */
+	  if (bb1st.x + bb1st.width >= bb2nd.x + bb2nd.width) {
+	    i_target = contAreas[0][1];
+	    roi = bb1st;
+	  } else {
+	    i_target = contAreas[1][1];
+	    roi = bb2nd;
+	  }
+	} else { /* tracing the line center goes after the largest contour */
+	  i_target = contAreas[0][1];
+	  roi = bb1st;
+	}
+      } else { /* the second largest contour does not touch the roi bottom and shall be ignored */
+	i_target = contAreas[0][1];
+	roi = bb1st;
       }
     }
-    /* draw the largest contour on the original image */
-    polylines(f, (vector<vector<Point>>){contours[i_area_max]}, 0, Scalar(0,255,0), LINE_THICKNESS);
+    /* draw the target contour on the original image */
+    polylines(f, (vector<vector<Point>>){contours[i_target]}, 0, Scalar(0,255,0), LINE_THICKNESS);
 
-    /* calculate the bounding box around the largest contour
-       and set it as the new region of interest */ 
-    roi = boundingRect(contours[i_area_max]);
     /* adjust the region of interest */
     roi.x = roi.x - ROI_BOUNDARY;
     roi.y = roi.y - ROI_BOUNDARY;
@@ -188,16 +223,17 @@ Mat Video::calculateTarget(Mat f, int gsmin, int gsmax, int side) {
       Note: Mat::zeros with CV_8UC3 does NOT work and don't know why
     */
     Mat img_cnt(f.size(), CV_8UC3, Scalar(0,0,0));
-    drawContours(img_cnt, (vector<vector<Point>>){contours[i_area_max]}, 0, Scalar(0,255,0), 1);
+    drawContours(img_cnt, (vector<vector<Point>>){contours[i_target]}, 0, Scalar(0,255,0), 1);
     cvtColor(img_cnt, img_cnt_gray, COLOR_BGR2GRAY);
     /* scan the line really close to the image bottom to find edges */
     scan_line = img_cnt_gray.row(img_cnt_gray.size().height - LINE_THICKNESS);
-    //scan_line = img_cnt_gray.row(roi.y + (int)roi.height/2);
     /* convert the Mat to a NumCpp array */
     auto scan_line_nc = nc::NdArray<nc::uint8>(scan_line.data, scan_line.rows, scan_line.cols);
     auto edges = scan_line_nc.flatnonzero();
     if (edges.size() >= 2) {
-      if (side != 2) {
+      if (side == 0) {
+	mx = edges[0];
+      } else if (side == 1) {
 	mx = edges[edges.size()-1];
       } else {
 	mx = (int)((edges[0]+edges[edges.size()-1]) / 2);
@@ -220,7 +256,7 @@ Mat Video::calculateTarget(Mat f, int gsmin, int gsmax, int side) {
 
 void Video::show() {
   sprintf(strbuf[0], "x=%+05d,y=%+05d", plotter->getLocX(), plotter->getLocY());
-  sprintf(strbuf[1], "dist=%+06d", plotter->getDistance());
+  sprintf(strbuf[1], "dist=%06d", plotter->getDistance());
   sprintf(strbuf[2], "deg=%03d,gyro=%+04d", plotter->getDegree(), gyroSensor->getAngle());
   sprintf(strbuf[3], "pwR=%+04d,pwL=%+04d", rightMotor->getPWM(), leftMotor->getPWM());
 
@@ -236,4 +272,13 @@ void Video::show() {
 
 int Video::getMx() {
   return mx;
+}
+
+void Video::setThresholds(int gsMin, int gsMax) {
+  gsmin = gsMin;
+  gsmax = gsMax;
+}
+
+void Video::setTraceSide(int traceSide) {
+  side = traceSide;
 }
