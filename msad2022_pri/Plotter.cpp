@@ -54,7 +54,11 @@ void Plotter::plot() {
     double deltaDistL = M_PI * TIRE_DIAMETER * (curAngL - prevAngL) / 360.0;
     double deltaDistR = M_PI * TIRE_DIAMETER * (curAngR - prevAngR) / 360.0;
     double deltaDist = (deltaDistL + deltaDistR) / 2.0;
-    distance += deltaDist;
+    if (deltaDist >= 0) { /* cumulative distance must be always positive */
+      distance += deltaDist;
+    } else {
+      distance -= deltaDist;
+    }
     prevAngL = curAngL;
     prevAngR = curAngR;
     /* calculate azimuth */
