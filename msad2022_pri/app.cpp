@@ -614,6 +614,7 @@ void main_task(intptr_t unused) {
 
     /* BEHAVIOR FOR THE RIGHT COURSE STARTS HERE */
     if (prof->getValueAsStr("COURSE") == "R") {
+      _COURSE = -1;
       tr_run = (BrainTree::BehaviorTree*) BrainTree::Builder()
         .composite<BrainTree::ParallelSequence>(1,2)
             .leaf<TraceLine>(prof->getValueAsNum("SPEED"),
@@ -629,6 +630,7 @@ void main_task(intptr_t unused) {
 	.build();
 
     } else { /* BEHAVIOR FOR THE LEFT COURSE STARTS HERE */
+      _COURSE = 1;
       tr_run = (BrainTree::BehaviorTree*) BrainTree::Builder()
         .composite<BrainTree::ParallelSequence>(1,3)
             .leaf<IsBackOn>()
