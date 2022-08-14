@@ -313,7 +313,7 @@ public:
                 }
                 break;
             case CL_JETBLACK_YMNK:
-                if (cur_rgb.r <=10 && cur_rgb.g <=10 && cur_rgb.b <=10) { 
+                if (cur_rgb.r <=11 && cur_rgb.g <=13 && cur_rgb.b <=15) { 
                     _log("ODO=%05d, CL_JETBLACK_YMNK detected.", plotter->getDistance());
                     return Status::Success;
                 }
@@ -325,10 +325,11 @@ public:
                 }
                 break;
             case CL_BLUE:
-                if (cur_rgb.b - cur_rgb.r > 25 && cur_rgb.g >= 65 && cur_rgb.b <= 100) {
+                if (cur_rgb.b - cur_rgb.r > 35 && cur_rgb.g >= 55 && cur_rgb.b <= 100 && cur_rgb.b >= 70) {
                     _log("ODO=%05d, CL_BLUE detected.", plotter->getDistance());
                     return Status::Success;
                 }
+                break;
             case CL_BLUE_SL:
                 if (cur_rgb.b - cur_rgb.r > 20 && cur_rgb.g <= 100 && cur_rgb.b <= 120) {
                     garageColor = CL_BLUE_SL;
@@ -337,7 +338,7 @@ public:
                 }
                 break;
             case CL_BLUE2:
-                if (cur_rgb.r <= 30 && cur_rgb.g <= 60 && cur_rgb.b >= 50 && cur_rgb.b - cur_rgb.r > 20) {
+                if (cur_rgb.r <= 20 && cur_rgb.g <= 40 && cur_rgb.b >= 44 && cur_rgb.b - cur_rgb.r > 20) {
 //                if (cur_rgb.r <= 20 && cur_rgb.g <= 55 && cur_rgb.b >= 55 && cur_rgb.b - cur_rgb.r > 20) {
                     _log("ODO=%05d, CL_BLUE2 detected.", plotter->getDistance());
                     return Status::Success;
@@ -382,7 +383,7 @@ public:
                 }   
                 break;
             case CL_GRAY:
-                if (cur_rgb.r >= 43 && cur_rgb.g <=55 && cur_rgb.b <= 60 && cur_rgb.r <= 45 && cur_rgb.b >= 55) {
+                if (cur_rgb.r >= 45 && cur_rgb.g <=60 && cur_rgb.b <= 65 && cur_rgb.r <= 52 && cur_rgb.b >= 53) {
                     _log("ODO=%05d, CL_GRAY detected.", plotter->getDistance());
                     return Status::Success;
                 }
@@ -744,90 +745,121 @@ void main_task(intptr_t unused) {
         .composite<BrainTree::ParallelSequence>(1,2)
             .leaf<IsBackOn>()
             .composite<BrainTree::MemSequence>()
-
-                .composite<BrainTree::ParallelSequence>(1,2)
-                   .leaf<IsColorDetected>(CL_JETBLACK_YMNK)
-                   .leaf<IsTimeEarned>(18000000)
-                .leaf<TraceLine>(44, GS_TARGET, P_CONST, I_CONST, D_CONST, 0.0, TS_NORMAL)
+    //GATE1を通過後ラインの交差地点地点直前まで
+                .composite<BrainTree::ParallelSequence>(2,2)
+                   .leaf<IsColorDetected>(CL_JETBLACK_YMNK)//JETBLACKを検知
+                   .leaf<IsDistanceEarned>(prof->getValueAsNum("DIST1"))
+                   //.leaf<IsTimeEarned>(prof->getValueAsNum("TIME1"))
+                   .leaf<StopNow>()
+                   //.leaf<TraceLine>(prof->getValueAsNum("SPEED1"), 
+                   //prof->getValueAsNum("GS_TARGET1"), prof->getValueAsNum("P_CONST1"), 
+                   //prof->getValueAsNum("I_CONST1"), 
+                   //prof->getValueAsNum("D_CONST1"), 
+                   //prof->getValueAsNum("srewrate1"), TS_OPPOSITE)//ライントレース1,右のライン検知
                 .end()
-    /*
-    to the first cross
+    //ラインの交差地点直前から検知するまで減速
                 .composite<BrainTree::ParallelSequence>(1,2)
-                   .leaf<IsColorDetected>(CL_JETBLACK_YMNK)
-                   .leaf<IsTimeEarned>(18000000)
-                   .leaf<TraceLine>(prof->getValueAsNum("SPEED"), 
-                   prof->getValueAsNum("GS_TARGET"), prof->getValueAsNum("P_CONST"), 
-                   prof->getValueAsNum("I_CONST"), 
-                   prof->getValueAsNum("D_CONST"), 0.0, TS_OPPOSITE)
+                   .leaf<IsColorDetected>(CL_JETBLACK_YMNK)//JETBLACKを検知
+                   .leaf<IsTimeEarned>(prof->getValueAsNum("TIME1"))//18秒
+                   .leaf<TraceLine>(prof->getValueAsNum("SPEED1a"), 
+                   prof->getValueAsNum("GS_TARGET1"), prof->getValueAsNum("P_CONST1"), 
+                   prof->getValueAsNum("I_CONST1"), 
+                   prof->getValueAsNum("D_CONST1"), 
+                   prof->getValueAsNum("srewrate1"), TS_OPPOSITE)//ライントレース1,右のライン検知
                 .end()
-    go straight
-    */
+    //交差地点後にしばらく直進
+                .composite<BrainTree::ParallelSequence>(2,2)
+                 //.leaf<IsTimeEarned>(18000000)//18秒
+                 //.leaf<StopNow>()
+                   .leaf<IsTimeEarned>(prof->getValueAsNum("TIME1a"))
+                   .leaf<RunAsInstructed>(prof->getValueAsNum("POWER_L1a"),
+                   prof->getValueAsNum("POWER_R1a"), 0.0)
+                .end()
+    //ゆるやかに右カーブ
                 .composite<BrainTree::ParallelSequence>(1,2)
-                   .leaf<IsTimeEarned>(700000)
-                   .leaf<RunAsInstructed>(80,80, 0.0)
+                   .leaf<IsTimeEarned>(prof->getValueAsNum("TIME1aa"))
+                   .leaf<RunAsInstructed>(prof->getValueAsNum("POWER_L1aa"),
+                   prof->getValueAsNum("POWER_R1aa"), prof->getValueAsNum("srewrate1aa"))
                 .end()
-    /*
-    turn right
-    */
-                .composite<BrainTree::ParallelSequence>(1,2)
-                   .leaf<IsTimeEarned>(900000)
-                   .leaf<RunAsInstructed>(67,45, 0.0)
-                .end()
-    /*
-    till detect black,go right
-    */
+    //ライン検知するまでさらに緩やかに右カーブ
                 .composite<BrainTree::ParallelSequence>(1,2)
                    .leaf<IsColorDetected>(CL_BLACK)
                    .leaf<RunAsInstructed>(65,40, 0.0)
                 .end()
+    //ライン検知後にトレースを補正するために2秒速度を落とす
                 .composite<BrainTree::ParallelSequence>(1,2)
-                   .leaf<IsTimeEarned>(2000000)
-                   .leaf<TraceLine>(35, GS_TARGET, P_CONST, I_CONST, D_CONST, 0.0, TS_NORMAL)
+                   .leaf<IsTimeEarned>(prof->getValueAsNum("TIME2"))
+                   .leaf<TraceLine>(prof->getValueAsNum("SPEED2"),  
+                   prof->getValueAsNum("GS_TARGET1"), prof->getValueAsNum("P_CONST1"), 
+                   prof->getValueAsNum("I_CONST1"), 
+                   prof->getValueAsNum("D_CONST1"), 0.0, TS_NORMAL)//ライントレース2,左のライン検知
                 .end()
-    /*
-    line trace till,next cross
-    */
+    //ゲート2,3通過後にラインの交差点直前まで
                 .composite<BrainTree::ParallelSequence>(1,2)
                    .leaf<IsColorDetected>(CL_JETBLACK_YMNK)
-                   .leaf<IsTimeEarned>(65000000)
-                   .leaf<TraceLine>(44, GS_TARGET, P_CONST, I_CONST, D_CONST, 0.0, TS_NORMAL)
+                   .leaf<IsTimeEarned>(prof->getValueAsNum("TIME2a"))
+                   .leaf<TraceLine>(prof->getValueAsNum("SPEED2a"), 
+                   prof->getValueAsNum("GS_TARGET1"), prof->getValueAsNum("P_CONST1"), 
+                   prof->getValueAsNum("I_CONST1"), 
+                   prof->getValueAsNum("D_CONST1"), 0.0, TS_NORMAL)//ライントレース2a,左のライン検知
                 .end()
-    /*
-    go straight
-    */
+    //ラインの交差点検知まで
                 .composite<BrainTree::ParallelSequence>(1,2)
-                   .leaf<IsTimeEarned>(1640000)
-                   .leaf<RunAsInstructed>(60,69, 0.0)
+                   .leaf<IsColorDetected>(CL_JETBLACK_YMNK)
+                   .leaf<IsTimeEarned>(prof->getValueAsNum("TIME2a"))
+                   .leaf<TraceLine>(prof->getValueAsNum("SPEED2aa"), 
+                   prof->getValueAsNum("GS_TARGET1"), prof->getValueAsNum("P_CONST1"), 
+                   prof->getValueAsNum("I_CONST1"), 
+                   prof->getValueAsNum("D_CONST1"), 0.0, TS_NORMAL)//ライントレース2aa,左のライン検知
                 .end()
-    /*
-    to the final trace
-    */
+    //ライン交差点検知後に緩やかに左カーブ
                 .composite<BrainTree::ParallelSequence>(1,2)
-                   .leaf<IsTimeEarned>(150000000)
+                   .leaf<IsTimeEarned>(prof->getValueAsNum("TIME3"))
+                   .leaf<RunAsInstructed>(prof->getValueAsNum("POWER_L3"),
+                   prof->getValueAsNum("POWER_R3"), 0.0)
+                .end()
+    //ライン検知するまで緩やかに右カーブ
+                .composite<BrainTree::ParallelSequence>(1,2)
+                   .leaf<IsTimeEarned>(prof->getValueAsNum("TIME3a"))
                    .leaf<IsColorDetected>(CL_BLACK)
-                   .leaf<RunAsInstructed>(51,58, 0.0)
+                   .leaf<RunAsInstructed>(prof->getValueAsNum("POWER_L4"),
+                   prof->getValueAsNum("POWER_R4"), 0.0)
                 .end()
+    //ライン検知後にトレースを補正するために1.9秒速度を落とす
                 .composite<BrainTree::ParallelSequence>(1,2)
-                   .leaf<IsTimeEarned>(1900000)
-                   .leaf<TraceLine>(35, GS_TARGET, P_CONST, I_CONST, D_CONST, 0.0, TS_OPPOSITE)
+                   .leaf<IsTimeEarned>(prof->getValueAsNum("TIME2"))
+                   .leaf<TraceLine>(prof->getValueAsNum("SPEED2"),
+                   prof->getValueAsNum("GS_TARGET1"), prof->getValueAsNum("P_CONST1"), 
+                   prof->getValueAsNum("I_CONST1"), 
+                   prof->getValueAsNum("D_CONST1"), 0.0, TS_OPPOSITE)//ライントレース2,右のライン検知
                 .end()
-    /*
-    to the final trace
+    //2回カーブまでライントレース
                 .composite<BrainTree::ParallelSequence>(1,2)
-                   .leaf<IsTimeEarned>(15000000)
-                   .leaf<TraceLine>(44, GS_TARGET, P_CONST, I_CONST, D_CONST, 0.0, TS_OPPOSITE)
+                   .leaf<IsTimeEarned>(prof->getValueAsNum("TIME4"))
+                   .leaf<TraceLine>(prof->getValueAsNum("SPEED4"),
+                   prof->getValueAsNum("GS_TARGET1"), prof->getValueAsNum("P_CONST1"), 
+                   prof->getValueAsNum("I_CONST1"), 
+                   prof->getValueAsNum("D_CONST1"), 0.0, TS_OPPOSITE)//ライントレース4,右のライン検知
                 .end()
+    //最終カーブまでライントレース
                 .composite<BrainTree::ParallelSequence>(1,2)
-                   .leaf<IsTimeEarned>(8000000)
-                   .leaf<TraceLine>(80, GS_TARGET, P_CONST, I_CONST, D_CONST, 0.0, TS_OPPOSITE)
+                   .leaf<IsTimeEarned>(prof->getValueAsNum("TIME5"))
+                   .leaf<TraceLine>(prof->getValueAsNum("SPEED5"),
+                   prof->getValueAsNum("GS_TARGET1"), prof->getValueAsNum("P_CONST1"), 
+                   prof->getValueAsNum("I_CONST1"), 
+                   prof->getValueAsNum("D_CONST1"), 
+                   prof->getValueAsNum("srewrate3"), TS_OPPOSITE)//ライントレース5,右のライン検知
                 .end()
-    */
+    //スラロームに引き渡すまでライントレース
                 .composite<BrainTree::ParallelSequence>(1,2)
                    .composite<BrainTree::MemSequence>()
                       .leaf<IsColorDetected>(CL_BLACK)
                       .leaf<IsColorDetected>(CL_BLUE)
                    .end()
-                   .leaf<TraceLine>(44, GS_TARGET, P_CONST, I_CONST, D_CONST, 0.0, TS_OPPOSITE)
+                   .leaf<TraceLine>(prof->getValueAsNum("SPEED6"),
+                   prof->getValueAsNum("GS_TARGET1"), prof->getValueAsNum("P_CONST1"), 
+                   prof->getValueAsNum("I_CONST1"), 
+                   prof->getValueAsNum("D_CONST1"), 0.0, TS_OPPOSITE)//ファイナルライントレース,右のライン検知
                 .end()
             .end()
         .end()
@@ -1071,15 +1103,19 @@ void main_task(intptr_t unused) {
     tr_block_r = (BrainTree::BehaviorTree*) BrainTree::Builder()
         .composite<BrainTree::MemSequence>()
             .composite<BrainTree::ParallelSequence>(1,3)
+                .leaf<SetArmPosition>(10, 40) 
+                .leaf<IsTimeEarned>(500000) 
+            .end()
+            .composite<BrainTree::ParallelSequence>(1,3)
                 .leaf<TraceLine>(40, GS_TARGET, P_CONST, I_CONST, D_CONST, 0.0, TS_NORMAL)  
                 .leaf<IsColorDetected>(CL_BLUE) 
             .end()
             .composite<BrainTree::ParallelSequence>(1,3)
-                .leaf<IsTimeEarned>(1000000) // 後ろ向き走行。狙いは黒線。
+                .leaf<IsTimeEarned>(800000) // 後ろ向き走行。狙いは黒線。
                 .leaf<RunAsInstructed>(-30,-80,0.0)      
             .end()
             .composite<BrainTree::ParallelSequence>(1,3)
-                .leaf<IsTimeEarned>(1000000) // 後ろ向き走行。狙いは黒線。
+                .leaf<IsTimeEarned>(1700000) // 後ろ向き走行。狙いは黒線。
                 .leaf<RunAsInstructed>(-50,-50,0.0)    
             .end()
             .composite<BrainTree::ParallelSequence>(1,3)
@@ -1088,25 +1124,29 @@ void main_task(intptr_t unused) {
                 .leaf<IsColorDetected>(CL_BLACK)  
             .end()
             .composite<BrainTree::ParallelSequence>(1,3)
-                .leaf<IsTimeEarned>(1000000) // 黒線検知後、ライントレース準備
+                .leaf<IsTimeEarned>(900000) // 黒線検知後、ライントレース準備
                 .leaf<RunAsInstructed>(-30,60,0.0)      
+            .end()
+            .composite<BrainTree::ParallelSequence>(1,3)
+                .leaf<TraceLine>(35, GS_TARGET, P_CONST, I_CONST, D_CONST, 0.0, TS_NORMAL)  
+                .leaf<IsTimeEarned>(1000000) // 黒線検知後、ライントレース準備
             .end()
             .composite<BrainTree::ParallelSequence>(1,3)
                 .leaf<TraceLine>(40, GS_TARGET, P_CONST, I_CONST, D_CONST, 0.0, TS_NORMAL)  
                 .leaf<IsColorDetected>(CL_GRAY) //グレー検知までライントレース 
             .end()
             .composite<BrainTree::ParallelSequence>(1,3)
-                .leaf<IsTimeEarned>(100000) // break after 10 seconds
+                .composite<BrainTree::MemSequence>()
+                    .leaf<IsColorDetected>(CL_GRAY) //グレー検知までライントレース   
+                    .leaf<IsColorDetected>(CL_WHITE) //グレー検知までライントレース    
+                    .leaf<IsColorDetected>(CL_GRAY) //グレー検知までライントレース   
+                .end()
+                .leaf<IsTimeEarned>(1500000) // break after 10 seconds
                 .leaf<RunAsInstructed>(40,40,0.0)  //グレー検知後、丸穴あき部分があるため少し前進    
             .end()
             .composite<BrainTree::ParallelSequence>(1,3)
-                .leaf<IsTimeEarned>(400000) // break after 10 seconds
-                .leaf<RunAsInstructed>(40,40,0.0)  //グレー検知後、丸穴あき部分があるため少し前進  
-                 .leaf<IsColorDetected>(CL_GRAY) //グレー検知までライントレース   
-            .end()
-            .composite<BrainTree::ParallelSequence>(1,3)
                 .leaf<IsTimeEarned>(1200000) // 本線ラインに戻ってくる
-                .leaf<RunAsInstructed>(72,40,0.0)      
+                .leaf<RunAsInstructed>(75,40,0.0)      
             .end()
             .composite<BrainTree::ParallelSequence>(1,3)
                 .leaf<IsTimeEarned>(1000000) // 本線ラインに戻ってくる
@@ -1119,22 +1159,33 @@ void main_task(intptr_t unused) {
                 .leaf<IsColorDetected>(CL_BLUE2)     
             .end()
             .composite<BrainTree::ParallelSequence>(1,3)
-                .leaf<IsTimeEarned>(850000) // 検知後、斜め右前まで回転(ブロックを離さないように)
+                .leaf<IsTimeEarned>(800000) // 検知後、斜め右前まで回転(ブロックを離さないように)
                 .leaf<RunAsInstructed>(-55,60,0.0)      
             .end()
             .composite<BrainTree::ParallelSequence>(1,3)
+                .leaf<IsTimeEarned>(800000) // 全身しながら大きく左に向けて旋回。黄色を目指す。
+                .leaf<TraceLine>(35, GS_TARGET, P_CONST, I_CONST, D_CONST, 0.0, TS_NORMAL)  
+            .end()
+            .composite<BrainTree::ParallelSequence>(1,3)
+                .leaf<IsColorDetected>(CL_WHITE)  
+                .leaf<TraceLine>(35, GS_TARGET, P_CONST, I_CONST, D_CONST, 0.0, TS_NORMAL)  
+            .end()
+            .composite<BrainTree::ParallelSequence>(1,3)
+                .leaf<IsTimeEarned>(500000) // 全身しながら大きく左に向けて旋回。黄色を目指す。
+                .leaf<RunAsInstructed>(-50,50,0.0)      
+            .end()
+            .composite<BrainTree::ParallelSequence>(1,3)
                 .leaf<IsColorDetected>(CL_YELLOW)    
-                .leaf<IsTimeEarned>(2000000) // 全身しながら大きく左に向けて旋回。黄色を目指す。
-                .leaf<RunAsInstructed>(45,65,0.0)      
+                .leaf<RunAsInstructed>(45,45,0.0)      
             .end()
             .composite<BrainTree::ParallelSequence>(1,3)   
-                .leaf<IsTimeEarned>(895000) // 黄色検知後、方向立て直す。
-                .leaf<RunAsInstructed>(40,82,0.0) 
-                .leaf<IsColorDetected>(CL_RED)      
+                .leaf<IsTimeEarned>(450000) // 黄色検知後、方向立て直す。
+                .leaf<RunAsInstructed>(30,80,0.0) 
+                .leaf<IsColorDetected>(CL_RED)   
             .end()
             .composite<BrainTree::ParallelSequence>(1,3) 
                 .leaf<IsColorDetected>(CL_RED)  //赤検知までまっすぐ進む。
-                .leaf<RunAsInstructed>(50,50,0.0)      
+                .leaf<RunAsInstructed>(40,40,0.0)      
             .end()
             .leaf<StopNow>()
             .leaf<IsTimeEarned>(30000000) // wait 3 seconds
@@ -1144,25 +1195,33 @@ void main_task(intptr_t unused) {
     tr_block_g = (BrainTree::BehaviorTree*) BrainTree::Builder()
         .composite<BrainTree::MemSequence>()
             .composite<BrainTree::ParallelSequence>(1,3)
+                .leaf<SetArmPosition>(10, 40) 
+                .leaf<IsTimeEarned>(500000) 
+            .end()
+            .composite<BrainTree::ParallelSequence>(1,3)
                 .leaf<TraceLine>(40, GS_TARGET, P_CONST, I_CONST, D_CONST, 0.0, TS_NORMAL)  
                 .leaf<IsColorDetected>(CL_BLUE) 
             .end()
             .composite<BrainTree::ParallelSequence>(1,3)
-                .leaf<IsTimeEarned>(1000000) // 後ろ向き走行。狙いは黒線。
+                .leaf<IsTimeEarned>(800000) // 後ろ向き走行。狙いは黒線。
                 .leaf<RunAsInstructed>(-30,-80,0.0)      
             .end()
             .composite<BrainTree::ParallelSequence>(1,3)
-                .leaf<IsTimeEarned>(1500000) // 後ろ向き走行。狙いは黒線。
+                .leaf<IsTimeEarned>(1700000) // 後ろ向き走行。狙いは黒線。
                 .leaf<RunAsInstructed>(-50,-50,0.0)    
             .end()
             .composite<BrainTree::ParallelSequence>(1,3)
                 .leaf<IsTimeEarned>(4000000) // 後ろ向き走行。狙いは黒線。
-                .leaf<RunAsInstructed>(-30,-30,0.0)    
+                .leaf<RunAsInstructed>(-35,-35,0.0)    
                 .leaf<IsColorDetected>(CL_BLACK)  
             .end()
             .composite<BrainTree::ParallelSequence>(1,3)
-                .leaf<IsTimeEarned>(980000) // 黒線検知後、ライントレース準備
+                .leaf<IsTimeEarned>(900000) // 黒線検知後、ライントレース準備
                 .leaf<RunAsInstructed>(-30,60,0.0)      
+            .end()
+            .composite<BrainTree::ParallelSequence>(1,3)
+                .leaf<TraceLine>(35, GS_TARGET, P_CONST, I_CONST, D_CONST, 0.0, TS_NORMAL)  
+                .leaf<IsTimeEarned>(1000000) // 黒線検知後、ライントレース準備
             .end()
             .composite<BrainTree::ParallelSequence>(1,3)
                 .leaf<TraceLine>(40, GS_TARGET, P_CONST, I_CONST, D_CONST, 0.0, TS_NORMAL)  
@@ -1183,7 +1242,7 @@ void main_task(intptr_t unused) {
             .end()
             .composite<BrainTree::ParallelSequence>(1,3)
                 .leaf<IsTimeEarned>(1000000) //少し前進。ライントレース準備。
-                .leaf<RunAsInstructed>(40,40,0.0)      
+                .leaf<RunAsInstructed>(40,42,0.0)      
             .end()
             .composite<BrainTree::ParallelSequence>(1,3)
                 .leaf<IsTimeEarned>(5000000)
@@ -1192,11 +1251,11 @@ void main_task(intptr_t unused) {
             .end()
             .composite<BrainTree::ParallelSequence>(1,3)
                 .leaf<IsTimeEarned>(450000) // break after 10 seconds
-                .leaf<RunAsInstructed>(50,-50,0.0) //青検知後は大きく右に旋回    
+                .leaf<RunAsInstructed>(44,-44,0.0) //青検知後は大きく右に旋回    
             .end()
             .composite<BrainTree::ParallelSequence>(1,3)
                 .leaf<IsTimeEarned>(1000000)
-                .leaf<RunAsInstructed>(40,40,0.0)   //前進。次の青検知を目指す。
+                .leaf<RunAsInstructed>(35,55,0.0)   //前進。次の青検知を目指す。
             .end() 
             .composite<BrainTree::ParallelSequence>(1,3)
                 .leaf<IsTimeEarned>(5000000)
@@ -1204,8 +1263,12 @@ void main_task(intptr_t unused) {
                 .leaf<IsColorDetected>(CL_BLUE2)  //前進。次の青検知を目指す。
             .end()
             .composite<BrainTree::ParallelSequence>(1,3)
-                .leaf<IsTimeEarned>(800000) //青検知後、大きく右旋回。向きを整える。
+                .leaf<IsTimeEarned>(580000) //青検知後、大きく右旋回。向きを整える。
                 .leaf<RunAsInstructed>(60,-55,0.0)      
+            .end()
+            .composite<BrainTree::ParallelSequence>(1,3)
+                .leaf<IsColorDetected>(CL_WHITE)  
+                .leaf<TraceLine>(34, GS_TARGET, P_CONST, I_CONST, D_CONST, 0.0, TS_OPPOSITE)  
             .end()
             .composite<BrainTree::ParallelSequence>(1,3)
                 .leaf<IsTimeEarned>(3000000)
@@ -1213,8 +1276,8 @@ void main_task(intptr_t unused) {
             .end() 
             .composite<BrainTree::ParallelSequence>(1,3)
                 .leaf<IsTimeEarned>(5000000)
-                .leaf<RunAsInstructed>(60,60,0.0) 
-                .leaf<IsColorDetected>(CL_GREEN)  //検知後、停止。
+                .leaf<RunAsInstructed>(40,40,0.0) 
+                .leaf<IsColorDetected>(CL_GREEN)  
             .end()
             .leaf<StopNow>()
             .leaf<IsTimeEarned>(30000000) // wait 3 seconds
@@ -1225,25 +1288,33 @@ void main_task(intptr_t unused) {
     tr_block_b = (BrainTree::BehaviorTree*) BrainTree::Builder()
         .composite<BrainTree::MemSequence>()
             .composite<BrainTree::ParallelSequence>(1,3)
+                .leaf<SetArmPosition>(10, 40) 
+                .leaf<IsTimeEarned>(500000) 
+            .end()
+            .composite<BrainTree::ParallelSequence>(1,3)
                 .leaf<TraceLine>(40, GS_TARGET, P_CONST, I_CONST, D_CONST, 0.0, TS_NORMAL)  
                 .leaf<IsColorDetected>(CL_BLUE) 
             .end()
             .composite<BrainTree::ParallelSequence>(1,3)
-                .leaf<IsTimeEarned>(1000000) // 後ろ向き走行。狙いは黒線。
+                .leaf<IsTimeEarned>(800000) // 後ろ向き走行。狙いは黒線。
                 .leaf<RunAsInstructed>(-30,-80,0.0)      
             .end()
             .composite<BrainTree::ParallelSequence>(1,3)
-                .leaf<IsTimeEarned>(1500000) // 後ろ向き走行。狙いは黒線。
+                .leaf<IsTimeEarned>(1700000) // 後ろ向き走行。狙いは黒線。
                 .leaf<RunAsInstructed>(-50,-50,0.0)    
             .end()
             .composite<BrainTree::ParallelSequence>(1,3)
                 .leaf<IsTimeEarned>(4000000) // 後ろ向き走行。狙いは黒線。
-                .leaf<RunAsInstructed>(-30,-30,0.0)    
+                .leaf<RunAsInstructed>(-35,-35,0.0)    
                 .leaf<IsColorDetected>(CL_BLACK)  
             .end()
             .composite<BrainTree::ParallelSequence>(1,3)
-                .leaf<IsTimeEarned>(980000) // 黒線検知後、ライントレース準備
+                .leaf<IsTimeEarned>(900000) // 黒線検知後、ライントレース準備
                 .leaf<RunAsInstructed>(-30,60,0.0)      
+            .end()
+            .composite<BrainTree::ParallelSequence>(1,3)
+                .leaf<TraceLine>(35, GS_TARGET, P_CONST, I_CONST, D_CONST, 0.0, TS_NORMAL)  
+                .leaf<IsTimeEarned>(1000000) // 黒線検知後、ライントレース準備
             .end()
             .composite<BrainTree::ParallelSequence>(1,3)
                 .leaf<TraceLine>(40, GS_TARGET, P_CONST, I_CONST, D_CONST, 0.0, TS_NORMAL)  
@@ -1259,12 +1330,12 @@ void main_task(intptr_t unused) {
                 .leaf<RunAsInstructed>(40,40,0.0)  //グレー検知後、丸穴あき部分があるため少し前進    
             .end()
             .composite<BrainTree::ParallelSequence>(1,3)
-                .leaf<IsTimeEarned>(650000) // break after 10 seconds
+                .leaf<IsAngleSmaller>(-15)
                 .leaf<RunAsInstructed>(-50,50,0.0) //左に旋回。ライントレース準備。
             .end()
             .composite<BrainTree::ParallelSequence>(1,3)
                 .leaf<IsTimeEarned>(1000000) //少し前進。ライントレース準備。
-                .leaf<RunAsInstructed>(40,40,0.0)      
+                .leaf<RunAsInstructed>(40,42,0.0)      
             .end()
             .composite<BrainTree::ParallelSequence>(1,3)
                 .leaf<IsTimeEarned>(5000000)
@@ -1272,12 +1343,12 @@ void main_task(intptr_t unused) {
                 .leaf<IsColorDetected>(CL_BLUE2)  //純粋な青検知までライントレース
             .end()
             .composite<BrainTree::ParallelSequence>(1,3)
-                .leaf<IsTimeEarned>(450000) // break after 10 seconds
-                .leaf<RunAsInstructed>(50,-50,0.0) //青検知後は大きく右に旋回    
+                .leaf<IsAngleLarger>(1)
+                .leaf<RunAsInstructed>(44,-44,0.0) //青検知後は大きく右に旋回    
             .end()
             .composite<BrainTree::ParallelSequence>(1,3)
                 .leaf<IsTimeEarned>(1000000)
-                .leaf<RunAsInstructed>(40,40,0.0)   //前進。次の青検知を目指す。
+                .leaf<RunAsInstructed>(35,55,0.0)   //前進。次の青検知を目指す。
             .end() 
             .composite<BrainTree::ParallelSequence>(1,3)
                 .leaf<IsTimeEarned>(5000000)
@@ -1285,8 +1356,12 @@ void main_task(intptr_t unused) {
                 .leaf<IsColorDetected>(CL_BLUE2)  //前進。次の青検知を目指す。
             .end()
             .composite<BrainTree::ParallelSequence>(1,3)
-                .leaf<IsTimeEarned>(800000) //青検知後、大きく右旋回。向きを整える。
-                .leaf<RunAsInstructed>(60,-55,0.0)      
+                .leaf<IsAngleLarger>(75)
+                .leaf<RunAsInstructed>(55,-55,0.0)      
+            .end()
+            .composite<BrainTree::ParallelSequence>(1,3)
+                .leaf<IsColorDetected>(CL_WHITE)  
+                .leaf<TraceLine>(34, GS_TARGET, P_CONST, I_CONST, D_CONST, 0.0, TS_OPPOSITE)  
             .end()
             .composite<BrainTree::ParallelSequence>(1,3)
                 .leaf<IsTimeEarned>(3000000)
@@ -1294,7 +1369,7 @@ void main_task(intptr_t unused) {
             .end() 
             .composite<BrainTree::ParallelSequence>(1,3)
                 .leaf<IsTimeEarned>(5000000)
-                .leaf<RunAsInstructed>(60,60,0.0) 
+                .leaf<RunAsInstructed>(40,40,0.0) 
                 .leaf<IsColorDetected>(CL_BLUE2)  
             .end()
             .leaf<StopNow>()
@@ -1306,6 +1381,10 @@ void main_task(intptr_t unused) {
     tr_block_y = (BrainTree::BehaviorTree*) BrainTree::Builder()
         .composite<BrainTree::MemSequence>()
             .composite<BrainTree::ParallelSequence>(1,3)
+                .leaf<SetArmPosition>(10, 40) 
+                .leaf<IsTimeEarned>(500000) 
+            .end()
+            .composite<BrainTree::ParallelSequence>(1,3)
                 .leaf<TraceLine>(40, GS_TARGET, P_CONST, I_CONST, D_CONST, 0.0, TS_NORMAL)  
                 .leaf<IsColorDetected>(CL_BLUE) 
             .end()
@@ -1366,7 +1445,7 @@ void main_task(intptr_t unused) {
                 .leaf<IsColorDetected>(CL_BLUE2)  //前進。次の青検知を目指す。
             .end()
             .composite<BrainTree::ParallelSequence>(1,3)
-                .leaf<IsTimeEarned>(750000) //青検知後、大きく右旋回。向きを整える。
+                .leaf<IsTimeEarned>(580000) //青検知後、大きく右旋回。向きを整える。
                 .leaf<RunAsInstructed>(60,-55,0.0)      
             .end()
             .composite<BrainTree::ParallelSequence>(1,3)
@@ -1500,7 +1579,7 @@ void update_task(intptr_t unused) {
 
     _log("r=%d g=%d b=%d",cur_rgb.r,cur_rgb.g,cur_rgb.b);
 
-    _log("dist=%d azi=%d deg=%d locX=%d locY=%d ang=%d angR=d%",distance,azimuth,degree,locX,locY,ang,angR);
+    _log("dist=%d azi=%d deg=%d locX=%d locY=%d ang=%d angR=%d",distance,azimuth,degree,locX,locY,ang,angR);
     _log("sonar=%d",sonarDistance);
     
 /*
