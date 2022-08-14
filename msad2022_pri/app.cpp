@@ -733,11 +733,34 @@ void main_task(intptr_t unused) {
 
     /* BEHAVIOR FOR THE RIGHT COURSE STARTS HERE */
     if (prof->getValueAsStr("COURSE") == "R") {
-      tr_run = nullptr;
-      tr_block = nullptr;
+      _COURSE = -1;
+
+      tr_run = (BrainTree::BehaviorTree*) BrainTree::Builder()
+        .composite<BrainTree::ParallelSequence>(1,2)
+            .leaf<TraceLine>(prof->getValueAsNum("SPEED"),
+			     prof->getValueAsNum("GS_TARGET"),
+			     prof->getValueAsNum("P_CONST"),
+			     prof->getValueAsNum("I_CONST"),
+			     prof->getValueAsNum("D_CONST"), 0.0, TS_NORMAL)
+	    .leaf<IsDistanceEarned>(2000)
+        .end()
+      .build();
+      tr_slalom_first = nullptr;
+      tr_slalom_check = nullptr;
+      tr_slalom_second_a = nullptr;
+      tr_slalom_second_b = nullptr;
+      tr_block_r     = nullptr;
+      tr_block_g     = nullptr;
+      tr_block_b     = nullptr;
+      tr_block_y     = nullptr;
+      tr_block_d     = nullptr;
+      tr_block = (BrainTree::BehaviorTree*) BrainTree::Builder()
+	    .leaf<StopNow>()
+	  .build();
 
     } else { /* BEHAVIOR FOR THE LEFT COURSE STARTS HERE */
       _COURSE = 1;
+
       tr_run = (BrainTree::BehaviorTree*) BrainTree::Builder()
         .composite<BrainTree::ParallelSequence>(1,2)
             .leaf<IsBackOn>()
