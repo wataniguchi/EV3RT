@@ -855,6 +855,7 @@ void update_task(intptr_t unused) {
     plotter->plot();
 
     // for test
+    rgb_raw_t cur_rgb;
 
     colorSensor->getRawColor(cur_rgb);
     int32_t distance = plotter->getDistance();
