@@ -249,7 +249,7 @@ public:
 
         switch(color){
             case CL_JETBLACK:
-                if (cur_rgb.r <=35 && cur_rgb.g <=35 && cur_rgb.b <=50) { 
+                if (cur_rgb.r <=10 && cur_rgb.g <=10 && cur_rgb.b <=10) { 
                     _log("ODO=%05d, CL_JETBLACK detected.", plotter->getDistance());
                     return Status::Success;
                 }
@@ -629,13 +629,144 @@ void main_task(intptr_t unused) {
 
 #else /* BEHAVIOR FOR THE LEFT COURSE STARTS HERE */
     tr_run = (BrainTree::BehaviorTree*) BrainTree::Builder()
+
         .composite<BrainTree::ParallelSequence>(1,2)
             .leaf<IsBackOn>()
+        
             .composite<BrainTree::MemSequence>()
-                .leaf<IsColorDetected>(CL_BLACK)
-                .leaf<IsColorDetected>(CL_BLUE)
+    //GATE1を通過後ラインの交差地点地点直前まで
+                .composite<BrainTree::ParallelSequence>(1,2)
+                   .leaf<IsColorDetected>(CL_JETBLACK)//JETBLACKを検知
+                   .leaf<IsTimeEarned>(18000000)//18秒
+                   //.leaf<StopNow>()
+                   .leaf<TraceLine>(41, 60, 0.76, 0.25, 0.07, 0.0, TS_OPPOSITE)//ライントレース1,右のライン検知
+                .end()
+    /*
+    first turn right　unk tnk
+    */ 
+                .composite<BrainTree::ParallelSequence>(1,2)
+                   .leaf<IsTimeEarned>(1190000)
+                   .leaf<RunAsInstructed>(60,25, 0.0)
+                .end()
+    /*
+    after turn right,run
+    */ 
+                .composite<BrainTree::ParallelSequence>(1,2)
+                   .leaf<IsTimeEarned>(1200000)
+                   .leaf<RunAsInstructed>(100,100, 0.0)
+                .end()
+    /*
+    after run,turn right
+    */ 
+                .composite<BrainTree::ParallelSequence>(1,2)
+                   .leaf<IsTimeEarned>(1000000)
+                   .leaf<RunAsInstructed>(60,25, 0.0)
+                .end()
+    /*
+    color detect
+    */ 
+                .composite<BrainTree::ParallelSequence>(1,2)
+                   .leaf<IsColorDetected>(CL_BLACK)
+                   .leaf<RunAsInstructed>(50,50, 0.0)
+                .end()
+    /*
+    rine trace while
+    */ 
+                .composite<BrainTree::ParallelSequence>(1,2)
+                   .leaf<IsTimeEarned>(2500000)
+                   .leaf<TraceLine>(SPEED_NORM, GS_TARGET, P_CONST, I_CONST, D_CONST, 0.0, TS_NORMAL)
+                .end()
+    /*
+    go straight
+    */ 
+                .composite<BrainTree::ParallelSequence>(1,2)
+                   .leaf<IsTimeEarned>(800000)
+                   .leaf<RunAsInstructed>(100,100, 0.0)
+                .end()
+    /*
+    go till line detect
+    */ 
+                .composite<BrainTree::ParallelSequence>(1,2)
+                   .leaf<IsTimeEarned>(1200000)
+                   .leaf<IsColorDetected>(CL_BLACK)
+                   .leaf<RunAsInstructed>(100,100, 0.0)
+                .end()
+    /*
+    if don,t detect turn adjust a little
+    */ 
+                .composite<BrainTree::ParallelSequence>(1,2)
+                   .leaf<IsTimeEarned>(900000)
+                   .leaf<RunAsInstructed>(60,30, 0.0)
+                .end()
+    /*
+    if don,t detect, try to detect again 
+    */ 
+                .composite<BrainTree::ParallelSequence>(1,2)
+                   .leaf<IsColorDetected>(CL_BLACK)
+                   .leaf<RunAsInstructed>(60,30, 0.0)
+                .end()
+    /*
+    Line tlace while
+    */ 
+                .composite<BrainTree::ParallelSequence>(1,2)
+                   .leaf<IsTimeEarned>(5500000)
+                   .leaf<TraceLine>(SPEED_NORM, GS_TARGET, P_CONST, I_CONST, D_CONST, 0.0, TS_NORMAL)
+                .end()
+    /*
+    after passing 3rd gate, go straight while
+    */ 
+                .composite<BrainTree::ParallelSequence>(1,2)
+                   .leaf<IsColorDetected>(CL_JETBLACK)
+                   .leaf<TraceLine>(SPEED_NORM, GS_TARGET, P_CONST, I_CONST, D_CONST, 0.0, TS_NORMAL)
+                .end()
+    /*
+    go till color detect
+    */ 
+                .composite<BrainTree::ParallelSequence>(1,2)
+                   .leaf<IsDistanceEarned>(30)
+                   .leaf<RunAsInstructed>(50,50, 0.0)
+                .end()
+                .composite<BrainTree::ParallelSequence>(1,2)
+                   .leaf<IsDistanceEarned>(30)
+                   .leaf<RunAsInstructed>(50,60, 0.0)
+                .end()
+    /*
+    if don,t detect, try to detect
+    */ 
+                .composite<BrainTree::ParallelSequence>(1,2)
+                   .leaf<IsColorDetected>(CL_BLACK)
+                   .leaf<RunAsInstructed>(100,100, 0.0)
+                .end()
+    
+                .composite<BrainTree::ParallelSequence>(1,2)
+                   .leaf<IsTimeEarned>(3000000)
+                   .leaf<TraceLine>(SPEED_NORM, GS_TARGET, P_CONST, I_CONST, D_CONST, 0.0, TS_NORMAL)
+                .end()
+
+                .composite<BrainTree::ParallelSequence>(1,2)
+                   .leaf<IsColorDetected>(CL_JETBLACK)
+                   .leaf<TraceLine>(SPEED_NORM, GS_TARGET, P_CONST, I_CONST, D_CONST, 0.0, TS_NORMAL)
+                .end()
+                
+                .composite<BrainTree::ParallelSequence>(1,2)
+                   .leaf<IsDistanceEarned>(20)
+                   .leaf<RunAsInstructed>(50,50, 0.0)
+                .end()
+                .composite<BrainTree::ParallelSequence>(1,2)
+                   .leaf<IsColorDetected>(CL_BLACK)
+                   .leaf<RunAsInstructed>(50,60, 0.0)
+                .end()
+
+                .composite<BrainTree::ParallelSequence>(1,2)
+                   .composite<BrainTree::MemSequence>()
+                      .leaf<IsColorDetected>(CL_BLACK)
+                      .leaf<IsColorDetected>(CL_BLUE)
+                   .end()
+                   .leaf<TraceLine>(SPEED_NORM, GS_TARGET, P_CONST, I_CONST, D_CONST, 0.0, TS_NORMAL)
+                .end()
+                
             .end()
-            .leaf<TraceLine>(SPEED_NORM, GS_TARGET, P_CONST, I_CONST, D_CONST, 0.0, TS_NORMAL)
+
         .end()
         .build();
 
@@ -717,8 +848,31 @@ void update_task(intptr_t unused) {
     ER ercd;
 
     colorSensor->sense();
+    rgb_raw_t cur_rgb;
+    colorSensor->getRawColor(cur_rgb);
+
+    // for test
     plotter->plot();
 
+    // for test
+    rgb_raw_t cur_rgb;
+
+    colorSensor->getRawColor(cur_rgb);
+    int32_t distance = plotter->getDistance();
+    int16_t azimuth = plotter->getAzimuth();
+    int16_t degree = plotter->getDegree();
+    int32_t locX = plotter->getLocX();
+    int32_t locY = plotter->getLocY();
+    int32_t ang = plotter->getAngL();
+    int32_t angR = plotter->getAngR();
+
+    int32_t sonarDistance = sonarSensor->getDistance();
+
+    _log("r=%d g=%d b=%d",cur_rgb.r,cur_rgb.g,cur_rgb.b);
+
+    _log("dist=%d azi=%d deg=%d locX=%d locY=%d ang=%d angR=%d",distance,azimuth,degree,locX,locY,ang,angR);
+    _log("sonar=%d",sonarDistance);
+    
 /*
     === STATE MACHINE DEFINITION STARTS HERE ===
     The robot behavior is defined using HFSM (Hierarchical Finite State Machine) with two hierarchies as a whole where:

@@ -72,12 +72,16 @@ extern Plotter*     plotter;
 /* macro to covert an enumeration constant to a string */
 #define STR(var) #var
 
-/* macro for making program compatible for both left and right courses.
+#if defined(MAKE_SIM)
+  /* macro for making program compatible for both left and right courses.
    the default is left course. */ 
-#if defined(MAKE_RIGHT)
+  #if defined(MAKE_RIGHT)
     static const int _COURSE = -1;
-#else
+  #else
     static const int _COURSE = 1;
+  #endif /* defined(MAKE_RIGHT) */
+#else
+static int _COURSE;
 #endif
 
 /* these parameters are intended to be given as a compiler directive,
@@ -98,8 +102,16 @@ extern Plotter*     plotter;
 #define D_CONST                 0.08D
 #endif
 
-#ifndef JUMP
-#define JUMP                    0
+#ifndef JUMP_CALIBRATION
+#define JUMP_CALIBRATION        0
+#endif
+
+#ifndef JUMP_SLALOM
+#define JUMP_SLALOM             false
+#endif
+
+#ifndef JUMP_BLOCK
+#define JUMP_BLOCK              0
 #endif
 
 #ifndef LOG_INTERVAL
@@ -114,11 +126,17 @@ extern Plotter*     plotter;
 
 enum Color {
     CL_JETBLACK,
+    CL_JETBLACK_YMNK,
     CL_BLACK,
     CL_BLUE,
+    CL_BLUE_SL,
+    CL_BLUE2,
     CL_RED,
+    CL_RED_SL,
     CL_YELLOW,
+    CL_YELLOW_SL,
     CL_GREEN,
+    CL_GREEN_SL,
     CL_GRAY,
     CL_WHITE,
 };
@@ -133,8 +151,16 @@ enum State {
     ST_INITIAL,
     ST_CALIBRATION,
     ST_RUN,
-    ST_SLALOM,
-    ST_BLOCK,
+    ST_SLALOM_FIRST,
+    ST_SLALOM_CHECK,
+    ST_SLALOM_SECOND_A,
+    ST_SLALOM_SECOND_B,
+    ST_BLOCK_R,
+    ST_BLOCK_G,
+    ST_BLOCK_B,
+    ST_BLOCK_Y,
+    ST_BLOCK_D,
+    ST_BLOCK_D2,
     ST_ENDING,
     ST_END,
 };
