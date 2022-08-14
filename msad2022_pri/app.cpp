@@ -4,6 +4,7 @@
 */
 #include "BrainTree.h"
 #include "Profile.hpp"
+#include "Video.hpp"
 /*
     BrainTree.h must present before ev3api.h on RasPike environment.
     Note that ev3api.h is included by app.h.
@@ -33,6 +34,7 @@ SRLF*           srlfR;
 FilteredMotor*  rightMotor;
 Motor*          armMotor;
 Plotter*        plotter;
+Video*          video;
 
 BrainTree::BehaviorTree* tr_calibration = nullptr;
 BrainTree::BehaviorTree* tr_run         = nullptr;
@@ -664,6 +666,7 @@ void main_task(intptr_t unused) {
     //assert(bt != NULL);
     /* create and initialize EV3 objects */
     ev3clock    = new Clock();
+    video       = new Video();
     touchSensor = new TouchSensor(PORT_1);
     // temp fix 2022/6/20 W.Taniguchi, new SonarSensor() blocks apparently
     sonarSensor = new SonarSensor(PORT_3);
@@ -692,6 +695,7 @@ void main_task(intptr_t unused) {
     Filter *lpf_b = new FIR_Transposed(hn, FIR_ORDER);
     colorSensor->setRawColorFilters(lpf_r, lpf_g, lpf_b);
 
+    gyroSensor->reset();
     leftMotor->reset();
     srlfL = new SRLF(0.0);
     leftMotor->setPWMFilter(srlfL);
@@ -729,7 +733,18 @@ void main_task(intptr_t unused) {
 
     /* BEHAVIOR FOR THE RIGHT COURSE STARTS HERE */
     if (prof->getValueAsStr("COURSE") == "R") {
-      tr_run = nullptr;
+      _COURSE = -1;
+
+      tr_run = (BrainTree::BehaviorTree*) BrainTree::Builder()
+        .composite<BrainTree::ParallelSequence>(1,2)
+            .leaf<TraceLine>(prof->getValueAsNum("SPEED"),
+			     prof->getValueAsNum("GS_TARGET"),
+			     prof->getValueAsNum("P_CONST"),
+			     prof->getValueAsNum("I_CONST"),
+			     prof->getValueAsNum("D_CONST"), 0.0, TS_NORMAL)
+	    .leaf<IsDistanceEarned>(2000)
+        .end()
+      .build();
       tr_slalom_first = nullptr;
       tr_slalom_check = nullptr;
       tr_slalom_second_a = nullptr;
@@ -739,8 +754,13 @@ void main_task(intptr_t unused) {
       tr_block_b     = nullptr;
       tr_block_y     = nullptr;
       tr_block_d     = nullptr;
+      tr_block = (BrainTree::BehaviorTree*) BrainTree::Builder()
+	    .leaf<StopNow>()
+	  .build();
 
     } else { /* BEHAVIOR FOR THE LEFT COURSE STARTS HERE */
+      _COURSE = 1;
+
       tr_run = (BrainTree::BehaviorTree*) BrainTree::Builder()
         .composite<BrainTree::ParallelSequence>(1,2)
             .leaf<IsBackOn>()
@@ -1578,6 +1598,7 @@ void main_task(intptr_t unused) {
 */
 
     /* register cyclic handler to EV3RT */
+    sta_cyc(CYC_VIDEO_TSK);
     sta_cyc(CYC_UPD_TSK);
 
     /* indicate initialization completion by LED color */
@@ -1595,6 +1616,11 @@ void main_task(intptr_t unused) {
 
     /* deregister cyclic handler from EV3RT */
     stp_cyc(CYC_UPD_TSK);
+    stp_cyc(CYC_VIDEO_TSK);
+    _log("wait for update task to cease, going to sleep 3 secs");
+    ev3clock->sleep(3000000);
+    _log("wait finished");
+
     /* destroy behavior tree */
     delete tr_block_r;
     delete tr_block_g;
@@ -1621,6 +1647,7 @@ void main_task(intptr_t unused) {
     delete colorSensor;
     delete sonarSensor;
     delete touchSensor;
+    delete video;
     delete ev3clock;
     _log("being terminated...");
     // temp fix 2022/6/20 W.Taniguchi, as Bluetooth not implemented yet
@@ -1631,6 +1658,14 @@ void main_task(intptr_t unused) {
     ext_tsk();
 }
 
+/* periodic task to handle video */
+void video_task(intptr_t unused) {
+    ER ercd;
+    video->capture();
+    video->writeFrame(video->readFrame());    
+    video->show();
+}
+    
 /* periodic task to update the behavior tree */
 void update_task(intptr_t unused) {
     BrainTree::Node::Status status;
@@ -1993,6 +2028,5 @@ void update_task(intptr_t unused) {
 
     rightMotor->drive();
     leftMotor->drive();
-
     //logger->outputLog(LOG_INTERVAL);
 }
