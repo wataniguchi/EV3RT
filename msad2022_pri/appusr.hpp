@@ -1,7 +1,7 @@
 /*
     appusr.hpp
 
-    Copyright © 2021 Wataru Taniguchi. All rights reserved.
+    Copyright © 2022 MSAD Mode2P. All rights reserved.
 */
 #ifndef appusr_hpp
 #define appusr_hpp
@@ -81,7 +81,7 @@ extern Plotter*     plotter;
     static const int _COURSE = 1;
   #endif /* defined(MAKE_RIGHT) */
 #else
-static int _COURSE;
+static int _COURSE = 1;
 #endif
 
 /* these parameters are intended to be given as a compiler directive,
@@ -166,8 +166,9 @@ enum State {
 };
 
 enum TraceSide {
-    TS_NORMAL,
-    TS_OPPOSITE,
+    TS_NORMAL = 0,
+    TS_OPPOSITE = 1,
+    TS_CENTER = 2,
 };
 
 #endif /* appusr_hpp */
