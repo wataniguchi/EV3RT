@@ -561,8 +561,8 @@ void main_task(intptr_t unused) {
     rightMotor  = new FilteredMotor(PORT_B);
     armMotor    = new Motor(PORT_A);
     plotter     = new Plotter(leftMotor, rightMotor, gyroSensor);
-    /* read profile file and make the profile object ready */
-    prof        = new Profile("msad2022_pri/profile.txt");
+    /* read profile files and make the profile object ready */
+    prof        = new Profile("msad2022_pri/*profile.txt");
     /* determine the course L or R */
     if (prof->getValueAsStr("COURSE") == "R") {
       _COURSE = -1;
@@ -593,28 +593,17 @@ void main_task(intptr_t unused) {
 
 /*
     === BEHAVIOR TREE DEFINITION STARTS HERE ===
-    A Behavior Tree serves as a blueprint for a LEGO object while a Node class serves as each Lego block used in the object.
+    A Behavior Tree serves as a blueprint for a LEGO object
+    while a Node class serves as each Lego block used in the object.
 */
     tr_calibration = (BrainTree::BehaviorTree*) BrainTree::Builder() TR_CALIBRATION .build();
 
-/*
-    DEFINE ROBOT BEHAVIOR AFTER START
-    FOR THE RIGHT AND LEFT COURSE SEPARATELY
-*/ 
-
-    /* BEHAVIOR FOR THE RIGHT COURSE STARTS HERE */
     if (prof->getValueAsStr("COURSE") == "R") {
-      _COURSE = -1;
-      
       tr_run   = (BrainTree::BehaviorTree*) BrainTree::Builder() TR_RUN_R   .build();
       tr_block = (BrainTree::BehaviorTree*) BrainTree::Builder() TR_BLOCK_R .build();
-
-    } else { /* BEHAVIOR FOR THE LEFT COURSE STARTS HERE */
-      _COURSE = 1;
-      
+    } else {
       tr_run   = (BrainTree::BehaviorTree*) BrainTree::Builder() TR_RUN_L   .build();
       tr_block = (BrainTree::BehaviorTree*) BrainTree::Builder() TR_BLOCK_L .build();
-
     }
 /*
     === BEHAVIOR TREE DEFINITION ENDS HERE ===
