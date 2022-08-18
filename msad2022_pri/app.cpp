@@ -17,6 +17,10 @@
 #include <numeric>
 #include <math.h>
 
+/* behavior tree stanza files */
+#include "tr_calibration.h"
+#include "tr_run.h"
+#include "tr_block.h"
 
 /* this is to avoid linker error, undefined reference to `__sync_synchronize' */
 extern "C" void __sync_synchronize() {}
@@ -591,76 +595,27 @@ void main_task(intptr_t unused) {
     === BEHAVIOR TREE DEFINITION STARTS HERE ===
     A Behavior Tree serves as a blueprint for a LEGO object while a Node class serves as each Lego block used in the object.
 */
-
-    /* robot starts when touch sensor is turned on */
-    tr_calibration = (BrainTree::BehaviorTree*) BrainTree::Builder()
-        .composite<BrainTree::MemSequence>()
-            // temp fix 2022/6/20 W.Taniguchi, as no touch sensor available on RasPike
-            //.decorator<BrainTree::UntilSuccess>()
-            //    .leaf<IsTouchOn>()
-            //.end()
-            .leaf<ResetClock>()
-        .end()
-        .build();
+    tr_calibration = (BrainTree::BehaviorTree*) BrainTree::Builder() TR_CALIBRATION .build();
 
 /*
     DEFINE ROBOT BEHAVIOR AFTER START
     FOR THE RIGHT AND LEFT COURSE SEPARATELY
-
-    if (prof->getValueAsStr("COURSE") == "R") {
-    } else {
-    }
 */ 
 
     /* BEHAVIOR FOR THE RIGHT COURSE STARTS HERE */
     if (prof->getValueAsStr("COURSE") == "R") {
       _COURSE = -1;
-      tr_run = (BrainTree::BehaviorTree*) BrainTree::Builder()
-        .composite<BrainTree::ParallelSequence>(1,2)
-            .leaf<TraceLine>(prof->getValueAsNum("SPEED"),
-			     prof->getValueAsNum("GS_TARGET"),
-			     prof->getValueAsNum("P_CONST"),
-			     prof->getValueAsNum("I_CONST"),
-			     prof->getValueAsNum("D_CONST"), 0.0, TS_NORMAL)
-	    .leaf<IsDistanceEarned>(2000)
-        .end()
-        .build();
-      tr_block = (BrainTree::BehaviorTree*) BrainTree::Builder()
-	.leaf<StopNow>()
-	.build();
+      
+      tr_run   = (BrainTree::BehaviorTree*) BrainTree::Builder() TR_RUN_R   .build();
+      tr_block = (BrainTree::BehaviorTree*) BrainTree::Builder() TR_BLOCK_R .build();
 
     } else { /* BEHAVIOR FOR THE LEFT COURSE STARTS HERE */
       _COURSE = 1;
-      tr_run = (BrainTree::BehaviorTree*) BrainTree::Builder()
-        .composite<BrainTree::ParallelSequence>(1,3)
-            .leaf<IsBackOn>()
-            /*
-            ToDo: earned distance is not calculated properly parhaps because the task is NOT invoked every 10ms as defined in app.h on RasPike.
-              Identify a realistic PERIOD_UPD_TSK.  It also impacts PID calculation.
-            */
-            .leaf<IsDistanceEarned>(1000)
-            .composite<BrainTree::MemSequence>()
-                .leaf<IsColorDetected>(CL_BLACK)
-                .leaf<IsColorDetected>(CL_BLUE)
-            .end()
-            .leaf<TraceLine>(SPEED_NORM, GS_TARGET, P_CONST, I_CONST, D_CONST, 0.0, TS_NORMAL)
-        .end()
-        .build();
+      
+      tr_run   = (BrainTree::BehaviorTree*) BrainTree::Builder() TR_RUN_L   .build();
+      tr_block = (BrainTree::BehaviorTree*) BrainTree::Builder() TR_BLOCK_L .build();
 
-      tr_block = (BrainTree::BehaviorTree*) BrainTree::Builder()
-        .composite<BrainTree::MemSequence>()
-            .leaf<StopNow>()
-            .leaf<IsTimeEarned>(3000000) // wait 3 seconds
-            .composite<BrainTree::ParallelSequence>(1,3)
-                .leaf<IsTimeEarned>(10000000) // break after 10 seconds
-                .leaf<RunAsInstructed>(-50,-25,0.5)
-            .end()
-            .leaf<StopNow>()
-        .end()
-        .build();
-
-    } /* if (prof->getValueAsStr("COURSE") == "R") */
-
+    }
 /*
     === BEHAVIOR TREE DEFINITION ENDS HERE ===
 */
