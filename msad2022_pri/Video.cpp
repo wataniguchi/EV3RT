@@ -66,6 +66,7 @@ Video::Video() {
   gsmin = 0;
   gsmax = 100;
   side = 0;
+  rangeOfEdges = 0;
 }
 
 Video::~Video() {
@@ -231,6 +232,7 @@ Mat Video::calculateTarget(Mat f) {
     auto scan_line_nc = nc::NdArray<nc::uint8>(scan_line.data, scan_line.rows, scan_line.cols);
     auto edges = scan_line_nc.flatnonzero();
     if (edges.size() >= 2) {
+      rangeOfEdges = edges[edges.size()-1] - edges[0];
       if (side == 0) {
 	mx = edges[0];
       } else if (side == 1) {
@@ -239,11 +241,14 @@ Mat Video::calculateTarget(Mat f) {
 	mx = (int)((edges[0]+edges[edges.size()-1]) / 2);
       }
     } else if (edges.size() == 1) {
+      rangeOfEdges = 1;
       mx = edges[0];
     }
   } else { /* contours.size() == 0 */
+    rangeOfEdges = 0;
     roi = Rect(0, 0, FRAME_WIDTH, FRAME_HEIGHT);
   }
+  //_logNoAsp("roe = %d", rangeOfEdges);
 
   /* draw the area of interest on the original image */
   rectangle(f, Point(roi.x,roi.y), Point(roi.x+roi.width,roi.y+roi.height), Scalar(255,0,0), LINE_THICKNESS);
@@ -259,7 +264,7 @@ Mat Video::calculateTarget(Mat f) {
   /* calculate the rotation in degree (z-axis)
      284 is distance from axle to the closest horizontal line on ground the camera can see */
   theta = 180 * atan(vxm / 284) / M_PI;
-  //_log("mx = %d, vxm = %d, theta = %d", mx, (int)vxm, (int)theta);
+  //_logNoAsp("mx = %d, vxm = %d, theta = %d", mx, (int)vxm, (int)theta);
 
   return f;
 }
@@ -282,6 +287,10 @@ void Video::show() {
 
 float Video::getTheta() {
   return theta;
+}
+
+int Video::getRangeOfEdges() {
+  return rangeOfEdges;
 }
 
 void Video::setThresholds(int gsMin, int gsMax) {

@@ -3,7 +3,7 @@
 
 #define TR_BLOCK_L \
   .composite<BrainTree::MemSequence>()		\
-    .leaf<StopNow>()
+    .leaf<StopNow>()	\
 /*					  \
     .leaf<IsTimeEarned>(3000000)	  \
     .composite<BrainTree::ParallelSequence>(1,3)			   \
@@ -11,5 +11,5 @@
       .leaf<RunAsInstructed>(50,25,0.5)					\
     .end()								\
     .leaf<StopNow>()							\
-*/
+*/ \
   .end()

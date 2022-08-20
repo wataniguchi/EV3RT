@@ -279,6 +279,7 @@ protected:
 */
 class IsColorDetected : public BrainTree::Node {
 public:
+    static Color garageColor;
     IsColorDetected(Color c) : color(c) {
         updated = false;
     }
@@ -297,44 +298,85 @@ public:
                     return Status::Success;
                 }
                 break;
-            case CL_BLACK:
+            case CL_JETBLACK_YMNK:
+                 if (cur_rgb.r <=11 && cur_rgb.g <=13 && cur_rgb.b <=15) { 
+                     _log("ODO=%05d, CL_JETBLACK_YMNK detected.", plotter->getDistance());
+                     return Status::Success;
+                 }
+                 break;
+	    case CL_BLACK:
                 if (cur_rgb.r <=50 && cur_rgb.g <=45 && cur_rgb.b <=60) {
                     _log("ODO=%05d, CL_BLACK detected.", plotter->getDistance());
                     return Status::Success;
                 }
                 break;
             case CL_BLUE:
-                if (cur_rgb.b - cur_rgb.r > 45 && cur_rgb.b <= 255 && cur_rgb.r <= 255) {
+               if (cur_rgb.b - cur_rgb.r > 35 && cur_rgb.g >= 55 && cur_rgb.b <= 100 && cur_rgb.b >= 70) {
                     _log("ODO=%05d, CL_BLUE detected.", plotter->getDistance());
                     return Status::Success;
                 }
                 break;
+            case CL_BLUE_SL:
+                 if (cur_rgb.b - cur_rgb.r > 20 && cur_rgb.g <= 100 && cur_rgb.b <= 120) {
+                     garageColor = CL_BLUE_SL;
+                     _log("ODO=%05d, CL_BLUE_SL detected.", plotter->getDistance());
+                     return Status::Success;
+                 }
+                 break;
+             case CL_BLUE2:
+                 if (cur_rgb.r <= 20 && cur_rgb.g <= 40 && cur_rgb.b >= 44 && cur_rgb.b - cur_rgb.r > 20) {
+ //                if (cur_rgb.r <= 20 && cur_rgb.g <= 55 && cur_rgb.b >= 55 && cur_rgb.b - cur_rgb.r > 20) {
+                     _log("ODO=%05d, CL_BLUE2 detected.", plotter->getDistance());
+                     return Status::Success;
+                 }
+                 break;
             case CL_RED:
-                if (cur_rgb.r - cur_rgb.b >= 40 && cur_rgb.g < 60 && cur_rgb.r - cur_rgb.g > 30) {
+                if (cur_rgb.r - cur_rgb.b >= 30 && cur_rgb.r > 80 && cur_rgb.g < 45) {
                     _log("ODO=%05d, CL_RED detected.", plotter->getDistance());
                     return Status::Success;
                 }
                 break;
+            case CL_RED_SL:
+                 if (cur_rgb.r - cur_rgb.b >= 25 && cur_rgb.r > 85 && cur_rgb.g < 60) {
+                     garageColor = CL_RED_SL;
+                     _log("ODO=%05d, CL_RED_SL detected.", plotter->getDistance());
+                     return Status::Success;
+                 }
+                 break;
             case CL_YELLOW:
-                if (cur_rgb.r + cur_rgb.g - cur_rgb.b >= 130 &&  cur_rgb.r - cur_rgb.g <= 30) {
+                if (cur_rgb.r >= 90 &&  cur_rgb.g >= 90 && cur_rgb.b <= 75) {
                     _log("ODO=%05d, CL_YELLOW detected.", plotter->getDistance());
                     return Status::Success;
                 }
                 break;
+            case CL_YELLOW_SL:
+                 if (cur_rgb.r >= 110 &&  cur_rgb.g >= 90 && cur_rgb.b >= 50 && cur_rgb.b <= 120 ) {
+                     garageColor = CL_YELLOW_SL;
+                     _log("ODO=%05d, CL_YELLOW_SL detected.", plotter->getDistance());
+                     return Status::Success;
+                 }
+                 break;
             case CL_GREEN:
-                if (cur_rgb.r <= 10 && cur_rgb.b <= 35 && cur_rgb.g > 43) {
+                if (cur_rgb.g - cur_rgb.r > 20 && cur_rgb.g >= 40 && cur_rgb.r <= 100) {
                     _log("ODO=%05d, CL_GREEN detected.", plotter->getDistance());
                     return Status::Success;
                 }
                 break;
-            case CL_GRAY:
-                if (cur_rgb.r <=80 && cur_rgb.g <=75 && cur_rgb.b <=105) {
+            case CL_GREEN_SL:
+                 if (cur_rgb.b - cur_rgb.r < 30 && cur_rgb.g >= 30 && cur_rgb.b <= 80) {
+                     garageColor = CL_GREEN_SL;
+                     _log("ODO=%05d, CL_GREEN_SL detected.", plotter->getDistance());
+                     return Status::Success;
+                 }   
+                 break;
+	    case CL_GRAY:
+                if (cur_rgb.r >= 45 && cur_rgb.g <=60 && cur_rgb.b <= 65 && cur_rgb.r <= 52 && cur_rgb.b >= 53) {
                     _log("ODO=%05d, CL_GRAY detected.", plotter->getDistance());
                     return Status::Success;
                 }
                 break;
             case CL_WHITE:
-                if (cur_rgb.r >= 82 && cur_rgb.b >= 112 && cur_rgb.g >= 78) {
+	        if (cur_rgb.r >= 100 && cur_rgb.g >= 100 && cur_rgb.b >= 100 ) {
                     _log("ODO=%05d, CL_WHITE detected.", plotter->getDistance());
                     return Status::Success;
                 }
@@ -347,6 +389,88 @@ public:
 protected:
     Color color;
     bool updated;
+};
+Color IsColorDetected::garageColor = CL_BLUE_SL;    // define default color as blue
+
+/*
+    usage:
+    ".leaf<IsJunction>(jstate)"
+    is to determine if a junction is captured in sight as the specified state.
+    jstate is one of the following:
+      JST_JOINING: lines are joining
+      JST_JOINED: the join completed
+      JST_FORKING: lines are forking
+      JST_FORKED: the fork completed
+*/
+class IsJunction : public BrainTree::Node {
+public:
+    IsJunction(JState s) : targetState(s) {
+        updated = false;
+	reached = false;
+	prevRoe = 0;
+        currentState = JST_INITIAL;
+    }
+    Status update() override {
+        if (!updated) {
+            _log("ODO=%05d, Junction scan started.", plotter->getDistance());
+             updated = true;
+        }
+	
+	int roe = video->getRangeOfEdges();
+	//_log("ODO=%05d, roe = %d", plotter->getDistance(), roe);
+
+	if (roe != 0) {
+	  switch (currentState) {
+	  case JST_INITIAL:
+	    if ((targetState == JST_JOINING ||
+		 targetState == JST_JOINED) &&
+		roe >= JUNCTION_UPPER_THRESHOLD &&
+		prevRoe <= JUNCTION_LOWER_THRESHOLD) {
+	      currentState = JST_JOINING;
+	      _log("ODO=%05d, lines are joining.", plotter->getDistance());
+	    } else if ((targetState == JST_FORKING ||
+			targetState == JST_FORKED) &&
+		       roe >= JUNCTION_LOWER_THRESHOLD &&
+		       prevRoe <= JUNCTION_LOWER_THRESHOLD) {
+	      currentState = JST_FORKING;
+	      _log("ODO=%05d, lines are forking.", plotter->getDistance());
+	    }
+	    break;
+	  case JST_JOINING:
+	    if (roe <= JUNCTION_LOWER_THRESHOLD) {
+	      currentState = JST_JOINED;
+	      _log("ODO=%05d, the join completed.", plotter->getDistance());
+	    }
+	    break;
+	  case JST_FORKING:
+	    if (roe <= JUNCTION_LOWER_THRESHOLD &&
+		prevRoe >= JUNCTION_UPPER_THRESHOLD) {
+	      currentState = JST_FORKED;
+	      _log("ODO=%05d, the fork completed.", plotter->getDistance());
+	    }
+	    break;
+	  case JST_JOINED:
+	  case JST_FORKED:
+	  default:
+	    break;
+	  }
+	}
+	prevRoe = roe;
+
+        if (currentState == targetState) {
+            if (!reached) {
+                 _log("ODO=%05d, Junction state is reached.", plotter->getDistance());
+                reached = true;
+            }
+            return Status::Success;
+        } else {
+            return Status::Running;
+        }
+    }
+protected:
+    JState targetState, currentState;
+    int prevRoe;
+    bool updated, reached;
 };
 
 /*

@@ -118,14 +118,22 @@ static int _COURSE = 1;
 #define SONAR_ALERT_DISTANCE    100     /* in millimeter                           */
 #define ARM_INITIAL_ANGLE       -58
 #define ARM_SHIFT_PWM           100
+#define JUNCTION_LOWER_THRESHOLD 45
+#define JUNCTION_UPPER_THRESHOLD 60
 
 enum Color {
     CL_JETBLACK,
+    CL_JETBLACK_YMNK,
     CL_BLACK,
     CL_BLUE,
+    CL_BLUE_SL,
+    CL_BLUE2,
     CL_RED,
+    CL_RED_SL,
     CL_YELLOW,
+    CL_YELLOW_SL,
     CL_GREEN,
+    CL_GREEN_SL,
     CL_GRAY,
     CL_WHITE,
 };
@@ -149,6 +157,14 @@ enum TraceSide {
     TS_NORMAL = 0,
     TS_OPPOSITE = 1,
     TS_CENTER = 2,
+};
+
+enum JState {
+    JST_INITIAL, /* internally used by IsJunction class */
+    JST_JOINING,
+    JST_JOINED,
+    JST_FORKING,
+    JST_FORKED,
 };
 
 #endif /* appusr_hpp */

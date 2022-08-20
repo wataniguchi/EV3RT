@@ -63,7 +63,7 @@ protected:
   unsigned long* buf;
   Font font;
   char strbuf[4][40];
-  int mx, gsmin, gsmax, side;
+  int mx, gsmin, gsmax, side, rangeOfEdges;
   float theta;
 public:
   Video();
@@ -72,6 +72,7 @@ public:
   Mat calculateTarget(Mat f);
   void show();
   float getTheta();
+  int getRangeOfEdges();
   void setThresholds(int gsMin, int gsMax);
   void setTraceSide(int traceSide);
   ~Video();
