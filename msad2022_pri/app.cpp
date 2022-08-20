@@ -364,31 +364,31 @@ protected:
 */
 class TraceLineCam : public BrainTree::Node {
 public:
-  TraceLineCam(int s, double p, double i, double d, int gs_min, int gs_max, double srew_rate, TraceSide trace_side) : speed(s),srewRate(srew_rate) {
+  TraceLineCam(int s, double p, double i, double d, int gs_min, int gs_max, double srew_rate, TraceSide trace_side) : speed(s),gsMin(gs_min),gsMax(gs_max),srewRate(srew_rate),side(trace_side) {
         updated = false;
         ltPid = new PIDcalculator(p, i, d, PERIOD_UPD_TSK, -speed, speed);
-	video->setThresholds(gs_min, gs_max);
-	if (trace_side == TS_NORMAL) {
-	  if (_COURSE == -1) { /* right course */
-	    video->setTraceSide(1);
-	  } else {
-	    video->setTraceSide(0);
-	  }
-	} else if (trace_side == TS_OPPOSITE) {
-	  if (_COURSE == -1) { /* right course */
-	    video->setTraceSide(0);
-	  } else {
-	    video->setTraceSide(1);
-	  }
-	} else {
-	  video->setTraceSide(2);
-	}
     }
     ~TraceLineCam() {
         delete ltPid;
     }
     Status update() override {
         if (!updated) {
+	    video->setThresholds(gsMin, gsMax);
+	    if (side == TS_NORMAL) {
+	      if (_COURSE == -1) { /* right course */
+	        video->setTraceSide(1);
+	      } else {
+	        video->setTraceSide(0);
+	      }
+	    } else if (side == TS_OPPOSITE) {
+	      if (_COURSE == -1) { /* right course */
+		video->setTraceSide(0);
+	      } else {
+		video->setTraceSide(1);
+	      }
+	    } else {
+	      video->setTraceSide(2);
+	    }
             /* The following code chunk is to properly set prevXin in SRLF */
             srlfL->setRate(0.0);
             leftMotor->setPWM(leftMotor->getPWM());
@@ -398,20 +398,10 @@ public:
             updated = true;
         }
 
-	/* calculate variance of mx from the center in pixel */
-	int vxp = video->getMx() - (int)(FRAME_WIDTH/2);
-	/* convert the variance from pixel to milimeters
-	   72 is length of the closest horizontal line on ground within the camera vision */
-	float vxm = vxp * 72 / FRAME_WIDTH;
-	/* calculate the rotation in degree (z-axis)
-	   284 is distance from axle to the closest horizontal line on ground the camera can see */
-	float theta = 180 * atan(vxm / 284) / M_PI;
-	//_log("mx = %d, vxm = %d, theta = %d", video->getMx(), (int)vxm, (int)theta);
-	
         int8_t backward, turn, pwmL, pwmR;
 
         /* compute necessary amount of steering by PID control */
-        turn = (-1) * ltPid->compute(theta, 0); /* 0 is the center */
+        turn = (-1) * ltPid->compute((int16_t)video->getTheta(), 0); /* 0 is the center */
         backward = -speed;
         /* steer EV3 by setting different speed to the motors */
         pwmL = backward - turn;
@@ -423,9 +413,10 @@ public:
         return Status::Running;
     }
 protected:
-    int speed;
+    int speed, gsMin, gsMax;
     PIDcalculator* ltPid;
     double srewRate;
+    TraceSide side;
     bool updated;
 };
 
@@ -655,7 +646,7 @@ public:
       }
       std::this_thread::yield();
     }
-    _log("sub-thread ready to join. # of execution = %d", vcap_thd_count);
+    _logNoAsp("sub-thread ready to join. # of execution = %d", vcap_thd_count);
   }
 };
 
@@ -689,9 +680,9 @@ public:
 	std::this_thread::yield();
       }
     }
-    _log("sub-thread ready to join. # of execution = %d", vshow_thd_count);
+    _logNoAsp("sub-thread ready to join. # of execution = %d", vshow_thd_count);
 #if defined(BENCHMARK)
-    _log("elapsed time from capture to transmission (micro sec): max = %d, min = %d, mean = %d",
+    _logNoAsp("elapsed time from capture to transmission (micro sec): max = %d, min = %d, mean = %d",
 	 (int)(*std::max_element(std::begin(elaps_till_show),std::end(elaps_till_show))),
 	 (int)(*std::min_element(std::begin(elaps_till_show),std::end(elaps_till_show))),
 	 (int)(std::accumulate(std::begin(elaps_till_show),std::end(elaps_till_show),0) / vshow_thd_count));

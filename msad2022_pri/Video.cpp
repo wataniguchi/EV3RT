@@ -251,6 +251,16 @@ Mat Video::calculateTarget(Mat f) {
   circle(f, Point(mx, FRAME_HEIGHT-LINE_THICKNESS), CIRCLE_RADIUS, Scalar(0,0,255), -1);
 #endif /* defined(WITH_OPENCV) */
 
+  /* calculate variance of mx from the center in pixel */
+  int vxp = mx - (int)(FRAME_WIDTH/2);
+  /* convert the variance from pixel to milimeters
+     72 is length of the closest horizontal line on ground within the camera vision */
+  float vxm = vxp * 72 / FRAME_WIDTH;
+  /* calculate the rotation in degree (z-axis)
+     284 is distance from axle to the closest horizontal line on ground the camera can see */
+  theta = 180 * atan(vxm / 284) / M_PI;
+  //_log("mx = %d, vxm = %d, theta = %d", mx, (int)vxm, (int)theta);
+
   return f;
 }
 
@@ -270,8 +280,8 @@ void Video::show() {
 #endif
 }
 
-int Video::getMx() {
-  return mx;
+float Video::getTheta() {
+  return theta;
 }
 
 void Video::setThresholds(int gsMin, int gsMax) {

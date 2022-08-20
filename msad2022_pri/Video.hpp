@@ -64,13 +64,14 @@ protected:
   Font font;
   char strbuf[4][40];
   int mx, gsmin, gsmax, side;
+  float theta;
 public:
   Video();
   Mat readFrame();
   void writeFrame(Mat f);
   Mat calculateTarget(Mat f);
   void show();
-  int getMx();
+  float getTheta();
   void setThresholds(int gsMin, int gsMax);
   void setTraceSide(int traceSide);
   ~Video();

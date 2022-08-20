@@ -61,12 +61,18 @@ extern Plotter*     plotter;
 #define _log(fmt, ...) \
     syslog(LOG_NOTICE, "%08u, %s: " fmt, \
     ev3clock->now(), __PRETTY_FUNCTION__, ##__VA_ARGS__)
+#define _logNoAsp(fmt, ...) \
+    syslog(LOG_NOTICE, "%08u, %s: " fmt, \
+    0, __PRETTY_FUNCTION__, ##__VA_ARGS__)
 #else
 #define _log(fmt, ...) \
     printf("%08u, %s: " fmt "\n", \
     ev3clock->now(), __PRETTY_FUNCTION__, ##__VA_ARGS__)
     // temp fix 2022/6/20 W.Taniguchi, as Bluetooth not implemented yet
     /* fprintf(bt, "%08u, %s: " fmt "\n", \ */
+#define _logNoAsp(fmt, ...) \
+    printf("%08u, %s: " fmt "\n", \
+    0, __PRETTY_FUNCTION__, ##__VA_ARGS__)
 #endif
 
 /* macro to covert an enumeration constant to a string */
