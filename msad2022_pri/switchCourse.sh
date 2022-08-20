@@ -6,7 +6,7 @@ usage_exit() {
         exit 1
 }
 
-PROFILE="msad2022_pri/profile.txt"
+PROFILE="msad2022_pri/global_profile.txt"
 QUERY=""
 
 while getopts qh OPT
@@ -22,6 +22,8 @@ do
 done
 
 shift $((OPTIND - 1))
+
+echo "using $PROFILE as input"
 
 if cat "$PROFILE" | grep -q "^COURSE=R\s*$"; then
     LR="right"

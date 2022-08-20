@@ -21,6 +21,10 @@
 #include <numeric>
 #include <math.h>
 
+/* behavior tree stanza files */
+#include "tr_calibration.h"
+#include "tr_run.h"
+#include "tr_block.h"
 
 /* this is to avoid linker error, undefined reference to `__sync_synchronize' */
 extern "C" void __sync_synchronize() {}
@@ -722,8 +726,8 @@ void main_task(intptr_t unused) {
     rightMotor  = new FilteredMotor(PORT_B);
     armMotor    = new Motor(PORT_A);
     plotter     = new Plotter(leftMotor, rightMotor, gyroSensor);
-    /* read profile file and make the profile object ready */
-    prof        = new Profile("msad2022_pri/profile.txt");
+    /* read profile files and make the profile object ready */
+    prof        = new Profile("msad2022_pri/*profile.txt");
     /* determine the course L or R */
     if (prof->getValueAsStr("COURSE") == "R") {
       _COURSE = -1;
@@ -754,96 +758,18 @@ void main_task(intptr_t unused) {
 
 /*
     === BEHAVIOR TREE DEFINITION STARTS HERE ===
-    A Behavior Tree serves as a blueprint for a LEGO object while a Node class serves as each Lego block used in the object.
+    A Behavior Tree serves as a blueprint for a LEGO object
+    while a Node class serves as each Lego block used in the object.
 */
-
-    /* robot starts when touch sensor is turned on */
-    tr_calibration = (BrainTree::BehaviorTree*) BrainTree::Builder()
-        .composite<BrainTree::MemSequence>()
-            // temp fix 2022/6/20 W.Taniguchi, as no touch sensor available on RasPike
-            //.decorator<BrainTree::UntilSuccess>()
-            //    .leaf<IsTouchOn>()
-            //.end()
-            .leaf<ResetClock>()
-        .end()
-        .build();
-
-/*
-    DEFINE ROBOT BEHAVIOR AFTER START
-    FOR THE RIGHT AND LEFT COURSE SEPARATELY
+    tr_calibration = (BrainTree::BehaviorTree*) BrainTree::Builder() TR_CALIBRATION .build();
 
     if (prof->getValueAsStr("COURSE") == "R") {
+      tr_run   = (BrainTree::BehaviorTree*) BrainTree::Builder() TR_RUN_R   .build();
+      tr_block = (BrainTree::BehaviorTree*) BrainTree::Builder() TR_BLOCK_R .build();
     } else {
+      tr_run   = (BrainTree::BehaviorTree*) BrainTree::Builder() TR_RUN_L   .build();
+      tr_block = (BrainTree::BehaviorTree*) BrainTree::Builder() TR_BLOCK_L .build();
     }
-*/ 
-
-    /* BEHAVIOR FOR THE RIGHT COURSE STARTS HERE */
-    if (prof->getValueAsStr("COURSE") == "R") {
-      _COURSE = -1;
-      tr_run = (BrainTree::BehaviorTree*) BrainTree::Builder()
-        .composite<BrainTree::MemSequence>()
-	/*
-          .composite<BrainTree::ParallelSequence>(1,2)
-            .leaf<TraceLine>(prof->getValueAsNum("SPEED"),
-			     prof->getValueAsNum("GS_TARGET"),
-			     prof->getValueAsNum("P_CONST"),
-			     prof->getValueAsNum("I_CONST"),
-			     prof->getValueAsNum("D_CONST"), 0.0,
-			     (TraceSide)prof->getValueAsNum("TR_TS"))
-	    .leaf<IsDistanceEarned>(prof->getValueAsNum("TR_DIST"))
-	  .end()
-	*/
-          .composite<BrainTree::ParallelSequence>(1,2)
-            .leaf<TraceLineCam>(prof->getValueAsNum("CAM_SPEED"),
-			     prof->getValueAsNum("CAM_P_CONST"),
-			     prof->getValueAsNum("CAM_I_CONST"),
-			     prof->getValueAsNum("CAM_D_CONST"),
-			     prof->getValueAsNum("CAM_GS_MIN"),
-			     prof->getValueAsNum("CAM_GS_MAX"), 0.0,
-			     (TraceSide)prof->getValueAsNum("CAM_TS"))
-	    .leaf<IsDistanceEarned>(prof->getValueAsNum("TR_DIST"))
-	    //.leaf<IsTimeEarned>(prof->getValueAsNum("CAM_TIME"))
-          .end()
-	.end()
-        .build();
-      tr_block = (BrainTree::BehaviorTree*) BrainTree::Builder()
-	.leaf<StopNow>()
-	.build();
-
-    } else { /* BEHAVIOR FOR THE LEFT COURSE STARTS HERE */
-      _COURSE = 1;
-      tr_run = (BrainTree::BehaviorTree*) BrainTree::Builder()
-        .composite<BrainTree::MemSequence>()
-	/*
-          .composite<BrainTree::ParallelSequence>(1,2)
-            .leaf<TraceLine>(prof->getValueAsNum("SPEED"),
-			     prof->getValueAsNum("GS_TARGET"),
-			     prof->getValueAsNum("P_CONST"),
-			     prof->getValueAsNum("I_CONST"),
-			     prof->getValueAsNum("D_CONST"), 0.0,
-			     (TraceSide)prof->getValueAsNum("TR_TS"))
-	    .leaf<IsDistanceEarned>(prof->getValueAsNum("TR_DIST"))
-	  .end()
-	*/
-          .composite<BrainTree::ParallelSequence>(1,2)
-            .leaf<TraceLineCam>(prof->getValueAsNum("CAM_SPEED"),
-			     prof->getValueAsNum("CAM_P_CONST"),
-			     prof->getValueAsNum("CAM_I_CONST"),
-			     prof->getValueAsNum("CAM_D_CONST"),
-			     prof->getValueAsNum("CAM_GS_MIN"),
-			     prof->getValueAsNum("CAM_GS_MAX"), 0.0,
-			     (TraceSide)prof->getValueAsNum("CAM_TS"))
-	    .leaf<IsDistanceEarned>(prof->getValueAsNum("TR_DIST"))
-	    //.leaf<IsTimeEarned>(prof->getValueAsNum("CAM_TIME"))
-	  .end()
-	.end()
-        .build();
-      tr_block = (BrainTree::BehaviorTree*) BrainTree::Builder()
-	.leaf<StopNow>()
-	.build();
-
-    } /* if (prof->getValueAsStr("COURSE") == "R") */
-
 /*
     === BEHAVIOR TREE DEFINITION ENDS HERE ===
 */
