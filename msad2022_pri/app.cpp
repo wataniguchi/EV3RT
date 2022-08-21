@@ -57,7 +57,7 @@ std::vector<std::uint32_t> upd_interval;
 #endif
 
 int vcap_thd_count = 0;
-int video_process_count = 0;
+int vcal_thd_count = 0;
 int vshow_thd_count = 0;
 /* variables for critical section 1 */
 std::mutex mut1;
@@ -516,27 +516,28 @@ public:
 	    }
             /* The following code chunk is to properly set prevXin in SRLF */
             srlfL->setRate(0.0);
-            //leftMotor->setPWM(leftMotor->getPWM());
+            leftMotor->setPWM(leftMotor->getPWM());
             srlfR->setRate(0.0);
-            //rightMotor->setPWM(rightMotor->getPWM());
+            rightMotor->setPWM(rightMotor->getPWM());
             _log("ODO=%05d, Camera Trace run started.", plotter->getDistance());
             updated = true;
         }
 
         int8_t backward, turn, pwmL, pwmR;
-
+	int theta = video->getTheta();
+	//_log("ODO=%05d, theta = %d", plotter->getDistance(), theta);
+	
         /* compute necessary amount of steering by PID control */
-	int16_t theta = (int16_t)video->getTheta();
-	_log("ODO=%05d, theta = %d", plotter->getDistance(), theta);
         turn = (-1) * ltPid->compute(theta, 0); /* 0 is the center */
+	//_log("ODO=%05d, turn = %d", plotter->getDistance(), turn);
         backward = -speed;
         /* steer EV3 by setting different speed to the motors */
         pwmL = backward - turn;
         pwmR = backward + turn;
         srlfL->setRate(srewRate);
-        //leftMotor->setPWM(pwmL);
+        leftMotor->setPWM(pwmL);
         srlfR->setRate(srewRate);
-        //rightMotor->setPWM(pwmR);
+        rightMotor->setPWM(pwmR);
         return Status::Running;
     }
 protected:
@@ -580,7 +581,7 @@ public:
             updated = true;
         }
 
-        int16_t sensor;
+        int sensor;
         int8_t forward, turn, pwmL, pwmR;
         rgb_raw_t cur_rgb;
 
@@ -588,9 +589,9 @@ public:
         sensor = cur_rgb.r;
         /* compute necessary amount of steering by PID control */
         if (side == TS_NORMAL) {
-            turn = (-1) * _COURSE * ltPid->compute(sensor, (int16_t)target);
+            turn = (-1) * _COURSE * ltPid->compute(sensor, target);
         } else { /* side == TS_OPPOSITE */
-            turn = _COURSE * ltPid->compute(sensor, (int16_t)target);
+            turn = _COURSE * ltPid->compute(sensor, target);
         }
         forward = speed;
         /* steer EV3 by setting different speed to the motors */
@@ -632,16 +633,16 @@ public:
         if (!updated) {
             /* The following code chunk is to properly set prevXin in SRLF */
             srlfL->setRate(0.0);
-            //leftMotor->setPWM(leftMotor->getPWM());
+            leftMotor->setPWM(leftMotor->getPWM());
             srlfR->setRate(0.0);
-            //rightMotor->setPWM(rightMotor->getPWM());
+            rightMotor->setPWM(rightMotor->getPWM());
             _log("ODO=%05d, Instructed run started.", plotter->getDistance());
             updated = true;
         }
         srlfL->setRate(srewRate);
-        //leftMotor->setPWM(pwmL);
+        leftMotor->setPWM(pwmL);
         srlfR->setRate(srewRate);
-        //rightMotor->setPWM(pwmR);
+        rightMotor->setPWM(pwmR);
         return Status::Running;
     }
 protected:
@@ -777,6 +778,53 @@ public:
   }
 };
 
+class vcal_thd {
+public:
+  void operator()(int unused) {
+#if defined(BENCHMARK)
+    std::vector<std::uint32_t> elaps_till_cal;
+#endif
+    std::chrono::system_clock::time_point te_cap_local;
+    while (state != ST_END && state != ST_ENDING) {
+      Mat f;
+      /* critical section 1 */
+      mut1.lock();
+      if (te_cap == te_cap_local) {
+	mut1.unlock(); /* if frame is not changed, skip it */
+      } else {
+#if defined(WITH_OPENCV)
+	f = frame_in.clone();
+#endif
+	te_cap_local = te_cap;
+	mut1.unlock();
+	f = video->calculateTarget(f);
+	std::chrono::system_clock::time_point te_cal_local = std::chrono::system_clock::now();
+	/* critical section 2 */
+	if ( mut2.try_lock() ) {
+#if defined(WITH_OPENCV)
+	  frame_out = f.clone();
+#endif
+	  te_cap_copy = te_cap_local;
+	  te_cal = te_cal_local;
+	  mut2.unlock();
+#if defined(BENCHMARK)
+	  elaps_till_cal.push_back(std::chrono::duration_cast<std::chrono::microseconds>(te_cal_local - te_cap_local).count());
+#endif
+	  vcal_thd_count++;
+	}
+      }
+      std::this_thread::yield();
+    }
+    _logNoAsp("sub-thread ready to join. # of execution = %d", vcal_thd_count);
+#if defined(BENCHMARK)
+    _logNoAsp("elapsed time from capture to calculation (micro sec): max = %d, min = %d, mean = %d",
+	 (int)(*std::max_element(std::begin(elaps_till_cal),std::end(elaps_till_cal))),
+	 (int)(*std::min_element(std::begin(elaps_till_cal),std::end(elaps_till_cal))),
+	 (int)(std::accumulate(std::begin(elaps_till_cal),std::end(elaps_till_cal),0) / vcal_thd_count));
+#endif
+  }
+};
+
 class vshow_thd {
 public:
   void operator()(int unused) {
@@ -908,6 +956,7 @@ void main_task(intptr_t unused) {
     pthread_sigmask(SIG_BLOCK, &ss, 0);
     thds.emplace_back(vcap_thd(), iUnused);
     thds.emplace_back(vshow_thd(), iUnused);
+    thds.emplace_back(vcal_thd(), iUnused);
     pthread_sigmask(SIG_UNBLOCK, &ss, 0); /* let ASP manage the main thread */
     
     /* register cyclic handler to EV3RT */
@@ -918,49 +967,13 @@ void main_task(intptr_t unused) {
     _log("initialization completed.");
     state = ST_CALIBRATION;
 
-    /* the main task goes into loop until ST_ENDING while the registered cyclic handler traversing the behavir trees */
-#if defined(BENCHMARK)
-    std::vector<std::uint32_t> elaps_till_cal;
-#endif
-    std::chrono::system_clock::time_point te_cap_local;
-    while (state != ST_ENDING && state != ST_END) {
-      Mat f;
-      /* critical section 1 */
-      if ( mut1.try_lock() ) {
-	if (te_cap == te_cap_local) {
-	  mut1.unlock(); /* if frame is not changed, skip it */
-	} else {
-#if defined(WITH_OPENCV)
-	  f = frame_in.clone();
-#endif
-	  te_cap_local = te_cap;
-	  mut1.unlock();
-	  f = video->calculateTarget(f);
-	  std::chrono::system_clock::time_point te_cal_local = std::chrono::system_clock::now();
-	  /* critical section 2 */
-	  if ( mut2.try_lock() ) {
-#if defined(WITH_OPENCV)
-	    frame_out = f.clone();
-#endif
-	    te_cap_copy = te_cap_local;
-	    te_cal = te_cal_local;
-	    mut2.unlock();
-#if defined(BENCHMARK)
-	    elaps_till_cal.push_back(std::chrono::duration_cast<std::chrono::microseconds>(te_cal_local - te_cap_local).count());
-#endif
-	    video_process_count++;
-	  }
-	}
-      }
-      ev3clock->sleep(1);
+    /* the main task sleep until being waken up and let the registered cyclic handler to traverse the behavir trees */
+    _log("going to sleep...");
+    ER ercd = slp_tsk();
+    assert(ercd == E_OK);
+    if (ercd != E_OK) {
+        syslog(LOG_NOTICE, "slp_tsk() returned %d", ercd);
     }
-    _log("video process loop exited. # of execution = %d", video_process_count);
-#if defined(BENCHMARK)
-    _log("elapsed time from capture to calculation (micro sec): max = %d, min = %d, mean = %d",
-	 (int)(*std::max_element(std::begin(elaps_till_cal),std::end(elaps_till_cal))),
-	 (int)(*std::min_element(std::begin(elaps_till_cal),std::end(elaps_till_cal))),
-	 (int)(std::accumulate(std::begin(elaps_till_cal),std::end(elaps_till_cal),0) / video_process_count));
-#endif
 
     _log("stopping update task...");
     /* deregister cyclic handler from EV3RT */
@@ -1014,6 +1027,7 @@ void main_task(intptr_t unused) {
 /* periodic task to update the behavior tree */
 void update_task(intptr_t unused) {
     BrainTree::Node::Status status;
+    ER ercd;
     std::chrono::system_clock::time_point ts_upd_local = std::chrono::system_clock::now();
 #if defined(BENCHMARK)
     if ( ts_upd.time_since_epoch().count() != 0 ) {
@@ -1090,6 +1104,13 @@ void update_task(intptr_t unused) {
         }
         break;
     case ST_ENDING:
+        _log("waking up main...");
+        /* wake up the main task */
+        ercd = wup_tsk(MAIN_TASK);
+        assert(ercd == E_OK);
+        if (ercd != E_OK) {
+            syslog(LOG_NOTICE, "wup_tsk() returned %d", ercd);
+        }
         state = ST_END;
         _log("State changed: ST_ENDING to ST_END");
         break;    

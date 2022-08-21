@@ -275,7 +275,7 @@ Mat Video::calculateTarget(Mat f) {
 
 void Video::show() {
   sprintf(strbuf[0], "x=%+05d,y=%+05d", plotter->getLocX(), plotter->getLocY());
-  sprintf(strbuf[1], "dist=%06d", plotter->getDistance());
+  sprintf(strbuf[1], "dist=%05d,mx=%03d", plotter->getDistance(), mx);
   sprintf(strbuf[2], "deg=%03d,gyro=%+04d", plotter->getDegree(), gyroSensor->getAngle());
   sprintf(strbuf[3], "pwR=%+04d,pwL=%+04d", rightMotor->getPWM(), leftMotor->getPWM());
 

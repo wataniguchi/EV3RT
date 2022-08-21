@@ -5,32 +5,32 @@
 */
 #include "appusr.hpp"
 
-PIDcalculator::PIDcalculator(double p, double i, double d, int16_t t, int16_t min, int16_t max) {
+PIDcalculator::PIDcalculator(double p, double i, double d, int t, int min, int max) {
     kp = p;
     ki = i;
     kd = d;
-    diff[1] = INT16_MAX; // initialize diff[1]
+    diff[1] = INT_MAX; // initialize diff[1]
     deltaT = t;
     minimum = min;
     maximum = max;
-    traceCnt = 0;
+    integral = 0.0;
 }
 
 PIDcalculator::~PIDcalculator() {}
 
-int16_t PIDcalculator::math_limit(int16_t input, int16_t min, int16_t max) {
+int PIDcalculator::math_limit(double input, int min, int max) {
     if (input < min) {
         return min;
     } else if (input > max) {
         return max;
     }
-    return input;
+    return (int16_t)input;
 }
 
-int16_t PIDcalculator::compute(int16_t sensor, int16_t target) {
+int PIDcalculator::compute(int sensor, int target) {
     double p, i, d;
     
-    if ( diff[1] == INT16_MAX ) {
+    if ( diff[1] == INT_MAX ) {
 	    diff[0] = diff[1] = sensor - target;
     } else {
         diff[0] = diff[1];
@@ -44,3 +44,4 @@ int16_t PIDcalculator::compute(int16_t sensor, int16_t target) {
 
     return math_limit(p + i + d, minimum, maximum);
 }
+
