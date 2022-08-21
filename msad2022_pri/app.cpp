@@ -52,7 +52,9 @@ State state = ST_INITIAL;
 
 int upd_process_count = 0;
 std::chrono::system_clock::time_point ts_upd;
+#if defined(BENCHMARK)
 std::vector<std::uint32_t> upd_interval;
+#endif
 
 int vcap_thd_count = 0;
 int video_process_count = 0;
@@ -65,7 +67,6 @@ std::chrono::system_clock::time_point te_cap;
 std::mutex mut2;
 Mat frame_out;
 std::chrono::system_clock::time_point te_cap_copy, te_cal;
-
 
 /*
     === NODE CLASS DEFINITION STARTS HERE ===
@@ -515,9 +516,9 @@ public:
 	    }
             /* The following code chunk is to properly set prevXin in SRLF */
             srlfL->setRate(0.0);
-            leftMotor->setPWM(leftMotor->getPWM());
+            //leftMotor->setPWM(leftMotor->getPWM());
             srlfR->setRate(0.0);
-            rightMotor->setPWM(rightMotor->getPWM());
+            //rightMotor->setPWM(rightMotor->getPWM());
             _log("ODO=%05d, Camera Trace run started.", plotter->getDistance());
             updated = true;
         }
@@ -525,15 +526,17 @@ public:
         int8_t backward, turn, pwmL, pwmR;
 
         /* compute necessary amount of steering by PID control */
-        turn = (-1) * ltPid->compute((int16_t)video->getTheta(), 0); /* 0 is the center */
+	int16_t theta = (int16_t)video->getTheta();
+	_log("ODO=%05d, theta = %d", plotter->getDistance(), theta);
+        turn = (-1) * ltPid->compute(theta, 0); /* 0 is the center */
         backward = -speed;
         /* steer EV3 by setting different speed to the motors */
         pwmL = backward - turn;
         pwmR = backward + turn;
         srlfL->setRate(srewRate);
-        leftMotor->setPWM(pwmL);
+        //leftMotor->setPWM(pwmL);
         srlfR->setRate(srewRate);
-        rightMotor->setPWM(pwmR);
+        //rightMotor->setPWM(pwmR);
         return Status::Running;
     }
 protected:
@@ -629,16 +632,16 @@ public:
         if (!updated) {
             /* The following code chunk is to properly set prevXin in SRLF */
             srlfL->setRate(0.0);
-            leftMotor->setPWM(leftMotor->getPWM());
+            //leftMotor->setPWM(leftMotor->getPWM());
             srlfR->setRate(0.0);
-            rightMotor->setPWM(rightMotor->getPWM());
+            //rightMotor->setPWM(rightMotor->getPWM());
             _log("ODO=%05d, Instructed run started.", plotter->getDistance());
             updated = true;
         }
         srlfL->setRate(srewRate);
-        leftMotor->setPWM(pwmL);
+        //leftMotor->setPWM(pwmL);
         srlfR->setRate(srewRate);
-        rightMotor->setPWM(pwmR);
+        //rightMotor->setPWM(pwmR);
         return Status::Running;
     }
 protected:
@@ -777,7 +780,9 @@ public:
 class vshow_thd {
 public:
   void operator()(int unused) {
+#if defined(BENCHMARK)
     std::vector<std::uint32_t> elaps_till_show;
+#endif
     std::chrono::system_clock::time_point te_cap_local;
     while (state != ST_END && state != ST_ENDING) {
       std::chrono::system_clock::time_point te_cal_local, te_show;
@@ -896,6 +901,7 @@ void main_task(intptr_t unused) {
     sigaddset(&ss, SIGUSR2);
     sigaddset(&ss, SIGALRM);
     sigaddset(&ss, SIGPOLL);
+    sigaddset(&ss, SIGIO);
 
     std::vector<std::thread> thds;
     int iUnused = 0;
@@ -913,7 +919,9 @@ void main_task(intptr_t unused) {
     state = ST_CALIBRATION;
 
     /* the main task goes into loop until ST_ENDING while the registered cyclic handler traversing the behavir trees */
+#if defined(BENCHMARK)
     std::vector<std::uint32_t> elaps_till_cal;
+#endif
     std::chrono::system_clock::time_point te_cap_local;
     while (state != ST_ENDING && state != ST_END) {
       Mat f;
@@ -1007,11 +1015,11 @@ void main_task(intptr_t unused) {
 void update_task(intptr_t unused) {
     BrainTree::Node::Status status;
     std::chrono::system_clock::time_point ts_upd_local = std::chrono::system_clock::now();
-    if ( ts_upd.time_since_epoch().count() != 0 ) {
 #if defined(BENCHMARK)
+    if ( ts_upd.time_since_epoch().count() != 0 ) {
       upd_interval.push_back(std::chrono::duration_cast<std::chrono::microseconds>(ts_upd_local - ts_upd).count());
-#endif
     }
+#endif
     ts_upd = ts_upd_local;
     upd_process_count++;
 
