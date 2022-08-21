@@ -918,30 +918,31 @@ void main_task(intptr_t unused) {
     while (state != ST_ENDING && state != ST_END) {
       Mat f;
       /* critical section 1 */
-      mut1.lock();
-      if (te_cap != te_cap_local) { /* new frame? */
+      if ( mut1.try_lock() ) {
+	if (te_cap == te_cap_local) {
+	  mut1.unlock(); /* if frame is not changed, skip it */
+	} else {
 #if defined(WITH_OPENCV)
-	f = frame_in.clone();
+	  f = frame_in.clone();
 #endif
-	te_cap_local = te_cap;
-	mut1.unlock();
-	f = video->calculateTarget(f);
-	std::chrono::system_clock::time_point te_cal_local = std::chrono::system_clock::now();
-	/* critical section 2 */
-	if ( mut2.try_lock() ) {
+	  te_cap_local = te_cap;
+	  mut1.unlock();
+	  f = video->calculateTarget(f);
+	  std::chrono::system_clock::time_point te_cal_local = std::chrono::system_clock::now();
+	  /* critical section 2 */
+	  if ( mut2.try_lock() ) {
 #if defined(WITH_OPENCV)
-	  frame_out = f.clone();
+	    frame_out = f.clone();
 #endif
-	  te_cap_copy = te_cap_local;
-	  te_cal = te_cal_local;
-	  mut2.unlock();
+	    te_cap_copy = te_cap_local;
+	    te_cal = te_cal_local;
+	    mut2.unlock();
 #if defined(BENCHMARK)
-	  elaps_till_cal.push_back(std::chrono::duration_cast<std::chrono::microseconds>(te_cal_local - te_cap_local).count());
+	    elaps_till_cal.push_back(std::chrono::duration_cast<std::chrono::microseconds>(te_cal_local - te_cap_local).count());
 #endif
-	  video_process_count++;
+	    video_process_count++;
+	  }
 	}
-      }	else {
-	mut1.unlock();
       }
       ev3clock->sleep(1);
     }

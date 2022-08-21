@@ -23,10 +23,12 @@ using namespace cv;
 #include <vector>
 using namespace std;
 
+#if !defined(WITHOUT_X11)
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
 #undef Status
 #undef Success
+#endif
 
 #include "FilteredMotor.hpp"
 extern FilteredMotor*       leftMotor;
@@ -51,17 +53,19 @@ protected:
   VideoCapture cap;
   Rect roi;
 #endif
+#if !defined(WITHOUT_X11)
   Display* disp;
   Screen* sc;
   Window win;
   Visual* vis;
   GC gc;
   XImage* ximg;
+  Font font;
+#endif
   void* gbuf;
   Mat frame_prev;
   Mat kernel;
   unsigned long* buf;
-  Font font;
   char strbuf[4][40];
   int mx, gsmin, gsmax, side, rangeOfEdges;
   float theta;

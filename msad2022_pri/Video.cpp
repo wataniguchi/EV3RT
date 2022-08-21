@@ -122,8 +122,8 @@ void Video::writeFrame(Mat f) {
 	      f.data[imat] );
     }
   }
-#else
-  const char* MSG = "No OpenCV";
+#elif !defined(WITHOUT_X11)
+  const char* MSG = "No OpenCV"; 
   XDrawString(disp, win, gc, 10, 10, MSG, strlen(MSG));
 #endif
 }
@@ -263,7 +263,11 @@ Mat Video::calculateTarget(Mat f) {
   float vxm = vxp * 72 / FRAME_WIDTH;
   /* calculate the rotation in degree (z-axis)
      284 is distance from axle to the closest horizontal line on ground the camera can see */
-  theta = 180 * atan(vxm / 284) / M_PI;
+  if (vxm == 0) {
+    theta = 0;
+  } else {
+    theta = 180 * atan(vxm / 284) / M_PI;
+  }
   //_logNoAsp("mx = %d, vxm = %d, theta = %d", mx, (int)vxm, (int)theta);
 
   return f;
