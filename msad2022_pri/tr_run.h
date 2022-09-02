@@ -46,19 +46,15 @@
 			    prof->getValueAsNum("RUNx_I_CONST"),	\
 			    prof->getValueAsNum("RUNx_D_CONST"),	\
 			    prof->getValueAsNum("RUNx_GS_MIN"),		\
-			    prof->getValueAsNum("RUNx_GS_MAX"), 0.0, TS_OPPOSITE) \
+			    prof->getValueAsNum("RUNx_GS_MAX"), 0.0, TS_NORMAL) \
         .leaf<IsJunction>(JST_JOINED)	      	\
       .end()								\
       /* RUN5: until passing the intersection */	\
       .composite<BrainTree::ParallelSequence>(1,2)				\
-        .leaf<TraceLineCam>(prof->getValueAsNum("RUN5_SPEED"),			\
-			    prof->getValueAsNum("RUNx_P_CONST"),	\
-			    prof->getValueAsNum("RUNx_I_CONST"),	\
-			    prof->getValueAsNum("RUNx_D_CONST"),	\
-			    prof->getValueAsNum("RUNx_GS_MIN"),		\
-			    prof->getValueAsNum("RUNx_GS_MAX"), 0.0, TS_NORMAL) \
-        .leaf<IsJunction>(JST_FORKED)	      	\
-      .end()								\
+        .leaf<RunAsInstructed>(prof->getValueAsNum("RUN5_PWML"),	      	\
+			       prof->getValueAsNum("RUN5_PWMR"),0.0)	\
+        .leaf<IsDistanceEarned>(prof->getValueAsNum("RUN5_DIST"))	      	\
+      .end()		      	\
       /* RUN6: the rest until detecting BLUE */	\
       .composite<BrainTree::ParallelSequence>(1,2)				\
         .leaf<TraceLineCam>(prof->getValueAsNum("RUN6_SPEED"),			\
