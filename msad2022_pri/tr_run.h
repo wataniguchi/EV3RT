@@ -27,13 +27,7 @@
 			    prof->getValueAsNum("RUNx_GS_MAX"), 0.0, TS_OPPOSITE) \
         .leaf<IsDistanceEarned>(prof->getValueAsNum("RUN1_DIST"))	      	\
       .end()								\
-      /* RUN2: pass the intersection between Gate 1 and 2 */	\
-      .composite<BrainTree::ParallelSequence>(1,2)				\
-        .leaf<RunAsInstructed>(prof->getValueAsNum("RUN2_PWML"),	      	\
-			       prof->getValueAsNum("RUN2_PWMR"),0.0)	\
-        .leaf<IsDistanceEarned>(prof->getValueAsNum("RUN2_DIST"))	      	\
-      .end()								\
-      /* RUN3: land back on tracing */	\
+      /* RUN3: preparing trace point change */	\
       .composite<BrainTree::ParallelSequence>(1,2)				\
         .leaf<RunAsInstructed>(prof->getValueAsNum("RUN3_PWML"),	      	\
 			       prof->getValueAsNum("RUN3_PWMR"),0.0)	\
@@ -55,9 +49,19 @@
 			       prof->getValueAsNum("RUN5_PWMR"),0.0)	\
         .leaf<IsDistanceEarned>(prof->getValueAsNum("RUN5_DIST"))	      	\
       .end()		      	\
-      /* RUN6: the rest until detecting BLUE */	\
+      /* RUN6: until passing Gate 4 */	\
       .composite<BrainTree::ParallelSequence>(1,2)				\
         .leaf<TraceLineCam>(prof->getValueAsNum("RUN6_SPEED"),			\
+			    prof->getValueAsNum("RUNx_P_CONST"),	\
+			    prof->getValueAsNum("RUNx_I_CONST"),	\
+			    prof->getValueAsNum("RUNx_D_CONST"),	\
+			    prof->getValueAsNum("RUNx_GS_MIN"),		\
+			    prof->getValueAsNum("RUNx_GS_MAX"), 0.0, TS_OPPOSITE) \
+        .leaf<IsDistanceEarned>(prof->getValueAsNum("RUN6_DIST"))	      	\
+      .end()		      	\
+      /* RUN7: the rest until detecting BLUE */	\
+      .composite<BrainTree::ParallelSequence>(1,2)				\
+        .leaf<TraceLineCam>(prof->getValueAsNum("RUN7_SPEED"),			\
 			    prof->getValueAsNum("RUNx_P_CONST"),	\
 			    prof->getValueAsNum("RUNx_I_CONST"),	\
 			    prof->getValueAsNum("RUNx_D_CONST"),	\
