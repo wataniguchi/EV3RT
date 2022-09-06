@@ -128,7 +128,7 @@ public:
 class IsBackOn : public BrainTree::Node {
 public:
     Status update() override {
-        if (ev3_button_is_pressed(BACK_BUTTON)) {
+        if (ev3_button_is_pressed(ENTER_BUTTON)) {
             _log("back button pressed.");
             return Status::Success;
         } else {
