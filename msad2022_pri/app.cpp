@@ -585,6 +585,24 @@ public:
         int8_t forward, turn, pwmL, pwmR;
         rgb_raw_t cur_rgb;
 
+// for test 
+/*
+    plotter->plot();
+    int32_t distance = plotter->getDistance();
+    int16_t azimuth = plotter->getAzimuth();
+    int16_t degree = plotter->getDegree();
+    int32_t locX = plotter->getLocX();
+    int32_t locY = plotter->getLocY();
+    int32_t ang = plotter->getAngL();
+    int32_t angR = plotter->getAngR();
+    int32_t sonarDistance = sonarSensor->getDistance();
+    int32_t curAngle = gyroSensor->getAngle();
+    int32_t angleSpeed = gyroSensor->getAnglerVelocity();
+    _log(“dist=%d azi=%d deg=%d locX=%d locY=%d ang=%d angR=%d curAngle=%03d angleSpeed=%03d”,distance,azimuth,degree,locX,locY,ang,angR,curAngle,angleSpeed);
+    _log(“sonar=%d”,sonarDistance);
+*/
+//   _log(“r=%d g=%d b=%d”,cur_rgb.r,cur_rgb.g,cur_rgb.b);
+
         colorSensor->getRawColor(cur_rgb);
         sensor = cur_rgb.r;
         /* compute necessary amount of steering by PID control */
