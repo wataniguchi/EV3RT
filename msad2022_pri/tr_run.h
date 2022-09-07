@@ -53,7 +53,7 @@
 			    prof->getValueAsNum("RUNx_GS_MAX"), 0.0, TS_OPPOSITE) \
         .leaf<IsDistanceEarned>(prof->getValueAsNum("RUN4_DIST"))	      	\
       .end()		      	\
-      /* RUN5: until passing Gate 5 */	\
+      /* RUN5: until passing Gate 4 */	\
       .composite<BrainTree::ParallelSequence>(1,2)				\
         .leaf<TraceLineCam>(prof->getValueAsNum("RUN5_SPEED"),			\
 			    prof->getValueAsNum("RUNx_P_CONST"),	\
@@ -64,14 +64,23 @@
         .leaf<IsDistanceEarned>(prof->getValueAsNum("RUN5_DIST"))	      	\
       .end()		      	\
       /* RUN6: the rest until detecting BLUE */	\
-      .composite<BrainTree::ParallelSequence>(1,2)				\
+      .composite<BrainTree::ParallelSequence>(2,2)				\
         .leaf<TraceLineCam>(prof->getValueAsNum("RUN6_SPEED"),			\
 			    prof->getValueAsNum("RUNx_P_CONST"),	\
 			    prof->getValueAsNum("RUNx_I_CONST"),	\
 			    prof->getValueAsNum("RUNx_D_CONST"),	\
 			    prof->getValueAsNum("RUNx_GS_MIN"),		\
 			    prof->getValueAsNum("RUNx_GS_MAX"), 0.0, TS_OPPOSITE) \
-        .leaf<IsColorDetected>(CL_BLUE)					\
+        .leaf<IsColorDetected>(CL_BLUE2)					\
+        .leaf<SetArmPosition>(0, 40)           \
       .end()								\
+      /* RUN7: Turn and move forward.  */								\
+      .composite<BrainTree::MemSequence>()								\
+        .composite<BrainTree::ParallelSequence>(1,2)								\
+            .leaf<IsTimeEarned>(1700000) 								\
+            .leaf<RunAsInstructed>(50, -50, 0.0)								\
+        .end()								\
+      .leaf<TraceLine>(40, GS_TARGET, P_CONST, I_CONST, D_CONST, 0.0, TS_OPPOSITE)							\
+      .end()								  \
     .end()     								\
   .end()
