@@ -1,5 +1,3 @@
-
-
 /*
     PIDcalculatorOld.cpp
     Copyright © 2021 Wataru Taniguchi. All rights reserved.
