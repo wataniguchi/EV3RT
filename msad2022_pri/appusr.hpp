@@ -30,6 +30,7 @@ using namespace ev3api;
 #include "FIR.hpp"
 #include "Plotter.hpp"
 #include "PIDcalculator.hpp"
+#include "PIDcalculatorOld.hpp"
 
 /* global variables */
 extern FILE*        bt;

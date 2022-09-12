@@ -565,7 +565,7 @@ class TraceLine : public BrainTree::Node {
 public:
     TraceLine(int s, int t, double p, double i, double d, double srew_rate, TraceSide trace_side) : speed(s),target(t),srewRate(srew_rate),side(trace_side) {
         updated = false;
-        ltPid = new PIDcalculator(p, i, d, PERIOD_UPD_TSK, -speed, speed);
+        ltPid = new PIDcalculatorOld(p, i, d, PERIOD_UPD_TSK, -speed, speed);
     }
     ~TraceLine() {
         delete ltPid;

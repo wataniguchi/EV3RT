@@ -9,6 +9,7 @@ FilteredMotor.o \
 FilteredColorSensor.o \
 Plotter.o \
 PIDcalculator.o \
+PIDcalculatorOld.o \
 Profile.o \
 Video.o \
 
