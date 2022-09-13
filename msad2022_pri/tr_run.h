@@ -79,8 +79,7 @@
         .composite<BrainTree::ParallelSequence>(1,2)								\
             .leaf<IsTimeEarned>(1700000) 								\
             .leaf<RunAsInstructed>(50, -50, 0.0)								\
-        .end()								\
-      .leaf<TraceLine>(40, GS_TARGET, P_CONST, I_CONST, D_CONST, 0.0, TS_OPPOSITE)							\
+        .end()								\				
       .end()								  \
     .end()     								\
   .end()

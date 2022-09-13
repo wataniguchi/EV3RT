@@ -605,7 +605,7 @@ public:
     }
 protected:
     int speed, target;
-    PIDcalculator* ltPid;
+    PIDcalculatorOld* ltPid;
     double srewRate;
     TraceSide side;
     bool updated;
