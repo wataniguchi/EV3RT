@@ -149,7 +149,8 @@ enum State {
     ST_INITIAL,
     ST_CALIBRATION,
     ST_RUN,
-    ST_BLOCK,
+    ST_SLALOM,
+    ST_BLOCK_G,
     ST_ENDING,
     ST_END,
 };

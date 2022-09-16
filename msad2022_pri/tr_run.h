@@ -77,9 +77,17 @@
       /* RUN7: Turn and move forward.  */								\
       .composite<BrainTree::MemSequence>()								\
         .composite<BrainTree::ParallelSequence>(1,2)								\
-            .leaf<IsTimeEarned>(1700000) 								\
+            .leaf<IsTimeEarned>(1400000) 								\
             .leaf<RunAsInstructed>(50, -50, 0.0)								\
-        .end()								\				
+        .end()  \
+        .composite<BrainTree::ParallelSequence>(1,2)								\
+            .leaf<IsColorDetected>(CL_BLACK)					\
+            .leaf<RunAsInstructed>(50, -50, 0.0)								\
+        .end()  \
+        .composite<BrainTree::ParallelSequence>(1,2)								\
+            .leaf<IsTimeEarned>(200000) 								\
+            .leaf<RunAsInstructed>(50, -50, 0.0)								\
+        .end()  \		
       .end()								  \
     .end()     								\
   .end()

@@ -24,7 +24,8 @@
 /* behavior tree stanza files */
 #include "tr_calibration.h"
 #include "tr_run.h"
-#include "tr_block.h"
+#include "tr_slalom.h"
+#include "tr_block_g.h"
 
 /* this is to avoid linker error, undefined reference to `__sync_synchronize' */
 extern "C" void __sync_synchronize() {}
@@ -47,7 +48,8 @@ Video*          video;
 
 BrainTree::BehaviorTree* tr_calibration = nullptr;
 BrainTree::BehaviorTree* tr_run         = nullptr;
-BrainTree::BehaviorTree* tr_block       = nullptr;
+BrainTree::BehaviorTree* tr_slalom       = nullptr;
+BrainTree::BehaviorTree* tr_block_g       = nullptr;
 State state = ST_INITIAL;
 
 int upd_process_count = 0;
@@ -325,7 +327,7 @@ public:
                  }
                  break;
              case CL_BLUE2:
-                 if (cur_rgb.r <= 20 && cur_rgb.g <= 40 && cur_rgb.b >= 44 && cur_rgb.b - cur_rgb.r > 20) {
+                 if (cur_rgb.r <= 25 && cur_rgb.g <= 55 && cur_rgb.b >= 55) {
  //                if (cur_rgb.r <= 20 && cur_rgb.g <= 55 && cur_rgb.b >= 55 && cur_rgb.b - cur_rgb.r > 20) {
                      _log("ODO=%05d, CL_BLUE2 detected.", plotter->getDistance());
                      return Status::Success;
@@ -932,11 +934,13 @@ void main_task(intptr_t unused) {
     tr_calibration = (BrainTree::BehaviorTree*) BrainTree::Builder() TR_CALIBRATION .build();
 
     if (prof->getValueAsStr("COURSE") == "R") {
-      tr_run   = (BrainTree::BehaviorTree*) BrainTree::Builder() TR_RUN_R   .build();
-      tr_block = (BrainTree::BehaviorTree*) BrainTree::Builder() TR_BLOCK_R .build();
+      tr_run   = (BrainTree::BehaviorTree*) BrainTree::Builder() TR_RUN_R.build();
+      tr_slalom = (BrainTree::BehaviorTree*) BrainTree::Builder() TR_SLALOM_R.build();
+      tr_block_g = (BrainTree::BehaviorTree*) BrainTree::Builder() TR_BLOCK_G_R.build();
     } else {
-      tr_run   = (BrainTree::BehaviorTree*) BrainTree::Builder() TR_RUN_L   .build();
-      tr_block = (BrainTree::BehaviorTree*) BrainTree::Builder() TR_BLOCK_L .build();
+      tr_run   = (BrainTree::BehaviorTree*) BrainTree::Builder() TR_RUN_L.build();
+      tr_slalom = (BrainTree::BehaviorTree*) BrainTree::Builder() TR_SLALOM_L.build();
+      tr_block_g = (BrainTree::BehaviorTree*) BrainTree::Builder() TR_BLOCK_G_L.build();
     }
 /*
     === BEHAVIOR TREE DEFINITION ENDS HERE ===
@@ -996,8 +1000,9 @@ void main_task(intptr_t unused) {
     }
 
     /* destroy behavior tree */
-    delete tr_block;
     delete tr_run;
+    delete tr_slalom;
+    delete tr_block_g;
     delete tr_calibration;
     /* destroy profile object */
     delete prof;
@@ -1058,8 +1063,8 @@ void update_task(intptr_t unused) {
             case BrainTree::Node::Status::Success:
                 switch (JUMP) { /* JUMP = 1... is for testing only */
                     case 1:
-                        state = ST_BLOCK;
-                        _log("State changed: ST_CALIBRATION to ST_BLOCK");
+                        state = ST_SLALOM;
+                        _log("State changed: ST_CALIBRATION to ST_SLALOM");
                         break;
                     default:
                         state = ST_RUN;
@@ -1081,8 +1086,8 @@ void update_task(intptr_t unused) {
             status = tr_run->update();
             switch (status) {
             case BrainTree::Node::Status::Success:
-                state = ST_BLOCK;
-                _log("State changed: ST_RUN to ST_BLOCK");
+                state = ST_SLALOM;
+                _log("State changed: ST_RUN to ST_SLALOM");
                 break;
             case BrainTree::Node::Status::Failure:
                 state = ST_ENDING;
@@ -1093,14 +1098,31 @@ void update_task(intptr_t unused) {
             }
         }
         break;
-    case ST_BLOCK:
-        if (tr_block != nullptr) {
-            status = tr_block->update();
+    case ST_SLALOM:
+        if (tr_slalom != nullptr) {
+            status = tr_slalom->update();
+            switch (status) {
+            case BrainTree::Node::Status::Success:
+                state = ST_BLOCK_G;
+                _log("State changed: ST_SLALOM to ST_BLOCK_G");
+                break;
+            case BrainTree::Node::Status::Failure:
+                state = ST_ENDING;
+                _log("State changed: ST_SLALOM to ST_ENDING");
+                break;
+            default:
+                break;
+            }
+        }
+        break;
+    case ST_BLOCK_G:
+        if (tr_block_g != nullptr) {
+            status = tr_block_g->update();
             switch (status) {
             case BrainTree::Node::Status::Success:
             case BrainTree::Node::Status::Failure:
                 state = ST_ENDING;
-                _log("State changed: ST_BLOCK to ST_ENDING");
+                _log("State changed: ST_BLOCK_G to ST_ENDING");
                 break;
             default:
                 break;
