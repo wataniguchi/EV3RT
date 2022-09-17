@@ -1,7 +1,4 @@
-#define TR_SLALOM_R \
-    .leaf<StopNow>()  
-
-#define TR_SLALOM_L \
+#define TR_SLALOM \
     .composite<BrainTree::MemSequence>()\
         /* ライントレースから引継ぎして、直前の青線まで走る */\
         .composite<BrainTree::ParallelSequence>(1,2)\

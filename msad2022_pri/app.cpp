@@ -23,6 +23,7 @@
 /* behavior tree stanza files */
 #include "tr_calibration.h"
 #include "tr_run.h"
+#include "tr_run_color.h"
 #include "tr_slalom.h"
 #include "tr_block_g.h"
 
@@ -1004,13 +1005,13 @@ void main_task(intptr_t unused) {
     if (prof->getValueAsStr("COURSE") == "R") {
         // Rコースはライントレース前進走行
         tr_run   = (BrainTree::BehaviorTree*) BrainTree::Builder() TR_RUN_COLOR .build();
-        tr_slalom = (BrainTree::BehaviorTree*) BrainTree::Builder() TR_SLALOM_R .build();
-        tr_block_g = (BrainTree::BehaviorTree*) BrainTree::Builder() TR_BLOCK_G_R .build();
+        tr_slalom = (BrainTree::BehaviorTree*) BrainTree::Builder() TR_SLALOM .build();
+        tr_block_g = (BrainTree::BehaviorTree*) BrainTree::Builder() TR_BLOCK_G .build();
     } else {
         // Lコースはカメラトレース後進走行
         tr_run   = (BrainTree::BehaviorTree*) BrainTree::Builder() TR_RUN .build();
-        tr_slalom = (BrainTree::BehaviorTree*) BrainTree::Builder() TR_SLALOM_L .build();
-        tr_block_g = (BrainTree::BehaviorTree*) BrainTree::Builder() TR_BLOCK_G_L .build();
+        tr_slalom = (BrainTree::BehaviorTree*) BrainTree::Builder() TR_SLALOM .build();
+        tr_block_g = (BrainTree::BehaviorTree*) BrainTree::Builder() TR_BLOCK_G .build();
     }
 /*
     === BEHAVIOR TREE DEFINITION ENDS HERE ===

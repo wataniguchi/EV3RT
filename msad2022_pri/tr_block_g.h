@@ -1,6 +1,4 @@
-#define TR_BLOCK_G_R \
-    .leaf<StopNow>()  
-#define TR_BLOCK_G_L \
+#define TR_BLOCK_G \
     .composite<BrainTree::MemSequence>()\
         .composite<BrainTree::ParallelSequence>(1,3)\
             .leaf<TraceLine>(40,\
