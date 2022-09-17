@@ -52,7 +52,7 @@
             .leaf<RunAsInstructed>(30, 40, 0.0)\
         .end()\
         .composite<BrainTree::ParallelSequence>(1,2)\
-            .leaf<IsDistanceEarned>(500)\
+            .leaf<IsDistanceEarned>(600)\
             .leaf<TraceLine>(40, GS_TARGET, P_CONST, I_CONST, 0.04D, 0.0, TS_NORMAL)\
         .end()\
     .end()

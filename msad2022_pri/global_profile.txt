@@ -1,2 +1,2 @@
-COURSE=L
+COURSE=R
 

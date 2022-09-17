@@ -934,7 +934,7 @@ void main_task(intptr_t unused) {
     tr_calibration = (BrainTree::BehaviorTree*) BrainTree::Builder() TR_CALIBRATION .build();
 
     if (prof->getValueAsStr("COURSE") == "R") {
-      tr_run   = (BrainTree::BehaviorTree*) BrainTree::Builder() TR_RUN_R.build();
+      tr_run   = (BrainTree::BehaviorTree*) BrainTree::Builder() TR_RUN_L.build();
       tr_slalom = (BrainTree::BehaviorTree*) BrainTree::Builder() TR_SLALOM_R.build();
       tr_block_g = (BrainTree::BehaviorTree*) BrainTree::Builder() TR_BLOCK_G_R.build();
     } else {
