@@ -1,6 +1,5 @@
 /*
     app.cpp
-
     Copyright © 2022 MSAD Mode2P. All rights reserved.
 */
 #include "BrainTree.h"
@@ -164,6 +163,39 @@ protected:
 
 /*
     usage:
+    ".leaf<DetectSlalomPattern>()"
+    is to determine slalom pattern from the distance between the robot and plastic bottle using ultrasonic sensor.
+*/
+class DetectSlalomPattern : public BrainTree::Node {
+public:
+    static bool isSlalomPatternA;
+    static int32_t earnedDistance;
+    DetectSlalomPattern() {}
+    Status update() override {
+        distance = 10 * (sonarSensor->getDistance());
+        _log("sonar recieved distance: %d", distance);
+        if (0 < distance && distance <= 250) {
+            //*ptrSlalomPattern = 1;
+            isSlalomPatternA = true;
+            earnedDistance = distance;
+            return Status::Success;
+        } else if (300 < distance && distance < 400) {
+            //*ptrSlalomPattern = 2;
+            isSlalomPatternA = false;
+            earnedDistance = distance;
+            return Status::Success;
+        } else {
+            return Status::Running;
+        }
+    }
+protected:
+    int32_t distance;
+};
+bool DetectSlalomPattern::isSlalomPatternA = true;
+int32_t DetectSlalomPattern::earnedDistance = 0;
+
+/*
+    usage:
     ".leaf<IsAngleLarger>(angle)"
     is to determine if the angular location of the robot measured by the gyro sensor is larger than the spedified angular value.
     angle is in degree.
@@ -302,19 +334,19 @@ public:
                 }
                 break;
             case CL_JETBLACK_YMNK:
-                 if (cur_rgb.r <=11 && cur_rgb.g <=13 && cur_rgb.b <=15) { 
-                     _log("ODO=%05d, CL_JETBLACK_YMNK detected.", plotter->getDistance());
-                     return Status::Success;
-                 }
-                 break;
-	    case CL_BLACK:
+                if (cur_rgb.r <=8 && cur_rgb.g <=8 && cur_rgb.b <=8) { 
+                    _log("ODO=%05d, CL_JETBLACK_YMNK detected.", plotter->getDistance());
+                    return Status::Success;
+                }
+                break;
+            case CL_BLACK:
                 if (cur_rgb.r <=50 && cur_rgb.g <=45 && cur_rgb.b <=60) {
                     _log("ODO=%05d, CL_BLACK detected.", plotter->getDistance());
                     return Status::Success;
                 }
                 break;
             case CL_BLUE:
-               if (cur_rgb.b - cur_rgb.r > 35 && cur_rgb.g >= 55 && cur_rgb.b <= 100 && cur_rgb.b >= 70) {
+                if (cur_rgb.b - cur_rgb.r > 35 && cur_rgb.g >= 55 && cur_rgb.b <= 100 && cur_rgb.b >= 70) {
                     _log("ODO=%05d, CL_BLUE detected.", plotter->getDistance());
                     return Status::Success;
                 }
@@ -327,11 +359,11 @@ public:
                  }
                  break;
              case CL_BLUE2:
-                 if (cur_rgb.r <= 25 && cur_rgb.g <= 55 && cur_rgb.b >= 55) {
- //                if (cur_rgb.r <= 20 && cur_rgb.g <= 55 && cur_rgb.b >= 55 && cur_rgb.b - cur_rgb.r > 20) {
-                     _log("ODO=%05d, CL_BLUE2 detected.", plotter->getDistance());
-                     return Status::Success;
-                 }
+                if (cur_rgb.r <= 25 && cur_rgb.g <= 55 && cur_rgb.b >= 55) {
+ //               if (cur_rgb.r <= 20 && cur_rgb.g <= 55 && cur_rgb.b >= 55 && cur_rgb.b - cur_rgb.r > 20) {
+                    _log("ODO=%05d, CL_BLUE2 detected.", plotter->getDistance());
+                    return Status::Success;
+                }
                  break;
             case CL_RED:
                 if (cur_rgb.r - cur_rgb.b >= 30 && cur_rgb.r > 80 && cur_rgb.g < 45) {
@@ -340,12 +372,12 @@ public:
                 }
                 break;
             case CL_RED_SL:
-                 if (cur_rgb.r - cur_rgb.b >= 25 && cur_rgb.r > 85 && cur_rgb.g < 60) {
-                     garageColor = CL_RED_SL;
-                     _log("ODO=%05d, CL_RED_SL detected.", plotter->getDistance());
-                     return Status::Success;
-                 }
-                 break;
+                if (cur_rgb.r - cur_rgb.b >= 25 && cur_rgb.r > 85 && cur_rgb.g < 60) {
+                    garageColor = CL_RED_SL;
+                    _log("ODO=%05d, CL_RED_SL detected.", plotter->getDistance());
+                    return Status::Success;
+                }
+                break;
             case CL_YELLOW:
                 if (cur_rgb.r >= 90 &&  cur_rgb.g >= 90 && cur_rgb.b <= 75) {
                     _log("ODO=%05d, CL_YELLOW detected.", plotter->getDistance());
@@ -353,12 +385,12 @@ public:
                 }
                 break;
             case CL_YELLOW_SL:
-                 if (cur_rgb.r >= 110 &&  cur_rgb.g >= 90 && cur_rgb.b >= 50 && cur_rgb.b <= 120 ) {
-                     garageColor = CL_YELLOW_SL;
-                     _log("ODO=%05d, CL_YELLOW_SL detected.", plotter->getDistance());
-                     return Status::Success;
-                 }
-                 break;
+                if (cur_rgb.r >= 110 &&  cur_rgb.g >= 90 && cur_rgb.b >= 50 && cur_rgb.b <= 120 ) {
+                    garageColor = CL_YELLOW_SL;
+                    _log("ODO=%05d, CL_YELLOW_SL detected.", plotter->getDistance());
+                    return Status::Success;
+                }
+                break;
             case CL_GREEN:
                 if (cur_rgb.g - cur_rgb.r > 20 && cur_rgb.g >= 40 && cur_rgb.r <= 100) {
                     _log("ODO=%05d, CL_GREEN detected.", plotter->getDistance());
@@ -366,20 +398,20 @@ public:
                 }
                 break;
             case CL_GREEN_SL:
-                 if (cur_rgb.b - cur_rgb.r < 30 && cur_rgb.g >= 30 && cur_rgb.b <= 80) {
-                     garageColor = CL_GREEN_SL;
-                     _log("ODO=%05d, CL_GREEN_SL detected.", plotter->getDistance());
-                     return Status::Success;
-                 }   
-                 break;
-	    case CL_GRAY:
+                if (cur_rgb.b - cur_rgb.r < 30 && cur_rgb.g >= 30 && cur_rgb.b <= 80) {
+                    garageColor = CL_GREEN_SL;
+                    _log("ODO=%05d, CL_GREEN_SL detected.", plotter->getDistance());
+                    return Status::Success;
+                }   
+                break;
+            case CL_GRAY:
                 if (cur_rgb.r >= 45 && cur_rgb.g <=60 && cur_rgb.b <= 65 && cur_rgb.r <= 52 && cur_rgb.b >= 53) {
                     _log("ODO=%05d, CL_GRAY detected.", plotter->getDistance());
                     return Status::Success;
                 }
                 break;
             case CL_WHITE:
-	        if (cur_rgb.r >= 100 && cur_rgb.g >= 100 && cur_rgb.b >= 100 ) {
+                if (cur_rgb.r >= 100 && cur_rgb.g >= 100 && cur_rgb.b >= 100 ) {
                     _log("ODO=%05d, CL_WHITE detected.", plotter->getDistance());
                     return Status::Success;
                 }
@@ -713,6 +745,42 @@ private:
     double srewRate;
 };
 
+class ClimbBoard : public BrainTree::Node { 
+public:
+    ClimbBoard(int direction, int count) : dir(direction), cnt(count) {}
+    Status update() override {
+        curAngle = gyroSensor->getAngle();
+            if (cnt >= 1) {
+                leftMotor->setPWM(0);
+                rightMotor->setPWM(0);
+                armMotor->setPWM(-50);
+                cnt++;
+                if(cnt >= 200){
+                    return Status::Success;
+                }
+                return Status::Running;
+            } else {
+                armMotor->setPWM(30);
+                leftMotor->setPWM(23);
+                rightMotor->setPWM(23);
+
+                if (curAngle < -9) {
+                    prevAngle = curAngle;
+                }
+                if (prevAngle < -9 && curAngle >= 0) {
+                    ++cnt;
+                    _log("ON BOARD");
+                }
+                return Status::Running;
+            }
+    }
+private:
+    int8_t dir;
+    int cnt;
+    int32_t curAngle;
+    int32_t prevAngle;
+};
+
 /*
     usage:
     ".leaf<SetArmPosition>(target_degree, pwm)"
@@ -889,7 +957,7 @@ void main_task(intptr_t unused) {
     video       = new Video();
     touchSensor = new TouchSensor(PORT_1);
     // temp fix 2022/6/20 W.Taniguchi, new SonarSensor() blocks apparently
-    //sonarSensor = new SonarSensor(PORT_3);
+    sonarSensor = new SonarSensor(PORT_3);
     colorSensor = new FilteredColorSensor(PORT_2);
     gyroSensor  = new GyroSensor(PORT_4);
     leftMotor   = new FilteredMotor(PORT_C);
@@ -934,13 +1002,15 @@ void main_task(intptr_t unused) {
     tr_calibration = (BrainTree::BehaviorTree*) BrainTree::Builder() TR_CALIBRATION .build();
 
     if (prof->getValueAsStr("COURSE") == "R") {
-      tr_run   = (BrainTree::BehaviorTree*) BrainTree::Builder() TR_RUN_L.build();
-      tr_slalom = (BrainTree::BehaviorTree*) BrainTree::Builder() TR_SLALOM_R.build();
-      tr_block_g = (BrainTree::BehaviorTree*) BrainTree::Builder() TR_BLOCK_G_R.build();
+        // Rコースはライントレース前進走行
+        tr_run   = (BrainTree::BehaviorTree*) BrainTree::Builder() TR_RUN_COLOR .build();
+        tr_slalom = (BrainTree::BehaviorTree*) BrainTree::Builder() TR_SLALOM_R .build();
+        tr_block_g = (BrainTree::BehaviorTree*) BrainTree::Builder() TR_BLOCK_G_R .build();
     } else {
-      tr_run   = (BrainTree::BehaviorTree*) BrainTree::Builder() TR_RUN_L.build();
-      tr_slalom = (BrainTree::BehaviorTree*) BrainTree::Builder() TR_SLALOM_L.build();
-      tr_block_g = (BrainTree::BehaviorTree*) BrainTree::Builder() TR_BLOCK_G_L.build();
+        // Lコースはカメラトレース後進走行
+        tr_run   = (BrainTree::BehaviorTree*) BrainTree::Builder() TR_RUN .build();
+        tr_slalom = (BrainTree::BehaviorTree*) BrainTree::Builder() TR_SLALOM_L .build();
+        tr_block_g = (BrainTree::BehaviorTree*) BrainTree::Builder() TR_BLOCK_G_L .build();
     }
 /*
     === BEHAVIOR TREE DEFINITION ENDS HERE ===
@@ -1043,12 +1113,26 @@ void update_task(intptr_t unused) {
     upd_process_count++;
 
     colorSensor->sense();
-    plotter->plot();
-
     rgb_raw_t cur_rgb;
     colorSensor->getRawColor(cur_rgb);
-    _log("r=%d g=%d b=%d",cur_rgb.r,cur_rgb.g,cur_rgb.b);
 
+    // for test
+    plotter->plot();
+
+    int32_t distance = plotter->getDistance();
+    int16_t azimuth = plotter->getAzimuth();
+    int16_t degree = plotter->getDegree();
+    int32_t locX = plotter->getLocX();
+    int32_t locY = plotter->getLocY();
+    int32_t ang = plotter->getAngL();
+    int32_t angR = plotter->getAngR();
+
+    int32_t sonarDistance = sonarSensor->getDistance();
+//    int32_t curAngle = gyroSensor->getAngle();
+//    int32_t angleSpeed = gyroSensor->getAnglerVelocity();
+
+    _log("r=%03d g=%03d b=%03d,dist=%05d,azi=%03d,deg=%03d,locX=%05d,locY=%05d,ang=%04d,angR=%04d,sonar=%03d",cur_rgb.r,cur_rgb.g,cur_rgb.b,distance,azimuth,degree,locX,locY,ang,angR,sonarDistance);
+    
 /*
     === STATE MACHINE DEFINITION STARTS HERE ===
     The robot behavior is defined using HFSM (Hierarchical Finite State Machine) with two hierarchies as a whole where:
@@ -1061,7 +1145,7 @@ void update_task(intptr_t unused) {
             status = tr_calibration->update();
             switch (status) {
             case BrainTree::Node::Status::Success:
-                switch (JUMP) { /* JUMP = 1... is for testing only */
+                switch (JUMP_CALIBRATION) { /* JUMP_CALIBRATION = 1... is for testing only */
                     case 1:
                         state = ST_SLALOM;
                         _log("State changed: ST_CALIBRATION to ST_SLALOM");

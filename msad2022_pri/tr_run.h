@@ -1,18 +1,4 @@
-#define TR_RUN_R \
-  /* RUN: a regression test case to ensure sensor trace works */	\
-  .composite<BrainTree::MemSequence>()			\
-    .composite<BrainTree::ParallelSequence>(1,2) \
-      .leaf<TraceLine>(prof->getValueAsNum("SPEED"),		\
-                       prof->getValueAsNum("GS_TARGET"),				\
-                       prof->getValueAsNum("P_CONST"),				\
-                       prof->getValueAsNum("I_CONST"),					\
-                       prof->getValueAsNum("D_CONST"), 0.0,					\
-                       (TraceSide)prof->getValueAsNum("TR_TS"))				\
-      .leaf<IsDistanceEarned>(prof->getValueAsNum("TR_DIST"))		\
-    .end()								\
-  .end()
-
-#define TR_RUN_L \
+#define TR_RUN \
   /* RUN: until detecting BLUE while executing MemSequence in parallel */	\
   .composite<BrainTree::ParallelSequence>(1,2)				\
     .leaf<IsDistanceEarned>(prof->getValueAsNum("RUNx_DIST")) /* temp stopper */ \
@@ -98,7 +84,7 @@
         .composite<BrainTree::ParallelSequence>(1,2)								\
             .leaf<IsTimeEarned>(prof->getValueAsNum("RUN7_TIME"))								\
             .leaf<RunAsInstructed>(60, -60, 0.0)								\
-        .end()  \		
+        .end()  \
       .end()								  \
     .end()     								\
   .end()

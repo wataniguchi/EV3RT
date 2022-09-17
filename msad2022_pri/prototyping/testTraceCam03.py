@@ -70,6 +70,7 @@ while True:
     img_gray = cv2.cvtColor(img_orig, cv2.COLOR_BGR2GRAY)
     # mask the upper half of the grayscale image
     img_gray[0:int(FRAME_HEIGHT/2), 0:FRAME_WIDTH] = 255
+    
     # binarize the image
     img_bin = cv2.inRange(img_gray, gs_min, gs_max)
     # remove noise
@@ -115,11 +116,13 @@ while True:
         
         # prepare for trace target calculation
         img_cnt = np.zeros_like(img_orig)
+        print(img_cnt)
         img_cnt = cv2.drawContours(img_cnt, [contours[i_area_max]], 0, (0,255,0), 1)
         img_cnt_gray = cv2.cvtColor(img_cnt, cv2.COLOR_BGR2GRAY)
         # scan the line really close to the image bottom to find edges
         scan_line = img_cnt_gray[img_cnt_gray.shape[0] - LINE_THICKNESS]
         edges = np.flatnonzero(scan_line)
+        print(edges)
         # calculate the trace target using the edges
         if len(edges) >= 2:
             if edge == 0:
@@ -132,7 +135,7 @@ while True:
             mx = edges[0]
     else: # len(contours) == 0
         roi = (0, 0, FRAME_WIDTH, FRAME_HEIGHT)
-
+    #cv2.imshow("testTrace2", img_cnt)
     # draw the area of interest on the original image
     x, y, w, h = roi
     cv2.rectangle(img_orig, (x,y), (x+w,y+h), (255,0,0), LINE_THICKNESS)
