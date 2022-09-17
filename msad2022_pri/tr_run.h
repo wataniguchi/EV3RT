@@ -64,29 +64,40 @@
         .leaf<IsDistanceEarned>(prof->getValueAsNum("RUN5_DIST"))	      	\
       .end()		      	\
       /* RUN6: the rest until detecting BLUE */	\
-      .composite<BrainTree::ParallelSequence>(2,2)				\
+      .composite<BrainTree::ParallelSequence>(1,2)				\
         .leaf<TraceLineCam>(prof->getValueAsNum("RUN6_SPEED"),			\
 			    prof->getValueAsNum("RUNx_P_CONST"),	\
 			    prof->getValueAsNum("RUNx_I_CONST"),	\
 			    prof->getValueAsNum("RUNx_D_CONST"),	\
 			    prof->getValueAsNum("RUNx_GS_MIN"),		\
 			    prof->getValueAsNum("RUNx_GS_MAX"), 0.0, TS_OPPOSITE) \
+        .leaf<IsDistanceEarned>(prof->getValueAsNum("RUN6_DIST"))	      	\
+      .end()		      	\
+      .composite<BrainTree::ParallelSequence>(1,2)				\
+        .leaf<TraceLineCam>(prof->getValueAsNum("RUN7_SPEED"),			\
+			    prof->getValueAsNum("RUNx_P_CONST"),	\
+			    prof->getValueAsNum("RUNx_I_CONST"),	\
+			    prof->getValueAsNum("RUNx_D_CONST"),	\
+			    prof->getValueAsNum("RUNx_GS_MIN"),		\
+			    prof->getValueAsNum("RUNx_GS_MAX"), 0.0, TS_NORMAL) \
         .leaf<IsColorDetected>(CL_BLUE2)					\
-        .leaf<SetArmPosition>(0, 40)           \
+        .leaf<IsColorDetected>(CL_BLUE)					\
+        /*.leaf<SetArmPosition>(0, 40)           */\
       .end()								\
       /* RUN7: Turn and move forward.  */								\
       .composite<BrainTree::MemSequence>()								\
+      .composite<BrainTree::ParallelSequence>(1,2)				\
+        .leaf<TraceLineCam>(prof->getValueAsNum("RUN5_SPEED"),			\
+			    prof->getValueAsNum("RUNx_P_CONST"),	\
+			    prof->getValueAsNum("RUNx_I_CONST"),	\
+			    prof->getValueAsNum("RUNx_D_CONST"),	\
+			    prof->getValueAsNum("RUNx_GS_MIN"),		\
+			    prof->getValueAsNum("RUNx_GS_MAX"), 0.0, TS_OPPOSITE) \
+        .leaf<IsDistanceEarned>(100)    	\
+      .end()		      	\
         .composite<BrainTree::ParallelSequence>(1,2)								\
-            .leaf<IsTimeEarned>(1400000) 								\
-            .leaf<RunAsInstructed>(50, -50, 0.0)								\
-        .end()  \
-        .composite<BrainTree::ParallelSequence>(1,2)								\
-            .leaf<IsColorDetected>(CL_BLACK)					\
-            .leaf<RunAsInstructed>(50, -50, 0.0)								\
-        .end()  \
-        .composite<BrainTree::ParallelSequence>(1,2)								\
-            .leaf<IsTimeEarned>(200000) 								\
-            .leaf<RunAsInstructed>(50, -50, 0.0)								\
+            .leaf<IsTimeEarned>(prof->getValueAsNum("RUN7_TIME"))								\
+            .leaf<RunAsInstructed>(60, -60, 0.0)								\
         .end()  \		
       .end()								  \
     .end()     								\

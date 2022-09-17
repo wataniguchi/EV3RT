@@ -1066,6 +1066,10 @@ void update_task(intptr_t unused) {
                         state = ST_SLALOM;
                         _log("State changed: ST_CALIBRATION to ST_SLALOM");
                         break;
+                    case 2:
+                        state = ST_BLOCK_G;
+                        _log("State changed: ST_CALIBRATION to ST_BLOCK_G");
+                        break;
                     default:
                         state = ST_RUN;
                         _log("State changed: ST_CALIBRATION to ST_RUN");
