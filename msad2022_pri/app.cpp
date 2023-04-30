@@ -13,6 +13,10 @@
 #include "app.h"
 #include "appusr.hpp"
 #include <iostream>
+#include <thread>
+#include <mutex>
+#include <vector>
+#include <chrono>
 #include <list>
 #include <numeric>
 #include <math.h>
@@ -45,6 +49,24 @@ BrainTree::BehaviorTree* tr_calibration = nullptr;
 BrainTree::BehaviorTree* tr_run         = nullptr;
 BrainTree::BehaviorTree* tr_block       = nullptr;
 State state = ST_INITIAL;
+
+int upd_process_count = 0;
+std::chrono::system_clock::time_point ts_upd;
+#if defined(BENCHMARK)
+std::vector<std::uint32_t> upd_interval;
+#endif
+
+int vcap_thd_count = 0;
+int vcal_thd_count = 0;
+int vshow_thd_count = 0;
+/* variables for critical section 1 */
+std::mutex mut1;
+Mat frame_in;
+std::chrono::system_clock::time_point te_cap;
+/* variables for critical section 2 */
+std::mutex mut2;
+Mat frame_out;
+std::chrono::system_clock::time_point te_cap_copy, te_cal;
 
 /*
     === NODE CLASS DEFINITION STARTS HERE ===
@@ -258,6 +280,7 @@ protected:
 */
 class IsColorDetected : public BrainTree::Node {
 public:
+    static Color garageColor;
     IsColorDetected(Color c) : color(c) {
         updated = false;
     }
@@ -276,44 +299,85 @@ public:
                     return Status::Success;
                 }
                 break;
-            case CL_BLACK:
+            case CL_JETBLACK_YMNK:
+                 if (cur_rgb.r <=11 && cur_rgb.g <=13 && cur_rgb.b <=15) { 
+                     _log("ODO=%05d, CL_JETBLACK_YMNK detected.", plotter->getDistance());
+                     return Status::Success;
+                 }
+                 break;
+	    case CL_BLACK:
                 if (cur_rgb.r <=50 && cur_rgb.g <=45 && cur_rgb.b <=60) {
                     _log("ODO=%05d, CL_BLACK detected.", plotter->getDistance());
                     return Status::Success;
                 }
                 break;
             case CL_BLUE:
-                if (cur_rgb.b - cur_rgb.r > 45 && cur_rgb.b <= 255 && cur_rgb.r <= 255) {
+               if (cur_rgb.b - cur_rgb.r > 35 && cur_rgb.g >= 55 && cur_rgb.b <= 100 && cur_rgb.b >= 70) {
                     _log("ODO=%05d, CL_BLUE detected.", plotter->getDistance());
                     return Status::Success;
                 }
                 break;
+            case CL_BLUE_SL:
+                 if (cur_rgb.b - cur_rgb.r > 20 && cur_rgb.g <= 100 && cur_rgb.b <= 120) {
+                     garageColor = CL_BLUE_SL;
+                     _log("ODO=%05d, CL_BLUE_SL detected.", plotter->getDistance());
+                     return Status::Success;
+                 }
+                 break;
+             case CL_BLUE2:
+                 if (cur_rgb.r <= 20 && cur_rgb.g <= 40 && cur_rgb.b >= 44 && cur_rgb.b - cur_rgb.r > 20) {
+ //                if (cur_rgb.r <= 20 && cur_rgb.g <= 55 && cur_rgb.b >= 55 && cur_rgb.b - cur_rgb.r > 20) {
+                     _log("ODO=%05d, CL_BLUE2 detected.", plotter->getDistance());
+                     return Status::Success;
+                 }
+                 break;
             case CL_RED:
-                if (cur_rgb.r - cur_rgb.b >= 40 && cur_rgb.g < 60 && cur_rgb.r - cur_rgb.g > 30) {
+                if (cur_rgb.r - cur_rgb.b >= 30 && cur_rgb.r > 80 && cur_rgb.g < 45) {
                     _log("ODO=%05d, CL_RED detected.", plotter->getDistance());
                     return Status::Success;
                 }
                 break;
+            case CL_RED_SL:
+                 if (cur_rgb.r - cur_rgb.b >= 25 && cur_rgb.r > 85 && cur_rgb.g < 60) {
+                     garageColor = CL_RED_SL;
+                     _log("ODO=%05d, CL_RED_SL detected.", plotter->getDistance());
+                     return Status::Success;
+                 }
+                 break;
             case CL_YELLOW:
-                if (cur_rgb.r + cur_rgb.g - cur_rgb.b >= 130 &&  cur_rgb.r - cur_rgb.g <= 30) {
+                if (cur_rgb.r >= 90 &&  cur_rgb.g >= 90 && cur_rgb.b <= 75) {
                     _log("ODO=%05d, CL_YELLOW detected.", plotter->getDistance());
                     return Status::Success;
                 }
                 break;
+            case CL_YELLOW_SL:
+                 if (cur_rgb.r >= 110 &&  cur_rgb.g >= 90 && cur_rgb.b >= 50 && cur_rgb.b <= 120 ) {
+                     garageColor = CL_YELLOW_SL;
+                     _log("ODO=%05d, CL_YELLOW_SL detected.", plotter->getDistance());
+                     return Status::Success;
+                 }
+                 break;
             case CL_GREEN:
-                if (cur_rgb.r <= 10 && cur_rgb.b <= 35 && cur_rgb.g > 43) {
+                if (cur_rgb.g - cur_rgb.r > 20 && cur_rgb.g >= 40 && cur_rgb.r <= 100) {
                     _log("ODO=%05d, CL_GREEN detected.", plotter->getDistance());
                     return Status::Success;
                 }
                 break;
-            case CL_GRAY:
-                if (cur_rgb.r <=80 && cur_rgb.g <=75 && cur_rgb.b <=105) {
+            case CL_GREEN_SL:
+                 if (cur_rgb.b - cur_rgb.r < 30 && cur_rgb.g >= 30 && cur_rgb.b <= 80) {
+                     garageColor = CL_GREEN_SL;
+                     _log("ODO=%05d, CL_GREEN_SL detected.", plotter->getDistance());
+                     return Status::Success;
+                 }   
+                 break;
+	    case CL_GRAY:
+                if (cur_rgb.r >= 45 && cur_rgb.g <=60 && cur_rgb.b <= 65 && cur_rgb.r <= 52 && cur_rgb.b >= 53) {
                     _log("ODO=%05d, CL_GRAY detected.", plotter->getDistance());
                     return Status::Success;
                 }
                 break;
             case CL_WHITE:
-                if (cur_rgb.r >= 82 && cur_rgb.b >= 112 && cur_rgb.g >= 78) {
+	        if (cur_rgb.r >= 100 && cur_rgb.g >= 100 && cur_rgb.b >= 100 ) {
                     _log("ODO=%05d, CL_WHITE detected.", plotter->getDistance());
                     return Status::Success;
                 }
@@ -327,6 +391,163 @@ protected:
     Color color;
     bool updated;
 };
+Color IsColorDetected::garageColor = CL_BLUE_SL;    // define default color as blue
+
+/*
+    usage:
+    ".leaf<IsJunction>(jstate)"
+    is to determine if a junction is captured in sight as the specified state.
+    jstate is one of the following:
+      JST_JOINING: lines are joining
+      JST_JOINED: the join completed
+      JST_FORKING: lines are forking
+      JST_FORKED: the fork completed
+*/
+class IsJunction : public BrainTree::Node {
+public:
+    IsJunction(JState s) : targetState(s) {
+        updated = false;
+	reached = false;
+	prevRoe = 0;
+        currentState = JST_INITIAL;
+    }
+    Status update() override {
+        if (!updated) {
+            _log("ODO=%05d, Junction scan started.", plotter->getDistance());
+             updated = true;
+        }
+	
+	int roe = video->getRangeOfEdges();
+	//_log("ODO=%05d, roe = %d", plotter->getDistance(), roe);
+
+	if (roe != 0) {
+	  switch (currentState) {
+	  case JST_INITIAL:
+	    if ((targetState == JST_JOINING ||
+		 targetState == JST_JOINED) &&
+		roe >= JUNCTION_UPPER_THRESHOLD &&
+		prevRoe <= JUNCTION_LOWER_THRESHOLD) {
+	      currentState = JST_JOINING;
+	      _log("ODO=%05d, lines are joining.", plotter->getDistance());
+	    } else if ((targetState == JST_FORKING ||
+			targetState == JST_FORKED) &&
+		       roe >= JUNCTION_LOWER_THRESHOLD &&
+		       prevRoe <= JUNCTION_LOWER_THRESHOLD) {
+	      currentState = JST_FORKING;
+	      _log("ODO=%05d, lines are forking.", plotter->getDistance());
+	    }
+	    break;
+	  case JST_JOINING:
+	    if (roe <= JUNCTION_LOWER_THRESHOLD) {
+	      currentState = JST_JOINED;
+	      _log("ODO=%05d, the join completed.", plotter->getDistance());
+	    }
+	    break;
+	  case JST_FORKING:
+	    if (roe <= JUNCTION_LOWER_THRESHOLD &&
+		prevRoe >= JUNCTION_UPPER_THRESHOLD) {
+	      currentState = JST_FORKED;
+	      _log("ODO=%05d, the fork completed.", plotter->getDistance());
+	    }
+	    break;
+	  case JST_JOINED:
+	  case JST_FORKED:
+	  default:
+	    break;
+	  }
+	}
+	prevRoe = roe;
+
+        if (currentState == targetState) {
+            if (!reached) {
+                 _log("ODO=%05d, Junction state is reached.", plotter->getDistance());
+                reached = true;
+            }
+            return Status::Success;
+        } else {
+            return Status::Running;
+        }
+    }
+protected:
+    JState targetState, currentState;
+    int prevRoe;
+    bool updated, reached;
+};
+
+/*
+    usage:
+    ".leaf<TraceLineCam>(speed, p, i, d, gs_min, gs_max, srew_rate, trace_side)"
+    is to instruct the robot to trace the line in backward at the given speed.
+    p, i, d are constants for PID control.
+    gs_min, gs_max are grayscale threshold for line recognition binalization.
+    srew_rate = 0.0 indidates NO tropezoidal motion.
+    srew_rate = 0.5 instructs FilteredMotor to change 1 pwm every two executions of update()
+    until the current speed gradually reaches the instructed target speed.
+    trace_side = TS_NORMAL   when in R(L) course and tracing the right(left) side of the line.
+    trace_side = TS_OPPOSITE when in R(L) course and tracing the left(right) side of the line.
+    trace_side = TS_CENTER   when tracing the center of the line.
+*/
+class TraceLineCam : public BrainTree::Node {
+public:
+  TraceLineCam(int s, double p, double i, double d, int gs_min, int gs_max, double srew_rate, TraceSide trace_side) : speed(s),gsMin(gs_min),gsMax(gs_max),srewRate(srew_rate),side(trace_side) {
+        updated = false;
+        ltPid = new PIDcalculator(p, i, d, PERIOD_UPD_TSK, -speed, speed);
+    }
+    ~TraceLineCam() {
+        delete ltPid;
+    }
+    Status update() override {
+        if (!updated) {
+	    video->setThresholds(gsMin, gsMax);
+	    if (side == TS_NORMAL) {
+	      if (_COURSE == -1) { /* right course */
+	        video->setTraceSide(1);
+	      } else {
+	        video->setTraceSide(0);
+	      }
+	    } else if (side == TS_OPPOSITE) {
+	      if (_COURSE == -1) { /* right course */
+		video->setTraceSide(0);
+	      } else {
+		video->setTraceSide(1);
+	      }
+	    } else {
+	      video->setTraceSide(2);
+	    }
+            /* The following code chunk is to properly set prevXin in SRLF */
+            srlfL->setRate(0.0);
+            leftMotor->setPWM(leftMotor->getPWM());
+            srlfR->setRate(0.0);
+            rightMotor->setPWM(rightMotor->getPWM());
+            _log("ODO=%05d, Camera Trace run started.", plotter->getDistance());
+            updated = true;
+        }
+
+        int8_t backward, turn, pwmL, pwmR;
+	int theta = video->getTheta();
+	//_log("ODO=%05d, theta = %d", plotter->getDistance(), theta);
+	
+        /* compute necessary amount of steering by PID control */
+        turn = (-1) * ltPid->compute(theta, 0); /* 0 is the center */
+	//_log("ODO=%05d, turn = %d", plotter->getDistance(), turn);
+        backward = -speed;
+        /* steer EV3 by setting different speed to the motors */
+        pwmL = backward - turn;
+        pwmR = backward + turn;
+        srlfL->setRate(srewRate);
+        leftMotor->setPWM(pwmL);
+        srlfR->setRate(srewRate);
+        rightMotor->setPWM(pwmR);
+        return Status::Running;
+    }
+protected:
+    int speed, gsMin, gsMax;
+    PIDcalculator* ltPid;
+    double srewRate;
+    TraceSide side;
+    bool updated;
+};
+
 
 /*
     usage:
@@ -360,7 +581,7 @@ public:
             updated = true;
         }
 
-        int16_t sensor;
+        int sensor;
         int8_t forward, turn, pwmL, pwmR;
         rgb_raw_t cur_rgb;
 
@@ -368,9 +589,9 @@ public:
         sensor = cur_rgb.r;
         /* compute necessary amount of steering by PID control */
         if (side == TS_NORMAL) {
-            turn = (-1) * _COURSE * ltPid->compute(sensor, (int16_t)target);
+            turn = (-1) * _COURSE * ltPid->compute(sensor, target);
         } else { /* side == TS_OPPOSITE */
-            turn = _COURSE * ltPid->compute(sensor, (int16_t)target);
+            turn = _COURSE * ltPid->compute(sensor, target);
         }
         forward = speed;
         /* steer EV3 by setting different speed to the motors */
@@ -534,6 +755,117 @@ private:
     === NODE CLASS DEFINITION ENDS HERE ===
 */
 
+/* classes running as sub-threads */
+class vcap_thd {
+public:
+  void operator()(int unused) {
+    Mat f;
+    while (state != ST_END && state != ST_ENDING) {
+      f = video->readFrame();
+      std::chrono::system_clock::time_point te_cap_local = std::chrono::system_clock::now();
+      /* critical section 1 */
+      if ( mut1.try_lock() ) {
+#if defined(WITH_OPENCV)
+	frame_in = f.clone();
+#endif
+	te_cap = te_cap_local;
+	mut1.unlock();
+	vcap_thd_count++;
+      }
+      std::this_thread::yield();
+    }
+    _logNoAsp("sub-thread ready to join. # of execution = %d", vcap_thd_count);
+  }
+};
+
+class vcal_thd {
+public:
+  void operator()(int unused) {
+#if defined(BENCHMARK)
+    std::vector<std::uint32_t> elaps_till_cal;
+#endif
+    std::chrono::system_clock::time_point te_cap_local;
+    while (state != ST_END && state != ST_ENDING) {
+      Mat f;
+      /* critical section 1 */
+      mut1.lock();
+      if (te_cap == te_cap_local) {
+	mut1.unlock(); /* if frame is not changed, skip it */
+      } else {
+#if defined(WITH_OPENCV)
+	f = frame_in.clone();
+#endif
+	te_cap_local = te_cap;
+	mut1.unlock();
+	f = video->calculateTarget(f);
+	std::chrono::system_clock::time_point te_cal_local = std::chrono::system_clock::now();
+	/* critical section 2 */
+	if ( mut2.try_lock() ) {
+#if defined(WITH_OPENCV)
+	  frame_out = f.clone();
+#endif
+	  te_cap_copy = te_cap_local;
+	  te_cal = te_cal_local;
+	  mut2.unlock();
+#if defined(BENCHMARK)
+	  elaps_till_cal.push_back(std::chrono::duration_cast<std::chrono::microseconds>(te_cal_local - te_cap_local).count());
+#endif
+	  vcal_thd_count++;
+	}
+      }
+      std::this_thread::yield();
+    }
+    _logNoAsp("sub-thread ready to join. # of execution = %d", vcal_thd_count);
+#if defined(BENCHMARK)
+    _logNoAsp("elapsed time from capture to calculation (micro sec): max = %d, min = %d, mean = %d",
+	 (int)(*std::max_element(std::begin(elaps_till_cal),std::end(elaps_till_cal))),
+	 (int)(*std::min_element(std::begin(elaps_till_cal),std::end(elaps_till_cal))),
+	 (int)(std::accumulate(std::begin(elaps_till_cal),std::end(elaps_till_cal),0) / vcal_thd_count));
+#endif
+  }
+};
+
+class vshow_thd {
+public:
+  void operator()(int unused) {
+#if defined(BENCHMARK)
+    std::vector<std::uint32_t> elaps_till_show;
+#endif
+    std::chrono::system_clock::time_point te_cap_local;
+    while (state != ST_END && state != ST_ENDING) {
+      std::chrono::system_clock::time_point te_cal_local, te_show;
+      Mat f;
+      /* critical section 2 */
+      if ( mut2.try_lock() ) {
+	if (te_cap_copy != te_cap_local) { /* new frame? */
+#if defined(WITH_OPENCV)
+	  f = frame_out.clone();
+#endif
+	  te_cap_local = te_cap_copy;
+	  te_cal_local = te_cal;
+	  mut2.unlock();
+	  video->writeFrame(f);
+	  video->show();
+	  te_show = std::chrono::system_clock::now();
+#if defined(BENCHMARK)
+	  elaps_till_show.push_back(std::chrono::duration_cast<std::chrono::microseconds>(te_show - te_cap_local).count());
+#endif
+	  vshow_thd_count++;
+	} else {
+	  mut2.unlock();
+	}
+	std::this_thread::yield();
+      }
+    }
+    _logNoAsp("sub-thread ready to join. # of execution = %d", vshow_thd_count);
+#if defined(BENCHMARK)
+    _logNoAsp("elapsed time from capture to transmission (micro sec): max = %d, min = %d, mean = %d",
+	 (int)(*std::max_element(std::begin(elaps_till_show),std::end(elaps_till_show))),
+	 (int)(*std::min_element(std::begin(elaps_till_show),std::end(elaps_till_show))),
+	 (int)(std::accumulate(std::begin(elaps_till_show),std::end(elaps_till_show),0) / vshow_thd_count));
+#endif
+  }
+};
 
 /* a cyclic handler to activate a task */
 void task_activator(intptr_t tskid) {
@@ -551,6 +883,7 @@ void main_task(intptr_t unused) {
     //assert(bt != NULL);
     /* create and initialize EV3 objects */
     ev3clock    = new Clock();
+    _log("initialization started.");
     video       = new Video();
     touchSensor = new TouchSensor(PORT_1);
     // temp fix 2022/6/20 W.Taniguchi, new SonarSensor() blocks apparently
@@ -609,13 +942,29 @@ void main_task(intptr_t unused) {
     === BEHAVIOR TREE DEFINITION ENDS HERE ===
 */
 
+    /* start sub-threads not managed by ASP */
+    _log("starting sub-threads...");
+    sigset_t ss;  
+    sigemptyset(&ss);
+    sigaddset(&ss, SIGUSR2);
+    sigaddset(&ss, SIGALRM);
+    sigaddset(&ss, SIGPOLL);
+    sigaddset(&ss, SIGIO);
+
+    std::vector<std::thread> thds;
+    int iUnused = 0;
+    pthread_sigmask(SIG_BLOCK, &ss, 0);
+    thds.emplace_back(vcap_thd(), iUnused);
+    thds.emplace_back(vshow_thd(), iUnused);
+    thds.emplace_back(vcal_thd(), iUnused);
+    pthread_sigmask(SIG_UNBLOCK, &ss, 0); /* let ASP manage the main thread */
+    
     /* register cyclic handler to EV3RT */
-    sta_cyc(CYC_VIDEO_TSK);
+    _log("starting update task...");
     sta_cyc(CYC_UPD_TSK);
 
     /* indicate initialization completion by LED color */
     _log("initialization completed.");
-    ev3_led_set_color(LED_ORANGE);
     state = ST_CALIBRATION;
 
     /* the main task sleep until being waken up and let the registered cyclic handler to traverse the behavir trees */
@@ -626,12 +975,25 @@ void main_task(intptr_t unused) {
         syslog(LOG_NOTICE, "slp_tsk() returned %d", ercd);
     }
 
+    _log("stopping update task...");
     /* deregister cyclic handler from EV3RT */
     stp_cyc(CYC_UPD_TSK);
-    stp_cyc(CYC_VIDEO_TSK);
-    _log("wait for update task to cease, going to sleep 3 secs");
-    ev3clock->sleep(3000000);
-    _log("wait finished");
+
+    _log("wait for update task to cease, going to sleep 100 milli secs");
+    ev3clock->sleep(100000);
+    _log("update process stopped. # of execution = %d", upd_process_count);
+#if defined(BENCHMARK)
+    _log("update process interval (micro sec): max = %d, min = %d, mean = %d",
+	 (int)(*std::max_element(std::begin(upd_interval),std::end(upd_interval))),
+	 (int)(*std::min_element(std::begin(upd_interval),std::end(upd_interval))),
+	 (int)(std::accumulate(std::begin(upd_interval),std::end(upd_interval),0) / upd_process_count));
+#endif
+    
+    /* join the sub-threads */
+    _log("joining sub-threads...");
+    for (auto& t : thds) {
+      t.join();
+    }
 
     /* destroy behavior tree */
     delete tr_block;
@@ -652,8 +1014,8 @@ void main_task(intptr_t unused) {
     delete sonarSensor;
     delete touchSensor;
     delete video;
-    delete ev3clock;
     _log("being terminated...");
+    delete ev3clock;
     // temp fix 2022/6/20 W.Taniguchi, as Bluetooth not implemented yet
     //fclose(bt);
 #if defined(MAKE_SIM)    
@@ -662,18 +1024,18 @@ void main_task(intptr_t unused) {
     ext_tsk();
 }
 
-/* periodic task to handle video */
-void video_task(intptr_t unused) {
-    ER ercd;
-    video->capture();
-    video->writeFrame(video->readFrame());    
-    video->show();
-}
-    
 /* periodic task to update the behavior tree */
 void update_task(intptr_t unused) {
     BrainTree::Node::Status status;
     ER ercd;
+    std::chrono::system_clock::time_point ts_upd_local = std::chrono::system_clock::now();
+#if defined(BENCHMARK)
+    if ( ts_upd.time_since_epoch().count() != 0 ) {
+      upd_interval.push_back(std::chrono::duration_cast<std::chrono::microseconds>(ts_upd_local - ts_upd).count());
+    }
+#endif
+    ts_upd = ts_upd_local;
+    upd_process_count++;
 
     colorSensor->sense();
     plotter->plot();
@@ -764,4 +1126,12 @@ void update_task(intptr_t unused) {
     rightMotor->drive();
     leftMotor->drive();
     //logger->outputLog(LOG_INTERVAL);
+
+    /* ensure that the execution of update task is taking too long */
+    std::chrono::system_clock::time_point te_upd_local = std::chrono::system_clock::now();
+    std::uint32_t t_elapsed = std::chrono::duration_cast<std::chrono::microseconds>(te_upd_local - ts_upd_local).count();
+    if ( t_elapsed > PERIOD_UPD_TSK ) {
+      _log("elapsed: %04d > PERIOD_UPD_TSK: %04d msec", t_elapsed/1000, PERIOD_UPD_TSK/1000);
+      if (state != ST_INITIAL) assert(0);
+    }
 }

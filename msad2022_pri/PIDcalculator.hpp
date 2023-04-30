@@ -9,12 +9,12 @@
 class PIDcalculator {
 private:
     double kp, ki, kd;   /* PID constant */
-    int16_t diff[2], deltaT, minimum, maximum, traceCnt;
+    int diff[2], deltaT, minimum, maximum;
     double integral;
-    int16_t math_limit(int16_t input, int16_t min, int16_t max);
+    int math_limit(double input, int min, int max);
 public:
-    PIDcalculator(double p, double i, double d, int16_t t, int16_t min, int16_t max);
-    int16_t compute(int16_t sensor, int16_t target);
+    PIDcalculator(double p, double i, double d, int t, int min, int max);
+    int compute(int sensor, int target);
     ~PIDcalculator();
 };
 
