@@ -1,13 +1,13 @@
 /*
   how to compile:
 
-    g++ testTraceCam03.cpp -std=c++14 `pkg-config --cflags --libs opencv4` -I .. -o testTraceCam03
+    g++ testTraceCam03.cpp -std=gnu++17 `pkg-config --cflags --libs opencv4` `pkg-config --cflags --libs libcamera` -llccv -I../2023base_pri -o testTraceCam03
 */
 
 /* 
   NppCpp by David Pilger
   git clone https://github.com/dpilger26/NumCpp.git
-  the use of NumCpp requires -std=c++14 -I . for compilation
+  the use of NumCpp requires -std=c++14 -I../2023base_pri for compilation
 */
 #include "NumCpp.hpp"
 
@@ -16,6 +16,12 @@
 #include <opencv2/core/utils/logger.hpp>
 #include <thread>
 #include <cmath>
+/*
+  libcamera bindings for OpenCV (LCCV) by kbarni@github
+  see https://github.com/kbarni/LCCV for installation instructions and usage
+  the use of libcamera equires -std=c++17 for compilation
+*/
+#include <lccv.hpp>
 
 using namespace std;
 using namespace cv;
@@ -46,14 +52,12 @@ int main() {
   /* set number of threads */
   setNumThreads(0);
   /* prepare the camera */
-  VideoCapture cap(0);
-  cap.set(CAP_PROP_FRAME_WIDTH,IN_FRAME_WIDTH);
-  cap.set(CAP_PROP_FRAME_HEIGHT,IN_FRAME_HEIGHT);
-  cap.set(CAP_PROP_FPS,90);
-
-  if (!cap.isOpened()) {
-    cout << "cap is not open" << endl;
-  }
+  lccv::PiCamera cam;
+  cam.options->video_width=IN_FRAME_WIDTH;
+  cam.options->video_height=IN_FRAME_HEIGHT;
+  cam.options->framerate=90;
+  cam.options->verbose=true;
+  cam.startVideo();
 
   /* create trackbars */
   namedWindow("testTrace1");
@@ -80,9 +84,9 @@ int main() {
 
     sleep_for(chrono::milliseconds(10));
 
-    cap.read(frame);
+    cam.getVideoFrame(frame, 0);
 
-    /* clone the frame if exists, otherwise use the previous image */
+    /* clone the frame exists, otherwise use the previous image */
     if (!frame.empty()) {
       img_orig = frame.clone();
     }

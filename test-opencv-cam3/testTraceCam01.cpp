@@ -1,22 +1,22 @@
 #include <iostream>
 #include <opencv2/opencv.hpp>
 #include <thread>
+#include <lccv.hpp>
 
 using namespace std;
 using namespace cv;
 using std::this_thread::sleep_for;
 
 int hmin=0,hmax=179,smin=0,smax=255,vmin=130,vmax=255;
+unsigned int gvtimeout=1000;
 
 int main() {
-  VideoCapture cap(0);
-  cap.set(CAP_PROP_FRAME_WIDTH,640);
-  cap.set(CAP_PROP_FRAME_HEIGHT,480);
-  cap.set(CAP_PROP_FPS,90);
-
-  if (!cap.isOpened()) {
-    cout << "cap is not open" << endl;
-  }
+  lccv::PiCamera cam;
+  cam.options->video_width=640;
+  cam.options->video_height=480;
+  cam.options->framerate=90;
+  cam.options->verbose=true;
+  cam.startVideo();
 
   namedWindow("testTrace1");
   createTrackbar("H_min", "testTrace1", nullptr, 179, nullptr);
@@ -45,7 +45,10 @@ int main() {
 
     sleep_for(chrono::milliseconds(10));
 
-    cap.read(img);
+    if (!cam.getVideoFrame(img, gvtimeout)) {
+      cout << "getVideoFrame() timed out" << endl;
+      exit(-1);
+    }
     // crop the nearest/bottom part of the image
     Mat img_bgr(img, Rect(0,400,640,80));
     // convert the image from BGR to HSV
