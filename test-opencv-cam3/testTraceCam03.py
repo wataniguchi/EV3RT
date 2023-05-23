@@ -51,6 +51,7 @@ roi = (0, 0, FRAME_WIDTH, FRAME_HEIGHT)
 # initial trace target
 mx = int(FRAME_WIDTH/2)
 
+frame_prev = None
 while True:
     # obtain values from the trackbars
     gs_min = cv2.getTrackbarPos("GS_min", "testTrace1")
@@ -61,13 +62,13 @@ while True:
 
     frame = picam2.capture_array()
 
-    # clone the frame if exists, otherwise use the previous frame
+    # use the frame if exists, otherwise use the previous frame
     if len(frame) != 0:
-        img_orig = frame.copy()
-        frame_prev = frame.copy()
+        img_orig = frame
+        frame_prev = frame
     else:
         print("*** empty frame ***")
-        img_orig = frame_prev.copy()
+        img_orig = frame_prev
     # resize the image for OpenCV processing
     if FRAME_WIDTH != IN_FRAME_WIDTH or FRAME_HEIGHT != IN_FRAME_HEIGHT:
         img_orig = cv2.resize(img_orig, (FRAME_WIDTH,FRAME_HEIGHT))
@@ -166,3 +167,4 @@ while True:
         break
 
 cv2.destroyAllWindows
+picam2.stop()

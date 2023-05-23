@@ -72,27 +72,28 @@ int main() {
   Rect roi(0, 0, FRAME_WIDTH, FRAME_HEIGHT);
   /* initial trace target */
   int mx = (int)(FRAME_WIDTH/2);
-  
+
+  Mat frame_prev;
   while (true) {
     /* obtain values from the trackbars */
     gs_min = getTrackbarPos("GS_min", "testTrace1");
     gs_max = getTrackbarPos("GS_max", "testTrace1");
     edge   = getTrackbarPos("Edge",   "testTrace1");
 
-    Mat frame, frame_prev, img_orig, img_gray, img_bin, img_bin_mor;
+    Mat frame, img_orig, img_gray, img_bin, img_bin_mor;
     int c;
 
     sleep_for(chrono::milliseconds(10));
 
     cam.getVideoFrame(frame, 0);
 
-    /* clone the frame if exists, otherwise use the previous frame */
+    /* use the frame if exists, otherwise use the previous frame */
     if (!frame.empty()) {
-      img_orig = frame.clone();
-      frame_prev = frame.clone();
+      img_orig = frame;
+      frame_prev = frame;
     } else {
       cout << "*** empty frame ***" << endl;
-      img_orig = frame_prev.clone();
+      img_orig = frame_prev;
     }
     /* resize the image for OpenCV processing */
     if (FRAME_WIDTH != IN_FRAME_WIDTH || FRAME_HEIGHT != IN_FRAME_HEIGHT) {
@@ -212,5 +213,6 @@ int main() {
   }
 
   destroyAllWindows();
+  cam.stopVideo();
   return 0;
 }
