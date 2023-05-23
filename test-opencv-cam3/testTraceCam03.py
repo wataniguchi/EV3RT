@@ -61,9 +61,13 @@ while True:
 
     frame = picam2.capture_array()
 
-    # clone the image if exists, otherwise use the previous image
+    # clone the frame if exists, otherwise use the previous frame
     if len(frame) != 0:
         img_orig = frame.copy()
+        frame_prev = frame.copy()
+    else:
+        print("*** empty frame ***")
+        img_orig = frame_prev.copy()
     # resize the image for OpenCV processing
     if FRAME_WIDTH != IN_FRAME_WIDTH or FRAME_HEIGHT != IN_FRAME_HEIGHT:
         img_orig = cv2.resize(img_orig, (FRAME_WIDTH,FRAME_HEIGHT))
