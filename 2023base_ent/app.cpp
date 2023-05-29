@@ -15,6 +15,10 @@
 #include <numeric>
 #include <math.h>
 
+/* behavior tree stanza files */
+#include "tr_calibration.h"
+#include "tr_run.h"
+#include "tr_block.h"
 
 /* this is to avoid linker error, undefined reference to `__sync_synchronize' */
 extern "C" void __sync_synchronize() {}
@@ -605,15 +609,7 @@ void main_task(intptr_t unused) {
 */
 
     /* robot starts when touch sensor is turned on */
-    tr_calibration = (BrainTree::BehaviorTree*) BrainTree::Builder()
-        .composite<BrainTree::MemSequence>()
-            .decorator<BrainTree::UntilSuccess>()
-                .leaf<IsTouchOn>()
-            .end()
-            .leaf<ResetClock>()
-        .end()
-        .build();
-
+    tr_calibration = (BrainTree::BehaviorTree*) BrainTree::Builder() TR_CALIBRATION .build();
 /*
     DEFINE ROBOT BEHAVIOR AFTER START
     FOR THE RIGHT AND LEFT COURSE SEPARATELY
@@ -624,270 +620,11 @@ void main_task(intptr_t unused) {
 */ 
 
 #if defined(MAKE_RIGHT) /* BEHAVIOR FOR THE RIGHT COURSE STARTS HERE */
-//右コースライン部 20220903 スタート位置:-2.5,0,-15.3に調整
-    tr_run = (BrainTree::BehaviorTree*) BrainTree::Builder()
-        .composite<BrainTree::ParallelSequence>(1,2)
-            .leaf<IsBackOn>()
-            .composite<BrainTree::MemSequence>()
-                .leaf<IsColorDetected>(CL_BLACK)
-                .leaf<IsColorDetected>(CL_BLUE)
-            .end()
-        .end()
-        .composite<BrainTree::MemSequence>()
-            .composite<BrainTree::ParallelSequence>(1,2)
-                .leaf<IsTimeEarned>(3400000)
-                .leaf<RunAsInstructed>(80,80, 0.5)
-            .end()
-//最初のカーブ
-            .composite<BrainTree::ParallelSequence>(1,2)
-                .leaf<IsTimeEarned>(1200000)
-                .leaf<RunAsInstructed>(78,48, 0.5)
-            .end()
-            .composite<BrainTree::ParallelSequence>(1,2)
-                .leaf<IsTimeEarned>(1700000)
-                .leaf<RunAsInstructed>(82,82, 0.5)
-            .end()
-//カーブ調整
-            .composite<BrainTree::ParallelSequence>(1,2)
-                .leaf<IsTimeEarned>(1800000)
-                .leaf<RunAsInstructed>(74,80, 0.5)
-            .end()
-            .composite<BrainTree::ParallelSequence>(1,2)
-                .leaf<IsTimeEarned>(1000000)
-                .leaf<RunAsInstructed>(82,82, 0.5)
-            .end()
-//カーブ微調整
-            .composite<BrainTree::ParallelSequence>(1,2)
-                .leaf<IsTimeEarned>(800000)
-                .leaf<RunAsInstructed>(80,80, 0.5)
-            .end()
-//右曲がりでGoalに突っ込む
-            .composite<BrainTree::ParallelSequence>(1,2)
-                .leaf<IsTimeEarned>(1300000)
-                .leaf<RunAsInstructed>(48,78, 0.5)
-            .end()
-//一時停止
-            .composite<BrainTree::ParallelSequence>(1,2)
-                .leaf<IsTimeEarned>(1000000)
-                .leaf<RunAsInstructed>(0, 0, 0.0)
-            .end()
-//少し下がる
-            .composite<BrainTree::ParallelSequence>(1,2)
-                .leaf<IsTimeEarned>(3000000)
-                .leaf<RunAsInstructed>(-5, -5, 0.0)
-            .end()
-//Goal後ライントレースに戻す
-            .composite<BrainTree::ParallelSequence>(1,2)
-                .leaf<IsTimeEarned>(10000000)
-                .leaf<TraceLine>(15, GS_TARGET, P_CONST, I_CONST, D_CONST, 0.0, TS_NORMAL)
-            .end()
-        .end()
-        .build();
-
-//右コースブロック部 20220903
-    tr_block = (BrainTree::BehaviorTree*) BrainTree::Builder()
-        .composite<BrainTree::ParallelSequence>(1,2)
-            .leaf<IsBackOn>()
-            .composite<BrainTree::MemSequence>()
-                .composite<BrainTree::ParallelSequence>(1,2)
-                    .leaf<IsColorDetected>(CL_GREEN)
-                    .leaf<TraceLine>(20, GS_TARGET, P_CONST, I_CONST, D_CONST, 0.0, TS_NORMAL)
-                .end()
-// 90度曲がる
-                .composite<BrainTree::ParallelSequence>(1,2)
-                    .leaf<IsTimeEarned>(1880000)
-                    .leaf<RunAsInstructed>(0, 23, 0.0)
-                .end()
-                .leaf<SetArmPosition>(ARM_INITIAL_ANGLE, ARM_SHIFT_PWM)
-//いったん下がる
-                .composite<BrainTree::ParallelSequence>(1,2)
-                    .leaf<IsTimeEarned>(2000000)
-                    .leaf<RunAsInstructed>(0, 0, 0.5)
-                .end()
-                .composite<BrainTree::ParallelSequence>(1,2)
-                    .leaf<IsTimeEarned>(4000000)
-                    .leaf<RunAsInstructed>(-5, -5, 0.5)
-                .end()
-//短くライントレースを行って方向を調整する
-                .composite<BrainTree::ParallelSequence>(1,2)
-                    .leaf<IsTimeEarned>(4800000)
-                    .leaf<TraceLine>(10, GS_TARGET, P_CONST, I_CONST, D_CONST, 0.5, TS_NORMAL)
-                .end()
-                .composite<BrainTree::ParallelSequence>(1,2)
-                    .leaf<IsTimeEarned>(2000000)
-                    .leaf<RunAsInstructed>(0, 0, 0.5)
-                .end()
-//真っ直ぐ進む
-                .composite<BrainTree::ParallelSequence>(1,2)
-                    .leaf<IsTimeEarned>(11000000)
-                    .leaf<RunAsInstructed>(10, 10, 0.5)
-                .end()
-                .composite<BrainTree::ParallelSequence>(1,2)
-                    .leaf<IsTimeEarned>(2000000)
-                    .leaf<RunAsInstructed>(0, 0, 0.5)
-                .end()   
-//ちょっとだけ左
-                .composite<BrainTree::ParallelSequence>(1,2)
-                    .leaf<IsTimeEarned>(2000000)
-                    .leaf<RunAsInstructed>(10, 9, 0.5)
-                .end()
-                .composite<BrainTree::ParallelSequence>(1,2)
-                    .leaf<IsTimeEarned>(1000000)
-                    .leaf<RunAsInstructed>(0, 0, 0.5)
-                .end()
-                .composite<BrainTree::ParallelSequence>(1,2)
-                    .leaf<IsTimeEarned>(1500000)
-                    .leaf<RunAsInstructed>(10, 9, 0.5)
-                .end()
-                .composite<BrainTree::ParallelSequence>(1,2)
-                    .leaf<IsTimeEarned>(1000000)
-                    .leaf<RunAsInstructed>(0, 0, 0.5)
-                .end()         
-                .composite<BrainTree::ParallelSequence>(1,3)
-                    .leaf<IsSonarOn>(190)
-                    .leaf<IsTimeEarned>(50000000)
-                    .leaf<RunAsInstructed>(10, 10, 0.5)
-                .end()
-            .end()
-        .end()
-        .build();
-
+    tr_run = (BrainTree::BehaviorTree*) BrainTree::Builder() TR_RUN_R .build();
+    tr_block = (BrainTree::BehaviorTree*) BrainTree::Builder() TR_BLOCK_R .build();
 #else /* BEHAVIOR FOR THE LEFT COURSE STARTS HERE */
-//左コースライン部 20220904 スタート位置:2.5,0,-15.3に調整
-    tr_run = (BrainTree::BehaviorTree*) BrainTree::Builder()
-        .composite<BrainTree::ParallelSequence>(1,2)
-            .leaf<IsBackOn>()
-            .composite<BrainTree::MemSequence>()
-                .leaf<IsColorDetected>(CL_BLACK)
-                .leaf<IsColorDetected>(CL_BLUE)
-            .end()
-        .end()
-        .composite<BrainTree::MemSequence>()
-            .composite<BrainTree::ParallelSequence>(1,2)
-                .leaf<IsTimeEarned>(2000000)
-                .leaf<RunAsInstructed>(90,90, 0.5)
-            .end()
-//少しずつカーブ
-            .composite<BrainTree::ParallelSequence>(1,2)
-                .leaf<IsTimeEarned>(1500000)
-                .leaf<RunAsInstructed>(85,80, 0.0)
-            .end()
-//大きくカーブ
-            .composite<BrainTree::ParallelSequence>(1,2)
-                .leaf<IsTimeEarned>(1200000)
-                .leaf<RunAsInstructed>(85,65, 0.0)
-            .end()
-            .composite<BrainTree::ParallelSequence>(1,2)
-                .leaf<IsTimeEarned>(1700000)
-                .leaf<RunAsInstructed>(84,85, 0.0)
-            .end()
-            .composite<BrainTree::ParallelSequence>(1,2)
-                .leaf<IsTimeEarned>(2000000)
-                .leaf<RunAsInstructed>(85,85, 0.0)
-            .end()
-//GOAL
-            .composite<BrainTree::ParallelSequence>(1,2)
-                .leaf<IsTimeEarned>(1500000)
-                .leaf<RunAsInstructed>(80,85, 0.0)
-            .end()
-//一時停止
-            .composite<BrainTree::ParallelSequence>(1,2)
-                .leaf<IsTimeEarned>(3000000)
-                .leaf<RunAsInstructed>(0, 0, 0.0)
-            .end()
-//少し下がる
-            .composite<BrainTree::ParallelSequence>(1,2)
-                .leaf<IsTimeEarned>(3000000)
-                .leaf<RunAsInstructed>(-5, -5, 0.5)
-            .end()
-//車体を回転
-            .composite<BrainTree::ParallelSequence>(1,2)
-                .leaf<IsTimeEarned>(1300000)
-                .leaf<RotateEV3>(-45, 20, 0.5)
-            .end()
-//一時停止
-            .composite<BrainTree::ParallelSequence>(1,2)
-                .leaf<IsTimeEarned>(1000000)
-                .leaf<RunAsInstructed>(0, 0, 0.0)
-            .end()
-//Goal後ライントレースに戻す
-            .composite<BrainTree::ParallelSequence>(1,2)
-                .leaf<IsTimeEarned>(10000000)
-                .leaf<TraceLine>(15, GS_TARGET, P_CONST, I_CONST, D_CONST, 0.0, TS_NORMAL)
-            .end()
-        .end()
-        .build();
-
-//左コースブロック部
-    tr_block = (BrainTree::BehaviorTree*) BrainTree::Builder()
-        .composite<BrainTree::ParallelSequence>(1,2)
-            .leaf<IsBackOn>()
-            .composite<BrainTree::MemSequence>()
-                .composite<BrainTree::ParallelSequence>(1,2)
-                    .leaf<IsColorDetected>(CL_GREEN)
-                    .leaf<TraceLine>(20, GS_TARGET, P_CONST, I_CONST, D_CONST, 0.0, TS_NORMAL)
-                .end()
-// 90度曲がる
-                .composite<BrainTree::ParallelSequence>(1,2)
-                    .leaf<IsTimeEarned>(1880000)
-                    .leaf<RunAsInstructed>(0, 23, 0.0)
-                .end()
-                .leaf<SetArmPosition>(ARM_INITIAL_ANGLE, ARM_SHIFT_PWM)
-//いったん下がる
-                .composite<BrainTree::ParallelSequence>(1,2)
-                    .leaf<IsTimeEarned>(2000000)
-                    .leaf<RunAsInstructed>(0, 0, 0.5)
-                .end()
-                .composite<BrainTree::ParallelSequence>(1,2)
-                    .leaf<IsTimeEarned>(4000000)
-                    .leaf<RunAsInstructed>(-5, -5, 0.5)
-                .end()
-//短くライントレースを行って方向を調整する
-                .composite<BrainTree::ParallelSequence>(1,2)
-                    .leaf<IsTimeEarned>(3600000)
-                    .leaf<TraceLine>(8, GS_TARGET, P_CONST, I_CONST, D_CONST, 0.5, TS_NORMAL)
-                .end()
-                .composite<BrainTree::ParallelSequence>(1,2)
-                    .leaf<IsTimeEarned>(2000000)
-                    .leaf<RunAsInstructed>(0, 0, 0.5)
-                .end()
-//真っ直ぐ進む
-                .composite<BrainTree::ParallelSequence>(1,2)
-                    .leaf<IsTimeEarned>(8000000)
-                    .leaf<RunAsInstructed>(10, 10, 0.5)
-                .end()
-                .composite<BrainTree::ParallelSequence>(1,2)
-                    .leaf<IsTimeEarned>(2000000)
-                    .leaf<RunAsInstructed>(0, 0, 0.5)
-                .end()
-//少しだけ右寄りに進む
-                .composite<BrainTree::ParallelSequence>(1,2)
-                    .leaf<IsTimeEarned>(5000000)
-                    .leaf<RunAsInstructed>(10, 9, 0.5)
-                .end()
-                .composite<BrainTree::ParallelSequence>(1,2)
-                    .leaf<IsTimeEarned>(2000000)
-                    .leaf<RunAsInstructed>(0, 0, 0.5)
-                .end()
-//もう少し右寄りに
-                .composite<BrainTree::ParallelSequence>(1,2)
-                    .leaf<IsTimeEarned>(2000000)
-                    .leaf<RunAsInstructed>(10, 9, 0.5)
-                .end()
-                .composite<BrainTree::ParallelSequence>(1,2)
-                    .leaf<IsTimeEarned>(2000000)
-                    .leaf<RunAsInstructed>(10, 10, 0.5)
-                .end()
-//最後の直進
-                .composite<BrainTree::ParallelSequence>(1,3)
-                    .leaf<IsSonarOn>(190)
-                    .leaf<IsTimeEarned>(5000000)
-                    .leaf<RunAsInstructed>(10, 10, 0.5)
-                .end()
-            .end()
-        .end()
-        .build();
-
+    tr_run = (BrainTree::BehaviorTree*) BrainTree::Builder() TR_RUN_L .build();
+    tr_block = (BrainTree::BehaviorTree*) BrainTree::Builder() TR_BLOCK_L .build();
 #endif /* if defined(MAKE_RIGHT) */
 
 /*
