@@ -550,7 +550,7 @@ public:
         rgb_raw_t cur_rgb;
 
         colorSensor->getRawColor(cur_rgb);
-        sensor = cur_rgb.r;
+        sensor = cur_rgb.r;	
         /* compute necessary amount of steering by PID control */
         if (side == TS_NORMAL) {
             turn = (-1) * _COURSE * ltPid->compute(sensor, target);
@@ -729,9 +729,7 @@ public:
       std::chrono::system_clock::time_point te_cap_local = std::chrono::system_clock::now();
       /* critical section 1 */
       if ( mut1.try_lock() ) {
-#if defined(WITH_OPENCV)
 	frame_in = f.clone();
-#endif
 	te_cap = te_cap_local;
 	mut1.unlock();
 	vcap_thd_count++;
@@ -756,18 +754,14 @@ public:
       if (te_cap == te_cap_local) {
 	mut1.unlock(); /* if frame is not changed, skip it */
       } else {
-#if defined(WITH_OPENCV)
 	f = frame_in.clone();
-#endif
 	te_cap_local = te_cap;
 	mut1.unlock();
 	f = video->calculateTarget(f);
 	std::chrono::system_clock::time_point te_cal_local = std::chrono::system_clock::now();
 	/* critical section 2 */
 	if ( mut2.try_lock() ) {
-#if defined(WITH_OPENCV)
 	  frame_out = f.clone();
-#endif
 	  te_cap_copy = te_cap_local;
 	  te_cal = te_cal_local;
 	  mut2.unlock();
@@ -802,9 +796,7 @@ public:
       /* critical section 2 */
       if ( mut2.try_lock() ) {
 	if (te_cap_copy != te_cap_local) { /* new frame? */
-#if defined(WITH_OPENCV)
 	  f = frame_out.clone();
-#endif
 	  te_cap_local = te_cap_copy;
 	  te_cal_local = te_cal;
 	  mut2.unlock();
@@ -886,6 +878,7 @@ void main_task(intptr_t unused) {
     rightMotor->setPWMFilter(srlfR);
     rightMotor->setPWM(0);
     armMotor->reset();
+    _log("initialization completed.");
 
 /*
     === BEHAVIOR TREE DEFINITION STARTS HERE ===

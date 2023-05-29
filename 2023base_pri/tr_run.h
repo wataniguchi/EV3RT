@@ -4,7 +4,7 @@
     .leaf<IsDistanceEarned>(prof->getValueAsNum("RUN_R_DIST")) \
     .composite<BrainTree::MemSequence>() \
       .leaf<TraceLine>(prof->getValueAsNum("RUN_R1_SPEED"), \
-                       prof->getValueAsNum("RUN_Rx_GS_TARGET"), \
+                       prof->getValueAsNum("RUN_Rx_R_TARGET"), \
                        prof->getValueAsNum("RUN_Rx_P_CONST"), \
                        prof->getValueAsNum("RUN_Rx_I_CONST"), \
                        prof->getValueAsNum("RUN_Rx_D_CONST"), 0.0, \
