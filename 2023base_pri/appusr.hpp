@@ -149,4 +149,30 @@ enum JState {
     JST_FORKED,
 };
 
+#include <string.h>
+
+#ifndef ENUMPAIR_TYPE_DEFINED
+#define ENUMPAIR_TYPE_DEFINED
+typedef struct { const char *name; int num; } EnumPair;
+#endif
+
+#define EPAIR(arg) {#arg, arg}
+
+static int EnumStringToNum(const EnumPair *enum_data, const char *name, int *out_num) {
+  for (; enum_data->name; enum_data++) {
+    if (strcmp(enum_data->name, name) == 0) {
+      *out_num = enum_data->num;
+      return 1; /* success */
+    }
+  }
+  return 0; /* failure */
+}
+
+const EnumPair gEnumPairs[] = {
+  EPAIR(TS_NORMAL),
+  EPAIR(TS_OPPOSITE),
+  EPAIR(TS_CENTER),
+  { NULL /* terminator */ }
+};
+
 #endif /* appusr_hpp */

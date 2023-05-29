@@ -1,7 +1,7 @@
 /*
     Profile.cpp
 
-    Copyright © 2022 MSAD Mode2P. All rights reserved.
+    Copyright © 2023 MSAD Mode2P. All rights reserved.
 */
 #include "Profile.hpp"
 #include "appusr.hpp"
@@ -54,4 +54,19 @@ double Profile::getValueAsNum(const std::string& key) {
     profile[key] = "0.0";
   }
   return std::stod(profile[key]);
+}
+
+int Profile::getValueAsNumFromEnum(const std::string& key, const EnumPair *enum_data) {
+  if ( profile.find(key) == profile.end() ) {
+    _log("*** WARNING - profile key %s not exist. zero value used as default", key.c_str());
+    return 0;
+  }
+  int num;
+  if ( EnumStringToNum(enum_data, profile[key].c_str(), &num) ) {
+    _log("%s = %d", key.c_str(), num);
+    return num;
+  } else {
+    _log("*** WARNING - enum name %s not exist. zero value used as default", profile[key].c_str());
+  }
+  return 0;
 }

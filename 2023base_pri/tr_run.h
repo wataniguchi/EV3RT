@@ -8,7 +8,7 @@
                        prof->getValueAsNum("RUN_Rx_P_CONST"), \
                        prof->getValueAsNum("RUN_Rx_I_CONST"), \
                        prof->getValueAsNum("RUN_Rx_D_CONST"), 0.0, \
-                       (TraceSide)prof->getValueAsNum("RUN_R1_TS")) \
+                       (TraceSide)prof->getValueAsNumFromEnum("RUN_R1_TS", gEnumPairs)) \
     .end() \
   .end()
 
@@ -23,6 +23,6 @@
 			  prof->getValueAsNum("RUN_Lx_D_CONST"), \
 			  prof->getValueAsNum("RUN_Lx_GS_MIN"), \
 			  prof->getValueAsNum("RUN_Lx_GS_MAX"), 0.0, \
-                          (TraceSide)prof->getValueAsNum("RUN_L1_TS")) \
+                          (TraceSide)prof->getValueAsNumFromEnum("RUN_L1_TS", gEnumPairs)) \
    .end() \
   .end()
