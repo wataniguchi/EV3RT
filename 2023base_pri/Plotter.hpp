@@ -1,13 +1,21 @@
 /*
     Plotter.hpp
 
-    Copyright © 2021 Wataru Taniguchi. All rights reserved.
+    Copyright © 2023 MSAD Mode2P. All rights reserved.
 */
 #ifndef Plotter_hpp
 #define Plotter_hpp
 
 #define TIRE_DIAMETER    100.0F  /* diameter of tire in milimater           */
 #define WHEEL_TREAD      128.0F  /* distance between right and left wheels  */
+
+/* use the native alignof implementation with c++11 or above,
+   instead of the macro defined in RasPike/include/t_stddef.h */
+#if __cplusplus >= 201102L
+#ifndef alignof
+#define alignof(type) alignof(type)
+#endif /* alignof */
+#endif /* __cplusplus */
 
 #include "GyroSensor.h"
 #include "Motor.h"

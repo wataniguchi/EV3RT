@@ -23,8 +23,6 @@ endif
 
 APPL_DIRS += $(mkfile_path)app $(mkfile_path)unit
 
-ifdef ETROBO_WITH_OPENCV
-
 INCLUDES += \
 	-I$(mkfile_path)app \
 	-I$(mkfile_path)unit \
@@ -43,18 +41,18 @@ APPL_LIBS += -lm -lX11 \
         -lopencv_xobjdetect -lopencv_objdetect -lopencv_calib3d -lopencv_imgcodecs -lopencv_features2d \
         -lopencv_dnn -lopencv_flann -lopencv_xphoto -lopencv_photo -lopencv_imgproc -lopencv_core
 
-COPTS += -DWITH_OPENCV
+ifdef ETROBO_WITH_V3CAM
 
-else # ifdef WITH_OPENCV
+INCLUDES += -I/usr/include/libcamera
+APPL_LIBS += -lcamera -lcamera-base -llccv
+COPTS += -std=gnu++17 -DWITH_V3CAM
 
-INCLUDES += \
-	-I$(mkfile_path)app \
-	-I$(mkfile_path)unit
+else # ifdef ETROBO_WITH_V3CAM
 
-APPL_LIBS += -lm -lX11 \
+COPTS += -std=gnu++14
 
-endif # ifdef WITH_OPENCV
+endif # ifdef ETROBO_WITH_V3CAM
 
 #COPTS += -fno-use-cxa-atexit
-#COPTS += -DNDEBUG -std=gnu++11
-COPTS += -std=gnu++14 -g $(USER_COPTS)
+#COPTS += -DNDEBUG
+COPTS += -g $(USER_COPTS)

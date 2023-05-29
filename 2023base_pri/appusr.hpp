@@ -1,10 +1,18 @@
 /*
     appusr.hpp
 
-    Copyright © 2022 MSAD Mode2P. All rights reserved.
+    Copyright © 2023 MSAD Mode2P. All rights reserved.
 */
 #ifndef appusr_hpp
 #define appusr_hpp
+
+/* use the native alignof implementation with c++11 or above,
+   instead of the macro defined in RasPike/include/t_stddef.h */
+#if __cplusplus >= 201102L
+#ifndef alignof
+#define alignof(type) alignof(type)
+#endif /* alignof */
+#endif /* __cplusplus */
 
 #include "TouchSensor.h"
 #include "SonarSensor.h"
@@ -90,31 +98,10 @@ extern Plotter*     plotter;
 static int _COURSE = 1;
 #endif
 
-/* these parameters are intended to be given as a compiler directive,
-   e.g., -D=SPEED_NORM=50, for fine tuning                                  */
-#ifndef SPEED_NORM
-#define SPEED_NORM              45  /* was 50 for 2020 program                 */
-#endif
-#ifndef P_CONST
-#define P_CONST                 0.75D
-#endif
-#ifndef I_CONST
-#define I_CONST                 0.39D
-#endif
-#ifndef D_CONST
-#define D_CONST                 0.08D
-#endif
+//#ifndef LOG_INTERVAL
+//#define LOG_INTERVAL            0
+//#endif
 
-#ifndef JUMP
-#define JUMP                    0
-#endif
-
-#ifndef LOG_INTERVAL
-#define LOG_INTERVAL            0
-#endif
-
-#define GS_TARGET               47      /* was 47 for 2020 program                 */
-#define GS_TARGET_SLOW          25
 #define SONAR_ALERT_DISTANCE    100     /* in millimeter                           */
 #define ARM_INITIAL_ANGLE       -58
 #define ARM_SHIFT_PWM           100
@@ -123,17 +110,12 @@ static int _COURSE = 1;
 
 enum Color {
     CL_JETBLACK,
-    CL_JETBLACK_YMNK,
     CL_BLACK,
     CL_BLUE,
-    CL_BLUE_SL,
     CL_BLUE2,
     CL_RED,
-    CL_RED_SL,
     CL_YELLOW,
-    CL_YELLOW_SL,
     CL_GREEN,
-    CL_GREEN_SL,
     CL_GRAY,
     CL_WHITE,
 };

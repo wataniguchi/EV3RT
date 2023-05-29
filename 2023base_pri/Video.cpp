@@ -1,30 +1,36 @@
 /*
     Video.cpp
-    Copyright © 2022 MSAD Mode2P. All rights reserved.
+    Copyright © 2023 MSAD Mode2P. All rights reserved.
 */
 #include "Video.hpp"
 #include "appusr.hpp"
 
 Video::Video() {
-#if defined(WITH_OPENCV)
   utils::logging::setLogLevel(utils::logging::LOG_LEVEL_INFO);
   /* set number of threads */
   setNumThreads(0);
+
+#if defined(WITH_V3CAM)
+  cam.options->video_width=IN_FRAME_WIDTH;
+  cam.options->video_height=IN_FRAME_HEIGHT;
+  cam.options->framerate=90;
+  cam.options->verbose=true;
+  cam.startVideo();
+#else /* WITH_V3CAM */
   /* prepare the camera */
   cap = VideoCapture(0);
   cap.set(CAP_PROP_FRAME_WIDTH,IN_FRAME_WIDTH);
   cap.set(CAP_PROP_FRAME_HEIGHT,IN_FRAME_HEIGHT);
   cap.set(CAP_PROP_FPS,90);
   assert(cap.isOpened());
+#endif /* WITH_V3CAM */
   
   /* initial region of interest */
   roi = Rect(0, 0, FRAME_WIDTH, FRAME_HEIGHT);
   /* prepare and keep kernel for morphology */
   kernel = Mat::zeros(Size(7,7), CV_8UC1);
   //kernel = Mat(Size(7,7), CV_8UC1, Scalar(0));
-#endif
 
-#if !defined(WITHOUT_X11)
   //XInitThreads();
   disp = XOpenDisplay(NULL);
   sc = DefaultScreenOfDisplay(disp);
@@ -44,7 +50,6 @@ Video::Video() {
   gc = XCreateGC(disp, win, 0, 0);
   XSetForeground(disp, gc, white);
   XSetFont(disp, gc, font);
-#endif
 
   gbuf = malloc(sizeof(unsigned long) * FRAME_WIDTH * 2*FRAME_HEIGHT);
   /* initialize gbuf with zero */
@@ -55,10 +60,8 @@ Video::Video() {
     }
   }
 
-#if !defined(WITHOUT_X11)
   ximg = XCreateImage(disp, vis, 24, ZPixmap, 0, (char*)gbuf, FRAME_WIDTH, 2*FRAME_HEIGHT, BitmapUnit(disp), 0);
   XInitImage(ximg);
-#endif
 
   /* initial trace target */
   mx = (int)(FRAME_WIDTH/2);
@@ -70,21 +73,24 @@ Video::Video() {
 }
 
 Video::~Video() {
-#if defined(WITH_OPENCV)
+#if defined(WITH_V3CAM)
+  cam.stopVideo();
+#else /* WITH_V3CAM */
   cap.release();
-#endif
+#endif /* WITH_V3CAM */
 
-#if !defined(WITHOUT_X11)
   XDestroyImage(ximg);
   XFreeGC(disp, gc);
   XDestroyWindow(disp, win);
-#endif
 }
 
 Mat Video::readFrame() {
   Mat f;
-#if defined(WITH_OPENCV)
+#if defined(WITH_V3CAM)
+  cam.getVideoFrame(f, 0);
+#else /* WITH_V3CAM */
   cap.read(f);
+#endif /* WITH_V3CAM */
   /* resize the image for OpenCV processing if exists, otherwise use the previous image */
   if (!f.empty()) {
     if (FRAME_WIDTH != IN_FRAME_WIDTH || FRAME_HEIGHT != IN_FRAME_HEIGHT) {
@@ -98,14 +104,10 @@ Mat Video::readFrame() {
   } else {
     f = frame_prev;
   }
-#else
-  f = nullptr;
-#endif
   return f;
 }
 
 void Video::writeFrame(Mat f) {
-#if defined(WITH_OPENCV)
   if (f.empty()) return;
 
   if (f.size().width != FRAME_WIDTH || f.size().height != FRAME_HEIGHT) {
@@ -122,14 +124,9 @@ void Video::writeFrame(Mat f) {
 	      f.data[imat] );
     }
   }
-#elif !defined(WITHOUT_X11)
-  const char* MSG = "No OpenCV"; 
-  XDrawString(disp, win, gc, 10, 10, MSG, strlen(MSG));
-#endif
 }
 
 Mat Video::calculateTarget(Mat f) {
-#if defined(WITH_OPENCV)
   if (f.empty()) return f;
   
   Mat img_gray, img_bin, img_bin_mor, img_cnt_gray, scan_line;
@@ -254,7 +251,6 @@ Mat Video::calculateTarget(Mat f) {
   rectangle(f, Point(roi.x,roi.y), Point(roi.x+roi.width,roi.y+roi.height), Scalar(255,0,0), LINE_THICKNESS);
   /* draw the trace target on the image */
   circle(f, Point(mx, FRAME_HEIGHT-LINE_THICKNESS), CIRCLE_RADIUS, Scalar(0,0,255), -1);
-#endif /* defined(WITH_OPENCV) */
 
   /* calculate variance of mx from the center in pixel */
   int vxp = mx - (int)(FRAME_WIDTH/2);
@@ -279,14 +275,12 @@ void Video::show() {
   sprintf(strbuf[2], "deg=%03d,gyro=%+04d", plotter->getDegree(), gyroSensor->getAngle());
   sprintf(strbuf[3], "pwR=%+04d,pwL=%+04d", rightMotor->getPWM(), leftMotor->getPWM());
 
-#if !defined(WITHOUT_X11)
   XPutImage(disp, win, gc, ximg, 0, 0, 0, 0, FRAME_WIDTH, 2*FRAME_HEIGHT);
   XDrawString(disp, win, gc, DATA_INDENT, FRAME_HEIGHT+2*DATA_INDENT, strbuf[0], strlen(strbuf[0]));
   XDrawString(disp, win, gc, DATA_INDENT, FRAME_HEIGHT+5*DATA_INDENT, strbuf[1], strlen(strbuf[1]));
   XDrawString(disp, win, gc, DATA_INDENT, FRAME_HEIGHT+8*DATA_INDENT, strbuf[2], strlen(strbuf[2]));
   XDrawString(disp, win, gc, DATA_INDENT, FRAME_HEIGHT+11*DATA_INDENT, strbuf[3], strlen(strbuf[3]));
   XFlush(disp);
-#endif
 }
 
 float Video::getTheta() {

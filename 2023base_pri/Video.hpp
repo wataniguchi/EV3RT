@@ -1,6 +1,6 @@
 /*
     Video.hpp
-    Copyright © 2022 MSAD Mode2P. All rights reserved.
+    Copyright © 2023 MSAD Mode2P. All rights reserved.
 */
 #ifndef Video_hpp
 #define Video_hpp
@@ -12,23 +12,26 @@
 */
 #include "NumCpp.hpp"
 
-#if defined(WITH_OPENCV)
 #include <opencv2/opencv.hpp>
 #include <opencv2/core/utils/logger.hpp>
 using namespace cv;
-#else
-#define Mat void*
-#endif
+
+#if defined(WITH_V3CAM)
+/*
+  libcamera bindings for OpenCV (LCCV) by kbarni@github
+  see https://github.com/kbarni/LCCV for installation instructions and usage
+  the use of libcamera equires -std=c++17 for compilation
+*/
+#include <lccv.hpp>
+#endif /* WITH_V3CAM */
 
 #include <vector>
 using namespace std;
 
-#if !defined(WITHOUT_X11)
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
 #undef Status
 #undef Success
-#endif
 
 #include "FilteredMotor.hpp"
 extern FilteredMotor*       leftMotor;
@@ -49,11 +52,12 @@ extern FilteredMotor*       rightMotor;
 
 class Video {
 protected:
-#if defined(WITH_OPENCV)
+#if defined(WITH_V3CAM)
+  lccv::PiCamera cam;
+#else /* WITH_V3CAM */
   VideoCapture cap;
+#endif /* WITH_V3CAM */
   Rect roi;
-#endif
-#if !defined(WITHOUT_X11)
   Display* disp;
   Screen* sc;
   Window win;
@@ -61,7 +65,6 @@ protected:
   GC gc;
   XImage* ximg;
   Font font;
-#endif
   void* gbuf;
   Mat frame_prev;
   Mat kernel;

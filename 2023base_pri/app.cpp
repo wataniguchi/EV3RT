@@ -356,7 +356,6 @@ protected:
     Color color;
     bool updated;
 };
-Color IsColorDetected::garageColor = CL_BLUE_SL;    // define default color as blue
 
 /*
     usage:
@@ -1016,16 +1015,8 @@ void update_task(intptr_t unused) {
             status = tr_calibration->update();
             switch (status) {
             case BrainTree::Node::Status::Success:
-                switch (JUMP) { /* JUMP = 1... is for testing only */
-                    case 1:
-                        state = ST_BLOCK;
-                        _log("State changed: ST_CALIBRATION to ST_BLOCK");
-                        break;
-                    default:
-                        state = ST_RUN;
-                        _log("State changed: ST_CALIBRATION to ST_RUN");
-                        break;
-                }
+                state = ST_RUN;
+                _log("State changed: ST_CALIBRATION to ST_RUN");
                 break;
             case BrainTree::Node::Status::Failure:
                 state = ST_ENDING;
