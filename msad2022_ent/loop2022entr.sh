@@ -57,8 +57,8 @@ if [ $# -gt 2 ];then
             LOOPCNT=5
 fi
 
-# 最初に1回だけmake
-make app=msad2022_ent sim 2>&1 | tee ${DSTDIR}/${MAKELOG}_${DT}.${LOGEXT}
+# 右：最初に1回だけmake
+make right app=msad2022_ent sim 2>&1 | tee ${DSTDIR}/${MAKELOG}_${DT}.${LOGEXT}
 echo "MAXTIME="$MAXTIME
 echo "LOOPCNT="$LOOPCNT
 sleep 3
@@ -72,17 +72,17 @@ for ((ll = 1; ll <= LOOPCNT; ll++)) {
 #    curl -X POST -H "Content-Type: application/json" -d "{\"EnvLightIntensityLevel\":"0",\"EnvLightRotation\":"0",\"LSpotLight\":"0",\"RSpotLight\":"0"}" http://172.27.160.1:54000
 #    sleep 3
 # アプリを実行しプロセスIDを記録
-    asp msad2022_ent &
-    sleep 3
+    asp right msad2022_ent &
+    sleep 2
 #    PID=`asp check l`
     PID=`asp check`
     echo $PID
-    sleep 3
+    sleep 2
 # シミュレータ PREPAREモード
-    sim ctl prepare
+    sim right ctl prepare
     sleep 4
 # シミュレータ GOモード
-    sim ctl go &
+    sim right ctl go &
 # 処理打ち切り時間を越えたらアプリプロセスの動作確認、プロセスが居たら殺す
     sleep $MAXTIME
     CNT=0
@@ -95,13 +95,13 @@ for ((ll = 1; ll <= LOOPCNT; ll++)) {
     echo "stop"
     sleep 1
     PRTCNT=$(printf "%04d" ${ll})
-    sim ctl end 2>&1 | tee ${DSTDIR}/lp_${PRTCNT}.${CSVEXT}
+    sim right ctl end 2>&1 | tee ${DSTDIR}/lpr_${PRTCNT}.${CSVEXT}
     asp stop
 }
 
 #集計
-awk -f ${SRCDIR}/lpprt2022.awk ${DSTDIR}/lp_*.${CSVEXT} > ${DSTDIR}/${DT}.${CSVEXT}
+awk -f ${SRCDIR}/lpprtr2022.awk ${DSTDIR}/lpr_*.${CSVEXT} > ${DSTDIR}/${DT}.${CSVEXT}
 cd ${DSTDIR}
-tar -zcvf ${DT}.tar.gz lp_*.csv
-rm  lp_*.csv
+tar -zcvf ${DT}.tar.gz lpr_*.csv
+rm  lpr_*.csv
 cd ../
