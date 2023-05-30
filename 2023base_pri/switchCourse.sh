@@ -6,7 +6,7 @@ usage_exit() {
         exit 1
 }
 
-PROFILE="msad2022_pri/global_profile.txt"
+PROFILE="2023base_pri/global_profile.txt"
 QUERY=""
 
 while getopts qh OPT
