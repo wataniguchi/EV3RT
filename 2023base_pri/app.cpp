@@ -44,13 +44,16 @@ FilteredMotor*  rightMotor;
 Motor*          armMotor;
 Plotter*        plotter;
 Video*          video;
+int             _COURSE; /* -1 for R course and 1 for L course */
+int             _DEBUG_LEVEL; /* used in _debug macro in appusr.hpp */
+int             upd_process_count = 0; /* used in _intervalLog macro and
+                                          also for BENCHMARK */
 
 BrainTree::BehaviorTree* tr_calibration = nullptr;
 BrainTree::BehaviorTree* tr_run         = nullptr;
 BrainTree::BehaviorTree* tr_block       = nullptr;
 State state = ST_INITIAL;
 
-int upd_process_count = 0;
 std::chrono::system_clock::time_point ts_upd;
 #if defined(BENCHMARK)
 std::vector<std::uint32_t> upd_interval;
@@ -67,6 +70,16 @@ std::chrono::system_clock::time_point te_cap;
 std::mutex mut2;
 Mat frame_out;
 std::chrono::system_clock::time_point te_cap_copy, te_cal;
+
+int EnumStringToNum(const EnumPair *enum_data, const char *name, int *out_num) {
+  for (; enum_data->name; enum_data++) {
+    if (strcmp(enum_data->name, name) == 0) {
+      *out_num = enum_data->num;
+      return 1; /* success */
+    }
+  }
+  return 0; /* failure */
+}
 
 /*
     === NODE CLASS DEFINITION STARTS HERE ===
@@ -300,53 +313,45 @@ public:
                 }
                 break;
 	    case CL_BLACK:
-                if (cur_rgb.r <= 50 && cur_rgb.g <= 45 && cur_rgb.b <= 60) {
+                if (cur_rgb.r <= 20 && cur_rgb.g <= 20 && cur_rgb.b <= 20 &&
+		    abs(cur_rgb.r - cur_rgb.g) <= 3 &&
+		    abs(cur_rgb.g - cur_rgb.b) <= 3 &&
+		    abs(cur_rgb.b - cur_rgb.r) <= 3) {
                     _log("ODO=%05d, CL_BLACK detected.", plotter->getDistance());
                     return Status::Success;
                 }
                 break;
             case CL_BLUE:
-               if (cur_rgb.b - cur_rgb.r > 35 && cur_rgb.g >= 55 && cur_rgb.b <= 100 && cur_rgb.b >= 70) {
+                if (cur_rgb.r <= 35 && cur_rgb.g <= 40 &&
+		    cur_rgb.b - cur_rgb.g >= 7 &&
+		    cur_rgb.b - cur_rgb.r >= 10) {
                     _log("ODO=%05d, CL_BLUE detected.", plotter->getDistance());
                     return Status::Success;
                 }
                 break;
-            case CL_BLUE2:
-                 if (cur_rgb.r <= 25 && cur_rgb.g <= 55 && cur_rgb.b >= 55) {
-                     _log("ODO=%05d, CL_BLUE2 detected.", plotter->getDistance());
-                     return Status::Success;
-                 }
-                 break;
             case CL_RED:
-                if (cur_rgb.r - cur_rgb.b >= 25 && cur_rgb.r > 85 && cur_rgb.g < 60) {
+                if (cur_rgb.r >= 30 &&
+		    cur_rgb.r - cur_rgb.g >= 10 &&
+		    cur_rgb.r - cur_rgb.b >= 10) {
                     _log("ODO=%05d, CL_RED detected.", plotter->getDistance());
                     return Status::Success;
                 }
                 break;
             case CL_YELLOW:
-                 if (cur_rgb.r >= 110 &&  cur_rgb.g >= 90 && cur_rgb.b >= 50 && cur_rgb.b <= 120 ) {
+                if (cur_rgb.r >= 30 && cur_rgb.g >= 25 &&
+		    cur_rgb.r - cur_rgb.g >= 7) {
                      _log("ODO=%05d, CL_YELLOW detected.", plotter->getDistance());
                      return Status::Success;
                  }
                  break;
             case CL_GREEN:
-                 if (cur_rgb.b - cur_rgb.r < 30 && cur_rgb.g >= 30 && cur_rgb.b <= 80) {
+                if (cur_rgb.g >= 10 &&
+		    cur_rgb.g - cur_rgb.r >= 5 &&
+		    cur_rgb.g - cur_rgb.b >= 2) {
                      _log("ODO=%05d, CL_GREEN detected.", plotter->getDistance());
                      return Status::Success;
                  }   
                  break;
-	    case CL_GRAY:
-                if (cur_rgb.r >= 45 && cur_rgb.g <=60 && cur_rgb.b <= 65 && cur_rgb.r <= 52 && cur_rgb.b >= 53) {
-                    _log("ODO=%05d, CL_GRAY detected.", plotter->getDistance());
-                    return Status::Success;
-                }
-                break;
-            case CL_WHITE:
-	        if (cur_rgb.r >= 100 && cur_rgb.g >= 100 && cur_rgb.b >= 100 ) {
-                    _log("ODO=%05d, CL_WHITE detected.", plotter->getDistance());
-                    return Status::Success;
-                }
-                break;
             default:
                 break;
         }
@@ -382,7 +387,7 @@ public:
         }
 	
 	int roe = video->getRangeOfEdges();
-	//_log("ODO=%05d, roe = %d", plotter->getDistance(), roe);
+	_debug(_log("ODO=%05d, roe = %d", plotter->getDistance(), roe),3); /* if _DEBUG_LEVEL >= 3 */
 
 	if (roe != 0) {
 	  switch (currentState) {
@@ -440,9 +445,9 @@ protected:
 
 /*
     usage:
-    ".leaf<TraceLineCam>(speed, p, i, d, gs_min, gs_max, srew_rate, trace_side)"
+    ".leaf<TraceLineCam>(speed, pid, gs_min, gs_max, srew_rate, trace_side)"
     is to instruct the robot to trace the line in backward at the given speed.
-    p, i, d are constants for PID control.
+    pid is a vector of three constants for PID control.
     gs_min, gs_max are grayscale threshold for line recognition binalization.
     srew_rate = 0.0 indidates NO tropezoidal motion.
     srew_rate = 0.5 instructs FilteredMotor to change 1 pwm every two executions of update()
@@ -453,9 +458,10 @@ protected:
 */
 class TraceLineCam : public BrainTree::Node {
 public:
-  TraceLineCam(int s, double p, double i, double d, int gs_min, int gs_max, double srew_rate, TraceSide trace_side) : speed(s),gsMin(gs_min),gsMax(gs_max),srewRate(srew_rate),side(trace_side) {
+  TraceLineCam(int s, std::vector<double> pid, int gs_min, int gs_max, double srew_rate, TraceSide trace_side) : speed(s),gsMin(gs_min),gsMax(gs_max),srewRate(srew_rate),side(trace_side) {
         updated = false;
-        ltPid = new PIDcalculator(p, i, d, PERIOD_UPD_TSK, -speed, speed);
+	assert(pid.size() == 3);
+        ltPid = new PIDcalculator(pid[0], pid[1], pid[2], PERIOD_UPD_TSK, -speed, speed);
     }
     ~TraceLineCam() {
         delete ltPid;
@@ -489,11 +495,11 @@ public:
 
         int8_t backward, turn, pwmL, pwmR;
 	int theta = video->getTheta();
-	//_log("ODO=%05d, theta = %d", plotter->getDistance(), theta);
+	_debug(_log("ODO=%05d, theta = %d", plotter->getDistance(), theta),3); /* if _DEBUG_LEVEL >= 3 */
 	
         /* compute necessary amount of steering by PID control */
         turn = (-1) * ltPid->compute(theta, 0); /* 0 is the center */
-	//_log("ODO=%05d, turn = %d", plotter->getDistance(), turn);
+	_debug(_log("ODO=%05d, turn = %d", plotter->getDistance(), turn),3); /* if _DEBUG_LEVEL >= 3 */
         backward = -speed;
         /* steer EV3 by setting different speed to the motors */
         pwmL = backward - turn;
@@ -515,9 +521,9 @@ protected:
 
 /*
     usage:
-    ".leaf<TraceLine>(speed, target, p, i, d, srew_rate, trace_side)"
+    ".leaf<TraceLine>(speed, target, pid, srew_rate, trace_side)"
     is to instruct the robot to trace the line at the given speed.
-    p, i, d are constants for PID control.
+    pid is a vector of three constants for PID control.
     target is the brightness level for the ideal line for trace.
     srew_rate = 0.0 indidates NO tropezoidal motion.
     srew_rate = 0.5 instructs FilteredMotor to change 1 pwm every two executions of update()
@@ -527,9 +533,10 @@ protected:
 */
 class TraceLine : public BrainTree::Node {
 public:
-    TraceLine(int s, int t, double p, double i, double d, double srew_rate, TraceSide trace_side) : speed(s),target(t),srewRate(srew_rate),side(trace_side) {
+  TraceLine(int s, int t, std::vector<double> pid, double srew_rate, TraceSide trace_side) : speed(s),target(t),srewRate(srew_rate),side(trace_side) {
         updated = false;
-        ltPid = new PIDcalculator(p, i, d, PERIOD_UPD_TSK, -speed, speed);
+	assert(pid.size() == 3);
+        ltPid = new PIDcalculator(pid[0], pid[1], pid[2], PERIOD_UPD_TSK, -speed, speed);
     }
     ~TraceLine() {
         delete ltPid;
@@ -557,6 +564,7 @@ public:
         } else { /* side == TS_OPPOSITE */
             turn = _COURSE * ltPid->compute(sensor, target);
         }
+	_debug(_log("ODO=%05d, turn = %d", plotter->getDistance(), turn),3); /* if _DEBUG_LEVEL >= 3 */
         forward = speed;
         /* steer EV3 by setting different speed to the motors */
         pwmL = forward - turn;
@@ -857,6 +865,7 @@ void main_task(intptr_t unused) {
     } else {
       _COURSE = 1;
     }
+    _DEBUG_LEVEL = prof->getValueAsNum("DEBUG_LEVEL");
  
     /* FIR parameters for a low-pass filter with normalized cut-off frequency of 0.2
         using a function of the Hamming Window */
@@ -878,7 +887,6 @@ void main_task(intptr_t unused) {
     rightMotor->setPWMFilter(srlfR);
     rightMotor->setPWM(0);
     armMotor->reset();
-    _log("initialization completed.");
 
 /*
     === BEHAVIOR TREE DEFINITION STARTS HERE ===
@@ -974,9 +982,6 @@ void main_task(intptr_t unused) {
     delete ev3clock;
     // temp fix 2022/6/20 W.Taniguchi, as Bluetooth not implemented yet
     //fclose(bt);
-#if defined(MAKE_SIM)    
-    ETRoboc_notifyCompletedToSimulator();
-#endif
     ext_tsk();
 }
 
@@ -1073,15 +1078,19 @@ void update_task(intptr_t unused) {
 
     rightMotor->drive();
     leftMotor->drive();
-    //logger->outputLog(LOG_INTERVAL);
 
-    /* ensure that the execution of update task is taking too long */
+    _debug({
+      rgb_raw_t cur_rgb;
+      colorSensor->getRawColor(cur_rgb);
+      _intervalLog("R=%03d, G=%03d, B=%03d", cur_rgb.r, cur_rgb.g, cur_rgb.b);
+    },2); /* if _DEBUG_LEVEL >= 2 */
+    
+    /* detect if the execution of update task is taking too long */
     std::chrono::system_clock::time_point te_upd_local = std::chrono::system_clock::now();
     std::uint32_t t_elapsed = std::chrono::duration_cast<std::chrono::microseconds>(te_upd_local - ts_upd_local).count();
     if ( t_elapsed > PERIOD_UPD_TSK ) {
       _log("elapsed: %04d > PERIOD_UPD_TSK: %04d msec", t_elapsed/1000, PERIOD_UPD_TSK/1000);
       if (state != ST_INITIAL)
-	_debug(assert(0)); /* if DEBUG is defined in appusr.hpp,
-			      execution gets stopped when update task is too long */
+	_debug(assert(0),1); /* if _DEBUG_LEVEL >= 1 */
     }
 }

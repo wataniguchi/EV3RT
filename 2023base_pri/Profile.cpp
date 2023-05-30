@@ -7,6 +7,7 @@
 #include "appusr.hpp"
 
 #include <fstream>
+#include <sstream>
 #include <glob.h>
 
 Profile::Profile(const std::string& paths) {
@@ -56,7 +57,7 @@ double Profile::getValueAsNum(const std::string& key) {
   return std::stod(profile[key]);
 }
 
-int Profile::getValueAsNumFromEnum(const std::string& key, const EnumPair *enum_data) {
+int Profile::getValueAsIntFromEnum(const std::string& key, const EnumPair *enum_data) {
   if ( profile.find(key) == profile.end() ) {
     _log("*** WARNING - profile key %s not exist. zero value used as default", key.c_str());
     return 0;
@@ -70,3 +71,18 @@ int Profile::getValueAsNumFromEnum(const std::string& key, const EnumPair *enum_
   }
   return 0;
 }
+
+std::vector<double> Profile::getValueAsNumVec(const std::string& key) {
+  std::vector<double> vec;
+  std::string value;
+  if ( profile.find(key) == profile.end() ) {
+    _log("*** WARNING - profile key %s not exist. empty vector used as default", key.c_str());
+    return std::vector<double>();
+  }
+  for (std::stringstream ss(profile[key]); std::getline(ss, value, ',');) {
+    vec.push_back(std::stod(value));
+    _log("%s[%d] = %s", key.c_str(), vec.size()-1, value.c_str());
+  }
+  return vec;
+}
+

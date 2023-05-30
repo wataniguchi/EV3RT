@@ -5,10 +5,8 @@
     .composite<BrainTree::MemSequence>() \
       .leaf<TraceLine>(prof->getValueAsNum("RUN_R1_SPEED"), \
                        prof->getValueAsNum("RUN_Rx_R_TARGET"), \
-                       prof->getValueAsNum("RUN_Rx_P_CONST"), \
-                       prof->getValueAsNum("RUN_Rx_I_CONST"), \
-                       prof->getValueAsNum("RUN_Rx_D_CONST"), 0.0, \
-                       (TraceSide)prof->getValueAsNumFromEnum("RUN_R1_TS", gEnumPairs)) \
+                       prof->getValueAsNumVec("RUN_Rx_PID_CONST"), 0.0, \
+                       (TraceSide)prof->getValueAsIntFromEnum("RUN_R1_TS", gEnumPairs)) \
     .end() \
   .end()
 
@@ -18,11 +16,9 @@
     .leaf<IsDistanceEarned>(prof->getValueAsNum("RUN_L_DIST")) \
     .composite<BrainTree::MemSequence>() \
       .leaf<TraceLineCam>(prof->getValueAsNum("RUN_L1_SPEED"), \
-			  prof->getValueAsNum("RUN_Lx_P_CONST"), \
-			  prof->getValueAsNum("RUN_Lx_I_CONST"), \
-			  prof->getValueAsNum("RUN_Lx_D_CONST"), \
+			  prof->getValueAsNumVec("RUN_Lx_PID_CONST"), \
 			  prof->getValueAsNum("RUN_Lx_GS_MIN"), \
 			  prof->getValueAsNum("RUN_Lx_GS_MAX"), 0.0, \
-                          (TraceSide)prof->getValueAsNumFromEnum("RUN_L1_TS", gEnumPairs)) \
+                          (TraceSide)prof->getValueAsIntFromEnum("RUN_L1_TS", gEnumPairs)) \
    .end() \
   .end()

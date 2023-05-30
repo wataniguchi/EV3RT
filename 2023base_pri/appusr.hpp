@@ -23,10 +23,6 @@
 #include "Clock.h"
 using namespace ev3api;
 
-#if defined(MAKE_SIM)
-#include "etroboc_ext.h"
-#endif
-
 /* M_PI and M_TWOPI is NOT available even with math header file under -std=c++11
    because they are not strictly comforming to C++11 standards
    this program is compiled under -std=gnu++11 option */
@@ -52,13 +48,17 @@ extern SRLF*        srlf_r;
 extern FilteredMotor*       rightMotor;
 extern Motor*       armMotor;
 extern Plotter*     plotter;
+extern int          _COURSE;
+extern int          _DEBUG_LEVEL;
+extern int          upd_process_count;
 
-#define DEBUG
+#define _debug(x, level) do { \
+    if (_DEBUG_LEVEL >= (level)) { x; }		\
+  } while (0)
 
-#ifdef DEBUG
-#define _debug(x) (x)
-#else
-#define _debug(x)
+#ifndef LOG_INTERVAL
+#define LOG_INTERVAL            100 /* _intervalLog macro prints once every
+				       LOG_INTERVAL times of update process execution */
 #endif
 
 //#define LOG_ON_CONSOL
@@ -72,35 +72,27 @@ extern Plotter*     plotter;
 #define _logNoAsp(fmt, ...) \
     syslog(LOG_NOTICE, "%08u, %s: " fmt, \
     0, __PRETTY_FUNCTION__, ##__VA_ARGS__)
+#define _intervalLog(fmt, ...) do { \
+  if (upd_process_count % LOG_INTERVAL == 0) \
+    syslog(LOG_NOTICE, "%08u, %s: " fmt, \
+    ev3clock->now(), __PRETTY_FUNCTION__, ##__VA_ARGS__); \
+  } while (0)
 #else
 #define _log(fmt, ...) \
     printf("%08u, %s: " fmt "\n", \
     ev3clock->now(), __PRETTY_FUNCTION__, ##__VA_ARGS__)
-    // temp fix 2022/6/20 W.Taniguchi, as Bluetooth not implemented yet
-    /* fprintf(bt, "%08u, %s: " fmt "\n", \ */
 #define _logNoAsp(fmt, ...) \
     printf("%08u, %s: " fmt "\n", \
     0, __PRETTY_FUNCTION__, ##__VA_ARGS__)
+#define _intervalLog(fmt, ...) do { \
+  if (upd_process_count % LOG_INTERVAL == 0) \
+    printf("%08u, %s: " fmt "\n", \
+    ev3clock->now(), __PRETTY_FUNCTION__, ##__VA_ARGS__); \
+  } while (0)
 #endif
 
 /* macro to covert an enumeration constant to a string */
 #define STR(var) #var
-
-#if defined(MAKE_SIM)
-  /* macro for making program compatible for both left and right courses.
-   the default is left course. */ 
-  #if defined(MAKE_RIGHT)
-    static const int _COURSE = -1;
-  #else
-    static const int _COURSE = 1;
-  #endif /* defined(MAKE_RIGHT) */
-#else
-static int _COURSE = 1;
-#endif
-
-//#ifndef LOG_INTERVAL
-//#define LOG_INTERVAL            0
-//#endif
 
 #define SONAR_ALERT_DISTANCE    100     /* in millimeter                           */
 #define ARM_INITIAL_ANGLE       -58
@@ -112,12 +104,9 @@ enum Color {
     CL_JETBLACK,
     CL_BLACK,
     CL_BLUE,
-    CL_BLUE2,
     CL_RED,
     CL_YELLOW,
     CL_GREEN,
-    CL_GRAY,
-    CL_WHITE,
 };
 
 enum BoardItem {
@@ -149,8 +138,6 @@ enum JState {
     JST_FORKED,
 };
 
-#include <string.h>
-
 #ifndef ENUMPAIR_TYPE_DEFINED
 #define ENUMPAIR_TYPE_DEFINED
 typedef struct { const char *name; int num; } EnumPair;
@@ -158,21 +145,13 @@ typedef struct { const char *name; int num; } EnumPair;
 
 #define EPAIR(arg) {#arg, arg}
 
-static int EnumStringToNum(const EnumPair *enum_data, const char *name, int *out_num) {
-  for (; enum_data->name; enum_data++) {
-    if (strcmp(enum_data->name, name) == 0) {
-      *out_num = enum_data->num;
-      return 1; /* success */
-    }
-  }
-  return 0; /* failure */
-}
-
 const EnumPair gEnumPairs[] = {
   EPAIR(TS_NORMAL),
   EPAIR(TS_OPPOSITE),
   EPAIR(TS_CENTER),
   { NULL /* terminator */ }
 };
+
+int EnumStringToNum(const EnumPair *enum_data, const char *name, int *out_num);
 
 #endif /* appusr_hpp */

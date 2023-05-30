@@ -8,6 +8,7 @@
 
 #include <string>
 #include <unordered_map>
+#include <vector>
 
 #ifndef ENUMPAIR_TYPE_DEFINED
 #define ENUMPAIR_TYPE_DEFINED
@@ -19,7 +20,8 @@ public:
   Profile(const std::string& path);
   std::string getValueAsStr(const std::string& key);
   double getValueAsNum(const std::string& key);
-  int getValueAsNumFromEnum(const std::string& key, const EnumPair *enum_data);
+  int getValueAsIntFromEnum(const std::string& key, const EnumPair *enum_data);
+  std::vector<double> getValueAsNumVec(const std::string& key);
 private:
   std::unordered_map<std::string, std::string> profile;
 };
