@@ -5,7 +5,9 @@
     .composite<BrainTree::MemSequence>() \
       /* section R1: trace NORMAL side and run fast until the first join */ \
       .composite<BrainTree::ParallelSequence>(1,2) \
-        .leaf<IsJunction>(JST_JOINED) \
+        .composite<BrainTree::MemSequence>() \
+          .leaf<IsJunction>(JST_JOINED) \
+        .end() \
         .leaf<TraceLineCam>(prof->getValueAsNum("RUN_R1_SPEED"), \
 	      prof->getValueAsNumVec("RUN_Rx_PID_CONST"), \
 	      prof->getValueAsNum("RUN_Rx_GS_MIN"), \
@@ -15,7 +17,10 @@
       /* section R2: slow down tropezoidally and \
                      run before the fork beyond LAP Gate */ \
       .composite<BrainTree::ParallelSequence>(1,2) \
-        .leaf<IsJunction>(JST_FORKING) \
+        .composite<BrainTree::MemSequence>() \
+          .leaf<IsDistanceEarned>(prof->getValueAsNum("RUN_R2_DIST")) \
+          .leaf<IsJunction>(JST_FORKING) \
+        .end() \
         .leaf<TraceLineCam>(prof->getValueAsNum("RUN_R2_SPEED"), \
 	      prof->getValueAsNumVec("RUN_Rx_PID_CONST"), \
 	      prof->getValueAsNum("RUN_Rx_GS_MIN"), \
@@ -25,7 +30,7 @@
       /* section R3: run faster tropezidally until the join before CP1 */ \
       .composite<BrainTree::ParallelSequence>(1,2) \
         .composite<BrainTree::MemSequence>() \
-          .leaf<IsJunction>(JST_FORKED) \
+          .leaf<IsDistanceEarned>(prof->getValueAsNum("RUN_R3_DIST")) \
           .leaf<IsJunction>(JST_JOINING) \
         .end() \
         .leaf<TraceLineCam>(prof->getValueAsNum("RUN_R3_SPEED"), \
@@ -37,7 +42,7 @@
       /* section R4: run until the intersection between loops */ \
       .composite<BrainTree::ParallelSequence>(1,2) \
         .composite<BrainTree::MemSequence>() \
-          .leaf<IsJunction>(JST_JOINED) \
+          .leaf<IsDistanceEarned>(prof->getValueAsNum("RUN_R4_DIST")) \
           .leaf<IsJunction>(JST_JOINING) \
         .end() \
         .leaf<TraceLineCam>(prof->getValueAsNum("RUN_R4_SPEED"), \
@@ -49,9 +54,9 @@
       /* section R5: switch trace side and get into the larger loop */ \
       .composite<BrainTree::ParallelSequence>(1,2) \
         .composite<BrainTree::MemSequence>() \
-          .leaf<IsJunction>(JST_FORKED) \
-          .leaf<IsJunction>(JST_FORKED) \
+          .leaf<IsDistanceEarned>(prof->getValueAsNum("RUN_R5_DIST1")) \
           .leaf<IsJunction>(JST_JOINED) \
+          .leaf<IsDistanceEarned>(prof->getValueAsNum("RUN_R5_DIST2")) \
           .leaf<IsJunction>(JST_JOINED) \
         .end() \
         .leaf<TraceLineCam>(prof->getValueAsNum("RUN_R5_SPEED"), \
@@ -63,7 +68,7 @@
       /* section R6: switch the trace side and get into the smaller loop */ \
       .composite<BrainTree::ParallelSequence>(1,2) \
         .composite<BrainTree::MemSequence>() \
-          .leaf<IsJunction>(JST_FORKED) \
+          .leaf<IsDistanceEarned>(prof->getValueAsNum("RUN_R6_DIST")) \
           .leaf<IsJunction>(JST_JOINED) \
         .end() \
         .leaf<TraceLineCam>(prof->getValueAsNum("RUN_R6_SPEED"), \
