@@ -12,6 +12,10 @@
 /msad2022_ent/work/
 !/msad2022_pri/
 /msad2022_pri/work/
+!/msad2023_ent/
+/msad2023_ent/work/
+!/msad2023_pri/
+/msad2023_pri/work/
 !/test-opencv/
 /test-opencv/*
 !/test-opencv/*.py
