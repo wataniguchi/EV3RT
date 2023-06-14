@@ -387,7 +387,7 @@ public:
         }
 	
 	int roe = video->getRangeOfEdges();
-	_debug(_log("ODO=%05d, roe = %d", plotter->getDistance(), roe),3); /* if _DEBUG_LEVEL >= 3 */
+	_debug(_intervalLog("ODO=%05d, roe = %d", plotter->getDistance(), roe),2); /* if _DEBUG_LEVEL >= 2 */
 
 	if (roe != 0) {
 	  switch (currentState) {

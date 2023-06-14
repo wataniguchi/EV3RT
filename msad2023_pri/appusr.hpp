@@ -57,7 +57,7 @@ extern int          upd_process_count;
   } while (0)
 
 #ifndef LOG_INTERVAL
-#define LOG_INTERVAL            100 /* _intervalLog macro prints once every
+#define LOG_INTERVAL            10 /* _intervalLog macro prints once every
 				       LOG_INTERVAL times of update process execution */
 #endif
 
@@ -97,8 +97,8 @@ extern int          upd_process_count;
 #define SONAR_ALERT_DISTANCE    100     /* in millimeter                           */
 #define ARM_INITIAL_ANGLE       -58
 #define ARM_SHIFT_PWM           100
-#define JUNCTION_LOWER_THRESHOLD 45
-#define JUNCTION_UPPER_THRESHOLD 60
+#define JUNCTION_LOWER_THRESHOLD 40
+#define JUNCTION_UPPER_THRESHOLD 50
 
 enum Color {
     CL_JETBLACK,
