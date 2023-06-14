@@ -489,7 +489,7 @@ public:
             leftMotor->setPWM(leftMotor->getPWM());
             srlfR->setRate(0.0);
             rightMotor->setPWM(rightMotor->getPWM());
-            _log("ODO=%05d, Camera Trace run started.", plotter->getDistance());
+            _log("ODO=%05d, Camera Trace run started. TS=%1d", plotter->getDistance(), (int)side);
             updated = true;
         }
 
