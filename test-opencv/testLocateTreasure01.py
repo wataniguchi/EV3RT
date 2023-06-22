@@ -16,18 +16,34 @@ FRAME_HEIGHT = 480
 LINE_THICKNESS = int(FRAME_WIDTH/80)
 
 # frame size for X11 painting
-OUT_FRAME_WIDTH  = 160
-OUT_FRAME_HEIGHT = 120
+#OUT_FRAME_WIDTH  = 160
+#OUT_FRAME_HEIGHT = 120
+OUT_FRAME_WIDTH  = 320
+OUT_FRAME_HEIGHT = 240
 
 # callback function for trackbars
 def nothing(x):
     pass
 
-# prepare the camera
-cap = cv2.VideoCapture(0)
-cap.set(cv2.CAP_PROP_FRAME_WIDTH,IN_FRAME_WIDTH)
-cap.set(cv2.CAP_PROP_FRAME_HEIGHT,IN_FRAME_HEIGHT)
-cap.set(cv2.CAP_PROP_FPS,90)
+# check if exist any arguments
+args = sys.argv
+if 1 == len(args):
+    print("No image file specified. Capture images from camera.")
+    # prepare the camera
+    cap = cv2.VideoCapture(0)
+    cap.set(cv2.CAP_PROP_FRAME_WIDTH,IN_FRAME_WIDTH)
+    cap.set(cv2.CAP_PROP_FRAME_HEIGHT,IN_FRAME_HEIGHT)
+    cap.set(cv2.CAP_PROP_FPS,90)
+else:
+    frame = cv2.imread(args[1])
+    if type(frame) is np.ndarray:
+        print(f"Processing image file {args[1]}...")
+        # overwrite IN_FRAME_* by actual image size
+        IN_FRAME_WIDTH = frame.shape[1]
+        IN_FRAME_HEIGHT = frame.shape[0]
+    else:
+        print(f"Invalid image file {args[1]}.")
+        sys.exit(-1)
 
 # create trackbars
 cv2.namedWindow("testTrace1")
@@ -36,7 +52,7 @@ cv2.createTrackbar("R_min", "testTrace1", 0, 255, nothing)
 cv2.createTrackbar("R_max", "testTrace1", 255, 255, nothing)
 cv2.createTrackbar("G_min", "testTrace1", 0, 255, nothing)
 cv2.createTrackbar("G_max", "testTrace1", 50, 255, nothing)
-cv2.createTrackbar("B_min", "testTrace1", 85, 255, nothing)
+cv2.createTrackbar("B_min", "testTrace1", 55, 255, nothing)
 cv2.createTrackbar("B_max", "testTrace1", 200, 255, nothing)
 cv2.createTrackbar("GS_min", "testTrace1", 10, 255, nothing)
 cv2.createTrackbar("GS_max", "testTrace1", 100, 255, nothing)
@@ -54,7 +70,8 @@ while True:
 
     time.sleep(0.01)
 
-    ret, frame = cap.read()
+    if 1 == len(args):
+        ret, frame = cap.read()
 
     # clone the image if exists, otherwise use the previous image
     if len(frame) != 0:
@@ -91,6 +108,8 @@ while True:
                 i_area_max = i
         # draw the largest contour on the original image
         img_orig_contour = cv2.polylines(img_orig, [contours[i_area_max]], 0, (0,255,0), LINE_THICKNESS)
+    else:
+        img_orig_contour = img_orig
 
     # concatinate the images - original + extracted + binary
     img_comm = cv2.vconcat([img_orig_contour,img_ext,img_bin_rgb])
