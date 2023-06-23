@@ -493,17 +493,17 @@ public:
             updated = true;
         }
 
-        int8_t backward, turn, pwmL, pwmR;
+        int8_t forward, turn, pwmL, pwmR;
 	int theta = video->getTheta();
 	_debug(_log("ODO=%05d, theta = %d", plotter->getDistance(), theta),3); /* if _DEBUG_LEVEL >= 3 */
 	
         /* compute necessary amount of steering by PID control */
         turn = (-1) * ltPid->compute(theta, 0); /* 0 is the center */
 	_debug(_log("ODO=%05d, turn = %d", plotter->getDistance(), turn),3); /* if _DEBUG_LEVEL >= 3 */
-        backward = -speed;
+        forward = speed;
         /* steer EV3 by setting different speed to the motors */
-        pwmL = backward - turn;
-        pwmR = backward + turn;
+        pwmL = forward - turn;
+        pwmR = forward + turn;
         srlfL->setRate(srewRate);
         leftMotor->setPWM(pwmL);
         srlfR->setRate(srewRate);
