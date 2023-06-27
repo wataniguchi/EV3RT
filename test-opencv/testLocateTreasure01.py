@@ -4,6 +4,7 @@ import cv2
 import math
 import numpy as np
 import time
+import glob
 
 # frame size for Raspberry Pi camera capture
 IN_FRAME_WIDTH  = 640
@@ -27,6 +28,8 @@ def nothing(x):
 
 # check if exist any arguments
 args = sys.argv
+idx = 0
+frame = np.empty([0,0,0])
 if 1 == len(args):
     print("No image file specified. Capture images from camera.")
     # prepare the camera
@@ -35,15 +38,7 @@ if 1 == len(args):
     cap.set(cv2.CAP_PROP_FRAME_HEIGHT,IN_FRAME_HEIGHT)
     cap.set(cv2.CAP_PROP_FPS,90)
 else:
-    frame = cv2.imread(args[1])
-    if type(frame) is np.ndarray:
-        print(f"Processing image file {args[1]}...")
-        # overwrite IN_FRAME_* by actual image size
-        IN_FRAME_WIDTH = frame.shape[1]
-        IN_FRAME_HEIGHT = frame.shape[0]
-    else:
-        print(f"Invalid image file {args[1]}.")
-        sys.exit(-1)
+    files = sorted(glob.glob(args[1]))
 
 # create trackbars
 cv2.namedWindow("testTrace1")
@@ -52,7 +47,7 @@ cv2.createTrackbar("R_min", "testTrace1", 0, 255, nothing)
 cv2.createTrackbar("R_max", "testTrace1", 255, 255, nothing)
 cv2.createTrackbar("G_min", "testTrace1", 0, 255, nothing)
 cv2.createTrackbar("G_max", "testTrace1", 50, 255, nothing)
-cv2.createTrackbar("B_min", "testTrace1", 55, 255, nothing)
+cv2.createTrackbar("B_min", "testTrace1", 52, 255, nothing)
 cv2.createTrackbar("B_max", "testTrace1", 200, 255, nothing)
 cv2.createTrackbar("GS_min", "testTrace1", 10, 255, nothing)
 cv2.createTrackbar("GS_max", "testTrace1", 100, 255, nothing)
@@ -72,6 +67,17 @@ while True:
 
     if 1 == len(args):
         ret, frame = cap.read()
+    elif len(frame) == 0:
+        file = files[idx]
+        frame = cv2.imread(file)
+        if type(frame) is np.ndarray:
+            print(f"Processing image file {file}...")
+            # overwrite IN_FRAME_* by actual image size
+            IN_FRAME_WIDTH = frame.shape[1]
+            IN_FRAME_HEIGHT = frame.shape[0]
+        else:
+            print(f"Invalid image file {file}.")
+            sys.exit(-1)
 
     # clone the image if exists, otherwise use the previous image
     if len(frame) != 0:
@@ -120,7 +126,14 @@ while True:
     cv2.imshow("testTrace2", img_comm)
 
     c = cv2.waitKey(1) # show the window
+
     if c == ord('q') or c == ord('Q'):
         break
+    elif 1 != len(args) and idx > 0 and (c == ord('b') or c == ord('B')):
+        idx = idx - 1
+        frame = np.empty([0,0,0])
+    elif 1 != len(args) and idx < len(files)-1 and (c == ord('f') or c == ord('F')):
+        idx = idx + 1
+        frame = np.empty([0,0,0])
 
 cv2.destroyAllWindows
