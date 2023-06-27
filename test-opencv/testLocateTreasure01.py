@@ -5,6 +5,7 @@ import math
 import numpy as np
 import time
 import glob
+import re
 
 # frame size for Raspberry Pi camera capture
 IN_FRAME_WIDTH  = 640
@@ -112,8 +113,20 @@ while True:
             if area > area_max:
                 area_max = area
                 i_area_max = i
+        cnt_max = contours[i_area_max]
+        # calculate a bounding box around the identified contour
+        x,y,w,h = cv2.boundingRect(cnt_max)
+        # print information about the identified contour
+        mom = cv2.moments(cnt_max)
+        txt1 = f"cx = {int(mom['m10']/mom['m00'])}, cy = {int(mom['m01']/mom['m00'])},"
+        txt2 = f"area = {mom['m00']},"
+        txt3 = f"w/h = {w/h}"
+        print(txt1, txt2, txt3)
         # draw the largest contour on the original image
-        img_orig_contour = cv2.polylines(img_orig, [contours[i_area_max]], 0, (0,255,0), LINE_THICKNESS)
+        img_orig_contour = cv2.polylines(img_orig, [cnt_max], 0, (0,255,0), LINE_THICKNESS)
+        cv2.putText(img_orig_contour, txt1, (int(FRAME_WIDTH/64),int(5*FRAME_HEIGHT/8)), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0,255,0), int(LINE_THICKNESS/4), cv2.LINE_4)
+        cv2.putText(img_orig_contour, txt2, (int(FRAME_WIDTH/64),int(6*FRAME_HEIGHT/8)), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0,255,0), int(LINE_THICKNESS/4), cv2.LINE_4)
+        cv2.putText(img_orig_contour, txt3, (int(FRAME_WIDTH/64),int(7*FRAME_HEIGHT/8)), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0,255,0), int(LINE_THICKNESS/4), cv2.LINE_4)
     else:
         img_orig_contour = img_orig
 
@@ -135,5 +148,9 @@ while True:
     elif 1 != len(args) and idx < len(files)-1 and (c == ord('f') or c == ord('F')):
         idx = idx + 1
         frame = np.empty([0,0,0])
+    elif 1 != len(args) and (c == ord('w') or c == ord('W')):
+        file_wrt = re.sub('(.+)\.(.+)', r'\1_1.\2', file)
+        print(f"Writing image file {file_wrt}...")
+        cv2.imwrite(file_wrt, img_comm)
 
 cv2.destroyAllWindows
