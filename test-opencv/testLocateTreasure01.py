@@ -118,7 +118,8 @@ while True:
         x,y,w,h = cv2.boundingRect(cnt_max)
         # print information about the identified contour
         mom = cv2.moments(cnt_max)
-        txt1 = f"cx = {int(mom['m10']/mom['m00'])}, cy = {int(mom['m01']/mom['m00'])},"
+        # add 1e-5 to avoid division by zero
+        txt1 = f"cx = {int(mom['m10']/(mom['m00'] + 1e-5))}, cy = {int(mom['m01']/(mom['m00'] + 1e-5))},"
         txt2 = f"area = {mom['m00']},"
         txt3 = f"w/h = {w/h}"
         print(txt1, txt2, txt3)
