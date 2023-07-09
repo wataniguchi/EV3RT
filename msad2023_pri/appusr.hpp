@@ -35,23 +35,6 @@ using namespace ev3api;
 #include "Plotter.hpp"
 #include "PIDcalculator.hpp"
 
-/* global variables */
-extern FILE*        bt;
-extern Clock*       ev3clock;
-extern TouchSensor* touchSensor;
-extern SonarSensor* sonarSensor;
-extern FilteredColorSensor* colorSensor;
-extern GyroSensor*  gyroSensor;
-extern SRLF*        srlf_l;
-extern FilteredMotor*       leftMotor;
-extern SRLF*        srlf_r;
-extern FilteredMotor*       rightMotor;
-extern Motor*       armMotor;
-extern Plotter*     plotter;
-extern int          _COURSE;
-extern int          _DEBUG_LEVEL;
-extern int          upd_process_count;
-
 #define _debug(x, level) do { \
     if (_DEBUG_LEVEL >= (level)) { x; }		\
   } while (0)
@@ -97,8 +80,6 @@ extern int          upd_process_count;
 #define SONAR_ALERT_DISTANCE    100     /* in millimeter                           */
 #define ARM_INITIAL_ANGLE       -58
 #define ARM_SHIFT_PWM           100
-#define JUNCTION_LOWER_THRESHOLD 40
-#define JUNCTION_UPPER_THRESHOLD 50
 
 enum Color {
     CL_JETBLACK,
@@ -109,10 +90,10 @@ enum Color {
     CL_GREEN,
 };
 
-enum BoardItem {
-    LOCX, /* horizontal location    */
-    LOCY, /* virtical   location    */
-    DIST, /* accumulated distance   */
+enum TargetType {
+    TT_LINE,     /* Line           */
+    TT_TREASURE, /* Treasure Block */
+    TT_DECOY,    /* Decoy Block    */
 };
 
 enum State {
@@ -153,5 +134,23 @@ const EnumPair gEnumPairs[] = {
 };
 
 int EnumStringToNum(const EnumPair *enum_data, const char *name, int *out_num);
+
+/* global variables */
+extern FILE*        bt;
+extern Clock*       ev3clock;
+extern TouchSensor* touchSensor;
+extern SonarSensor* sonarSensor;
+extern FilteredColorSensor* colorSensor;
+extern GyroSensor*  gyroSensor;
+extern SRLF*        srlf_l;
+extern FilteredMotor*       leftMotor;
+extern SRLF*        srlf_r;
+extern FilteredMotor*       rightMotor;
+extern Motor*       armMotor;
+extern Plotter*     plotter;
+extern int          _COURSE;
+extern int          _DEBUG_LEVEL;
+extern int          upd_process_count;
+extern TargetType   traceTargetType;
 
 #endif /* appusr_hpp */
