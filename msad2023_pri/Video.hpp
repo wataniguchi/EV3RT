@@ -78,6 +78,7 @@ protected:
   unsigned long* buf;
   char strbuf[5][40];
   int cx, cy, gsmin, gsmax, side, rangeOfEdges;
+  Scalar rgbmin, rgbmax;
   float theta;
 public:
   Video();
@@ -88,6 +89,7 @@ public:
   float getTheta();
   int getRangeOfEdges();
   void setThresholds(int gsMin, int gsMax);
+  void setMaskThresholds(Scalar rgbMin, Scalar rgbMax);
   void setTraceSide(int traceSide);
   ~Video();
 };

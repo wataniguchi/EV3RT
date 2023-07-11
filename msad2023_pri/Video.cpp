@@ -298,6 +298,11 @@ void Video::setThresholds(int gsMin, int gsMax) {
   gsmax = gsMax;
 }
 
+void Video::setMaskThresholds(Scalar rgbMin, Scalar rgbMax) {
+  rgbmin = rgbMin;
+  rgbmax = rgbMax;
+}
+
 void Video::setTraceSide(int traceSide) {
   side = traceSide;
 }

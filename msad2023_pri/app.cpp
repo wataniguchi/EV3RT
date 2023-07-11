@@ -446,8 +446,66 @@ protected:
 
 /*
     usage:
+    ".leaf<ApproachBlock>(speed, pid, gs_min, gs_max, rgb_min, rgb_max)"
+    is to instruct the robot to come closer an object with specific color at the given speed.
+    pid is a vector of three constants for PID control.
+    gs_min, gs_max are grayscale threshold for object recognition binalization.
+    rgb_min, rgb_max are rgb vector threshold for object color masking.
+*/
+class ApproachBlock : public BrainTree::Node {
+public:
+  ApproachBlock(int s, std::vector<double> pid, int gs_min, int gs_max, std::vector<int> rgb_min, std::vector<int> rgb_max) : speed(s),gsMin(gs_min),gsMax(gs_max) {
+        traceTargetType = TT_TREASURE;
+        updated = false;
+	assert(pid.size() == 3);
+	assert(rgb_min.size() == 3);
+	assert(rgb_max.size() == 3);
+        ltPid = new PIDcalculator(pid[0], pid[1], pid[2], PERIOD_UPD_TSK, -speed, speed);
+	rgbMin = Scalar(rgb_min[0], rgb_min[1], rgb_min[2]);
+	rgbMax = Scalar(rgb_max[0], rgb_max[1], rgb_max[2]);
+    }
+    ~ApproachBlock() {
+        delete ltPid;
+    }
+    Status update() override {
+        if (!updated) {
+	    video->setThresholds(gsMin, gsMax);
+	    video->setMaskThresholds(rgbMin, rgbMax);
+            /* The following code chunk is to properly set prevXin in SRLF */
+            srlfL->setRate(0.0);
+            leftMotor->setPWM(leftMotor->getPWM());
+            srlfR->setRate(0.0);
+            rightMotor->setPWM(rightMotor->getPWM());
+            _log("ODO=%05d, Approach Block run started.", plotter->getDistance());
+            updated = true;
+        }
+
+        int8_t forward, turn, pwmL, pwmR;
+	int theta = video->getTheta();
+	_debug(_log("ODO=%05d, theta = %d", plotter->getDistance(), theta),3); /* if _DEBUG_LEVEL >= 3 */
+	
+        /* compute necessary amount of steering by PID control */
+        turn = (-1) * ltPid->compute(theta, 0); /* 0 is the center */
+	_debug(_log("ODO=%05d, turn = %d", plotter->getDistance(), turn),3); /* if _DEBUG_LEVEL >= 3 */
+        forward = speed;
+        /* steer EV3 by setting different speed to the motors */
+        pwmL = forward - turn;
+        pwmR = forward + turn;
+        leftMotor->setPWM(pwmL);
+        rightMotor->setPWM(pwmR);
+        return Status::Running;
+    }
+protected:
+    int speed, gsMin, gsMax;
+    PIDcalculator* ltPid;
+    Scalar rgbMin, rgbMax;
+    bool updated;
+};
+
+/*
+    usage:
     ".leaf<TraceLineCam>(speed, pid, gs_min, gs_max, srew_rate, trace_side)"
-    is to instruct the robot to trace the line in backward at the given speed.
+    is to instruct the robot to trace the line at the given speed.
     pid is a vector of three constants for PID control.
     gs_min, gs_max are grayscale threshold for line recognition binalization.
     srew_rate = 0.0 indidates NO tropezoidal motion.

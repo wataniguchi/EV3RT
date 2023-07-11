@@ -122,14 +122,17 @@
   .end()
 
 #define TR_RUN_L \
-  /* RUN_L: camera line trace until RUN_L_DIST */ \
-  .composite<BrainTree::ParallelSequence>(1,2) \
-    .leaf<IsDistanceEarned>(prof->getValueAsNum("RUN_L_DIST")) \
-    .composite<BrainTree::MemSequence>() \
-      .leaf<TraceLineCam>(prof->getValueAsNum("RUN_L1_SPEED"), \
-			  prof->getValueAsNumVec("RUN_Lx_PID_CONST"), \
-			  prof->getValueAsNum("RUN_Lx_GS_MIN"), \
-			  prof->getValueAsNum("RUN_Lx_GS_MAX"), 0.0, \
-                          (TraceSide)prof->getValueAsIntFromEnum("RUN_L1_TS", gEnumPairs)) \
-   .end() \
+  /* RUN_L: camera line trace until Blue is detected by color sensor */ \
+  .composite<BrainTree::MemSequence>() \
+    .composite<BrainTree::ParallelSequence>(1,2) \
+      .leaf<IsColorDetected>(CL_BLUE) \
+      .composite<BrainTree::MemSequence>() \
+        .leaf<TraceLineCam>(prof->getValueAsNum("RUN_L1_SPEED"), \
+	      prof->getValueAsNumVec("RUN_Lx_PID_CONST"), \
+	      prof->getValueAsNum("RUN_Lx_GS_MIN"),    \
+	      prof->getValueAsNum("RUN_Lx_GS_MAX"), 0.0, \
+              (TraceSide)prof->getValueAsIntFromEnum("RUN_L1_TS", gEnumPairs)) \
+      .end() \
+    .end() \
+    .leaf<StopNow>() \
   .end()
