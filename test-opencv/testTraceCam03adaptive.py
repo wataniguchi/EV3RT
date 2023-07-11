@@ -5,6 +5,11 @@ import math
 import numpy as np
 import time
 
+import numpy as np
+
+def round_up_to_odd(f):
+    return np.ceil(f) // 2 * 2 + 1
+
 # frame size for Raspberry Pi camera capture
 IN_FRAME_WIDTH  = 640
 IN_FRAME_HEIGHT = 480
@@ -39,8 +44,9 @@ cap.set(cv2.CAP_PROP_FPS,90)
 # create trackbars
 cv2.namedWindow("testTrace1")
 
-cv2.createTrackbar("GS_min", "testTrace1", 0, 255, nothing)
 cv2.createTrackbar("GS_max", "testTrace1", 100, 255, nothing)
+cv2.createTrackbar("GS_block", "testTrace1", 50, 160, nothing)
+cv2.createTrackbar("GS_C", "testTrace1", 50, 255, nothing)
 cv2.createTrackbar("Edge",  "testTrace1", 0, 2, nothing)
 
 # initial region of interest
@@ -50,8 +56,9 @@ mx = int(FRAME_WIDTH/2)
 
 while True:
     # obtain values from the trackbars
-    gs_min = cv2.getTrackbarPos("GS_min", "testTrace1")
     gs_max = cv2.getTrackbarPos("GS_max", "testTrace1")
+    gs_block = cv2.getTrackbarPos("GS_block", "testTrace1")
+    gs_C = cv2.getTrackbarPos("GS_C", "testTrace1")
     edge  = cv2.getTrackbarPos("Edge",  "testTrace1")
 
     time.sleep(0.01)
@@ -71,7 +78,12 @@ while True:
     # mask the upper half of the grayscale image
     img_gray[0:int(FRAME_HEIGHT/2), 0:FRAME_WIDTH] = 255
     # binarize the image
-    img_bin = cv2.inRange(img_gray, gs_min, gs_max)
+    gs_block = int(round_up_to_odd(gs_block)) # gs_block must be an odd number >= 3
+    if gs_block < 3:
+        gs_block = 3
+    img_bin = cv2.adaptiveThreshold(img_gray, gs_max, cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY_INV, gs_block, gs_C)
+    #ret, img_bin = cv2.threshold(img_gray, gs_max, 255, cv2.THRESH_BINARY_INV)
+    #img_bin = cv2.inRange(img_gray, 0, gs_max)
     # remove noise
     kernel = np.ones((7,7), np.uint8)
     img_bin_mor = cv2.morphologyEx(img_bin, cv2.MORPH_CLOSE, kernel)
