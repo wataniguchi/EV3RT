@@ -109,11 +109,26 @@ public:
 */
 class ResetArm : public BrainTree::Node {
 public:
+    ResetArm() : degree(INT32_MAX) {}
     Status update() override {
-        armMotor->reset();
-        _log("arm reset.");
-        return Status::Success;
+        int32_t currentDegree = armMotor->getCount();
+	if (currentDegree == degree) { /* arm gets stuck */
+	  if (count++ > 10) {
+	      armMotor->setPWM(0);
+	      armMotor->reset();
+	      _log("arm reset.");
+              return Status::Success;
+	  }
+	} else {
+	  count = 0;
+	}
+	degree = currentDegree;
+	armMotor->setPWM(-30);
+	return Status::Running;
     }
+protected:
+    int32_t degree;
+    int count;
 };
 
 /*
