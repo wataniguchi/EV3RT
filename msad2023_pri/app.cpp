@@ -103,6 +103,20 @@ public:
 
 /*
     usage:
+    ".leaf<ResetArm>()"
+    is to reset the arm position to zero.
+*/
+class ResetArm : public BrainTree::Node {
+public:
+    Status update() override {
+        armMotor->reset();
+        _log("arm reset.");
+        return Status::Success;
+    }
+};
+
+/*
+    usage:
     ".leaf<StopNow>()"
     is to stop the robot.
 */
