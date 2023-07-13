@@ -90,14 +90,13 @@ int EnumStringToNum(const EnumPair *enum_data, const char *name, int *out_num) {
 /*
     usage:
     ".leaf<ResetClock>()"
-    is to reset the clock and indicate the robot departure by LED color.
+    is to reset the clock.
 */
 class ResetClock : public BrainTree::Node {
 public:
     Status update() override {
         ev3clock->reset();
         _log("clock reset.");
-        ev3_led_set_color(LED_GREEN);
         return Status::Success;
     }
 };
@@ -105,29 +104,22 @@ public:
 /*
     usage:
     ".leaf<ResetArm>()"
-    is to reset the arm position to zero.
+    is to reset arm angle.
 */
 class ResetArm : public BrainTree::Node {
 public:
-    ResetArm() : degree(INT32_MAX) {}
+    ResetArm() : count(0) {}
     Status update() override {
-        int32_t currentDegree = armMotor->getCount();
-	if (currentDegree == degree) { /* arm gets stuck */
-	  if (count++ > 10) {
-	      armMotor->setPWM(0);
-	      armMotor->reset();
-	      _log("arm reset.");
-              return Status::Success;
-	  }
-	} else {
-	  count = 0;
+        if (count++ == 0) {
+            armMotor->reset();
+            _log("arm resetting...");
+	} else if (count > 3) { /* give enough time to armMotor */
+            _log("arm reset complete.");
+            return Status::Success;
 	}
-	degree = currentDegree;
-	armMotor->setPWM(-30);
-	return Status::Running;
+        return Status::Running;
     }
 protected:
-    int32_t degree;
     int count;
 };
 
@@ -139,8 +131,8 @@ protected:
 class StopNow : public BrainTree::Node {
 public:
     Status update() override {
-        leftMotor->setPWM(0);
-        rightMotor->setPWM(0);
+        leftMotor->stop();
+        rightMotor->stop();
         _log("robot stopped.");
         return Status::Success;
     }
@@ -165,14 +157,14 @@ public:
 
 /*
     usage:
-    ".leaf<IsBackOn>()"
-    is to check if the back button gets pressed.
+    ".leaf<IsEnterOn>()"
+    is to check if the center button gets pressed.
 */
-class IsBackOn : public BrainTree::Node {
+class IsEnterOn : public BrainTree::Node {
 public:
     Status update() override {
-        if (ev3_button_is_pressed(BACK_BUTTON)) {
-            _log("back button pressed.");
+        if (ev3_button_is_pressed(ENTER_BUTTON)) {
+            _log("center button pressed.");
             return Status::Success;
         } else {
             return Status::Failure;
@@ -776,6 +768,7 @@ private:
     usage:
     ".leaf<SetArmPosition>(target_degree, pwm)"
     is to shift the robot arm to the specified degree by the spefied power.
+    target_angle should be between about 0 (highest) and 110 (lowest). 
 */
 class SetArmPosition : public BrainTree::Node {
 public:
@@ -787,6 +780,7 @@ public:
         if (!updated) {
             _log("ODO=%05d, Arm position is moving from %d to %d.", plotter->getDistance(), currentDegree, targetDegree);
             if (currentDegree == targetDegree) {
+	        armMotor->stop();
                 return Status::Success; /* do nothing */
             } else if (currentDegree < targetDegree) {
                 clockwise = 1;
@@ -799,7 +793,7 @@ public:
         }
         if (((clockwise ==  1) && (currentDegree >= targetDegree)) ||
             ((clockwise == -1) && (currentDegree <= targetDegree))) {
-            armMotor->setPWM(0);
+	    armMotor->stop();
             _log("ODO=%05d, Arm position set to %d.", plotter->getDistance(), currentDegree);
             return Status::Success;
         } else {
@@ -810,6 +804,37 @@ private:
     int32_t targetDegree;
     int pwmA, clockwise;
     bool updated;
+};
+
+/*
+    usage:
+    ".leaf<ArmUpDownFull>(direction)"
+    is to raise or lower the arm to the full.
+    direction = AD_UP for raising the arm.
+    direction = AD_DOWN for lowering the arm.
+*/
+class ArmUpDownFull : public BrainTree::Node {
+public:
+    ArmUpDownFull(int d) : degree(INT32_MAX),direction(d) {}
+    Status update() override {
+        int32_t currentDegree = armMotor->getCount();
+	if (currentDegree == degree) { /* arm gets stuck */
+	  if (count++ > 10) {
+	      armMotor->stop();
+              _log("ODO=%05d, Arm position set to %d.", plotter->getDistance(), currentDegree);
+              return Status::Success;
+	  }
+	} else {
+	  count = 0;
+	}
+	degree = currentDegree;
+	armMotor->setPWM(ARM_SHIFT_PWM * direction);
+	return Status::Running;
+    }
+protected:
+    int32_t degree;
+    int count;
+    int direction;
 };
 
 /*

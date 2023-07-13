@@ -10,7 +10,6 @@
       .leaf<RunAsInstructed>(prof->getValueAsNum("BLOCK_L1_PWML"), \
 	  prof->getValueAsNum("BLOCK_L1_PWMR"), 0.0) \
     .end() \
-    .leaf<SetArmPosition>(prof->getValueAsNum("BLOCK_L1_ARMDEG"),	\
-	  prof->getValueAsNum("BLOCK_L1_PWMARM")) \
     .leaf<StopNow>() \
+    .leaf<ArmUpDownFull>(AD_DOWN) \
   .end()
