@@ -208,13 +208,14 @@ int main() {
       resize(img_orig, img_resized, Size(), (double)OUT_FRAME_WIDTH/FRAME_WIDTH, (double)OUT_FRAME_HEIGHT/FRAME_HEIGHT);
       img_orig = img_resized;
     }
-    /* transmit and display the image */
-    imshow("testTrace2", img_orig);
 
     std::chrono::system_clock::time_point te_upd = std::chrono::system_clock::now();
     upd_elaps.push_back(std::chrono::duration_cast<std::chrono::microseconds>(te_upd - ts_upd).count());
     upd_count++;
     
+    /* transmit and display the image */
+    imshow("testTrace2", img_orig);
+
     c = waitKey(1);
     if ( c == 'q' || c == 'Q' ) break;
   }
