@@ -18,11 +18,12 @@ Video::Video() {
   cam.startVideo();
 #else /* WITH_V3CAM */
   /* prepare the camera */
-  cap = VideoCapture(0);
-  cap.set(CAP_PROP_FRAME_WIDTH,IN_FRAME_WIDTH);
-  cap.set(CAP_PROP_FRAME_HEIGHT,IN_FRAME_HEIGHT);
-  cap.set(CAP_PROP_FPS,90);
-  assert(cap.isOpened());
+  cap = RaspiVideoCapture(0);
+  /* horizontal resolution is rounded up to the nearest multiple of 32 pixels
+     vertical resolution is rounded up to the nearest multiple of 16 pixels */
+  inFrameWidth  = 32 * ceil(IN_FRAME_WIDTH /32);
+  inFrameHeight = 16 * ceil(IN_FRAME_HEIGHT/16);
+  assert(cap.open(inFrameWidth, inFrameHeight, IN_FPS));
 #endif /* WITH_V3CAM */
   
   /* initial region of interest */
@@ -95,7 +96,7 @@ Mat Video::readFrame() {
   if (!f.empty()) {
     if (FRAME_WIDTH != IN_FRAME_WIDTH || FRAME_HEIGHT != IN_FRAME_HEIGHT) {
       Mat img_resized;
-      resize(f, img_resized, Size(), (double)FRAME_WIDTH/IN_FRAME_WIDTH, (double)FRAME_HEIGHT/IN_FRAME_HEIGHT);
+      resize(f, img_resized, Size(), (double)FRAME_WIDTH/inFrameWidth, (double)FRAME_HEIGHT/inFrameHeight);
       assert(img_resized.size().width == FRAME_WIDTH);
       assert(img_resized.size().height == FRAME_HEIGHT);
       f = img_resized;

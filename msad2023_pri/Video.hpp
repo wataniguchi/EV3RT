@@ -16,6 +16,12 @@
 #include <opencv2/core/utils/logger.hpp>
 using namespace cv;
 
+/*
+  raspivideocap by coyote009@github modified for the use with OpenCV4
+  git clone https://github.com/wataniguchi/raspivideocap.git
+*/
+#include <raspivideocap.h>
+
 #if defined(WITH_V3CAM)
 /*
   libcamera bindings for OpenCV (LCCV) by kbarni@github
@@ -40,6 +46,7 @@ extern FilteredMotor*       rightMotor;
 /* frame size for Raspberry Pi camera capture */
 #define IN_FRAME_WIDTH  640
 #define IN_FRAME_HEIGHT 480
+#define IN_FPS 90
 
 /* frame size for OpenCV */
 #define FRAME_WIDTH  128
@@ -55,7 +62,7 @@ protected:
 #if defined(WITH_V3CAM)
   lccv::PiCamera cam;
 #else /* WITH_V3CAM */
-  VideoCapture cap;
+  RaspiVideoCapture cap;
 #endif /* WITH_V3CAM */
   Rect roi;
   Display* disp;
@@ -71,6 +78,7 @@ protected:
   unsigned long* buf;
   char strbuf[4][40];
   int mx, gsmin, gsmax, side, rangeOfEdges;
+  int inFrameWidth, inFrameHeight;
   float theta;
 public:
   Video();
