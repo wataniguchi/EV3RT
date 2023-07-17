@@ -896,13 +896,21 @@ void task_activator(intptr_t tskid) {
 
 /* The main task */
 void main_task(intptr_t unused) {
-    // temp fix 2022/6/20 W.Taniguchi, as Bluetooth not implemented yet
-    //bt = ev3_serial_open_file(EV3_SERIAL_BT);
-    //assert(bt != NULL);
     /* create and initialize EV3 objects */
     ev3clock    = new Clock();
     _log("initialization started.");
+    /* mask signals */
+    sigset_t ss;  
+    sigemptyset(&ss);
+    sigaddset(&ss, SIGUSR2);
+    sigaddset(&ss, SIGALRM);
+    sigaddset(&ss, SIGPOLL);
+    sigaddset(&ss, SIGIO);
+    _log("masking signals while instantiating Video object...");
+    pthread_sigmask(SIG_BLOCK, &ss, 0);
     video       = new Video();
+    pthread_sigmask(SIG_UNBLOCK, &ss, 0);
+    _log("Video object instantiated.");
     touchSensor = new TouchSensor(PORT_1);
     sonarSensor = new SonarSensor(PORT_3);
     colorSensor = new FilteredColorSensor(PORT_2);
@@ -959,23 +967,16 @@ void main_task(intptr_t unused) {
 /*
     === BEHAVIOR TREE DEFINITION ENDS HERE ===
 */
-
     /* start sub-threads not managed by ASP */
-    _log("starting sub-threads...");
-    sigset_t ss;  
-    sigemptyset(&ss);
-    sigaddset(&ss, SIGUSR2);
-    sigaddset(&ss, SIGALRM);
-    sigaddset(&ss, SIGPOLL);
-    sigaddset(&ss, SIGIO);
-
     std::vector<std::thread> thds;
     int iUnused = 0;
+    _log("masking signals while starting sub-threads...");
     pthread_sigmask(SIG_BLOCK, &ss, 0);
     thds.emplace_back(vcap_thd(), iUnused);
     thds.emplace_back(vshow_thd(), iUnused);
     thds.emplace_back(vcal_thd(), iUnused);
     pthread_sigmask(SIG_UNBLOCK, &ss, 0); /* let ASP manage the main thread */
+    _log("sub-threads started.");
     
     /* register cyclic handler to EV3RT */
     _log("starting update task...");
@@ -1034,8 +1035,6 @@ void main_task(intptr_t unused) {
     delete video;
     _log("being terminated...");
     delete ev3clock;
-    // temp fix 2022/6/20 W.Taniguchi, as Bluetooth not implemented yet
-    //fclose(bt);
     ext_tsk();
 }
 

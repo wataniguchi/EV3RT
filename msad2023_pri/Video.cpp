@@ -13,17 +13,18 @@ Video::Video() {
 #if defined(WITH_V3CAM)
   cam.options->video_width=IN_FRAME_WIDTH;
   cam.options->video_height=IN_FRAME_HEIGHT;
-  cam.options->framerate=90;
+  cam.options->framerate=IN_FPS;
   cam.options->verbose=true;
   cam.startVideo();
 #else /* WITH_V3CAM */
   /* prepare the camera */
-  cap = RaspiVideoCapture(0);
+  cap = RaspiVideoCapture();
   /* horizontal resolution is rounded up to the nearest multiple of 32 pixels
      vertical resolution is rounded up to the nearest multiple of 16 pixels */
   inFrameWidth  = 32 * ceil(IN_FRAME_WIDTH /32);
   inFrameHeight = 16 * ceil(IN_FRAME_HEIGHT/16);
   assert(cap.open(inFrameWidth, inFrameHeight, IN_FPS));
+  assert(cap.isOpened());
 #endif /* WITH_V3CAM */
   
   /* initial region of interest */
