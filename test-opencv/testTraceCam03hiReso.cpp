@@ -16,6 +16,9 @@
 #include <opencv2/core/utils/logger.hpp>
 #include <thread>
 #include <cmath>
+
+#include <vector>
+#include <chrono>
 /*
   raspivideocap by coyote009@github modified for the use with OpenCV4
   git clone https://github.com/wataniguchi/raspivideocap.git
@@ -72,6 +75,9 @@ int main() {
   Rect roi(0, 0, FRAME_WIDTH, FRAME_HEIGHT);
   /* initial trace target */
   int mx = (int)(FRAME_WIDTH/2);
+
+  std::vector<std::uint32_t> read_elaps, upd_elaps;
+  int upd_count = 0;
   
   while (true) {
     /* obtain values from the trackbars */
@@ -83,8 +89,11 @@ int main() {
     int c;
 
     sleep_for(chrono::milliseconds(10));
-
+    
+    std::chrono::system_clock::time_point ts_upd  = std::chrono::system_clock::now();
     cap.read(frame);
+    std::chrono::system_clock::time_point te_read = std::chrono::system_clock::now();
+    read_elaps.push_back(std::chrono::duration_cast<std::chrono::microseconds>(te_read - ts_upd).count());
 
     /* clone the frame if exists, otherwise use the previous image */
     if (!frame.empty()) {
@@ -202,9 +211,22 @@ int main() {
     /* transmit and display the image */
     imshow("testTrace2", img_orig);
 
+    std::chrono::system_clock::time_point te_upd = std::chrono::system_clock::now();
+    upd_elaps.push_back(std::chrono::duration_cast<std::chrono::microseconds>(te_upd - ts_upd).count());
+    upd_count++;
+    
     c = waitKey(1);
     if ( c == 'q' || c == 'Q' ) break;
   }
+
+  printf("frame read elaps (micro sec): max = %d, min = %d, mean = %d\n",
+	 (int)(*std::max_element(std::begin(read_elaps),std::end(read_elaps))),
+	 (int)(*std::min_element(std::begin(read_elaps),std::end(read_elaps))),
+	 (int)(std::accumulate(std::begin(read_elaps),std::end(read_elaps),0) / upd_count));
+  printf("update process elaps (micro sec): max = %d, min = %d, mean = %d\n",
+	 (int)(*std::max_element(std::begin(upd_elaps),std::end(upd_elaps))),
+	 (int)(*std::min_element(std::begin(upd_elaps),std::end(upd_elaps))),
+	 (int)(std::accumulate(std::begin(upd_elaps),std::end(upd_elaps),0) / upd_count));
 
   destroyAllWindows();
   return 0;
