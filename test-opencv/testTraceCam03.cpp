@@ -74,7 +74,6 @@ int main() {
   int mx = (int)(FRAME_WIDTH/2);
   
   std::vector<std::uint32_t> read_elaps, upd_elaps;
-  int upd_count = 0;
   
   while (true) {
     /* obtain values from the trackbars */
@@ -208,7 +207,6 @@ int main() {
 
     std::chrono::system_clock::time_point te_upd = std::chrono::system_clock::now();
     upd_elaps.push_back(std::chrono::duration_cast<std::chrono::microseconds>(te_upd - ts_upd).count());
-    upd_count++;
 
     /* transmit and display the image */
     imshow("testTrace2", img_orig);
@@ -217,14 +215,24 @@ int main() {
     if ( c == 'q' || c == 'Q' ) break;
   }
 
-  printf("frame read elaps (micro sec): max = %d, min = %d, mean = %d\n",
+  size_t exec_count = read_elaps.size();
+  size_t median_index = exec_count / 2;
+  std::sort(std::begin(read_elaps), std::end(read_elaps));
+  int read_median = (exec_count % 2 == 0
+		? static_cast<int>(read_elaps[median_index] + read_elaps[median_index - 1]) / 2
+		: read_elaps[median_index]);
+  printf("frame read elaps (micro sec): max = %d, min = %d, mean = %d, median = %d\n",
 	 (int)(*std::max_element(std::begin(read_elaps),std::end(read_elaps))),
 	 (int)(*std::min_element(std::begin(read_elaps),std::end(read_elaps))),
-	 (int)(std::accumulate(std::begin(read_elaps),std::end(read_elaps),0) / upd_count));
-  printf("update process elaps (micro sec): max = %d, min = %d, mean = %d\n",
+	 (int)(std::accumulate(std::begin(read_elaps),std::end(read_elaps),0) / exec_count), read_median);
+  std::sort(std::begin(upd_elaps), std::end(upd_elaps));
+  int upd_median = (exec_count % 2 == 0
+		? static_cast<int>(upd_elaps[median_index] + upd_elaps[median_index - 1]) / 2
+		: upd_elaps[median_index]);
+  printf("update process elaps (micro sec): max = %d, min = %d, mean = %d, median = %d\n",
 	 (int)(*std::max_element(std::begin(upd_elaps),std::end(upd_elaps))),
 	 (int)(*std::min_element(std::begin(upd_elaps),std::end(upd_elaps))),
-	 (int)(std::accumulate(std::begin(upd_elaps),std::end(upd_elaps),0) / upd_count));
+	 (int)(std::accumulate(std::begin(upd_elaps),std::end(upd_elaps),0) / exec_count), upd_median);
 
   destroyAllWindows();
   return 0;
