@@ -70,6 +70,7 @@ Video::Video() {
   gsmax = 100;
   side = 0;
   rangeOfEdges = 0;
+  traceTargetType = TT_LINE;
 }
 
 Video::~Video() {
@@ -305,4 +306,8 @@ void Video::setMaskThresholds(Scalar rgbMin, Scalar rgbMax) {
 
 void Video::setTraceSide(int traceSide) {
   side = traceSide;
+}
+
+void Video::setTraceTargetType(TargetType tt) {
+  traceTargetType = tt;
 }

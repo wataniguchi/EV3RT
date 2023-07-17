@@ -57,6 +57,12 @@ extern FilteredMotor*       rightMotor;
 #define JUNCTION_LOWER_THRESHOLD int(40*FRAME_WIDTH/OUT_FRAME_WIDTH)
 #define JUNCTION_UPPER_THRESHOLD int(50*FRAME_WIDTH/OUT_FRAME_WIDTH)
 
+enum TargetType {
+    TT_LINE,     /* Line           */
+    TT_TREASURE, /* Treasure Block */
+    TT_DECOY,    /* Decoy Block    */
+};
+
 class Video {
 protected:
 #if defined(WITH_V3CAM)
@@ -80,6 +86,7 @@ protected:
   int cx, cy, gsmin, gsmax, side, rangeOfEdges;
   Scalar rgbmin, rgbmax;
   float theta;
+  TargetType traceTargetType;
 public:
   Video();
   Mat readFrame();
@@ -91,6 +98,7 @@ public:
   void setThresholds(int gsMin, int gsMax);
   void setMaskThresholds(Scalar rgbMin, Scalar rgbMax);
   void setTraceSide(int traceSide);
+  void setTraceTargetType(TargetType tt);
   ~Video();
 };
 

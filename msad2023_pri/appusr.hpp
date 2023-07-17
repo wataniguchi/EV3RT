@@ -92,12 +92,6 @@ enum Color {
     CL_GREEN,
 };
 
-enum TargetType {
-    TT_LINE,     /* Line           */
-    TT_TREASURE, /* Treasure Block */
-    TT_DECOY,    /* Decoy Block    */
-};
-
 enum State {
     ST_INITIAL,
     ST_CALIBRATION,
@@ -158,6 +152,5 @@ extern Plotter*     plotter;
 extern int          _COURSE;
 extern int          _DEBUG_LEVEL;
 extern int          upd_process_count;
-extern TargetType   traceTargetType;
 
 #endif /* appusr_hpp */

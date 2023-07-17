@@ -48,7 +48,6 @@ int             _COURSE; /* -1 for R course and 1 for L course */
 int             _DEBUG_LEVEL; /* used in _debug macro in appusr.hpp */
 int             upd_process_count = 0; /* used in _intervalLog macro and
                                           also for BENCHMARK */
-TargetType      traceTargetType = TT_LINE;
 
 BrainTree::BehaviorTree* tr_calibration = nullptr;
 BrainTree::BehaviorTree* tr_run         = nullptr;
@@ -476,7 +475,6 @@ protected:
 class ApproachBlock : public BrainTree::Node {
 public:
   ApproachBlock(int s, std::vector<double> pid, int gs_min, int gs_max, std::vector<int> rgb_min, std::vector<int> rgb_max) : speed(s),gsMin(gs_min),gsMax(gs_max) {
-        traceTargetType = TT_TREASURE;
         updated = false;
 	assert(pid.size() == 3);
 	assert(rgb_min.size() == 3);
@@ -490,6 +488,7 @@ public:
     }
     Status update() override {
         if (!updated) {
+	    video->setTraceTargetType(TT_TREASURE);
 	    video->setThresholds(gsMin, gsMax);
 	    video->setMaskThresholds(rgbMin, rgbMax);
             /* The following code chunk is to properly set prevXin in SRLF */
@@ -539,7 +538,6 @@ protected:
 class TraceLineCam : public BrainTree::Node {
 public:
   TraceLineCam(int s, std::vector<double> pid, int gs_min, int gs_max, double srew_rate, TraceSide trace_side) : speed(s),gsMin(gs_min),gsMax(gs_max),srewRate(srew_rate),side(trace_side) {
-        traceTargetType = TT_LINE;
         updated = false;
 	assert(pid.size() == 3);
         ltPid = new PIDcalculator(pid[0], pid[1], pid[2], PERIOD_UPD_TSK, -speed, speed);
@@ -549,6 +547,7 @@ public:
     }
     Status update() override {
         if (!updated) {
+	    video->setTraceTargetType(TT_LINE);
 	    video->setThresholds(gsMin, gsMax);
 	    if (side == TS_NORMAL) {
 	      if (_COURSE == -1) { /* right course */
