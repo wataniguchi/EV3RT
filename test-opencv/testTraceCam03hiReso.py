@@ -10,7 +10,7 @@ from picamera import PiCamera
 IN_FRAME_WIDTH  = 1640
 IN_FRAME_HEIGHT = 1232
 SENSOR_MODE = 5
-FPS = 40
+IN_FPS = 40
 
 # frame size for OpenCV
 #FRAME_WIDTH  = 640
@@ -37,7 +37,7 @@ cv2.setLogLevel(3) # LOG_LEVEL_WARNING
 picam = PiCamera()
 picam.resolution = (IN_FRAME_WIDTH, IN_FRAME_HEIGHT)
 picam.sensor_mode = SENSOR_MODE
-picam.framerate = FPS
+picam.framerate = IN_FPS
 
 # create trackbars
 cv2.namedWindow("testTrace1")
