@@ -44,9 +44,9 @@ extern FilteredMotor*       leftMotor;
 extern FilteredMotor*       rightMotor;
 
 /* frame size for Raspberry Pi camera capture */
-#define IN_FRAME_WIDTH  640
-#define IN_FRAME_HEIGHT 480
-#define IN_FPS 90
+#define IN_FRAME_WIDTH  1640
+#define IN_FRAME_HEIGHT 1232
+#define IN_FPS 40
 
 /* frame size for OpenCV */
 #define FRAME_WIDTH  128

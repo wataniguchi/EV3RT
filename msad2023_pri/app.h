@@ -19,7 +19,7 @@ extern "C" {
 #define PRIORITY_MAIN_TASK  (TMIN_APP_TPRI + 1)
 
 /* task periods in micro seconds */
-#define PERIOD_UPD_TSK      (10 * 1000)
+#define PERIOD_UPD_TSK      (70 * 1000)
 
 /* default task stack size in bytes */
 #ifndef STACK_SIZE
