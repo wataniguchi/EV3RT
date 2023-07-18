@@ -48,7 +48,15 @@ using std::this_thread::sleep_for;
 #define OUT_FRAME_WIDTH  160
 #define OUT_FRAME_HEIGHT 120
 
-int gs_min=0,gs_max=100,edge=0;
+int gs_min=0,gs_max=100,edge=0,algo=0,gs_block=50,gs_C=50;
+
+enum BinarizationAlgorithm {
+  BA_NORMAL = 0,
+  BA_ADAPTIVE = 1,
+  BA_OTSU = 2,
+};
+
+static char algoName[3][25] = {"normal binarization", "adaptive binarization", "Otsu's binarization"};
 
 int main() {
   utils::logging::setLogLevel(utils::logging::LOG_LEVEL_WARNING);
@@ -70,6 +78,12 @@ int main() {
   setTrackbarPos("GS_max", "testTrace1", gs_max);
   createTrackbar("Edge",   "testTrace1", nullptr, 2, nullptr);
   setTrackbarPos("Edge",   "testTrace1", edge);
+  createTrackbar("Bin Algorithm",   "testTrace1", nullptr, 2, nullptr);
+  setTrackbarPos("Bin Algorithm",   "testTrace1", algo);
+  createTrackbar("GS_block (adaptive)", "testTrace1", nullptr, FRAME_WIDTH, nullptr);
+  setTrackbarPos("GS_block (adaptive)", "testTrace1", gs_block);
+  createTrackbar("GS_C (adaptive)", "testTrace1", nullptr, 255, nullptr);
+  setTrackbarPos("GS_C (adaptive)", "testTrace1", gs_C);
 
   /* initial region of interest */
   Rect roi(0, 0, FRAME_WIDTH, FRAME_HEIGHT);
@@ -83,8 +97,11 @@ int main() {
     gs_min = getTrackbarPos("GS_min", "testTrace1");
     gs_max = getTrackbarPos("GS_max", "testTrace1");
     edge   = getTrackbarPos("Edge",   "testTrace1");
+    algo   = getTrackbarPos("Bin Algorithm",   "testTrace1");
+    gs_block = getTrackbarPos("GS_block (adaptive)",   "testTrace1");
+    gs_C   = getTrackbarPos("GS_C (adaptive)",   "testTrace1");
 
-    Mat frame, img_orig, img_gray, img_bin, img_bin_mor;
+    Mat frame, img_orig, img_gray, img_gray_part, img_bin_part, img_bin, img_bin_mor;
     int c;
 
     sleep_for(chrono::milliseconds(10));
@@ -108,14 +125,34 @@ int main() {
     }
     /* convert the image from BGR to grayscale */
     cvtColor(img_orig, img_gray, COLOR_BGR2GRAY);
-    /* mask the upper half of the grayscale image */
-    for (int i = 0; i < (int)(FRAME_HEIGHT/2); i++) {
-	for (int j = 0; j < FRAME_WIDTH; j++) {
-	  img_gray.at<uchar>(i,j) = 255; /* type = CV_8U */
-	}
-    }
+    /* crop bottom two thirds vertically and center half horizontally */
+    int ubound = static_cast<int>(FRAME_HEIGHT/3);
+    int lbound = static_cast<int>(FRAME_WIDTH/4);
+    img_gray_part = img_gray(Range(ubound,FRAME_HEIGHT), Range(lbound,FRAME_WIDTH-lbound));
     /* binarize the image */
-    inRange(img_gray, gs_min, gs_max, img_bin);
+    switch (algo) {
+      case BA_NORMAL:
+        inRange(img_gray_part, gs_min, gs_max, img_bin_part);
+	break;
+      case BA_ADAPTIVE:
+	gs_block = 2 * ceil((gs_block - 1) / 2) + 1;
+	if (gs_block < 3) { gs_block = 3; }
+	adaptiveThreshold(img_gray_part, img_bin_part, gs_max, ADAPTIVE_THRESH_MEAN_C, THRESH_BINARY_INV, gs_block, gs_C); 
+	break;
+      case BA_OTSU:
+	threshold(img_gray_part, img_bin_part, gs_max, 255, THRESH_BINARY_INV+THRESH_OTSU); 
+	break;
+      default:
+	break;
+    }
+    /* prepare an empty matrix */
+    img_bin = Mat::zeros(FRAME_HEIGHT, FRAME_WIDTH, CV_8UC1);
+    /* copy img_bin_part into img_bin */
+    for (int i = ubound; i < FRAME_HEIGHT; i++) {
+      for (int j = lbound; j < FRAME_WIDTH-lbound; j++) {
+        img_bin.at<uchar>(i,j) = img_bin_part.at<uchar>(i-ubound,j-lbound); /* type = CV_8U */
+    	}
+    }
     /* remove noise */
     Mat kernel = Mat::zeros(Size(7,7), CV_8UC1);
     morphologyEx(img_bin, img_bin_mor, MORPH_CLOSE, kernel);
@@ -199,7 +236,7 @@ int main() {
     /* calculate the rotation in radians (z-axis)
        284 is distance from axle to the closest horizontal line on ground the camera can see */
     float theta = atan(vxm / 284);
-    cout << "mx = " << mx << ", vxm = " << vxm << ", theta = " << theta << endl;
+    cout << "mx = " << mx << ", vxm = " << vxm << ", theta = " << theta << ", " << (char*)algoName[algo] << endl;
 
     /* shrink the image to avoid delay in transmission */
     if (OUT_FRAME_WIDTH != FRAME_WIDTH || OUT_FRAME_HEIGHT != FRAME_HEIGHT) {
