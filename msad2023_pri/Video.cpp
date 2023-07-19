@@ -24,14 +24,12 @@ Video::Video() {
   inFrameWidth  = 32 * ceil(IN_FRAME_WIDTH /32);
   inFrameHeight = 16 * ceil(IN_FRAME_HEIGHT/16);
   assert(cap.open(inFrameWidth, inFrameHeight, IN_FPS));
-  assert(cap.isOpened());
 #endif /* WITH_V3CAM */
   
-  /* initial region of interest */
-  roi = Rect(0, 0, FRAME_WIDTH, FRAME_HEIGHT);
+  /* initial region of interest is set to crop zone */
+  roi = Rect(CROP_L_LIMIT, CROP_U_LIMIT, CROP_WIDTH, CROP_HEIGHT);
   /* prepare and keep kernel for morphology */
   kernel = Mat::zeros(Size(7,7), CV_8UC1);
-  //kernel = Mat(Size(7,7), CV_8UC1, Scalar(0));
 
   //XInitThreads();
   disp = XOpenDisplay(NULL);
@@ -71,8 +69,11 @@ Video::Video() {
   /* default values */
   gsmin = 0;
   gsmax = 100;
+  gs_block = 50;
+  gs_C = 50;
   side = 0;
   rangeOfEdges = 0;
+  algo = BA_NORMAL;
 }
 
 Video::~Video() {
@@ -135,18 +136,36 @@ void Video::writeFrame(Mat f) {
 Mat Video::calculateTarget(Mat f) {
   if (f.empty()) return f;
   
-  Mat img_gray, img_bin, img_bin_mor, img_cnt_gray, scan_line;
+  Mat img_gray, img_gray_part, img_bin_part, img_bin, img_bin_mor, img_cnt_gray, scan_line;
 
   /* convert the image from BGR to grayscale */
   cvtColor(f, img_gray, COLOR_BGR2GRAY);
-  /* mask the upper half of the grayscale image */
-  //for (int i = 0; i < (int)(FRAME_HEIGHT/2); i++) {
-  //  for (int j = 0; j < FRAME_WIDTH; j++) {
-  //    img_gray.at<uchar>(i,j) = 255; /* type = CV_8U */
-  //  }
-  //}
+  /* crop a part of image for binarization */
+  img_gray_part = img_gray(Range(CROP_U_LIMIT,CROP_D_LIMIT), Range(CROP_L_LIMIT,CROP_R_LIMIT));
   /* binarize the image */
-  inRange(img_gray, gsmin, gsmax, img_bin);
+  switch (algo) {
+    case BA_NORMAL:
+      inRange(img_gray_part, gsmin, gsmax, img_bin_part);
+      break;
+    case BA_ADAPTIVE:
+      gs_block = 2 * ceil((gs_block - 1) / 2) + 1;
+      if (gs_block < 3) { gs_block = 3; }
+      adaptiveThreshold(img_gray_part, img_bin_part, gsmax, ADAPTIVE_THRESH_MEAN_C, THRESH_BINARY_INV, gs_block, gs_C); 
+      break;
+    case BA_OTSU:
+      threshold(img_gray_part, img_bin_part, gsmax, 255, THRESH_BINARY_INV+THRESH_OTSU); 
+      break;
+    default:
+      break;
+  }
+  /* prepare an empty matrix */
+  img_bin = Mat::zeros(FRAME_HEIGHT, FRAME_WIDTH, CV_8UC1);
+  /* copy img_bin_part into img_bin */
+  for (int i = CROP_U_LIMIT; i < CROP_D_LIMIT; i++) {
+    for (int j = CROP_L_LIMIT; j < CROP_R_LIMIT; j++) {
+      img_bin.at<uchar>(i,j) = img_bin_part.at<uchar>(i-CROP_U_LIMIT,j-CROP_L_LIMIT); /* type = CV_8U */
+    }
+  }
   /* remove noise */
   morphologyEx(img_bin, img_bin_mor, MORPH_CLOSE, kernel);
 
@@ -249,7 +268,7 @@ Mat Video::calculateTarget(Mat f) {
     }
   } else { /* contours.size() == 0 */
     rangeOfEdges = 0;
-    roi = Rect(0, 0, FRAME_WIDTH, FRAME_HEIGHT);
+    roi = Rect(CROP_L_LIMIT, CROP_U_LIMIT, CROP_WIDTH, CROP_HEIGHT);
   }
   //_logNoAsp("roe = %d", rangeOfEdges);
 
@@ -306,4 +325,8 @@ void Video::setThresholds(int gsMin, int gsMax) {
 
 void Video::setTraceSide(int traceSide) {
   side = traceSide;
+}
+
+void Video::setBinarizationAlgorithm(BinarizationAlgorithm ba) {
+  algo = ba;
 }

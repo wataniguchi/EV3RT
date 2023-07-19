@@ -55,6 +55,10 @@ COPTS += -std=gnu++14
 
 endif # ifdef ETROBO_WITH_V3CAM
 
+ifdef ETROBO_BENCHMARK
+COPTS += -DBENCHMARK
+endif
+
 #COPTS += -fno-use-cxa-atexit
 #COPTS += -DNDEBUG
 COPTS += -g $(USER_COPTS)

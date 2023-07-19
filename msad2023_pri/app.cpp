@@ -786,7 +786,11 @@ class vcap_thd {
 public:
   void operator()(int unused) {
     Mat f;
+#if defined(BENCHMARK)
+    std::vector<std::uint32_t> elaps_read;
+#endif
     while (state != ST_END && state != ST_ENDING) {
+      std::chrono::system_clock::time_point ts_cap_local = std::chrono::system_clock::now();
       f = video->readFrame();
       std::chrono::system_clock::time_point te_cap_local = std::chrono::system_clock::now();
       /* critical section 1 */
@@ -794,11 +798,20 @@ public:
 	frame_in = f.clone();
 	te_cap = te_cap_local;
 	mut1.unlock();
+#if defined(BENCHMARK)
+	  elaps_read.push_back(std::chrono::duration_cast<std::chrono::microseconds>(te_cap_local - ts_cap_local).count());
+#endif
 	vcap_thd_count++;
       }
       std::this_thread::yield();
     }
     _logNoAsp("sub-thread ready to join. # of execution = %d", vcap_thd_count);
+#if defined(BENCHMARK)
+    _logNoAsp("elapsed time for reading frames (micro sec): max = %d, min = %d, mean = %d",
+	 (int)(*std::max_element(std::begin(elaps_read),std::end(elaps_read))),
+	 (int)(*std::min_element(std::begin(elaps_read),std::end(elaps_read))),
+	 (int)(std::accumulate(std::begin(elaps_read),std::end(elaps_read),0) / vcap_thd_count));
+#endif
   }
 };
 

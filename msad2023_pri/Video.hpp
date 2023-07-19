@@ -51,6 +51,12 @@ extern FilteredMotor*       rightMotor;
 /* frame size for OpenCV */
 #define FRAME_WIDTH  128
 #define FRAME_HEIGHT 96
+#define CROP_WIDTH 64
+#define CROP_HEIGHT 64
+#define CROP_U_LIMIT (FRAME_HEIGHT-CROP_HEIGHT)
+#define CROP_D_LIMIT FRAME_HEIGHT
+#define CROP_L_LIMIT int((FRAME_WIDTH-CROP_WIDTH)/2)
+#define CROP_R_LIMIT (CROP_L_LIMIT+CROP_WIDTH)
 
 /* frame size for X11 painting */
 #define OUT_FRAME_WIDTH  128
@@ -63,6 +69,12 @@ extern FilteredMotor*       rightMotor;
 
 #define JUNCTION_LOWER_THRESHOLD int(40*FRAME_WIDTH/OUT_FRAME_WIDTH)
 #define JUNCTION_UPPER_THRESHOLD int(50*FRAME_WIDTH/OUT_FRAME_WIDTH)
+
+enum BinarizationAlgorithm {
+  BA_NORMAL = 0,
+  BA_ADAPTIVE = 1,
+  BA_OTSU = 2,
+};
 
 class Video {
 protected:
@@ -84,9 +96,10 @@ protected:
   Mat kernel;
   unsigned long* buf;
   char strbuf[5][40];
-  int cx, cy, gsmin, gsmax, side, rangeOfEdges;
+  int cx, cy, gsmin, gsmax, gs_block, gs_C, side, rangeOfEdges;
   int inFrameWidth, inFrameHeight;
   float theta;
+  BinarizationAlgorithm algo;
 public:
   Video();
   Mat readFrame();
@@ -97,6 +110,7 @@ public:
   int getRangeOfEdges();
   void setThresholds(int gsMin, int gsMax);
   void setTraceSide(int traceSide);
+  void setBinarizationAlgorithm(BinarizationAlgorithm ba);
   ~Video();
 };
 
