@@ -248,8 +248,8 @@ Mat Video::calculateTarget(Mat f) {
     Mat img_cnt(f.size(), CV_8UC3, Scalar(0,0,0));
     drawContours(img_cnt, (vector<vector<Point>>){contours[i_target]}, 0, Scalar(0,255,0), 1);
     cvtColor(img_cnt, img_cnt_gray, COLOR_BGR2GRAY);
-    /* scan the line really close to the image bottom to find edges */
-    scan_line = img_cnt_gray.row(img_cnt_gray.size().height - LINE_THICKNESS);
+    /* scan the line really close to the crop zone bottom to find edges */
+    scan_line = img_cnt_gray.row(CROP_D_LIMIT - LINE_THICKNESS);
     /* convert the Mat to a NumCpp array */
     auto scan_line_nc = nc::NdArray<nc::uint8>(scan_line.data, scan_line.rows, scan_line.cols);
     auto edges = scan_line_nc.flatnonzero();
@@ -275,19 +275,19 @@ Mat Video::calculateTarget(Mat f) {
   /* draw the area of interest on the original image */
   rectangle(f, Point(roi.x,roi.y), Point(roi.x+roi.width,roi.y+roi.height), Scalar(255,0,0), LINE_THICKNESS);
   /* draw the trace target on the image */
-  circle(f, Point(cx, FRAME_HEIGHT-LINE_THICKNESS), CIRCLE_RADIUS, Scalar(0,0,255), -1);
+  circle(f, Point(cx, CROP_D_LIMIT-LINE_THICKNESS), CIRCLE_RADIUS, Scalar(0,0,255), -1);
 
   /* calculate variance of cx from the center in pixel */
   int vxp = cx - (int)(FRAME_WIDTH/2);
   /* convert the variance from pixel to milimeters
-     72 is length of the closest horizontal line on ground within the camera vision */
-  float vxm = vxp * 72 / FRAME_WIDTH;
+     245 mm is length of the closest horizontal line on ground within the camera vision */
+  float vxm = vxp * 245 / FRAME_WIDTH;
   /* calculate the rotation in degree (z-axis)
-     284 is distance from axle to the closest horizontal line on ground the camera can see */
+     230 mm is distance from axle to the closest horizontal line on ground the camera can see */
   if (vxm == 0) {
     theta = 0;
   } else {
-    theta = 180 * atan(vxm / 284) / M_PI;
+    theta = 180 * atan(vxm / 230) / M_PI;
   }
   //_logNoAsp("cx = %d, vxm = %d, theta = %d", cx, (int)vxm, (int)theta);
 

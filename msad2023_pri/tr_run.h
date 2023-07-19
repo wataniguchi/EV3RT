@@ -3,6 +3,12 @@
   .composite<BrainTree::ParallelSequence>(1,2) \
     .leaf<IsDistanceEarned>(prof->getValueAsNum("RUN_R_DIST")) \
     .composite<BrainTree::MemSequence>() \
+      /* section R0: run straight for 0.5 sec */ \
+      .composite<BrainTree::ParallelSequence>(1,2) \
+        .leaf<IsTimeEarned>(500000) \
+        .leaf<RunAsInstructed>(prof->getValueAsNum("RUN_R1_SPEED"), \
+	      prof->getValueAsNum("RUN_R1_SPEED"), 0.0) \
+      .end() \
       /* section R1: to the first join */ \
       .composite<BrainTree::ParallelSequence>(1,2) \
         .composite<BrainTree::MemSequence>() \

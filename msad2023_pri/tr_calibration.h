@@ -5,8 +5,8 @@
     .leaf<ResetArm>() /* reset arm angle to zero */ \
     .leaf<SetArmPosition>(ARM_INITIAL_ANGLE,ARM_SHIFT_PWM) /* then down */ \
     /* wait until Touch Button is pressed */ \
-    .decorator<BrainTree::UntilSuccess>() \
+    /*.decorator<BrainTree::UntilSuccess>()  \
       .leaf<IsEnterOn>() \
-    .end() \
+      .end() */		 \
     .leaf<ResetClock>()	\
   .end()
