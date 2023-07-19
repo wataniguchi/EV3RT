@@ -37,8 +37,14 @@ using std::this_thread::sleep_for;
 /* frame size for OpenCV */
 //#define FRAME_WIDTH  640
 //#define FRAME_HEIGHT 480
-#define FRAME_WIDTH  160
-#define FRAME_HEIGHT 120
+#define FRAME_WIDTH  128
+#define FRAME_HEIGHT 96
+#define CROP_WIDTH 64
+#define CROP_HEIGHT 64
+#define CROP_U_LIMIT (FRAME_HEIGHT-CROP_HEIGHT)
+#define CROP_D_LIMIT FRAME_HEIGHT
+#define CROP_L_LIMIT int((FRAME_WIDTH-CROP_WIDTH)/2)
+#define CROP_R_LIMIT (CROP_L_LIMIT+CROP_WIDTH)
 
 #define ROI_BOUNDARY int(FRAME_WIDTH/16)
 #define LINE_THICKNESS int(FRAME_WIDTH/80)
@@ -86,7 +92,9 @@ int main() {
   setTrackbarPos("GS_C (adaptive)", "testTrace1", gs_C);
 
   /* initial region of interest */
-  Rect roi(0, 0, FRAME_WIDTH, FRAME_HEIGHT);
+  //Rect roi(0, 0, FRAME_WIDTH, FRAME_HEIGHT);
+  /* initial region of interest is set to crop zone */
+  Rect roi(CROP_L_LIMIT, CROP_U_LIMIT, CROP_WIDTH, CROP_HEIGHT);
   /* initial trace target */
   int mx = (int)(FRAME_WIDTH/2);
 
@@ -126,9 +134,7 @@ int main() {
     /* convert the image from BGR to grayscale */
     cvtColor(img_orig, img_gray, COLOR_BGR2GRAY);
     /* crop bottom two thirds vertically and center half horizontally */
-    int ubound = static_cast<int>(FRAME_HEIGHT/3);
-    int lbound = static_cast<int>(FRAME_WIDTH/4);
-    img_gray_part = img_gray(Range(ubound,FRAME_HEIGHT), Range(lbound,FRAME_WIDTH-lbound));
+    img_gray_part = img_gray(Range(CROP_U_LIMIT,CROP_D_LIMIT), Range(CROP_L_LIMIT,CROP_R_LIMIT));
     /* binarize the image */
     switch (algo) {
       case BA_NORMAL:
@@ -148,9 +154,9 @@ int main() {
     /* prepare an empty matrix */
     img_bin = Mat::zeros(FRAME_HEIGHT, FRAME_WIDTH, CV_8UC1);
     /* copy img_bin_part into img_bin */
-    for (int i = ubound; i < FRAME_HEIGHT; i++) {
-      for (int j = lbound; j < FRAME_WIDTH-lbound; j++) {
-        img_bin.at<uchar>(i,j) = img_bin_part.at<uchar>(i-ubound,j-lbound); /* type = CV_8U */
+    for (int i = CROP_U_LIMIT; i < CROP_D_LIMIT; i++) {
+      for (int j = CROP_L_LIMIT; j < CROP_R_LIMIT; j++) {
+        img_bin.at<uchar>(i,j) = img_bin_part.at<uchar>(i-CROP_U_LIMIT,j-CROP_L_LIMIT); /* type = CV_8U */
     	}
     }
     /* remove noise */
@@ -221,7 +227,8 @@ int main() {
 	mx = edges[0];
       }
     } else { /* contours.size() == 0 */
-      roi = Rect(0, 0, FRAME_WIDTH, FRAME_HEIGHT);
+      //roi = Rect(0, 0, FRAME_WIDTH, FRAME_HEIGHT);
+      roi = Rect(CROP_L_LIMIT, CROP_U_LIMIT, CROP_WIDTH, CROP_HEIGHT);
     }
 
     /* draw the area of interest on the original image */
