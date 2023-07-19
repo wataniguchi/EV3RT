@@ -228,17 +228,17 @@ Mat Video::calculateTarget(Mat f) {
     roi.y = roi.y - ROI_BOUNDARY;
     roi.width = roi.width + 2*ROI_BOUNDARY;
     roi.height = roi.height + 2*ROI_BOUNDARY;
-    if (roi.x < 0) {
-      roi.x = 0;
+    if (roi.x < CROP_L_LIMIT) {
+      roi.x = CROP_L_LIMIT;
     }
-    if (roi.y < 0) {
-      roi.y = 0;
+    if (roi.y < CROP_U_LIMIT) {
+      roi.y = CROP_U_LIMIT;
     }
-    if (roi.x + roi.width > FRAME_WIDTH) {
-      roi.width = FRAME_WIDTH - roi.x;
+    if (roi.x + roi.width > CROP_R_LIMIT) {
+      roi.width = CROP_R_LIMIT - roi.x;
     }
-    if (roi.y + roi.height > FRAME_HEIGHT) {
-      roi.height = FRAME_HEIGHT - roi.y;
+    if (roi.y + roi.height > CROP_D_LIMIT) {
+      roi.height = CROP_D_LIMIT - roi.y;
     }
  
     /* prepare for trace target calculation */
