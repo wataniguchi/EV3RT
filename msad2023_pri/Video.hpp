@@ -52,10 +52,17 @@ extern FilteredMotor*       rightMotor;
 #define FRAME_WIDTH  128
 #define FRAME_HEIGHT 96
 
+/* frame size for X11 painting */
+#define OUT_FRAME_WIDTH  128
+#define OUT_FRAME_HEIGHT 96
+
 #define ROI_BOUNDARY int(FRAME_WIDTH/16)
 #define LINE_THICKNESS int(FRAME_WIDTH/80)
 #define CIRCLE_RADIUS int(FRAME_WIDTH/40)
-#define DATA_INDENT int(FRAME_HEIGHT/12)
+#define DATA_INDENT int(OUT_FRAME_HEIGHT/16)
+
+#define JUNCTION_LOWER_THRESHOLD int(40*FRAME_WIDTH/OUT_FRAME_WIDTH)
+#define JUNCTION_UPPER_THRESHOLD int(50*FRAME_WIDTH/OUT_FRAME_WIDTH)
 
 class Video {
 protected:
@@ -76,8 +83,8 @@ protected:
   Mat frame_prev;
   Mat kernel;
   unsigned long* buf;
-  char strbuf[4][40];
-  int mx, gsmin, gsmax, side, rangeOfEdges;
+  char strbuf[5][40];
+  int cx, cy, gsmin, gsmax, side, rangeOfEdges;
   int inFrameWidth, inFrameHeight;
   float theta;
 public:
