@@ -64,7 +64,8 @@ Video::Video() {
   XInitImage(ximg);
 
   /* initial trace target */
-  mx = (int)(FRAME_WIDTH/2);
+  cx = (int)(FRAME_WIDTH/2);
+  cy = FRAME_HEIGHT-LINE_THICKNESS;
   /* default values */
   gsmin = 0;
   gsmax = 100;
@@ -110,14 +111,17 @@ Mat Video::readFrame() {
 void Video::writeFrame(Mat f) {
   if (f.empty()) return;
 
-  if (f.size().width != FRAME_WIDTH || f.size().height != FRAME_HEIGHT) {
-    _log("frame size mismatch, w = %d(should be %d), h = %d(should be %d)", f.size().width, FRAME_WIDTH, f.size().height, FRAME_HEIGHT);
-    return;
+  if (f.size().width != OUT_FRAME_WIDTH || f.size().height != OUT_FRAME_HEIGHT) {
+      Mat img_resized;
+      resize(f, img_resized, Size(), (double)OUT_FRAME_WIDTH/f.size().width, (double)OUT_FRAME_HEIGHT/f.size().height);
+      assert(img_resized.size().width == OUT_FRAME_WIDTH);
+      assert(img_resized.size().height == OUT_FRAME_HEIGHT);
+      f = img_resized;
   }
 
-  for (int j = 0; j < FRAME_HEIGHT; j++) {
-    for (int i = 0; i < FRAME_WIDTH; i++) {
-      buf = (unsigned long*)gbuf + i + j*FRAME_WIDTH;
+  for (int j = 0; j < OUT_FRAME_HEIGHT; j++) {
+    for (int i = 0; i < OUT_FRAME_WIDTH; i++) {
+      buf = (unsigned long*)gbuf + i + j*OUT_FRAME_WIDTH;
       int imat = j*f.step + i*f.elemSize();
       *buf = ((f.data[imat+2] << 16) |
 	      (f.data[imat+1] << 8) |
@@ -231,15 +235,15 @@ Mat Video::calculateTarget(Mat f) {
     if (edges.size() >= 2) {
       rangeOfEdges = edges[edges.size()-1] - edges[0];
       if (side == 0) {
-	mx = edges[0];
+	cx = edges[0];
       } else if (side == 1) {
-	mx = edges[edges.size()-1];
+	cx = edges[edges.size()-1];
       } else {
-	mx = (int)((edges[0]+edges[edges.size()-1]) / 2);
+	cx = (int)((edges[0]+edges[edges.size()-1]) / 2);
       }
     } else if (edges.size() == 1) {
       rangeOfEdges = 1;
-      mx = edges[0];
+      cx = edges[0];
     }
   } else { /* contours.size() == 0 */
     rangeOfEdges = 0;
@@ -250,10 +254,10 @@ Mat Video::calculateTarget(Mat f) {
   /* draw the area of interest on the original image */
   rectangle(f, Point(roi.x,roi.y), Point(roi.x+roi.width,roi.y+roi.height), Scalar(255,0,0), LINE_THICKNESS);
   /* draw the trace target on the image */
-  circle(f, Point(mx, FRAME_HEIGHT-LINE_THICKNESS), CIRCLE_RADIUS, Scalar(0,0,255), -1);
+  circle(f, Point(cx, FRAME_HEIGHT-LINE_THICKNESS), CIRCLE_RADIUS, Scalar(0,0,255), -1);
 
-  /* calculate variance of mx from the center in pixel */
-  int vxp = mx - (int)(FRAME_WIDTH/2);
+  /* calculate variance of cx from the center in pixel */
+  int vxp = cx - (int)(FRAME_WIDTH/2);
   /* convert the variance from pixel to milimeters
      72 is length of the closest horizontal line on ground within the camera vision */
   float vxm = vxp * 72 / FRAME_WIDTH;
@@ -264,22 +268,24 @@ Mat Video::calculateTarget(Mat f) {
   } else {
     theta = 180 * atan(vxm / 284) / M_PI;
   }
-  //_logNoAsp("mx = %d, vxm = %d, theta = %d", mx, (int)vxm, (int)theta);
+  //_logNoAsp("cx = %d, vxm = %d, theta = %d", cx, (int)vxm, (int)theta);
 
   return f;
 }
 
 void Video::show() {
   sprintf(strbuf[0], "x=%+05d,y=%+05d", plotter->getLocX(), plotter->getLocY());
-  sprintf(strbuf[1], "ODO=%05d,mx=%03d", plotter->getDistance(), mx);
-  sprintf(strbuf[2], "deg=%03d,gyro=%+04d", plotter->getDegree(), gyroSensor->getAngle());
-  sprintf(strbuf[3], "pwR=%+04d,pwL=%+04d", rightMotor->getPWM(), leftMotor->getPWM());
+  sprintf(strbuf[1], "ODO=%05d,T=%+03.1f", plotter->getDistance(), getTheta());
+  sprintf(strbuf[2], "cx=%03d,cy=%03d", cx, cy);
+  sprintf(strbuf[3], "deg=%03d,gyro=%+04d", plotter->getDegree(), gyroSensor->getAngle());
+  sprintf(strbuf[4], "pwR=%+04d,pwL=%+04d", rightMotor->getPWM(), leftMotor->getPWM());
 
-  XPutImage(disp, win, gc, ximg, 0, 0, 0, 0, FRAME_WIDTH, 2*FRAME_HEIGHT);
-  XDrawString(disp, win, gc, DATA_INDENT, FRAME_HEIGHT+2*DATA_INDENT, strbuf[0], strlen(strbuf[0]));
-  XDrawString(disp, win, gc, DATA_INDENT, FRAME_HEIGHT+5*DATA_INDENT, strbuf[1], strlen(strbuf[1]));
-  XDrawString(disp, win, gc, DATA_INDENT, FRAME_HEIGHT+8*DATA_INDENT, strbuf[2], strlen(strbuf[2]));
-  XDrawString(disp, win, gc, DATA_INDENT, FRAME_HEIGHT+11*DATA_INDENT, strbuf[3], strlen(strbuf[3]));
+  XPutImage(disp, win, gc, ximg, 0, 0, 0, 0, FRAME_WIDTH, 2*OUT_FRAME_HEIGHT);
+  XDrawString(disp, win, gc, DATA_INDENT, OUT_FRAME_HEIGHT+2*DATA_INDENT, strbuf[0], strlen(strbuf[0]));
+  XDrawString(disp, win, gc, DATA_INDENT, OUT_FRAME_HEIGHT+5*DATA_INDENT, strbuf[1], strlen(strbuf[1]));
+  XDrawString(disp, win, gc, DATA_INDENT, OUT_FRAME_HEIGHT+8*DATA_INDENT, strbuf[2], strlen(strbuf[2]));
+  XDrawString(disp, win, gc, DATA_INDENT, OUT_FRAME_HEIGHT+11*DATA_INDENT, strbuf[3], strlen(strbuf[3]));
+  XDrawString(disp, win, gc, DATA_INDENT, OUT_FRAME_HEIGHT+14*DATA_INDENT, strbuf[4], strlen(strbuf[4]));
   XFlush(disp);
 }
 

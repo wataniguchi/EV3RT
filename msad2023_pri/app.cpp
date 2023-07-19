@@ -896,9 +896,6 @@ void task_activator(intptr_t tskid) {
 
 /* The main task */
 void main_task(intptr_t unused) {
-    // temp fix 2022/6/20 W.Taniguchi, as Bluetooth not implemented yet
-    //bt = ev3_serial_open_file(EV3_SERIAL_BT);
-    //assert(bt != NULL);
     /* create and initialize EV3 objects */
     ev3clock    = new Clock();
     _log("initialization started.");
@@ -1034,8 +1031,6 @@ void main_task(intptr_t unused) {
     delete video;
     _log("being terminated...");
     delete ev3clock;
-    // temp fix 2022/6/20 W.Taniguchi, as Bluetooth not implemented yet
-    //fclose(bt);
     ext_tsk();
 }
 
