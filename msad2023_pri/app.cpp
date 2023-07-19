@@ -790,7 +790,9 @@ public:
     std::vector<std::uint32_t> elaps_read;
 #endif
     while (state != ST_END && state != ST_ENDING) {
+#if defined(BENCHMARK)
       std::chrono::system_clock::time_point ts_cap_local = std::chrono::system_clock::now();
+#endif
       f = video->readFrame();
       std::chrono::system_clock::time_point te_cap_local = std::chrono::system_clock::now();
       /* critical section 1 */

@@ -39,9 +39,9 @@ using std::this_thread::sleep_for;
 //#define FRAME_HEIGHT 480
 #define FRAME_WIDTH  128
 #define FRAME_HEIGHT 96
-#define CROP_WIDTH 64
-#define CROP_HEIGHT 48
-#define CROP_U_LIMIT int((FRAME_HEIGHT-CROP_HEIGHT)/2)
+#define CROP_WIDTH   int(5*FRAME_WIDTH/8)
+#define CROP_HEIGHT  int(3*FRAME_HEIGHT/4)
+#define CROP_U_LIMIT int(FRAME_HEIGHT/4)
 #define CROP_D_LIMIT (CROP_U_LIMIT+CROP_HEIGHT)
 #define CROP_L_LIMIT int((FRAME_WIDTH-CROP_WIDTH)/2)
 #define CROP_R_LIMIT (CROP_L_LIMIT+CROP_WIDTH)
@@ -49,6 +49,9 @@ using std::this_thread::sleep_for;
 #define ROI_BOUNDARY int(FRAME_WIDTH/16)
 #define LINE_THICKNESS int(FRAME_WIDTH/80)
 #define CIRCLE_RADIUS int(FRAME_WIDTH/40)
+#define SCAN_V_POS int(3*FRAME_HEIGHT/4 - LINE_THICKNESS)
+static_assert(SCAN_V_POS > CROP_U_LIMIT,"SCAN_V_POS > CROP_U_LIMIT");
+static_assert(SCAN_V_POS < CROP_D_LIMIT,"SCAN_V_POS < CROP_D_LIMIT");
 
 /* frame size for X11 painting */
 #define OUT_FRAME_WIDTH  160
@@ -131,7 +134,7 @@ int main() {
     }
     /* convert the image from BGR to grayscale */
     cvtColor(img_orig, img_gray, COLOR_BGR2GRAY);
-    /* crop central part of the image */
+    /* crop a part of the image */
     img_gray_part = img_gray(Range(CROP_U_LIMIT,CROP_D_LIMIT), Range(CROP_L_LIMIT,CROP_R_LIMIT));
     /* binarize the image */
     switch (algo) {
@@ -208,8 +211,8 @@ int main() {
       drawContours(img_cnt, (vector<vector<Point>>){contours[i_area_max]}, 0, Scalar(0,255,0), 1);
       Mat img_cnt_gray;
       cvtColor(img_cnt, img_cnt_gray, COLOR_BGR2GRAY);
-      /* scan the line really close to the crop zone bottom to find edges */
-      Mat scan_line = img_cnt_gray.row(CROP_D_LIMIT - LINE_THICKNESS);
+      /* scan the line at SCAN_V_POS to find edges */
+      Mat scan_line = img_cnt_gray.row(SCAN_V_POS);
       /* convert the Mat to a NumCpp array */
       auto scan_line_nc = nc::NdArray<nc::uint8>(scan_line.data, scan_line.rows, scan_line.cols);
       auto edges = scan_line_nc.flatnonzero();
@@ -231,7 +234,7 @@ int main() {
     /* draw the area of interest on the original image */
     rectangle(img_orig, Point(roi.x,roi.y), Point(roi.x+roi.width,roi.y+roi.height), Scalar(255,0,0), LINE_THICKNESS);
     /* draw the trace target on the image */
-    circle(img_orig, Point(mx, CROP_D_LIMIT-LINE_THICKNESS), CIRCLE_RADIUS, Scalar(0,0,255), -1);
+    circle(img_orig, Point(mx, SCAN_V_POS), CIRCLE_RADIUS, Scalar(0,0,255), -1);
     /* calculate variance of mx from the center in pixel */
     int vxp = mx - (int)(FRAME_WIDTH/2);
     /* convert the variance from pixel to milimeters
