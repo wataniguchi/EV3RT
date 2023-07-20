@@ -52,8 +52,8 @@ extern FilteredMotor*       rightMotor;
 #define FRAME_WIDTH  128
 #define FRAME_HEIGHT 96
 #define CROP_WIDTH   int(5*FRAME_WIDTH/8)
-#define CROP_HEIGHT  int(3*FRAME_HEIGHT/4)
-#define CROP_U_LIMIT int(FRAME_HEIGHT/4)
+#define CROP_HEIGHT  int(5*FRAME_HEIGHT/8)
+#define CROP_U_LIMIT int(3*FRAME_HEIGHT/8)
 #define CROP_D_LIMIT (CROP_U_LIMIT+CROP_HEIGHT)
 #define CROP_L_LIMIT int((FRAME_WIDTH-CROP_WIDTH)/2)
 #define CROP_R_LIMIT (CROP_L_LIMIT+CROP_WIDTH)
