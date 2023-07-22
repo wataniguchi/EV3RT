@@ -52,8 +52,8 @@ extern FilteredMotor*       rightMotor;
 #define FRAME_WIDTH  128
 #define FRAME_HEIGHT 96
 #define CROP_WIDTH   int(5*FRAME_WIDTH/8)
-#define CROP_HEIGHT  int(5*FRAME_HEIGHT/8)
-#define CROP_U_LIMIT int(3*FRAME_HEIGHT/8)
+#define CROP_HEIGHT  int(3*FRAME_HEIGHT/8)
+#define CROP_U_LIMIT int(5*FRAME_HEIGHT/8)
 #define CROP_D_LIMIT (CROP_U_LIMIT+CROP_HEIGHT)
 #define CROP_L_LIMIT int((FRAME_WIDTH-CROP_WIDTH)/2)
 #define CROP_R_LIMIT (CROP_L_LIMIT+CROP_WIDTH)
@@ -61,7 +61,7 @@ extern FilteredMotor*       rightMotor;
 #define ROI_BOUNDARY int(FRAME_WIDTH/16)
 #define LINE_THICKNESS int(FRAME_WIDTH/80)
 #define CIRCLE_RADIUS int(FRAME_WIDTH/40)
-#define SCAN_V_POS int(3*FRAME_HEIGHT/4 - LINE_THICKNESS)
+#define SCAN_V_POS int(13*FRAME_HEIGHT/16 - LINE_THICKNESS)
 static_assert(SCAN_V_POS > CROP_U_LIMIT,"SCAN_V_POS > CROP_U_LIMIT");
 static_assert(SCAN_V_POS < CROP_D_LIMIT,"SCAN_V_POS < CROP_D_LIMIT");
 #define DATA_INDENT int(OUT_FRAME_HEIGHT/16)
