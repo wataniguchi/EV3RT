@@ -39,22 +39,25 @@ using std::this_thread::sleep_for;
 //#define FRAME_HEIGHT 480
 #define FRAME_WIDTH  128
 #define FRAME_HEIGHT 96
-#define CROP_WIDTH 64
-#define CROP_HEIGHT 64
-#define CROP_U_LIMIT (FRAME_HEIGHT-CROP_HEIGHT)
-#define CROP_D_LIMIT FRAME_HEIGHT
+#define CROP_WIDTH   int(5*FRAME_WIDTH/8)
+#define CROP_HEIGHT  int(3*FRAME_HEIGHT/4)
+#define CROP_U_LIMIT int(FRAME_HEIGHT/4)
+#define CROP_D_LIMIT (CROP_U_LIMIT+CROP_HEIGHT)
 #define CROP_L_LIMIT int((FRAME_WIDTH-CROP_WIDTH)/2)
 #define CROP_R_LIMIT (CROP_L_LIMIT+CROP_WIDTH)
 
 #define ROI_BOUNDARY int(FRAME_WIDTH/16)
 #define LINE_THICKNESS int(FRAME_WIDTH/80)
 #define CIRCLE_RADIUS int(FRAME_WIDTH/40)
+#define SCAN_V_POS int(3*FRAME_HEIGHT/4 - LINE_THICKNESS)
+static_assert(SCAN_V_POS > CROP_U_LIMIT,"SCAN_V_POS > CROP_U_LIMIT");
+static_assert(SCAN_V_POS < CROP_D_LIMIT,"SCAN_V_POS < CROP_D_LIMIT");
 
 /* frame size for X11 painting */
 #define OUT_FRAME_WIDTH  160
 #define OUT_FRAME_HEIGHT 120
 
-int gs_min=0,gs_max=100,edge=0,algo=0,gs_block=50,gs_C=50;
+int gs_min=0,gs_max=60,edge=0,algo=0,gs_block=50,gs_C=50;
 
 enum BinarizationAlgorithm {
   BA_NORMAL = 0,
@@ -91,8 +94,6 @@ int main() {
   createTrackbar("GS_C (adaptive)", "testTrace1", nullptr, 255, nullptr);
   setTrackbarPos("GS_C (adaptive)", "testTrace1", gs_C);
 
-  /* initial region of interest */
-  //Rect roi(0, 0, FRAME_WIDTH, FRAME_HEIGHT);
   /* initial region of interest is set to crop zone */
   Rect roi(CROP_L_LIMIT, CROP_U_LIMIT, CROP_WIDTH, CROP_HEIGHT);
   /* initial trace target */
@@ -133,7 +134,7 @@ int main() {
     }
     /* convert the image from BGR to grayscale */
     cvtColor(img_orig, img_gray, COLOR_BGR2GRAY);
-    /* crop bottom two thirds vertically and center half horizontally */
+    /* crop a part of the image */
     img_gray_part = img_gray(Range(CROP_U_LIMIT,CROP_D_LIMIT), Range(CROP_L_LIMIT,CROP_R_LIMIT));
     /* binarize the image */
     switch (algo) {
@@ -192,17 +193,17 @@ int main() {
       roi.y = roi.y - ROI_BOUNDARY;
       roi.width = roi.width + 2*ROI_BOUNDARY;
       roi.height = roi.height + 2*ROI_BOUNDARY;
-      if (roi.x < 0) {
-	roi.x = 0;
+      if (roi.x < CROP_L_LIMIT) {
+	roi.x = CROP_L_LIMIT;
       }
-      if (roi.y < 0) {
-	roi.y = 0;
+      if (roi.y < CROP_U_LIMIT) {
+	roi.y = CROP_U_LIMIT;
       }
-      if (roi.x + roi.width > FRAME_WIDTH) {
-	roi.width = FRAME_WIDTH - roi.x;
+      if (roi.x + roi.width > CROP_R_LIMIT) {
+	roi.width = CROP_R_LIMIT - roi.x;
       }
-      if (roi.y + roi.height > FRAME_HEIGHT) {
-	roi.height = FRAME_HEIGHT - roi.y;
+      if (roi.y + roi.height > CROP_D_LIMIT) {
+	roi.height = CROP_D_LIMIT - roi.y;
       }
  
       /* prepare for trace target calculation */
@@ -210,8 +211,8 @@ int main() {
       drawContours(img_cnt, (vector<vector<Point>>){contours[i_area_max]}, 0, Scalar(0,255,0), 1);
       Mat img_cnt_gray;
       cvtColor(img_cnt, img_cnt_gray, COLOR_BGR2GRAY);
-      /* scan the line really close to the image bottom to find edges */
-      Mat scan_line = img_cnt_gray.row(img_cnt_gray.size().height - LINE_THICKNESS);
+      /* scan the line at SCAN_V_POS to find edges */
+      Mat scan_line = img_cnt_gray.row(SCAN_V_POS);
       /* convert the Mat to a NumCpp array */
       auto scan_line_nc = nc::NdArray<nc::uint8>(scan_line.data, scan_line.rows, scan_line.cols);
       auto edges = scan_line_nc.flatnonzero();
@@ -227,22 +228,21 @@ int main() {
 	mx = edges[0];
       }
     } else { /* contours.size() == 0 */
-      //roi = Rect(0, 0, FRAME_WIDTH, FRAME_HEIGHT);
       roi = Rect(CROP_L_LIMIT, CROP_U_LIMIT, CROP_WIDTH, CROP_HEIGHT);
     }
 
     /* draw the area of interest on the original image */
     rectangle(img_orig, Point(roi.x,roi.y), Point(roi.x+roi.width,roi.y+roi.height), Scalar(255,0,0), LINE_THICKNESS);
     /* draw the trace target on the image */
-    circle(img_orig, Point(mx, FRAME_HEIGHT-LINE_THICKNESS), CIRCLE_RADIUS, Scalar(0,0,255), -1);
+    circle(img_orig, Point(mx, SCAN_V_POS), CIRCLE_RADIUS, Scalar(0,0,255), -1);
     /* calculate variance of mx from the center in pixel */
     int vxp = mx - (int)(FRAME_WIDTH/2);
     /* convert the variance from pixel to milimeters
-       72 is length of the closest horizontal line on ground within the camera vision */
-    float vxm = vxp * 72 / FRAME_WIDTH;
+       245 mm is length of the closest horizontal line on ground within the camera vision */
+    float vxm = vxp * 245 / FRAME_WIDTH;
     /* calculate the rotation in radians (z-axis)
-       284 is distance from axle to the closest horizontal line on ground the camera can see */
-    float theta = atan(vxm / 284);
+       230 mm is distance from axle to the closest horizontal line on ground the camera can see */
+    float theta = atan(vxm / 230);
     cout << "mx = " << mx << ", vxm = " << vxm << ", theta = " << theta << ", " << (char*)algoName[algo] << endl;
 
     /* shrink the image to avoid delay in transmission */

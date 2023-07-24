@@ -13,20 +13,21 @@ Video::Video() {
 #if defined(WITH_V3CAM)
   cam.options->video_width=IN_FRAME_WIDTH;
   cam.options->video_height=IN_FRAME_HEIGHT;
-  cam.options->framerate=90;
+  cam.options->framerate=IN_FPS;
   cam.options->verbose=true;
   cam.startVideo();
 #else /* WITH_V3CAM */
   /* prepare the camera */
-  cap = VideoCapture(0);
-  cap.set(CAP_PROP_FRAME_WIDTH,IN_FRAME_WIDTH);
-  cap.set(CAP_PROP_FRAME_HEIGHT,IN_FRAME_HEIGHT);
-  cap.set(CAP_PROP_FPS,90);
-  assert(cap.isOpened());
+  cap = RaspiVideoCapture();
+  /* horizontal resolution is rounded up to the nearest multiple of 32 pixels
+     vertical resolution is rounded up to the nearest multiple of 16 pixels */
+  inFrameWidth  = 32 * ceil(IN_FRAME_WIDTH /32);
+  inFrameHeight = 16 * ceil(IN_FRAME_HEIGHT/16);
+  assert(cap.open(inFrameWidth, inFrameHeight, IN_FPS));
 #endif /* WITH_V3CAM */
   
-  /* initial region of interest */
-  roi = Rect(0, 0, FRAME_WIDTH, FRAME_HEIGHT);
+  /* initial region of interest is set to crop zone */
+  roi = Rect(CROP_L_LIMIT, CROP_U_LIMIT, CROP_WIDTH, CROP_HEIGHT);
   /* prepare and keep kernel for morphology */
   kernel = Mat::zeros(Size(7,7), CV_8UC1);
 
@@ -68,8 +69,11 @@ Video::Video() {
   /* default values */
   gsmin = 0;
   gsmax = 100;
+  gs_block = 50;
+  gs_C = 50;
   side = 0;
   rangeOfEdges = 0;
+  algo = BA_NORMAL;
   traceTargetType = TT_LINE;
 }
 
@@ -96,7 +100,7 @@ Mat Video::readFrame() {
   if (!f.empty()) {
     if (FRAME_WIDTH != IN_FRAME_WIDTH || FRAME_HEIGHT != IN_FRAME_HEIGHT) {
       Mat img_resized;
-      resize(f, img_resized, Size(), (double)FRAME_WIDTH/IN_FRAME_WIDTH, (double)FRAME_HEIGHT/IN_FRAME_HEIGHT);
+      resize(f, img_resized, Size(), (double)FRAME_WIDTH/inFrameWidth, (double)FRAME_HEIGHT/inFrameHeight);
       assert(img_resized.size().width == FRAME_WIDTH);
       assert(img_resized.size().height == FRAME_HEIGHT);
       f = img_resized;
@@ -135,7 +139,38 @@ Mat Video::calculateTarget(Mat f) {
 
   if (traceTargetType == TT_TREASURE) {
   } else if (traceTargetType == TT_LINE) {
-    Mat img_gray, img_bin, img_bin_mor, img_cnt_gray, scan_line;
+    Mat img_gray, img_gray_part, img_bin_part, img_bin, img_bin_mor, img_cnt_gray, scan_line;
+
+    /* convert the image from BGR to grayscale */
+    cvtColor(f, img_gray, COLOR_BGR2GRAY);
+    /* crop a part of image for binarization */
+    img_gray_part = img_gray(Range(CROP_U_LIMIT,CROP_D_LIMIT), Range(CROP_L_LIMIT,CROP_R_LIMIT));
+    /* binarize the image */
+    switch (algo) {
+      case BA_NORMAL:
+        inRange(img_gray_part, gsmin, gsmax, img_bin_part);
+        break;
+      case BA_ADAPTIVE:
+        gs_block = 2 * ceil((gs_block - 1) / 2) + 1;
+        if (gs_block < 3) { gs_block = 3; }
+        adaptiveThreshold(img_gray_part, img_bin_part, gsmax, ADAPTIVE_THRESH_MEAN_C, THRESH_BINARY_INV, gs_block, gs_C); 
+        break;
+      case BA_OTSU:
+        threshold(img_gray_part, img_bin_part, gsmax, 255, THRESH_BINARY_INV+THRESH_OTSU); 
+        break;
+      default:
+        break;
+    }
+    /* prepare an empty matrix */
+    img_bin = Mat::zeros(FRAME_HEIGHT, FRAME_WIDTH, CV_8UC1);
+    /* copy img_bin_part into img_bin */
+    for (int i = CROP_U_LIMIT; i < CROP_D_LIMIT; i++) {
+      for (int j = CROP_L_LIMIT; j < CROP_R_LIMIT; j++) {
+        img_bin.at<uchar>(i,j) = img_bin_part.at<uchar>(i-CROP_U_LIMIT,j-CROP_L_LIMIT); /* type = CV_8U */
+      }
+    }
+    /* remove noise */
+    morphologyEx(img_bin, img_bin_mor, MORPH_CLOSE, kernel);
 
     /* convert the image from BGR to grayscale */
     cvtColor(f, img_gray, COLOR_BGR2GRAY);
@@ -203,17 +238,17 @@ Mat Video::calculateTarget(Mat f) {
       roi.y = roi.y - ROI_BOUNDARY;
       roi.width = roi.width + 2*ROI_BOUNDARY;
       roi.height = roi.height + 2*ROI_BOUNDARY;
-      if (roi.x < 0) {
-        roi.x = 0;
+      if (roi.x < CROP_L_LIMIT) {
+        roi.x = CROP_L_LIMIT;
       }
-      if (roi.y < 0) {
-        roi.y = 0;
+      if (roi.y < CROP_U_LIMIT) {
+        roi.y = CROP_U_LIMIT;
       }
-      if (roi.x + roi.width > FRAME_WIDTH) {
-        roi.width = FRAME_WIDTH - roi.x;
+      if (roi.x + roi.width > CROP_R_LIMIT) {
+        roi.width = CROP_R_LIMIT - roi.x;
       }
-      if (roi.y + roi.height > FRAME_HEIGHT) {
-        roi.height = FRAME_HEIGHT - roi.y;
+      if (roi.y + roi.height > CROP_D_LIMIT) {
+        roi.height = CROP_D_LIMIT - roi.y;
       }
  
       /* prepare for trace target calculation */
@@ -223,8 +258,8 @@ Mat Video::calculateTarget(Mat f) {
       Mat img_cnt(f.size(), CV_8UC3, Scalar(0,0,0));
       drawContours(img_cnt, (vector<vector<Point>>){contours[i_target]}, 0, Scalar(0,255,0), 1);
       cvtColor(img_cnt, img_cnt_gray, COLOR_BGR2GRAY);
-      /* scan the line really close to the image bottom to find edges */
-      scan_line = img_cnt_gray.row(img_cnt_gray.size().height - LINE_THICKNESS);
+      /* scan the line at SCAN_V_POS to find edges */
+      scan_line = img_cnt_gray.row(SCAN_V_POS);
       /* convert the Mat to a NumCpp array */
       auto scan_line_nc = nc::NdArray<nc::uint8>(scan_line.data, scan_line.rows, scan_line.cols);
       auto edges = scan_line_nc.flatnonzero();
@@ -238,31 +273,31 @@ Mat Video::calculateTarget(Mat f) {
 	  cx = (int)((edges[0]+edges[edges.size()-1]) / 2);
         }
       } else if (edges.size() == 1) {
-      rangeOfEdges = 1;
+        rangeOfEdges = 1;
         cx = edges[0];
       }
     } else { /* contours.size() == 0 */
       rangeOfEdges = 0;
-      roi = Rect(0, 0, FRAME_WIDTH, FRAME_HEIGHT);
+      roi = Rect(CROP_L_LIMIT, CROP_U_LIMIT, CROP_WIDTH, CROP_HEIGHT);
     }
     //_logNoAsp("roe = %d", rangeOfEdges);
 
     /* draw the area of interest on the original image */
     rectangle(f, Point(roi.x,roi.y), Point(roi.x+roi.width,roi.y+roi.height), Scalar(255,0,0), LINE_THICKNESS);
     /* draw the trace target on the image */
-    circle(f, Point(cx, FRAME_HEIGHT-LINE_THICKNESS), CIRCLE_RADIUS, Scalar(0,0,255), -1);
+    circle(f, Point(cx, SCAN_V_POS), CIRCLE_RADIUS, Scalar(0,0,255), -1);
 
     /* calculate variance of cx from the center in pixel */
     int vxp = cx - (int)(FRAME_WIDTH/2);
     /* convert the variance from pixel to milimeters
-       72 is length of the closest horizontal line on ground within the camera vision */
-    float vxm = vxp * 72 / FRAME_WIDTH;
+       245 mm is length of the closest horizontal line on ground within the camera vision */
+    float vxm = vxp * 245 / FRAME_WIDTH;
     /* calculate the rotation in degree (z-axis)
-       284 is distance from axle to the closest horizontal line on ground the camera can see */
+       230 mm is distance from axle to the closest horizontal line on ground the camera can see */
     if (vxm == 0) {
       theta = 0;
     } else {
-      theta = 180 * atan(vxm / 284) / M_PI;
+      theta = 180 * atan(vxm / 230) / M_PI;
     }
     //_logNoAsp("cx = %d, vxm = %d, theta = %d", cx, (int)vxm, (int)theta);
   } /* if(tradeTargetType == TT_LINE) */
@@ -306,6 +341,10 @@ void Video::setMaskThresholds(Scalar rgbMin, Scalar rgbMax) {
 
 void Video::setTraceSide(int traceSide) {
   side = traceSide;
+}
+
+void Video::setBinarizationAlgorithm(BinarizationAlgorithm ba) {
+  algo = ba;
 }
 
 void Video::setTraceTargetType(TargetType tt) {

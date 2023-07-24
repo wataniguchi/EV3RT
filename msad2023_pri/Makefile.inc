@@ -26,7 +26,8 @@ APPL_DIRS += $(mkfile_path)app $(mkfile_path)unit
 INCLUDES += \
 	-I$(mkfile_path)app \
 	-I$(mkfile_path)unit \
-	-I/usr/local/include/opencv4
+	-I/usr/local/include/opencv4 \
+	-I/opt/raspivideocap/include
 
 APPL_LIBS += -lm -lX11 \
         -lopencv_gapi -lopencv_stitching -lopencv_alphamat -lopencv_aruco -lopencv_barcode \
@@ -39,7 +40,8 @@ APPL_LIBS += -lm -lX11 \
         -lopencv_plot -lopencv_videostab -lopencv_videoio -lopencv_viz -lopencv_wechat_qrcode \
         -lopencv_xfeatures2d -lopencv_shape -lopencv_ml -lopencv_ximgproc -lopencv_video \
         -lopencv_xobjdetect -lopencv_objdetect -lopencv_calib3d -lopencv_imgcodecs -lopencv_features2d \
-        -lopencv_dnn -lopencv_flann -lopencv_xphoto -lopencv_photo -lopencv_imgproc -lopencv_core
+        -lopencv_dnn -lopencv_flann -lopencv_xphoto -lopencv_photo -lopencv_imgproc -lopencv_core \
+	-lraspivideocap -L/opt/raspivideocap/lib
 
 ifdef ETROBO_WITH_V3CAM
 
@@ -52,6 +54,10 @@ else # ifdef ETROBO_WITH_V3CAM
 COPTS += -std=gnu++14
 
 endif # ifdef ETROBO_WITH_V3CAM
+
+ifdef ETROBO_BENCHMARK
+COPTS += -DBENCHMARK
+endif
 
 #COPTS += -fno-use-cxa-atexit
 #COPTS += -DNDEBUG

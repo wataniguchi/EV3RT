@@ -16,6 +16,12 @@
 #include <opencv2/core/utils/logger.hpp>
 using namespace cv;
 
+/*
+  raspivideocap by coyote009@github modified for the use with OpenCV4
+  git clone https://github.com/wataniguchi/raspivideocap.git
+*/
+#include <raspivideocap.h>
+
 #if defined(WITH_V3CAM)
 /*
   libcamera bindings for OpenCV (LCCV) by kbarni@github
@@ -38,29 +44,45 @@ extern FilteredMotor*       leftMotor;
 extern FilteredMotor*       rightMotor;
 
 /* frame size for Raspberry Pi camera capture */
-#define IN_FRAME_WIDTH  640
-#define IN_FRAME_HEIGHT 480
+#define IN_FRAME_WIDTH  1640
+#define IN_FRAME_HEIGHT 1232
+#define IN_FPS 40
 
 /* frame size for OpenCV */
 #define FRAME_WIDTH  128
 #define FRAME_HEIGHT 96
+#define CROP_WIDTH   int(13*FRAME_WIDTH/16)
+#define CROP_HEIGHT  int(3*FRAME_HEIGHT/8)
+#define CROP_U_LIMIT int(5*FRAME_HEIGHT/8)
+#define CROP_D_LIMIT (CROP_U_LIMIT+CROP_HEIGHT)
+#define CROP_L_LIMIT int((FRAME_WIDTH-CROP_WIDTH)/2)
+#define CROP_R_LIMIT (CROP_L_LIMIT+CROP_WIDTH)
+
+#define ROI_BOUNDARY int(FRAME_WIDTH/16)
+#define LINE_THICKNESS int(FRAME_WIDTH/80)
+#define CIRCLE_RADIUS int(FRAME_WIDTH/40)
+#define SCAN_V_POS int(13*FRAME_HEIGHT/16 - LINE_THICKNESS)
+static_assert(SCAN_V_POS > CROP_U_LIMIT,"SCAN_V_POS > CROP_U_LIMIT");
+static_assert(SCAN_V_POS < CROP_D_LIMIT,"SCAN_V_POS < CROP_D_LIMIT");
+#define DATA_INDENT int(OUT_FRAME_HEIGHT/16)
 
 /* frame size for X11 painting */
 #define OUT_FRAME_WIDTH  128
 #define OUT_FRAME_HEIGHT 96
 
-#define ROI_BOUNDARY int(FRAME_WIDTH/16)
-#define LINE_THICKNESS int(FRAME_WIDTH/80)
-#define CIRCLE_RADIUS int(FRAME_WIDTH/40)
-#define DATA_INDENT int(OUT_FRAME_HEIGHT/16)
+#define JUNCTION_LOWER_THRESHOLD int(200*FRAME_WIDTH/IN_FRAME_WIDTH)
+#define JUNCTION_UPPER_THRESHOLD int(250*FRAME_WIDTH/IN_FRAME_WIDTH)
 
-#define JUNCTION_LOWER_THRESHOLD int(40*FRAME_WIDTH/OUT_FRAME_WIDTH)
-#define JUNCTION_UPPER_THRESHOLD int(50*FRAME_WIDTH/OUT_FRAME_WIDTH)
+enum BinarizationAlgorithm {
+  BA_NORMAL = 0,
+  BA_ADAPTIVE = 1,
+  BA_OTSU = 2,
+};
 
 enum TargetType {
-    TT_LINE,     /* Line           */
-    TT_TREASURE, /* Treasure Block */
-    TT_DECOY,    /* Decoy Block    */
+  TT_LINE,     /* Line           */
+  TT_TREASURE, /* Treasure Block */
+  TT_DECOY,    /* Decoy Block    */
 };
 
 class Video {
@@ -68,7 +90,7 @@ protected:
 #if defined(WITH_V3CAM)
   lccv::PiCamera cam;
 #else /* WITH_V3CAM */
-  VideoCapture cap;
+  RaspiVideoCapture cap;
 #endif /* WITH_V3CAM */
   Rect roi;
   Display* disp;
@@ -83,9 +105,11 @@ protected:
   Mat kernel;
   unsigned long* buf;
   char strbuf[5][40];
-  int cx, cy, gsmin, gsmax, side, rangeOfEdges;
+  int cx, cy, gsmin, gsmax, gs_block, gs_C, side, rangeOfEdges;
+  int inFrameWidth, inFrameHeight;
   Scalar rgbmin, rgbmax;
   float theta;
+  BinarizationAlgorithm algo;
   TargetType traceTargetType;
 public:
   Video();
@@ -98,6 +122,7 @@ public:
   void setThresholds(int gsMin, int gsMax);
   void setMaskThresholds(Scalar rgbMin, Scalar rgbMax);
   void setTraceSide(int traceSide);
+  void setBinarizationAlgorithm(BinarizationAlgorithm ba);
   void setTraceTargetType(TargetType tt);
   ~Video();
 };

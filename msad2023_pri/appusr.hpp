@@ -80,8 +80,6 @@ using namespace ev3api;
 #define SONAR_ALERT_DISTANCE    100     /* in millimeter                           */
 #define ARM_SHIFT_PWM            30
 #define ARM_INITIAL_ANGLE        30
-#define JUNCTION_LOWER_THRESHOLD 40
-#define JUNCTION_UPPER_THRESHOLD 50
 
 enum Color {
     CL_JETBLACK,
