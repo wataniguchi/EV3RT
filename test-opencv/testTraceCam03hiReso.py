@@ -4,10 +4,13 @@ import cv2
 import math
 import numpy as np
 import time
+from picamera import PiCamera
 
 # frame size for Raspberry Pi camera capture
-IN_FRAME_WIDTH  = 640
-IN_FRAME_HEIGHT = 480
+IN_FRAME_WIDTH  = 1640
+IN_FRAME_HEIGHT = 1232
+SENSOR_MODE = 5
+IN_FPS = 40
 
 # frame size for OpenCV
 #FRAME_WIDTH  = 640
@@ -31,10 +34,10 @@ cv2.setLogLevel(3) # LOG_LEVEL_WARNING
 # set number of threads
 #cv2.setNumThreads(0)
 # prepare the camera
-cap = cv2.VideoCapture(0)
-cap.set(cv2.CAP_PROP_FRAME_WIDTH,IN_FRAME_WIDTH)
-cap.set(cv2.CAP_PROP_FRAME_HEIGHT,IN_FRAME_HEIGHT)
-cap.set(cv2.CAP_PROP_FPS,90)
+picam = PiCamera()
+picam.resolution = (IN_FRAME_WIDTH, IN_FRAME_HEIGHT)
+picam.sensor_mode = SENSOR_MODE
+picam.framerate = IN_FPS
 
 # create trackbars
 cv2.namedWindow("testTrace1")
@@ -48,22 +51,27 @@ roi = (0, 0, FRAME_WIDTH, FRAME_HEIGHT)
 # initial trace target
 mx = int(FRAME_WIDTH/2)
 
+# vertical resolution is rounded up to the nearest multiple of 16 pixels
+# horizontal resolution is rounded up to the nearest multiple of 32 pixels
+frame = np.empty((16*math.ceil(IN_FRAME_HEIGHT/16), 32*math.ceil(IN_FRAME_WIDTH/32), 3),
+                 dtype=np.uint8)
+
 while True:
     # obtain values from the trackbars
     gs_min = cv2.getTrackbarPos("GS_min", "testTrace1")
     gs_max = cv2.getTrackbarPos("GS_max", "testTrace1")
     edge  = cv2.getTrackbarPos("Edge",  "testTrace1")
 
-    time.sleep(0.01)
+    #time.sleep(0.01)
 
-    ret, frame = cap.read()
+    picam.capture(frame, 'bgr')
 
     # clone the image if exists, otherwise use the previous image
-    if len(frame) != 0:
-        img_orig = frame.copy()
+    #if len(frame) != 0:
+    #    img_orig = frame.copy()
     # resize the image for OpenCV processing
     if FRAME_WIDTH != IN_FRAME_WIDTH or FRAME_HEIGHT != IN_FRAME_HEIGHT:
-        img_orig = cv2.resize(img_orig, (FRAME_WIDTH,FRAME_HEIGHT))
+        img_orig = cv2.resize(frame, (FRAME_WIDTH,FRAME_HEIGHT))
         if img_orig.shape[1] != FRAME_WIDTH or img_orig.shape[0] != FRAME_HEIGHT:
             sys.exit(-1)
     # convert the image from BGR to grayscale
