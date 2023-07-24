@@ -44,12 +44,12 @@ else:
 # create trackbars
 cv2.namedWindow("testTrace1")
 
-cv2.createTrackbar("R_min", "testTrace1", 0, 255, nothing)
+cv2.createTrackbar("R_min", "testTrace1", 48, 255, nothing)
 cv2.createTrackbar("R_max", "testTrace1", 255, 255, nothing)
 cv2.createTrackbar("G_min", "testTrace1", 0, 255, nothing)
 cv2.createTrackbar("G_max", "testTrace1", 50, 255, nothing)
-cv2.createTrackbar("B_min", "testTrace1", 52, 255, nothing)
-cv2.createTrackbar("B_max", "testTrace1", 200, 255, nothing)
+cv2.createTrackbar("B_min", "testTrace1", 0, 255, nothing)
+cv2.createTrackbar("B_max", "testTrace1", 255, 255, nothing)
 cv2.createTrackbar("GS_min", "testTrace1", 10, 255, nothing)
 cv2.createTrackbar("GS_max", "testTrace1", 100, 255, nothing)
 
@@ -104,30 +104,37 @@ while True:
 
     # find contours
     contours, hierarchy = cv2.findContours(img_bin_mor, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    # identify the largest contour
+    # identify the two largest contours where w/h is between 0.5 and 3.0
     if len(contours) >= 1:
-        i_area_max = 0
-        area_max = 0
+        cnt_idx = np.empty((0,2), int)
         for i, cnt in enumerate(contours):
             area = cv2.contourArea(cnt)
-            if area > area_max:
-                area_max = area
-                i_area_max = i
-        cnt_max = contours[i_area_max]
-        # calculate a bounding box around the identified contour
-        x,y,w,h = cv2.boundingRect(cnt_max)
-        # print information about the identified contour
-        mom = cv2.moments(cnt_max)
-        # add 1e-5 to avoid division by zero
-        txt1 = f"cx = {int(mom['m10']/(mom['m00'] + 1e-5))}, cy = {int(mom['m01']/(mom['m00'] + 1e-5))},"
-        txt2 = f"area = {mom['m00']},"
-        txt3 = f"w/h = {w/h}"
-        print(txt1, txt2, txt3)
-        # draw the largest contour on the original image
-        img_orig_contour = cv2.polylines(img_orig, [cnt_max], 0, (0,255,0), LINE_THICKNESS)
-        cv2.putText(img_orig_contour, txt1, (int(FRAME_WIDTH/64),int(5*FRAME_HEIGHT/8)), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0,255,0), int(LINE_THICKNESS/4), cv2.LINE_4)
-        cv2.putText(img_orig_contour, txt2, (int(FRAME_WIDTH/64),int(6*FRAME_HEIGHT/8)), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0,255,0), int(LINE_THICKNESS/4), cv2.LINE_4)
-        cv2.putText(img_orig_contour, txt3, (int(FRAME_WIDTH/64),int(7*FRAME_HEIGHT/8)), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0,255,0), int(LINE_THICKNESS/4), cv2.LINE_4)
+            # calculate a bounding box around each contour
+            x,y,w,h = cv2.boundingRect(cnt)
+            # if w/h is between 0.5 and 3.0, add its index and area to cnt_idx matrix
+            if w/h >= 0.5 and w/h <= 3.0:
+                cnt_idx = np.append(cnt_idx, np.array([[i, int(area)]]), axis=0)
+        # sort cnt_idx by area in descending order
+        cnt_idx = cnt_idx[np.argsort(cnt_idx[:, 1])[::-1]]
+
+        for i in range(2):
+            cnt = contours[cnt_idx[i,0]]
+            # calculate a bounding box around the identified contour
+            x,y,w,h = cv2.boundingRect(cnt)
+            # print information about the identified contour
+            mom = cv2.moments(cnt)
+            if mom['m00'] == 0.0:
+                txt1 = "cx = N/A, cy = N/A,"
+            else:
+                txt1 = f"cx = {int(mom['m10']/mom['m00'])}, cy = {int(mom['m01']/mom['m00'])},"
+                txt2 = f"area = {mom['m00']},"
+                txt3 = f"w/h = {w/h}"
+                print(txt1, txt2, txt3)
+            # draw the largest contour on the original image
+            img_orig_contour = cv2.polylines(img_orig, [cnt], 0, (0,255,0), LINE_THICKNESS)
+            cv2.putText(img_orig_contour, txt1, (int(FRAME_WIDTH/64),int((5+i*1.5)*FRAME_HEIGHT/8)), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0,255,0), int(LINE_THICKNESS/4), cv2.LINE_4)
+            cv2.putText(img_orig_contour, txt2, (int(FRAME_WIDTH/64),int((5.5+i*1.5)*FRAME_HEIGHT/8)), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0,255,0), int(LINE_THICKNESS/4), cv2.LINE_4)
+            cv2.putText(img_orig_contour, txt3, (int(FRAME_WIDTH/64),int((6+i*1.5)*FRAME_HEIGHT/8)), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0,255,0), int(LINE_THICKNESS/4), cv2.LINE_4)
     else:
         img_orig_contour = img_orig
 
@@ -150,7 +157,7 @@ while True:
         idx = idx + 1
         frame = np.empty([0,0,0])
     elif 1 != len(args) and (c == ord('w') or c == ord('W')):
-        file_wrt = re.sub('(.+)\.(.+)', r'\1_1.\2', file)
+        file_wrt = re.sub('(.+)\.(.+)', r'\1_decoy.\2', file)
         print(f"Writing image file {file_wrt}...")
         cv2.imwrite(file_wrt, img_comm)
 
