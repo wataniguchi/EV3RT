@@ -51,7 +51,7 @@ extern FilteredMotor*       rightMotor;
 /* frame size for OpenCV */
 #define FRAME_WIDTH  128
 #define FRAME_HEIGHT 96
-#define CROP_WIDTH   int(5*FRAME_WIDTH/8)
+#define CROP_WIDTH   int(13*FRAME_WIDTH/16)
 #define CROP_HEIGHT  int(3*FRAME_HEIGHT/8)
 #define CROP_U_LIMIT int(5*FRAME_HEIGHT/8)
 #define CROP_D_LIMIT (CROP_U_LIMIT+CROP_HEIGHT)
