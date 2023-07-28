@@ -93,10 +93,9 @@ def receive_packet():
         print("cmd value error!")
     if type == "status":
         rx_data_area[cmd_id] = val
-        if (cmd_id == 29 or cmd_id == 30):
-            print(cmd_id, val)
     else:
         if cmd_id != 127:
+            print(f" -- ack = {cmd_id}")
             ack_received[cmd_id] = True
 
 async def receiver():
@@ -120,27 +119,25 @@ def make_cmd(cmd_id, value):
     print(f" -- cmd = {buf.hex()}[{cmd_id}:{value}]")
     return buf
         
-def send_packet():
-    k = 0
-    for [cmd_id,type] in send_order:
-        if tx_data_area[cmd_id] != tx_data_area_prev[cmd_id]:
-            ack_received[cmd_id] = False
-            ser.write(make_cmd(cmd_id, tx_data_area[cmd_id]))
-            k += 1
-            #if type == WAIT_ACK_CMD:
-            #    while True:
-            #        if ack_received[cmd_id]:
-            #            break
-            tx_data_area_prev[cmd_id] = tx_data_area[cmd_id]
-    if k == 0:
-        ser.write(make_cmd(127,0))
-        
-async def transmitter():
-    print(" -- transmitter start")
+async def send_packet():
+    print(" -- send_packet start")
     while True:
-        send_packet()
+        k = 0
+        for [cmd_id,type] in send_order:
+            if tx_data_area[cmd_id] != tx_data_area_prev[cmd_id]:
+                ack_received[cmd_id] = False
+                ser.write(make_cmd(cmd_id, tx_data_area[cmd_id]))
+                k += 1
+                if type == WAIT_ACK_CMD:
+                    while True:
+                        if ack_received[cmd_id]:
+                            break
+                        await ayncio.sleep(0.01)
+                tx_data_area_prev[cmd_id] = tx_data_area[cmd_id]
+                if k == 0:
+                    ser.write(make_cmd(127,0))
         await asyncio.sleep(0.01)
-
+        
 # reference: RasPike/target/raspi_gcc/drivers/motor/src/motor_dri.c
 MOTOR_A = 0
 MOTOR_B = 1
@@ -194,10 +191,12 @@ def cppev3_setBreak(brake):
         
 async def main_task():
     task1 = asyncio.create_task(receiver())
-    task2 = asyncio.create_task(transmitter())
+    task2 = asyncio.create_task(send_packet())
     print(" -- main task logic start")
     cppev3_motor_init(MOTOR_A)
     cppev3_motor_setPWM(MOTOR_A, -30)
+    await asyncio.sleep(2.0)
+    cppev3_motor_setPWM(MOTOR_A, 30)
     await asyncio.sleep(1.0)
     cppev3_motor_reset(MOTOR_A)
     await task1
