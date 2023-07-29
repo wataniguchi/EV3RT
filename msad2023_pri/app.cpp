@@ -162,7 +162,7 @@ public:
 class IsEnterOn : public BrainTree::Node {
 public:
     Status update() override {
-        if (ev3_button_is_pressed(ENTER_BUTTON)) {
+        if (ev3_button_is_pressed(LEFT_BUTTON)) {
             _log("center button pressed.");
             return Status::Success;
         } else {
