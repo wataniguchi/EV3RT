@@ -75,6 +75,7 @@ Video::Video() {
   rangeOfEdges = 0;
   algo = BA_NORMAL;
   traceTargetType = TT_LINE;
+  targetInSight = false;
 }
 
 Video::~Video() {
@@ -276,9 +277,11 @@ Mat Video::calculateTarget(Mat f) {
         rangeOfEdges = 1;
         cx = edges[0];
       }
+      targetInSight = true;
     } else { /* contours.size() == 0 */
       rangeOfEdges = 0;
       roi = Rect(CROP_L_LIMIT, CROP_U_LIMIT, CROP_WIDTH, CROP_HEIGHT);
+      targetInSight = false;
     }
     //_logNoAsp("roe = %d", rangeOfEdges);
 
@@ -349,4 +352,8 @@ void Video::setBinarizationAlgorithm(BinarizationAlgorithm ba) {
 
 void Video::setTraceTargetType(TargetType tt) {
   traceTargetType = tt;
+}
+
+bool Video::isTargetInSight() {
+  return targetInSight;
 }

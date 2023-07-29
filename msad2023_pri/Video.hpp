@@ -111,6 +111,7 @@ protected:
   float theta;
   BinarizationAlgorithm algo;
   TargetType traceTargetType;
+  bool targetInSight;
 public:
   Video();
   Mat readFrame();
@@ -124,6 +125,7 @@ public:
   void setTraceSide(int traceSide);
   void setBinarizationAlgorithm(BinarizationAlgorithm ba);
   void setTraceTargetType(TargetType tt);
+  bool isTargetInSight();
   ~Video();
 };
 

@@ -466,6 +466,45 @@ protected:
 
 /*
     usage:
+    ".leaf<IsFoundBlock>(gs_min, gs_max, rgb_min, rgb_max)"
+    is to determine an object with specific color in sight.
+    gs_min, gs_max are grayscale threshold for object recognition binalization.
+    rgb_min, rgb_max are rgb vector threshold for object color masking.
+*/
+class IsFoundBlock : public BrainTree::Node {
+public:
+  IsFoundBlock(int gs_min, int gs_max, std::vector<int> rgb_min, std::vector<int> rgb_max) : gsMin(gs_min),gsMax(gs_max) {
+        updated = false;
+	assert(rgb_min.size() == 3);
+	assert(rgb_max.size() == 3);
+	rgbMin = Scalar(rgb_min[0], rgb_min[1], rgb_min[2]);
+	rgbMax = Scalar(rgb_max[0], rgb_max[1], rgb_max[2]);
+    }
+    ~IsFoundBlock() {}
+    Status update() override {
+        if (!updated) {
+	    video->setTraceTargetType(TT_TREASURE);
+	    video->setThresholds(gsMin, gsMax);
+	    video->setMaskThresholds(rgbMin, rgbMax);
+            updated = true;
+        }
+	    _log("ODO=%05d, x=%d:y=%d:deg=%d:gyro=%d", plotter->getDistance(), plotter->getLocX(), plotter->getLocY(), plotter->getDegree(), gyroSensor->getAngle());
+        if (video->isTargetInSight()) {
+	    _log(" -- target in sight");
+            return Status::Success;
+        } else {
+	    _log(" -- target NOT in sight");
+            return Status::Failure;
+        }
+    }
+protected:
+    int gsMin, gsMax;
+    Scalar rgbMin, rgbMax;
+    bool updated;
+};
+
+/*
+    usage:
     ".leaf<ApproachBlock>(speed, pid, gs_min, gs_max, rgb_min, rgb_max)"
     is to instruct the robot to come closer an object with specific color at the given speed.
     pid is a vector of three constants for PID control.
