@@ -136,6 +136,18 @@
 	      prof->getValueAsNum("RUN_Rx_GS_MAX"), 0.0, \
               (TraceSide)prof->getValueAsIntFromEnum("RUN_R10_TS", gEnumPairs)) \
       .end() \
+      /* section R11: pass the fork beyond LAP Gate */ \
+      .composite<BrainTree::ParallelSequence>(1,2) \
+        .composite<BrainTree::MemSequence>() \
+          .leaf<IsDistanceEarned>(prof->getValueAsNum("RUN_R11_DIST")) \
+          .leaf<IsColorDetected>(CL_RED) \
+        .end() \
+        .leaf<TraceLineCam>(prof->getValueAsNum("RUN_R11_SPEED"), \
+	      prof->getValueAsNumVec("RUN_Rx_PID_CONST"), \
+	      prof->getValueAsNum("RUN_Rx_GS_MIN"), \
+	      prof->getValueAsNum("RUN_Rx_GS_MAX"), 0.0, \
+              (TraceSide)prof->getValueAsIntFromEnum("RUN_R11_TS", gEnumPairs)) \
+      .end() \ 
     .end() \
   .end()
 
