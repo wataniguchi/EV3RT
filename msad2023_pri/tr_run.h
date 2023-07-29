@@ -94,6 +94,7 @@
       .composite<BrainTree::ParallelSequence>(1,2) \
         .composite<BrainTree::MemSequence>() \
           .leaf<IsDistanceEarned>(prof->getValueAsNum("RUN_R7_DIST")) \
+          .leaf<IsJunction>(JST_JOINING) \
         .end() \
         .leaf<TraceLineCam>(prof->getValueAsNum("RUN_R7_SPEED"), \
 	      prof->getValueAsNumVec("RUN_Rx_PID_CONST"), \
