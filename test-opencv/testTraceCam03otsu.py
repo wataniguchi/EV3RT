@@ -39,8 +39,7 @@ cap.set(cv2.CAP_PROP_FPS,90)
 # create trackbars
 cv2.namedWindow("testTrace1")
 
-cv2.createTrackbar("GS_min", "testTrace1", 0, 255, nothing)
-cv2.createTrackbar("GS_max", "testTrace1", 100, 255, nothing)
+cv2.createTrackbar("GS_max", "testTrace1", 0, 255, nothing)
 cv2.createTrackbar("Edge",  "testTrace1", 0, 2, nothing)
 
 # initial region of interest
@@ -50,7 +49,6 @@ mx = int(FRAME_WIDTH/2)
 
 while True:
     # obtain values from the trackbars
-    gs_min = cv2.getTrackbarPos("GS_min", "testTrace1")
     gs_max = cv2.getTrackbarPos("GS_max", "testTrace1")
     edge  = cv2.getTrackbarPos("Edge",  "testTrace1")
 
@@ -69,9 +67,12 @@ while True:
     # convert the image from BGR to grayscale
     img_gray = cv2.cvtColor(img_orig, cv2.COLOR_BGR2GRAY)
     # mask the upper half of the grayscale image
-    img_gray[0:int(FRAME_HEIGHT/2), 0:FRAME_WIDTH] = 255
+    #img_gray[0:int(FRAME_HEIGHT/2), 0:FRAME_WIDTH] = 255
+    # crop the bottom half of the image for Otsu binarization
+    img_gray_bottom = img_gray[int(FRAME_HEIGHT/2):FRAME_HEIGHT, 0:FRAME_WIDTH]
     # binarize the image
-    img_bin = cv2.inRange(img_gray, gs_min, gs_max)
+    ret, img_bin_bottom = cv2.threshold(img_gray_bottom, gs_max, 255, cv2.THRESH_BINARY_INV+cv2.THRESH_OTSU)
+    img_bin = cv2.vconcat([np.zeros((FRAME_HEIGHT-img_bin_bottom.shape[0],FRAME_WIDTH), np.uint8) ,img_bin_bottom])
     # remove noise
     kernel = np.ones((7,7), np.uint8)
     img_bin_mor = cv2.morphologyEx(img_bin, cv2.MORPH_CLOSE, kernel)

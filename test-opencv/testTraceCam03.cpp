@@ -1,7 +1,7 @@
 /*
   how to compile:
 
-    g++ testTraceCam03.cpp -std=c++14 `pkg-config --cflags --libs opencv4` -I .. -o testTraceCam03
+    g++ testTraceCam03.cpp -std=c++14 `pkg-config --cflags --libs opencv4` -I ../msad2023_pri -o testTraceCam03
 */
 
 /* 
@@ -17,6 +17,9 @@
 #include <thread>
 #include <cmath>
 
+#include <vector>
+#include <chrono>
+
 using namespace std;
 using namespace cv;
 using std::this_thread::sleep_for;
@@ -24,6 +27,7 @@ using std::this_thread::sleep_for;
 /* frame size for Raspberry Pi camera capture */
 #define IN_FRAME_WIDTH  640
 #define IN_FRAME_HEIGHT 480
+#define IN_FPS 90
 
 /* frame size for OpenCV */
 //#define FRAME_WIDTH  640
@@ -49,7 +53,7 @@ int main() {
   VideoCapture cap(0);
   cap.set(CAP_PROP_FRAME_WIDTH,IN_FRAME_WIDTH);
   cap.set(CAP_PROP_FRAME_HEIGHT,IN_FRAME_HEIGHT);
-  cap.set(CAP_PROP_FPS,90);
+  cap.set(CAP_PROP_FPS,IN_FPS);
 
   if (!cap.isOpened()) {
     cout << "cap is not open" << endl;
@@ -69,6 +73,8 @@ int main() {
   /* initial trace target */
   int mx = (int)(FRAME_WIDTH/2);
   
+  std::vector<std::uint32_t> read_elaps, upd_elaps;
+  
   while (true) {
     /* obtain values from the trackbars */
     gs_min = getTrackbarPos("GS_min", "testTrace1");
@@ -80,7 +86,10 @@ int main() {
 
     sleep_for(chrono::milliseconds(10));
 
+    std::chrono::system_clock::time_point ts_upd  = std::chrono::system_clock::now();
     cap.read(frame);
+    std::chrono::system_clock::time_point te_read = std::chrono::system_clock::now();
+    read_elaps.push_back(std::chrono::duration_cast<std::chrono::microseconds>(te_read - ts_upd).count());
 
     /* clone the frame if exists, otherwise use the previous image */
     if (!frame.empty()) {
@@ -195,12 +204,35 @@ int main() {
       resize(img_orig, img_resized, Size(), (double)OUT_FRAME_WIDTH/FRAME_WIDTH, (double)OUT_FRAME_HEIGHT/FRAME_HEIGHT);
       img_orig = img_resized;
     }
+
+    std::chrono::system_clock::time_point te_upd = std::chrono::system_clock::now();
+    upd_elaps.push_back(std::chrono::duration_cast<std::chrono::microseconds>(te_upd - ts_upd).count());
+
     /* transmit and display the image */
     imshow("testTrace2", img_orig);
 
     c = waitKey(1);
     if ( c == 'q' || c == 'Q' ) break;
   }
+
+  size_t exec_count = read_elaps.size();
+  size_t median_index = exec_count / 2;
+  std::sort(std::begin(read_elaps), std::end(read_elaps));
+  int read_median = (exec_count % 2 == 0
+		? static_cast<int>(read_elaps[median_index] + read_elaps[median_index - 1]) / 2
+		: read_elaps[median_index]);
+  printf("frame read elaps (micro sec): max = %d, min = %d, mean = %d, median = %d\n",
+	 (int)(*std::max_element(std::begin(read_elaps),std::end(read_elaps))),
+	 (int)(*std::min_element(std::begin(read_elaps),std::end(read_elaps))),
+	 (int)(std::accumulate(std::begin(read_elaps),std::end(read_elaps),0) / exec_count), read_median);
+  std::sort(std::begin(upd_elaps), std::end(upd_elaps));
+  int upd_median = (exec_count % 2 == 0
+		? static_cast<int>(upd_elaps[median_index] + upd_elaps[median_index - 1]) / 2
+		: upd_elaps[median_index]);
+  printf("update process elaps (micro sec): max = %d, min = %d, mean = %d, median = %d\n",
+	 (int)(*std::max_element(std::begin(upd_elaps),std::end(upd_elaps))),
+	 (int)(*std::min_element(std::begin(upd_elaps),std::end(upd_elaps))),
+	 (int)(std::accumulate(std::begin(upd_elaps),std::end(upd_elaps),0) / exec_count), upd_median);
 
   destroyAllWindows();
   return 0;

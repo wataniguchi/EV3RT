@@ -162,7 +162,7 @@ public:
 class IsEnterOn : public BrainTree::Node {
 public:
     Status update() override {
-        if (ev3_button_is_pressed(ENTER_BUTTON)) {
+        if (ev3_button_is_pressed(LEFT_BUTTON)) {
             _log("center button pressed.");
             return Status::Success;
         } else {
@@ -467,7 +467,7 @@ protected:
 /*
     usage:
     ".leaf<TraceLineCam>(speed, pid, gs_min, gs_max, srew_rate, trace_side)"
-    is to instruct the robot to trace the line in backward at the given speed.
+    is to instruct the robot to trace the line at the given speed.
     pid is a vector of three constants for PID control.
     gs_min, gs_max are grayscale threshold for line recognition binalization.
     srew_rate = 0.0 indidates NO tropezoidal motion.

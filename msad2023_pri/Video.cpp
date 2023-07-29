@@ -39,7 +39,7 @@ Video::Video() {
   
   unsigned long black=BlackPixel(disp, 0);
   unsigned long white=WhitePixel(disp, 0);
-  win = XCreateSimpleWindow(disp, RootWindow(disp,0), 0, 0, FRAME_WIDTH, 2*FRAME_HEIGHT, 1, black, white);
+  win = XCreateSimpleWindow(disp, RootWindow(disp,0), 0, 0, OUT_FRAME_WIDTH, 2*OUT_FRAME_HEIGHT, 1, black, white);
 
   XSetWindowAttributes attr;
   attr.override_redirect = True;
@@ -51,16 +51,16 @@ Video::Video() {
   XSetForeground(disp, gc, white);
   XSetFont(disp, gc, font);
 
-  gbuf = malloc(sizeof(unsigned long) * FRAME_WIDTH * 2*FRAME_HEIGHT);
+  gbuf = malloc(sizeof(unsigned long) * OUT_FRAME_WIDTH * 2*OUT_FRAME_HEIGHT);
   /* initialize gbuf with zero */
-  for (int j = 0; j < 2*FRAME_HEIGHT; j++) {
-    for (int i = 0; i < FRAME_WIDTH; i++) {
-      buf = (unsigned long*)gbuf + i + j*FRAME_WIDTH;
+  for (int j = 0; j < 2*OUT_FRAME_HEIGHT; j++) {
+    for (int i = 0; i < OUT_FRAME_WIDTH; i++) {
+      buf = (unsigned long*)gbuf + i + j*OUT_FRAME_WIDTH;
       *buf = 0;
     }
   }
 
-  ximg = XCreateImage(disp, vis, 24, ZPixmap, 0, (char*)gbuf, FRAME_WIDTH, 2*FRAME_HEIGHT, BitmapUnit(disp), 0);
+  ximg = XCreateImage(disp, vis, 24, ZPixmap, 0, (char*)gbuf, OUT_FRAME_WIDTH, 2*OUT_FRAME_HEIGHT, BitmapUnit(disp), 0);
   XInitImage(ximg);
 
   /* initial trace target */
@@ -301,7 +301,7 @@ void Video::show() {
   sprintf(strbuf[3], "deg=%03d,gyro=%+04d", plotter->getDegree(), gyroSensor->getAngle());
   sprintf(strbuf[4], "pwR=%+04d,pwL=%+04d", rightMotor->getPWM(), leftMotor->getPWM());
 
-  XPutImage(disp, win, gc, ximg, 0, 0, 0, 0, FRAME_WIDTH, 2*OUT_FRAME_HEIGHT);
+  XPutImage(disp, win, gc, ximg, 0, 0, 0, 0, OUT_FRAME_WIDTH, 2*OUT_FRAME_HEIGHT);
   XDrawString(disp, win, gc, DATA_INDENT, OUT_FRAME_HEIGHT+2*DATA_INDENT, strbuf[0], strlen(strbuf[0]));
   XDrawString(disp, win, gc, DATA_INDENT, OUT_FRAME_HEIGHT+5*DATA_INDENT, strbuf[1], strlen(strbuf[1]));
   XDrawString(disp, win, gc, DATA_INDENT, OUT_FRAME_HEIGHT+8*DATA_INDENT, strbuf[2], strlen(strbuf[2]));
