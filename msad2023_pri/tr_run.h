@@ -191,7 +191,7 @@
       .composite<BrainTree::ParallelSequence>(1,2) \
         .composite<BrainTree::MemSequence>() \
           .leaf<IsDistanceEarned>(prof->getValueAsNum("RUN_L2_DIST")) \
-          .leaf<IsJunction>(JST_FORKED) \
+          .leaf<IsJunction>(JST_FORKING) \
         .end() \
         .leaf<TraceLineCam>(prof->getValueAsNum("RUN_L2_SPEED"), \
 	      prof->getValueAsNumVec("RUN_Rx_PID_CONST"), \

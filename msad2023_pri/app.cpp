@@ -1067,9 +1067,9 @@ void update_task(intptr_t unused) {
     upd_process_count++;
 
     colorSensor->sense();
-    rgb_raw_t cur_rgb;
+    /*rgb_raw_t cur_rgb;
     colorSensor->getRawColor(cur_rgb);
-    _log("r=%d g=%d b=%d",cur_rgb.r,cur_rgb.g,cur_rgb.b);
+    _log("r=%d g=%d b=%d",cur_rgb.r,cur_rgb.g,cur_rgb.b);*/
     plotter->plot();
 
 /*
