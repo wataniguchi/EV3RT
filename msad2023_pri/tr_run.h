@@ -25,7 +25,7 @@
       .composite<BrainTree::ParallelSequence>(1,2) \
         .composite<BrainTree::MemSequence>() \
           .leaf<IsDistanceEarned>(prof->getValueAsNum("RUN_R1_DIST")) \
-          .leaf<IsJunction>(JST_JOINED) \
+/*          .leaf<IsJunction>(JST_JOINED)  */ \
         .end() \
         .leaf<TraceLineCam>(prof->getValueAsNum("RUN_R1_SPEED"), \
 	      prof->getValueAsNumVec("RUN_Rx_PID_CONST"), \
@@ -179,7 +179,7 @@
       .composite<BrainTree::ParallelSequence>(1,2) \
         .composite<BrainTree::MemSequence>() \
           .leaf<IsDistanceEarned>(prof->getValueAsNum("RUN_L1_DIST")) \
-          .leaf<IsJunction>(JST_JOINED) \
+/*          .leaf<IsJunction>(JST_JOINED)  */ \
         .end() \
         .leaf<TraceLineCam>(prof->getValueAsNum("RUN_L1_SPEED"), \
 	      prof->getValueAsNumVec("RUN_Rx_PID_CONST"), \
@@ -191,7 +191,7 @@
       .composite<BrainTree::ParallelSequence>(1,2) \
         .composite<BrainTree::MemSequence>() \
           .leaf<IsDistanceEarned>(prof->getValueAsNum("RUN_L2_DIST")) \
-          .leaf<IsJunction>(JST_FORKING) \
+          .leaf<IsJunction>(JST_FORKED) \
         .end() \
         .leaf<TraceLineCam>(prof->getValueAsNum("RUN_L2_SPEED"), \
 	      prof->getValueAsNumVec("RUN_Rx_PID_CONST"), \
