@@ -1,7 +1,7 @@
 /*
   how to compile:
 
-    g++ testLocateTreasure01.cpp -std=c++14 `pkg-config --cflags --libs opencv4` -I ../msad2023_pri -o testLocateTreasure01
+    g++ testLocateTreasure01.cpp -std=c++14 `pkg-config --cflags --libs opencv4` -I ../msad2023_pri -I/opt/raspivideocap/include -lraspivideocap -L/opt/raspivideocap/lib -o testLocateTreasure01
 */
 
 /* 
@@ -16,26 +16,40 @@
 #include <opencv2/core/utils/logger.hpp>
 #include <thread>
 #include <cmath>
+#include <algorithm>
+#include <array>
+#include <vector>
+
+/*
+  raspivideocap by coyote009@github modified for the use with OpenCV4
+  git clone https://github.com/wataniguchi/raspivideocap.git
+*/
+#include <raspivideocap.h>
 
 using namespace std;
 using namespace cv;
 using std::this_thread::sleep_for;
 
 /* frame size for Raspberry Pi camera capture */
-#define IN_FRAME_WIDTH  640
-#define IN_FRAME_HEIGHT 480
+#define IN_FRAME_WIDTH  1640
+#define IN_FRAME_HEIGHT 1232
+#define IN_FPS 40
 
 /* frame size for OpenCV */
 #define FRAME_WIDTH  640
 #define FRAME_HEIGHT 480
+//#define FRAME_WIDTH  120
+//#define FRAME_HEIGHT 96
 
 #define LINE_THICKNESS int(FRAME_WIDTH/80)
+#define BLK_AREA_MIN (23.0*FRAME_WIDTH/640.0)*(23.0*FRAME_WIDTH/640.0)
+#define FONT_SCALE double(FRAME_WIDTH)/640.0
 
 /* frame size for X11 painting */
 #define OUT_FRAME_WIDTH  320
 #define OUT_FRAME_HEIGHT 240
 
-int r_min=0,r_max=255,g_min=0,g_max=50,b_min=52,b_max=200;
+int b_min=0,b_max=50,g_min=0,g_max=50,r_min=60,r_max=200;
 int gs_min=10,gs_max=100;
 char strbuf[4][40];
 
@@ -44,12 +58,10 @@ int main() {
   /* set number of threads */
   setNumThreads(0);
   /* prepare the camera */
-  VideoCapture cap(0);
-  cap.set(CAP_PROP_FRAME_WIDTH,IN_FRAME_WIDTH);
-  cap.set(CAP_PROP_FRAME_HEIGHT,IN_FRAME_HEIGHT);
-  cap.set(CAP_PROP_FPS,90);
-
-  if (!cap.isOpened()) {
+  RaspiVideoCapture cap(0);
+  int inFrameHeight = 16 * ceil(IN_FRAME_HEIGHT/16);
+  int inFrameWidth  = 32 * ceil(IN_FRAME_WIDTH /32);
+  if (!cap.open(inFrameWidth, inFrameHeight, IN_FPS)) {
     cout << "cap is not open" << endl;
   }
 
@@ -83,7 +95,7 @@ int main() {
     gs_min = getTrackbarPos("GS_min", "testTrace1");
     gs_max = getTrackbarPos("GS_max", "testTrace1");
 
-    Mat frame, img_orig, img_mask, img_ext, img_gray, img_bin, img_bin_mor, img_bin_rgb, img_orig_contour, img_comm;
+    Mat frame, img_orig, img_mask, img_ext, img_gray, img_bin, img_bin_dil, img_bin_rgb, img_orig_contour, img_comm;
     int c;
 
     sleep_for(chrono::milliseconds(10));
@@ -97,65 +109,87 @@ int main() {
     /* resize the image for OpenCV processing */
     if (FRAME_WIDTH != IN_FRAME_WIDTH || FRAME_HEIGHT != IN_FRAME_HEIGHT) {
       Mat img_resized;
-      resize(img_orig, img_resized, Size(), (double)FRAME_WIDTH/IN_FRAME_WIDTH, (double)FRAME_HEIGHT/IN_FRAME_HEIGHT);
+      resize(img_orig, img_resized, Size(), (double)FRAME_WIDTH/inFrameWidth, (double)FRAME_HEIGHT/inFrameHeight);
       assert(img_resized.size().width == FRAME_WIDTH);
       assert(img_resized.size().height == FRAME_HEIGHT);
       img_orig = img_resized;
     }
     /* extract areas by color */
-    inRange(img_orig, Scalar(r_min,g_min,b_min), Scalar(r_max,g_max,b_max), img_mask);
+    inRange(img_orig, Scalar(b_min,g_min,r_min), Scalar(b_max,g_max,r_max), img_mask);
     bitwise_and(img_orig, img_orig, img_ext, img_mask);
     /* convert the extracted image from BGR to grayscale */
     cvtColor(img_ext, img_gray, COLOR_BGR2GRAY);
     /* binarize the image */
     inRange(img_gray, gs_min, gs_max, img_bin);
-    /* remove noise */
+    /* dilate the image */
     Mat kernel = Mat::zeros(Size(7,7), CV_8UC1);
-    morphologyEx(img_bin, img_bin_mor, MORPH_CLOSE, kernel);
+    dilate(img_bin, img_bin_dil, kernel);
     /* convert the binary image from grayscale to BGR for later */
-    cvtColor(img_bin_mor, img_bin_rgb, COLOR_GRAY2BGR);
+    cvtColor(img_bin, img_bin_rgb, COLOR_GRAY2BGR);
 
-    /* find contours in the roi with offset */
+    /* prepare image for edit */
+    img_orig_contour = img_orig.clone();
+    /* identify the largest contours that meet block shape requirements */
     vector<vector<Point>> contours;
     vector<Vec4i> hierarchy;
-    findContours(img_bin_mor, contours, hierarchy, RETR_EXTERNAL, CHAIN_APPROX_SIMPLE);
+    findContours(img_bin_dil, contours, hierarchy, RETR_TREE, CHAIN_APPROX_SIMPLE);
     /* identify the largest contour */
+    vector<vector<float>> cnt_idx; /* area, idx, w/h */
     if (contours.size() >= 1) {
-      int i_area_max = 0;
-      double area_max = 0.0;
       for (int i = 0; i < contours.size(); i++) {
-	double area = contourArea(contours[i]);
-	if (area > area_max) {
-	  area_max = area;
-	  i_area_max = i;
+	if (hierarchy[i][3] == -1) { /* if contour is external */
+	  vector<Point> cnt = contours[i];
+	  float area = contourArea(cnt);
+	  /* calculate a bounding box around the identified contour */
+	  Rect bbcnt = boundingRect(cnt);
+	  float wh = static_cast<float>(bbcnt.width) / bbcnt.height; /* width / height */
+	  if (area > BLK_AREA_MIN && wh > 0.5 && wh < 2.0) {
+	    if (hierarchy[i][2] == -1) { /* if the area has no child */
+	      cnt_idx.push_back({area, float(i), wh});
+	    } else { /* ensure the area is not donut-shaped */
+	      bool donut = false;
+	      for (int j = hierarchy[i][2]; j != -1; j = hierarchy[j][0]){ /* traverse all child */
+		vector<Point> cnt_chd = contours[j];
+		float area_chd = contourArea(cnt_chd);
+		if (10.0 * area_chd > area) donut = true;
+	      }
+	      if (donut == false) {
+		cnt_idx.push_back({area, float(i), wh});
+	      }
+	    }
+	  }
 	}
       }
-      vector<Point> cnt_max = contours[i_area_max];
-      /* calculate a bounding box around the identified contour */
-      Rect bbcnt = boundingRect(cnt_max);
-      /* print information about the identified contour */
-      Moments mom = moments(cnt_max);
-      /* add 1e-5 to avoid division by zero */
-      sprintf(strbuf[0], "cx = %03d, cy = %03d",
-        static_cast<int>(mom.m10 / (mom.m00 + 1e-5)),
-        static_cast<int>(mom.m01 / (mom.m00 + 1e-5)));
-      sprintf(strbuf[1], "area = %6.1lf", mom.m00);
-      sprintf(strbuf[2], "w/h = %4.16lf", static_cast<double>(bbcnt.width) / bbcnt.height);
-      cout << strbuf[0] << ", " << strbuf[1] << ", " << strbuf[2] << endl;
-      /* draw the largest contour on the original image */
-      img_orig_contour = img_orig.clone();
-      polylines(img_orig_contour, (vector<vector<Point>>){contours[i_area_max]}, 0, Scalar(0,255,0), LINE_THICKNESS);
-      putText(img_orig_contour, strbuf[0],
-	      Point(static_cast<int>(FRAME_WIDTH/64),static_cast<int>(5*FRAME_HEIGHT/8)),
-	      FONT_HERSHEY_SIMPLEX, 1.0, Scalar(0,255,0), static_cast<int>(LINE_THICKNESS/4), LINE_4);
-      putText(img_orig_contour, strbuf[1],
-	      Point(static_cast<int>(FRAME_WIDTH/64),static_cast<int>(6*FRAME_HEIGHT/8)),
-	      FONT_HERSHEY_SIMPLEX, 1.0, Scalar(0,255,0), static_cast<int>(LINE_THICKNESS/4), LINE_4);
-      putText(img_orig_contour, strbuf[2],
-	      Point(static_cast<int>(FRAME_WIDTH/64),static_cast<int>(7*FRAME_HEIGHT/8)),
-	      FONT_HERSHEY_SIMPLEX, 1.0, Scalar(0,255,0), static_cast<int>(LINE_THICKNESS/4), LINE_4);
+      if (cnt_idx.size() >= 1) {
+	sort(cnt_idx.begin(), cnt_idx.end(), greater<>());
+	vector<Point> cnt_max = contours[cnt_idx[0][1]];
+	/* print information about the identified contour */
+	Moments mom = moments(cnt_max);
+	/* add 1e-5 to avoid division by zero */
+	sprintf(strbuf[0], "cx = %03d, cy = %03d",
+		static_cast<int>(mom.m10 / (mom.m00 + 1e-5)),
+		static_cast<int>(mom.m01 / (mom.m00 + 1e-5)));
+	double area = mom.m00;
+	sprintf(strbuf[1], "area = %6.1f", cnt_idx[0][0]);
+	sprintf(strbuf[2], "w/h = %4.16f", cnt_idx[0][2]);
+	cout << strbuf[0] << ", " << strbuf[1] << ", " << strbuf[2] << endl;
+        /* draw the largest contour on the original image in red */
+        polylines(img_orig_contour, (vector<vector<Point>>){contours[cnt_idx[0][1]]}, true, Scalar(0,0,255), LINE_THICKNESS);
+	putText(img_orig_contour, strbuf[0],
+		Point(static_cast<int>(FRAME_WIDTH/64),static_cast<int>(5*FRAME_HEIGHT/8)),
+		FONT_HERSHEY_SIMPLEX, FONT_SCALE, Scalar(0,255,0),
+		static_cast<int>(LINE_THICKNESS/4), LINE_4);
+	putText(img_orig_contour, strbuf[1],
+		Point(static_cast<int>(FRAME_WIDTH/64),static_cast<int>(6*FRAME_HEIGHT/8)),
+		FONT_HERSHEY_SIMPLEX, FONT_SCALE, Scalar(0,255,0),
+		static_cast<int>(LINE_THICKNESS/4), LINE_4);
+	putText(img_orig_contour, strbuf[2],
+		Point(static_cast<int>(FRAME_WIDTH/64),static_cast<int>(7*FRAME_HEIGHT/8)),
+		FONT_HERSHEY_SIMPLEX, FONT_SCALE, Scalar(0,255,0),
+		static_cast<int>(LINE_THICKNESS/4), LINE_4);
+      } else { /* cnt_idx.size() == 0 */
+      }
     } else { /* contours.size() == 0 */
-      img_orig_contour = img_orig.clone();
     }
 
     /* concatinate the images - original + extracted + binary */
@@ -176,6 +210,7 @@ int main() {
     if ( c == 'q' || c == 'Q' ) break;
   }
 
+  cap.release();
   destroyAllWindows();
   return 0;
 }
