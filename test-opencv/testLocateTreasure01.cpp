@@ -44,14 +44,19 @@ using std::this_thread::sleep_for;
 #define LINE_THICKNESS int(FRAME_WIDTH/80)
 #define BLK_AREA_MIN (23.0*FRAME_WIDTH/640.0)*(23.0*FRAME_WIDTH/640.0)
 #define FONT_SCALE double(FRAME_WIDTH)/640.0
+#define DILATE_KERNEL_SIZE roundUpToOdd(int(FRAME_WIDTH/64))
 
 /* frame size for X11 painting */
 #define OUT_FRAME_WIDTH  320
 #define OUT_FRAME_HEIGHT 240
 
-int b_min=0,b_max=50,g_min=0,g_max=50,r_min=60,r_max=200;
+int b_min=0,b_max=50,g_min=0,g_max=35,r_min=50,r_max=255;
 int gs_min=10,gs_max=100;
 char strbuf[4][40];
+
+int roundUpToOdd(int x) {
+  return 2 * ceil(((float)x - 1.0) / 2.0) + 1;
+}
 
 int main() {
   utils::logging::setLogLevel(utils::logging::LOG_LEVEL_WARNING);
@@ -122,10 +127,10 @@ int main() {
     /* binarize the image */
     inRange(img_gray, gs_min, gs_max, img_bin);
     /* dilate the image */
-    Mat kernel = Mat::zeros(Size(7,7), CV_8UC1);
+    Mat kernel = Mat::ones(Size(DILATE_KERNEL_SIZE,DILATE_KERNEL_SIZE), CV_8UC1);
     dilate(img_bin, img_bin_dil, kernel);
     /* convert the binary image from grayscale to BGR for later */
-    cvtColor(img_bin, img_bin_rgb, COLOR_GRAY2BGR);
+    cvtColor(img_bin_dil, img_bin_rgb, COLOR_GRAY2BGR);
 
     /* prepare image for edit */
     img_orig_contour = img_orig.clone();
@@ -134,7 +139,7 @@ int main() {
     vector<Vec4i> hierarchy;
     findContours(img_bin_dil, contours, hierarchy, RETR_TREE, CHAIN_APPROX_SIMPLE);
     /* identify the largest contour */
-    vector<vector<float>> cnt_idx; /* area, idx, w/h */
+    vector<vector<float>> cnt_idx; /* area, idx, w/h, x, y */
     if (contours.size() >= 1) {
       for (int i = 0; i < contours.size(); i++) {
 	if (hierarchy[i][3] == -1) { /* if contour is external */
@@ -143,9 +148,16 @@ int main() {
 	  /* calculate a bounding box around the identified contour */
 	  Rect bbcnt = boundingRect(cnt);
 	  float wh = static_cast<float>(bbcnt.width) / bbcnt.height; /* width / height */
-	  if (area > BLK_AREA_MIN && wh > 0.5 && wh < 2.0) {
+	  vector<Point> hull;
+	  convexHull(cnt, hull);
+	  if (area > BLK_AREA_MIN && wh > 0.7 && wh < 1.5 &&
+	      1.5*area > contourArea(hull) ) { /* area and its hull are not much different */
 	    if (hierarchy[i][2] == -1) { /* if the area has no child */
-	      cnt_idx.push_back({area, float(i), wh});
+	      Moments mom = moments(cnt);
+	      /* add 1e-5 to avoid division by zero */
+	      float x = mom.m10 / (mom.m00 + 1e-5);
+	      float y = mom.m01 / (mom.m00 + 1e-5);
+	      cnt_idx.push_back({area, float(i), wh, x, y});
 	    } else { /* ensure the area is not donut-shaped */
 	      bool donut = false;
 	      for (int j = hierarchy[i][2]; j != -1; j = hierarchy[j][0]){ /* traverse all child */
@@ -154,7 +166,11 @@ int main() {
 		if (10.0 * area_chd > area) donut = true;
 	      }
 	      if (donut == false) {
-		cnt_idx.push_back({area, float(i), wh});
+		Moments mom = moments(cnt);
+		/* add 1e-5 to avoid division by zero */
+		float x = mom.m10 / (mom.m00 + 1e-5);
+		float y = mom.m01 / (mom.m00 + 1e-5);
+		cnt_idx.push_back({area, float(i), wh, x, y});
 	      }
 	    }
 	  }
@@ -162,14 +178,8 @@ int main() {
       }
       if (cnt_idx.size() >= 1) {
 	sort(cnt_idx.begin(), cnt_idx.end(), greater<>());
-	vector<Point> cnt_max = contours[cnt_idx[0][1]];
 	/* print information about the identified contour */
-	Moments mom = moments(cnt_max);
-	/* add 1e-5 to avoid division by zero */
-	sprintf(strbuf[0], "cx = %03d, cy = %03d",
-		static_cast<int>(mom.m10 / (mom.m00 + 1e-5)),
-		static_cast<int>(mom.m01 / (mom.m00 + 1e-5)));
-	double area = mom.m00;
+	sprintf(strbuf[0], "cx = %03.0f, cy = %03.0f", cnt_idx[0][3], cnt_idx[0][4]);
 	sprintf(strbuf[1], "area = %6.1f", cnt_idx[0][0]);
 	sprintf(strbuf[2], "w/h = %4.16f", cnt_idx[0][2]);
 	cout << strbuf[0] << ", " << strbuf[1] << ", " << strbuf[2] << endl;
