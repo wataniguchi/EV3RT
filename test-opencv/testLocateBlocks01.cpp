@@ -36,15 +36,15 @@ using std::this_thread::sleep_for;
 #define IN_FPS 40
 
 /* frame size for OpenCV */
-#define FRAME_WIDTH  640
-#define FRAME_HEIGHT 480
-//#define FRAME_WIDTH  120
+#define FRAME_WIDTH  320
+#define FRAME_HEIGHT 240
+//#define FRAME_WIDTH  128
 //#define FRAME_HEIGHT 96
 
 #define LINE_THICKNESS int(FRAME_WIDTH/80)
 #define BLK_AREA_MIN (23.0*FRAME_WIDTH/640.0)*(23.0*FRAME_WIDTH/640.0)
 #define FONT_SCALE double(FRAME_WIDTH)/640.0
-#define DILATE_KERNEL_SIZE roundUpToOdd(int(FRAME_WIDTH/80))
+#define MORPH_KERNEL_SIZE roundUpToOdd(int(FRAME_WIDTH/40))
 
 /* frame size for X11 painting */
 #define OUT_FRAME_WIDTH  320
@@ -70,8 +70,8 @@ void locateBlocks(vector<vector<Point>>& contours, vector<Vec4i>& hierarchy,
       float wh = static_cast<float>(bbcnt.width) / bbcnt.height; /* width / height */
       vector<Point> hull;
       convexHull(cnt, hull);
-      if (area > BLK_AREA_MIN && wh > 0.55 && wh < 1.8 &&
-	  1.25*area > contourArea(hull) ) { /* area and its hull are not much different */
+      if (area > BLK_AREA_MIN && wh > 0.5 && wh < 2.0 &&
+	  1.45*area > contourArea(hull) ) { /* area and its hull are not much different */
 	if (hierarchy[i][2] == -1) { /* if the area has no child */
 	  Moments mom = moments(cnt);
 	  /* add 1e-5 to avoid division by zero */
@@ -99,7 +99,7 @@ void locateBlocks(vector<vector<Point>>& contours, vector<Vec4i>& hierarchy,
   return;
 }
 
-void binalizeWithColorMask(Mat& img_orig, Scalar& bgr_min, Scalar& bgr_max, int gs_min, int gs_max, Mat& img_bin_dil) {
+void binalizeWithColorMask(Mat& img_orig, Scalar& bgr_min, Scalar& bgr_max, int gs_min, int gs_max, Mat& img_bin_mor) {
   Mat img_mask, img_ext, img_gray, img_bin;
   /* extract areas by color */
   inRange(img_orig, bgr_min, bgr_max, img_mask);
@@ -108,9 +108,9 @@ void binalizeWithColorMask(Mat& img_orig, Scalar& bgr_min, Scalar& bgr_max, int 
   cvtColor(img_ext, img_gray, COLOR_BGR2GRAY);
   /* binarize the image */
   inRange(img_gray, gs_min, gs_max, img_bin);
-  /* dilate the image */
-  Mat kernel = Mat::ones(Size(DILATE_KERNEL_SIZE,DILATE_KERNEL_SIZE), CV_8UC1);
-  dilate(img_bin, img_bin_dil, kernel);
+  /* remove noise */
+  Mat kernel = Mat::ones(Size(MORPH_KERNEL_SIZE,MORPH_KERNEL_SIZE), CV_8UC1);
+  morphologyEx(img_bin, img_bin_mor, MORPH_CLOSE, kernel);
   return;
 }
 
