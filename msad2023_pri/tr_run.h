@@ -152,7 +152,7 @@
   /* RUN_L: camera line trace until Blue is detected by color sensor */ \
   .composite<BrainTree::MemSequence>() \
     .composite<BrainTree::ParallelSequence>(1,2) \
-      .leaf<IsColorDetected>(CL_BLUE) \
+      .leaf<IsColorDetected>(CL_RED) \
       .composite<BrainTree::MemSequence>() \
         .leaf<TraceLineCam>(prof->getValueAsNum("RUN_L1_SPEED"), \
 	      prof->getValueAsNumVec("RUN_Lx_PID_CONST"), \

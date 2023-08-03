@@ -350,10 +350,10 @@ public:
                     return Status::Success;
                 }
                 break;
-            case CL_RED:
-                if (cur_rgb.r >= 30 &&
-		    cur_rgb.r - cur_rgb.g >= 10 &&
-		    cur_rgb.r - cur_rgb.b >= 10) {
+	    case CL_RED: /* working */
+                if (cur_rgb.r >= 70 &&
+		    cur_rgb.r - cur_rgb.g < 50 &&
+		    cur_rgb.r - cur_rgb.b >= 20) {
                     _log("ODO=%05d, CL_RED detected.", plotter->getDistance());
                     return Status::Success;
                 }
@@ -466,70 +466,94 @@ protected:
 
 /*
     usage:
-    ".leaf<IsFoundBlock>(gs_min, gs_max, rgb_min, rgb_max)"
-    is to determine an object with specific color in sight.
+    ".leaf<IsFoundBlock>(gs_min, gs_max, bgr_min_tre, bgr_max_tre, bgr_min_dec, bgr_max_dec)"
+    is to determine the RED block in sight.
     gs_min, gs_max are grayscale threshold for object recognition binalization.
-    rgb_min, rgb_max are rgb vector threshold for object color masking.
+    bgr_min_tre, bgr_max_tre are bgr vector threshold for identifying RED objects.
+    bgr_min_dec, bgr_max_dec are bgr vector threshold for identifying BLUE objects.
 */
 class IsFoundBlock : public BrainTree::Node {
 public:
-  IsFoundBlock(int gs_min, int gs_max, std::vector<int> rgb_min, std::vector<int> rgb_max) : gsMin(gs_min),gsMax(gs_max) {
+  IsFoundBlock(int gs_min, int gs_max,
+	       std::vector<double> bgr_min_tre, std::vector<double> bgr_max_tre,
+	       std::vector<double> bgr_min_dec, std::vector<double> bgr_max_dec) : gsMin(gs_min),gsMax(gs_max) {
         updated = false;
-	assert(rgb_min.size() == 3);
-	assert(rgb_max.size() == 3);
-	rgbMin = Scalar(rgb_min[0], rgb_min[1], rgb_min[2]);
-	rgbMax = Scalar(rgb_max[0], rgb_max[1], rgb_max[2]);
+	assert(bgr_min_tre.size() == 3);
+	assert(bgr_max_tre.size() == 3);
+	assert(bgr_min_dec.size() == 3);
+	assert(bgr_max_dec.size() == 3);
+	bgrMinTre = Scalar(bgr_min_tre[0], bgr_min_tre[1], bgr_min_tre[2]);
+	bgrMaxTre = Scalar(bgr_max_tre[0], bgr_max_tre[1], bgr_max_tre[2]);
+	bgrMinDec = Scalar(bgr_min_dec[0], bgr_min_dec[1], bgr_min_dec[2]);
+	bgrMaxDec = Scalar(bgr_max_dec[0], bgr_max_dec[1], bgr_max_dec[2]);
+	count = inSightCount = 0;
     }
     ~IsFoundBlock() {}
     Status update() override {
         if (!updated) {
-	    video->setTraceTargetType(TT_TREASURE);
+	    video->setTraceTargetType(TT_BLKS);
 	    video->setThresholds(gsMin, gsMax);
-	    video->setMaskThresholds(rgbMin, rgbMax);
+	    video->setMaskThresholds(bgrMinTre, bgrMaxTre, bgrMinDec, bgrMaxDec);
             updated = true;
         }
-	    _log("ODO=%05d, x=%d:y=%d:deg=%d:gyro=%d", plotter->getDistance(), plotter->getLocX(), plotter->getLocY(), plotter->getDegree(), gyroSensor->getAngle());
-        if (video->isTargetInSight()) {
-	    _log(" -- target in sight");
+	if (count++ < 10) {
+	  if (video->isTargetInSight()) inSightCount++;
+	  return Status::Running;
+	} else {
+	  if (inSightCount > 7) {
+	    /* when target in sight more than 7 times out of 10 attempts */
+	    _log("ODO=%05d, target in sight at x=%d:y=%d:deg=%d:gyro=%d",
+		 plotter->getDistance(), plotter->getLocX(), plotter->getLocY(),
+		 plotter->getDegree(), gyroSensor->getAngle());
             return Status::Success;
-        } else {
-	    _log(" -- target NOT in sight");
+	  } else {
+	    _log("ODO=%05d, target NOT in sight at x=%d:y=%d:deg=%d:gyro=%d",
+		 plotter->getDistance(), plotter->getLocX(), plotter->getLocY(),
+		 plotter->getDegree(), gyroSensor->getAngle());
             return Status::Failure;
+	  }
         }
     }
 protected:
-    int gsMin, gsMax;
-    Scalar rgbMin, rgbMax;
+    int gsMin, gsMax, count, inSightCount;
+    Scalar bgrMinTre, bgrMaxTre, bgrMinDec, bgrMaxDec;
     bool updated;
 };
 
 /*
     usage:
-    ".leaf<ApproachBlock>(speed, pid, gs_min, gs_max, rgb_min, rgb_max)"
-    is to instruct the robot to come closer an object with specific color at the given speed.
+    ".leaf<ApproachBlock>(speed, pid, gs_min, gs_max, bgr_min_tre, bgr_max_tre, bgr_min_dec, bgr_max_dec)"
+    is to instruct the robot to come closer the RED block at the given speed.
     pid is a vector of three constants for PID control.
     gs_min, gs_max are grayscale threshold for object recognition binalization.
-    rgb_min, rgb_max are rgb vector threshold for object color masking.
+    bgr_min_tre, bgr_max_tre are bgr vector threshold for identifying RED objects.
+    bgr_min_dec, bgr_max_dec are bgr vector threshold for identifying BLUE objects.
 */
 class ApproachBlock : public BrainTree::Node {
 public:
-  ApproachBlock(int s, std::vector<double> pid, int gs_min, int gs_max, std::vector<int> rgb_min, std::vector<int> rgb_max) : speed(s),gsMin(gs_min),gsMax(gs_max) {
+  ApproachBlock(int s, std::vector<double> pid, int gs_min, int gs_max,
+		std::vector<double> bgr_min_tre, std::vector<double> bgr_max_tre,
+		std::vector<double> bgr_min_dec, std::vector<double> bgr_max_dec) : speed(s),gsMin(gs_min),gsMax(gs_max) {
         updated = false;
 	assert(pid.size() == 3);
-	assert(rgb_min.size() == 3);
-	assert(rgb_max.size() == 3);
         ltPid = new PIDcalculator(pid[0], pid[1], pid[2], PERIOD_UPD_TSK, -speed, speed);
-	rgbMin = Scalar(rgb_min[0], rgb_min[1], rgb_min[2]);
-	rgbMax = Scalar(rgb_max[0], rgb_max[1], rgb_max[2]);
+	assert(bgr_min_tre.size() == 3);
+	assert(bgr_max_tre.size() == 3);
+	assert(bgr_min_dec.size() == 3);
+	assert(bgr_max_dec.size() == 3);
+	bgrMinTre = Scalar(bgr_min_tre[0], bgr_min_tre[1], bgr_min_tre[2]);
+	bgrMaxTre = Scalar(bgr_max_tre[0], bgr_max_tre[1], bgr_max_tre[2]);
+	bgrMinDec = Scalar(bgr_min_dec[0], bgr_min_dec[1], bgr_min_dec[2]);
+	bgrMaxDec = Scalar(bgr_max_dec[0], bgr_max_dec[1], bgr_max_dec[2]);
     }
     ~ApproachBlock() {
         delete ltPid;
     }
     Status update() override {
         if (!updated) {
-	    video->setTraceTargetType(TT_TREASURE);
+	    video->setTraceTargetType(TT_BLKS);
 	    video->setThresholds(gsMin, gsMax);
-	    video->setMaskThresholds(rgbMin, rgbMax);
+	    video->setMaskThresholds(bgrMinTre, bgrMaxTre, bgrMinDec, bgrMaxDec);
             /* The following code chunk is to properly set prevXin in SRLF */
             srlfL->setRate(0.0);
             leftMotor->setPWM(leftMotor->getPWM());
@@ -557,7 +581,7 @@ public:
 protected:
     int speed, gsMin, gsMax;
     PIDcalculator* ltPid;
-    Scalar rgbMin, rgbMax;
+    Scalar bgrMinTre, bgrMaxTre, bgrMinDec, bgrMaxDec;
     bool updated;
 };
 

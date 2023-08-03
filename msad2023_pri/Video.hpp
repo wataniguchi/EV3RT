@@ -31,6 +31,9 @@ using namespace cv;
 #include <lccv.hpp>
 #endif /* WITH_V3CAM */
 
+#include <cmath>
+#include <algorithm>
+#include <array>
 #include <vector>
 using namespace std;
 
@@ -49,8 +52,11 @@ extern FilteredMotor*       rightMotor;
 #define IN_FPS 40
 
 /* frame size for OpenCV */
-#define FRAME_WIDTH  128
-#define FRAME_HEIGHT 96
+//#define FRAME_WIDTH  128
+//#define FRAME_HEIGHT 96
+#define FRAME_WIDTH  320
+#define FRAME_HEIGHT 240
+#define FRAME_X_CENTER int(FRAME_WIDTH/2)
 #define CROP_WIDTH   int(13*FRAME_WIDTH/16)
 #define CROP_HEIGHT  int(3*FRAME_HEIGHT/8)
 #define CROP_U_LIMIT int(5*FRAME_HEIGHT/8)
@@ -58,6 +64,8 @@ extern FilteredMotor*       rightMotor;
 #define CROP_L_LIMIT int((FRAME_WIDTH-CROP_WIDTH)/2)
 #define CROP_R_LIMIT (CROP_L_LIMIT+CROP_WIDTH)
 
+#define MORPH_KERNEL_SIZE roundUpToOdd(int(FRAME_WIDTH/40))
+#define BLK_AREA_MIN (23.0*FRAME_WIDTH/640.0)*(23.0*FRAME_WIDTH/640.0)
 #define ROI_BOUNDARY int(FRAME_WIDTH/16)
 #define LINE_THICKNESS int(FRAME_WIDTH/80)
 #define CIRCLE_RADIUS int(FRAME_WIDTH/40)
@@ -70,6 +78,7 @@ static_assert(SCAN_V_POS < CROP_D_LIMIT,"SCAN_V_POS < CROP_D_LIMIT");
 #define OUT_FRAME_WIDTH  128
 #define OUT_FRAME_HEIGHT 96
 
+/* used in IsJunction class in app.cpp */
 #define JUNCTION_LOWER_THRESHOLD int(200*FRAME_WIDTH/IN_FRAME_WIDTH)
 #define JUNCTION_UPPER_THRESHOLD int(250*FRAME_WIDTH/IN_FRAME_WIDTH)
 
@@ -80,11 +89,13 @@ enum BinarizationAlgorithm {
 };
 
 enum TargetType {
-  TT_LINE,     /* Line           */
-  TT_TREASURE, /* Treasure Block */
-  TT_DECOY,    /* Decoy Block    */
+  TT_LINE, /* Line   */
+  TT_BLKS, /* Blocks */
 };
 
+/* prototype of global functions */
+int roundUpToOdd(int);
+  
 class Video {
 protected:
 #if defined(WITH_V3CAM)
@@ -105,9 +116,9 @@ protected:
   Mat kernel;
   unsigned long* buf;
   char strbuf[5][40];
-  int cx, cy, gsmin, gsmax, gs_block, gs_C, side, rangeOfEdges;
+  int mx, cx, cy, gsmin, gsmax, gs_block, gs_C, side, rangeOfEdges;
   int inFrameWidth, inFrameHeight;
-  Scalar rgbmin, rgbmax;
+  Scalar bgr_min_tre, bgr_max_tre, bgr_min_dec, bgr_max_dec;
   float theta;
   BinarizationAlgorithm algo;
   TargetType traceTargetType;
@@ -121,12 +132,15 @@ public:
   float getTheta();
   int getRangeOfEdges();
   void setThresholds(int gsMin, int gsMax);
-  void setMaskThresholds(Scalar rgbMin, Scalar rgbMax);
+  void setMaskThresholds(Scalar bgrMinTre, Scalar bgrMaxTre, Scalar bgrMinDec, Scalar bgrMaxDec);
   void setTraceSide(int traceSide);
   void setBinarizationAlgorithm(BinarizationAlgorithm ba);
   void setTraceTargetType(TargetType tt);
   bool isTargetInSight();
   ~Video();
+protected:
+  void locateBlocks(vector<vector<Point>>&, vector<Vec4i>&, vector<vector<float>>&);
+  void binalizeWithColorMask(Mat&, Scalar&, Scalar&, int, int, Mat&);
 };
 
 #endif /* Video_hpp */

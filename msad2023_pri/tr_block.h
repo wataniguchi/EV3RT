@@ -12,4 +12,13 @@
     .end() \
     .leaf<StopNow>() \
     .leaf<ArmUpDownFull>(AD_DOWN) \
+    /* test - finitely repeat executing IsFoundBlock() */ \
+    .decorator<BrainTree::Repeater>()  \
+        .leaf<IsFoundBlock>(prof->getValueAsNum("BLOCK_Lx_GS_MIN"), \
+            prof->getValueAsNum("BLOCK_Lx_GS_MIN"), \
+            prof->getValueAsNumVec("BLOCK_Lx_BGR_MIN_TRE"), \
+	    prof->getValueAsNumVec("BLOCK_Lx_BGR_MAX_TRE"), \
+            prof->getValueAsNumVec("BLOCK_Lx_BGR_MIN_DEC"), \
+            prof->getValueAsNumVec("BLOCK_Lx_BGR_MAX_DEC"))	\
+    .end()		 \
   .end()

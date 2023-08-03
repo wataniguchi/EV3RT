@@ -5,6 +5,65 @@
 #include "Video.hpp"
 #include "appusr.hpp"
 
+int roundUpToOdd(int x) {
+  return 2 * ceil(((float)x - 1.0) / 2.0) + 1;
+}
+
+void Video::locateBlocks(vector<vector<Point>>& contours, vector<Vec4i>& hierarchy,
+		  vector<vector<float>>& cnt_idx) { /* cnt_idx: area, idx, w/h, x, y */
+  for (unsigned int i = 0; i < contours.size(); i++) {
+    if (hierarchy[i][3] == -1) { /* if contour is external */
+      vector<Point> cnt = contours[i];
+      float area = contourArea(cnt);
+      /* calculate a bounding box around the identified contour */
+      Rect bbcnt = boundingRect(cnt);
+      float wh = static_cast<float>(bbcnt.width) / bbcnt.height; /* width / height */
+      vector<Point> hull;
+      convexHull(cnt, hull);
+      if (area > BLK_AREA_MIN && wh > 0.5 && wh < 2.0 &&
+	  1.45*area > contourArea(hull) ) { /* area and its hull are not much different */
+	if (hierarchy[i][2] == -1) { /* if the area has no child */
+	  Moments mom = moments(cnt);
+	  /* add 1e-5 to avoid division by zero */
+	  float x = mom.m10 / (mom.m00 + 1e-5);
+	  float y = mom.m01 / (mom.m00 + 1e-5);
+	  cnt_idx.push_back({area, float(i), wh, x, y});
+	} else { /* ensure the area is not donut-shaped */
+	  bool donut = false;
+	  for (int j = hierarchy[i][2]; j != -1; j = hierarchy[j][0]){ /* traverse all child */
+	    vector<Point> cnt_chd = contours[j];
+	    float area_chd = contourArea(cnt_chd);
+	    if (10.0 * area_chd > area) donut = true;
+	  }
+	  if (donut == false) {
+	    Moments mom = moments(cnt);
+	    /* add 1e-5 to avoid division by zero */
+	    float x = mom.m10 / (mom.m00 + 1e-5);
+	    float y = mom.m01 / (mom.m00 + 1e-5);
+	    cnt_idx.push_back({area, float(i), wh, x, y});
+	  }
+	}
+      }
+    }
+  }
+  return;
+}
+
+void Video::binalizeWithColorMask(Mat& img_orig, Scalar& bgr_min, Scalar& bgr_max, int gs_min, int gs_max, Mat& img_bin_mor) {
+  Mat img_mask, img_ext, img_gray, img_bin;
+  /* extract areas by color */
+  inRange(img_orig, bgr_min, bgr_max, img_mask);
+  bitwise_and(img_orig, img_orig, img_ext, img_mask);
+  /* convert the extracted image from BGR to grayscale */
+  cvtColor(img_ext, img_gray, COLOR_BGR2GRAY);
+  /* binarize the image */
+  inRange(img_gray, gs_min, gs_max, img_bin);
+  /* remove noise */
+  //Mat kernel = Mat::ones(Size(MORPH_KERNEL_SIZE,MORPH_KERNEL_SIZE), CV_8UC1);
+  morphologyEx(img_bin, img_bin_mor, MORPH_CLOSE, kernel);
+  return;
+}
+
 Video::Video() {
   utils::logging::setLogLevel(utils::logging::LOG_LEVEL_INFO);
   /* set number of threads */
@@ -26,11 +85,6 @@ Video::Video() {
   assert(cap.open(inFrameWidth, inFrameHeight, IN_FPS));
 #endif /* WITH_V3CAM */
   
-  /* initial region of interest is set to crop zone */
-  roi = Rect(CROP_L_LIMIT, CROP_U_LIMIT, CROP_WIDTH, CROP_HEIGHT);
-  /* prepare and keep kernel for morphology */
-  kernel = Mat::zeros(Size(7,7), CV_8UC1);
-
   //XInitThreads();
   disp = XOpenDisplay(NULL);
   sc = DefaultScreenOfDisplay(disp);
@@ -63,9 +117,14 @@ Video::Video() {
   ximg = XCreateImage(disp, vis, 24, ZPixmap, 0, (char*)gbuf, OUT_FRAME_WIDTH, 2*OUT_FRAME_HEIGHT, BitmapUnit(disp), 0);
   XInitImage(ximg);
 
+  /* initial region of interest is set to crop zone */
+  roi = Rect(CROP_L_LIMIT, CROP_U_LIMIT, CROP_WIDTH, CROP_HEIGHT);
+  /* prepare and keep kernel for morphology */
+  kernel = Mat::ones(Size(MORPH_KERNEL_SIZE,MORPH_KERNEL_SIZE), CV_8UC1);
   /* initial trace target */
   cx = (int)(FRAME_WIDTH/2);
-  cy = FRAME_HEIGHT-LINE_THICKNESS;
+  cy = SCAN_V_POS;
+  mx = cx;
   /* default values */
   gsmin = 0;
   gsmax = 100;
@@ -138,7 +197,54 @@ void Video::writeFrame(Mat f) {
 Mat Video::calculateTarget(Mat f) {
   if (f.empty()) return f;
 
-  if (traceTargetType == TT_TREASURE) {
+  if (traceTargetType == TT_BLKS) {
+    Mat img_orig, img_bin_tre, img_bin_dec, img_bin_rgb_tre, img_bin_rgb_dec;
+
+    /* keep the original image for repeated use for identifying all blocks */
+    img_orig = f.clone();
+
+    /* prepare for locating the decoy blocks */
+    binalizeWithColorMask(img_orig, bgr_min_dec, bgr_max_dec, gsmin, gsmax, img_bin_dec);
+    /* convert the binary image from grayscale to BGR for later */
+    cvtColor(img_bin_dec, img_bin_rgb_dec, COLOR_GRAY2BGR);
+    /* locate the decoy blocks */
+    vector<vector<Point>> contours_dec;
+    vector<Vec4i> hierarchy_dec;
+    findContours(img_bin_dec, contours_dec, hierarchy_dec, RETR_TREE, CHAIN_APPROX_SIMPLE);
+    vector<vector<float>> cnt_idx_dec; /* cnt_idx: area, idx, w/h, x, y */
+    locateBlocks(contours_dec, hierarchy_dec, cnt_idx_dec);
+    if (cnt_idx_dec.size() > 0) {
+      sort(cnt_idx_dec.begin(), cnt_idx_dec.end(), greater<>());
+      /* draw the two largest contour on the console image in blue */
+      for (unsigned int i = 0; i < 2 && i < cnt_idx_dec.size(); i++) {
+	polylines(f, contours_dec[cnt_idx_dec[i][1]], true, Scalar(255,0,0), LINE_THICKNESS);
+      }
+    }
+
+    /* prepare for locating the treasure block */
+    binalizeWithColorMask(img_orig, bgr_min_tre, bgr_max_tre, gsmin, gsmax, img_bin_tre);
+    /* convert the binary image from grayscale to BGR for later */
+    cvtColor(img_bin_tre, img_bin_rgb_tre, COLOR_GRAY2BGR);
+    /* locate the treasure block */
+    vector<vector<Point>> contours;
+    vector<Vec4i> hierarchy;
+    findContours(img_bin_tre, contours, hierarchy, RETR_TREE, CHAIN_APPROX_SIMPLE);
+    vector<vector<float>> cnt_idx; /* cnt_idx: area, idx, w/h, x, y */
+    locateBlocks(contours, hierarchy, cnt_idx);
+    if (cnt_idx.size() > 0) {
+      sort(cnt_idx.begin(), cnt_idx.end(), greater<>());
+      /* draw the largest contour on the console image in red */
+      polylines(f, contours[cnt_idx[0][1]], true, Scalar(0,0,255), LINE_THICKNESS);
+      cx = static_cast<int>(cnt_idx[0][3]);
+      cy = static_cast<int>(cnt_idx[0][4]);
+      mx = FRAME_X_CENTER + static_cast<int>((cx-FRAME_X_CENTER) * (FRAME_HEIGHT-SCAN_V_POS) / (FRAME_HEIGHT-cy));
+      targetInSight = true;
+    } else { /* cnt_idx.size() == 0 */
+      /* keep mx in order to maintain the current move of robot */
+      cx = (int)(FRAME_WIDTH/2);
+      cy = SCAN_V_POS;
+      targetInSight = false;
+    }    
   } else if (traceTargetType == TT_LINE) {
     Mat img_gray, img_gray_part, img_bin_part, img_bin, img_bin_mor, img_cnt_gray, scan_line;
 
@@ -277,33 +383,37 @@ Mat Video::calculateTarget(Mat f) {
         rangeOfEdges = 1;
         cx = edges[0];
       }
+      mx = cx;
       targetInSight = true;
     } else { /* contours.size() == 0 */
       rangeOfEdges = 0;
       roi = Rect(CROP_L_LIMIT, CROP_U_LIMIT, CROP_WIDTH, CROP_HEIGHT);
+      /* keep mx in order to maintain the current move of robot */
+      cx = (int)(FRAME_WIDTH/2);
+      cy = SCAN_V_POS;
       targetInSight = false;
     }
     //_logNoAsp("roe = %d", rangeOfEdges);
 
     /* draw the area of interest on the original image */
     rectangle(f, Point(roi.x,roi.y), Point(roi.x+roi.width,roi.y+roi.height), Scalar(255,0,0), LINE_THICKNESS);
-    /* draw the trace target on the image */
-    circle(f, Point(cx, SCAN_V_POS), CIRCLE_RADIUS, Scalar(0,0,255), -1);
-
-    /* calculate variance of cx from the center in pixel */
-    int vxp = cx - (int)(FRAME_WIDTH/2);
-    /* convert the variance from pixel to milimeters
-       245 mm is length of the closest horizontal line on ground within the camera vision */
-    float vxm = vxp * 245 / FRAME_WIDTH;
-    /* calculate the rotation in degree (z-axis)
-       230 mm is distance from axle to the closest horizontal line on ground the camera can see */
-    if (vxm == 0) {
-      theta = 0;
-    } else {
-      theta = 180 * atan(vxm / 230) / M_PI;
-    }
-    //_logNoAsp("cx = %d, vxm = %d, theta = %d", cx, (int)vxm, (int)theta);
   } /* if(tradeTargetType == TT_LINE) */
+  
+  /* draw the trace target on the image */
+  circle(f, Point(mx, SCAN_V_POS), CIRCLE_RADIUS, Scalar(0,0,255), -1);
+  /* calculate variance of cx from the center in pixel */
+  int vxp = mx - (int)(FRAME_WIDTH/2);
+  /* convert the variance from pixel to milimeters
+     245 mm is length of the closest horizontal line on ground within the camera vision */
+  float vxm = vxp * 245 / FRAME_WIDTH;
+  /* calculate the rotation in degree (z-axis)
+     230 mm is distance from axle to the closest horizontal line on ground the camera can see */
+  if (vxm == 0) {
+    theta = 0;
+  } else {
+    theta = 180 * atan(vxm / 230) / M_PI;
+  }
+  //_logNoAsp("mx = %d, vxm = %d, theta = %d", mx, (int)vxm, (int)theta);
 
   return f;
 }
@@ -311,7 +421,7 @@ Mat Video::calculateTarget(Mat f) {
 void Video::show() {
   sprintf(strbuf[0], "x=%+05d,y=%+05d", plotter->getLocX(), plotter->getLocY());
   sprintf(strbuf[1], "ODO=%05d,T=%+03.1f", plotter->getDistance(), getTheta());
-  sprintf(strbuf[2], "cx=%03d,cy=%03d", cx, cy);
+  sprintf(strbuf[2], "cx=%03d,cy=%03d,mx=%03d", cx, cy, mx);
   sprintf(strbuf[3], "deg=%03d,gyro=%+04d", plotter->getDegree(), gyroSensor->getAngle());
   sprintf(strbuf[4], "pwR=%+04d,pwL=%+04d", rightMotor->getPWM(), leftMotor->getPWM());
 
@@ -337,9 +447,11 @@ void Video::setThresholds(int gsMin, int gsMax) {
   gsmax = gsMax;
 }
 
-void Video::setMaskThresholds(Scalar rgbMin, Scalar rgbMax) {
-  rgbmin = rgbMin;
-  rgbmax = rgbMax;
+void Video::setMaskThresholds(Scalar bgrMinTre, Scalar bgrMaxTre, Scalar bgrMinDec, Scalar bgrMaxDec) {
+  bgr_min_tre = bgrMinTre;
+  bgr_max_tre = bgrMaxTre;
+  bgr_min_dec = bgrMinDec;
+  bgr_max_dec = bgrMaxDec;
 }
 
 void Video::setTraceSide(int traceSide) {
@@ -352,6 +464,14 @@ void Video::setBinarizationAlgorithm(BinarizationAlgorithm ba) {
 
 void Video::setTraceTargetType(TargetType tt) {
   traceTargetType = tt;
+  if (tt == TT_LINE) {
+    /* initial region of interest is set to crop zone */
+    roi = Rect(CROP_L_LIMIT, CROP_U_LIMIT, CROP_WIDTH, CROP_HEIGHT);
+  }
+  /* initial trace target */
+  cx = (int)(FRAME_WIDTH/2);
+  cy = SCAN_V_POS;
+  mx = cx;
 }
 
 bool Video::isTargetInSight() {
