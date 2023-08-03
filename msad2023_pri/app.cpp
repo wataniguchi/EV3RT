@@ -505,11 +505,13 @@ public:
 	    _log("ODO=%05d, target in sight at x=%d:y=%d:deg=%d:gyro=%d",
 		 plotter->getDistance(), plotter->getLocX(), plotter->getLocY(),
 		 plotter->getDegree(), gyroSensor->getAngle());
+	    count = inSightCount = 0;
             return Status::Success;
 	  } else {
 	    _log("ODO=%05d, target NOT in sight at x=%d:y=%d:deg=%d:gyro=%d",
 		 plotter->getDistance(), plotter->getLocX(), plotter->getLocY(),
 		 plotter->getDegree(), gyroSensor->getAngle());
+	    count = inSightCount = 0;
             return Status::Failure;
 	  }
         }
@@ -545,6 +547,7 @@ public:
 	bgrMaxTre = Scalar(bgr_max_tre[0], bgr_max_tre[1], bgr_max_tre[2]);
 	bgrMinDec = Scalar(bgr_min_dec[0], bgr_min_dec[1], bgr_min_dec[2]);
 	bgrMaxDec = Scalar(bgr_max_dec[0], bgr_max_dec[1], bgr_max_dec[2]);
+	count = hasCaughtCount = 0;
     }
     ~ApproachBlock() {
         delete ltPid;
@@ -576,10 +579,26 @@ public:
         pwmR = forward + turn;
         leftMotor->setPWM(pwmL);
         rightMotor->setPWM(pwmR);
-        return Status::Running;
+
+	if (count++ < 5) {
+	  if (video->hasCaughtTarget()) hasCaughtCount++;
+	  return Status::Running;
+	} else {
+	  if (hasCaughtCount > 3) {
+	    /* when target determined has caught more than 3 times out of 4 attempts */
+	    leftMotor->setPWM(0);
+	    rightMotor->setPWM(0);
+	    _log("ODO=%05d, Approach Block run ended as caught target.", plotter->getDistance());
+	    count = hasCaughtCount = 0;
+	    return Status::Success;
+	  } else {
+	    count = hasCaughtCount = 0;
+	    return Status::Running;
+	  }
+        }
     }
 protected:
-    int speed, gsMin, gsMax;
+    int speed, gsMin, gsMax, count, hasCaughtCount;
     PIDcalculator* ltPid;
     Scalar bgrMinTre, bgrMaxTre, bgrMinDec, bgrMaxDec;
     bool updated;

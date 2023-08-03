@@ -198,15 +198,13 @@ Mat Video::calculateTarget(Mat f) {
   if (f.empty()) return f;
 
   if (traceTargetType == TT_BLKS) {
-    Mat img_orig, img_bin_tre, img_bin_dec, img_bin_rgb_tre, img_bin_rgb_dec;
+    Mat img_orig, img_bin_tre, img_bin_dec;
 
     /* keep the original image for repeated use for identifying all blocks */
     img_orig = f.clone();
 
     /* prepare for locating the decoy blocks */
     binalizeWithColorMask(img_orig, bgr_min_dec, bgr_max_dec, gsmin, gsmax, img_bin_dec);
-    /* convert the binary image from grayscale to BGR for later */
-    cvtColor(img_bin_dec, img_bin_rgb_dec, COLOR_GRAY2BGR);
     /* locate the decoy blocks */
     vector<vector<Point>> contours_dec;
     vector<Vec4i> hierarchy_dec;
@@ -223,8 +221,6 @@ Mat Video::calculateTarget(Mat f) {
 
     /* prepare for locating the treasure block */
     binalizeWithColorMask(img_orig, bgr_min_tre, bgr_max_tre, gsmin, gsmax, img_bin_tre);
-    /* convert the binary image from grayscale to BGR for later */
-    cvtColor(img_bin_tre, img_bin_rgb_tre, COLOR_GRAY2BGR);
     /* locate the treasure block */
     vector<vector<Point>> contours;
     vector<Vec4i> hierarchy;
@@ -244,7 +240,7 @@ Mat Video::calculateTarget(Mat f) {
       cx = (int)(FRAME_WIDTH/2);
       cy = SCAN_V_POS;
       targetInSight = false;
-    }    
+    }
   } else if (traceTargetType == TT_LINE) {
     Mat img_gray, img_gray_part, img_bin_part, img_bin, img_bin_mor, img_cnt_gray, scan_line;
 
@@ -421,7 +417,7 @@ Mat Video::calculateTarget(Mat f) {
 void Video::show() {
   sprintf(strbuf[0], "x=%+05d,y=%+05d", plotter->getLocX(), plotter->getLocY());
   sprintf(strbuf[1], "ODO=%05d,T=%+03.1f", plotter->getDistance(), getTheta());
-  sprintf(strbuf[2], "cx=%03d,cy=%03d,mx=%03d", cx, cy, mx);
+  sprintf(strbuf[2], "cx=%03d,cy=%03d", cx, cy);
   sprintf(strbuf[3], "deg=%03d,gyro=%+04d", plotter->getDegree(), gyroSensor->getAngle());
   sprintf(strbuf[4], "pwR=%+04d,pwL=%+04d", rightMotor->getPWM(), leftMotor->getPWM());
 
@@ -447,7 +443,7 @@ void Video::setThresholds(int gsMin, int gsMax) {
   gsmax = gsMax;
 }
 
-void Video::setMaskThresholds(Scalar bgrMinTre, Scalar bgrMaxTre, Scalar bgrMinDec, Scalar bgrMaxDec) {
+void Video::setMaskThresholds(Scalar& bgrMinTre, Scalar& bgrMaxTre, Scalar& bgrMinDec, Scalar& bgrMaxDec) {
   bgr_min_tre = bgrMinTre;
   bgr_max_tre = bgrMaxTre;
   bgr_min_dec = bgrMinDec;
@@ -476,4 +472,14 @@ void Video::setTraceTargetType(TargetType tt) {
 
 bool Video::isTargetInSight() {
   return targetInSight;
+}
+
+bool Video::hasCaughtTarget() {
+  if (traceTargetType == TT_BLKS) {
+    if (cx > 7 * FRAME_WIDTH / 16 && cx < 9 * FRAME_WIDTH &&
+	cy > 3 * FRAME_HEIGHT / 4) {
+      return true;
+    }
+  }
+  return false;
 }

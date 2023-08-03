@@ -132,11 +132,12 @@ public:
   float getTheta();
   int getRangeOfEdges();
   void setThresholds(int gsMin, int gsMax);
-  void setMaskThresholds(Scalar bgrMinTre, Scalar bgrMaxTre, Scalar bgrMinDec, Scalar bgrMaxDec);
+  void setMaskThresholds(Scalar& bgrMinTre, Scalar& bgrMaxTre, Scalar& bgrMinDec, Scalar& bgrMaxDec);
   void setTraceSide(int traceSide);
   void setBinarizationAlgorithm(BinarizationAlgorithm ba);
   void setTraceTargetType(TargetType tt);
   bool isTargetInSight();
+  bool hasCaughtTarget();
   ~Video();
 protected:
   void locateBlocks(vector<vector<Point>>&, vector<Vec4i>&, vector<vector<float>>&);
