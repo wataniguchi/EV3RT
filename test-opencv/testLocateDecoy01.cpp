@@ -1,7 +1,7 @@
 /*
   how to compile:
 
-    g++ testLocateTreasure01.cpp -std=c++14 `pkg-config --cflags --libs opencv4` -I ../msad2023_pri -I/opt/raspivideocap/include -lraspivideocap -L/opt/raspivideocap/lib -o testLocateTreasure01
+    g++ testLocateDecoy01.cpp -std=c++14 `pkg-config --cflags --libs opencv4` -I ../msad2023_pri -I/opt/raspivideocap/include -lraspivideocap -L/opt/raspivideocap/lib -o testLocateDecoy01
 */
 
 /* 
@@ -50,7 +50,7 @@ using std::this_thread::sleep_for;
 #define OUT_FRAME_WIDTH  320
 #define OUT_FRAME_HEIGHT 240
 
-int b_min=0,b_max=50,g_min=0,g_max=35,r_min=50,r_max=255;
+int b_min=50,b_max=255,g_min=0,g_max=60,r_min=0,r_max=30;
 int gs_min=10,gs_max=100;
 char strbuf[4][40];
 
@@ -183,8 +183,12 @@ int main() {
 	sprintf(strbuf[1], "area = %6.1f", cnt_idx[0][0]);
 	sprintf(strbuf[2], "w/h = %4.16f", cnt_idx[0][2]);
 	cout << strbuf[0] << ", " << strbuf[1] << ", " << strbuf[2] << endl;
-        /* draw the largest contour on the original image in red */
-        polylines(img_orig_contour, (vector<vector<Point>>){contours[cnt_idx[0][1]]}, true, Scalar(0,0,255), LINE_THICKNESS);
+        /* draw the largest contour on the original image in blue */
+        polylines(img_orig_contour, (vector<vector<Point>>){contours[cnt_idx[0][1]]}, true, Scalar(255,0,0), LINE_THICKNESS);
+	/* draw the second largest contour if exists */
+	if (cnt_idx.size() >= 2) {
+	  polylines(img_orig_contour, (vector<vector<Point>>){contours[cnt_idx[1][1]]}, true, Scalar(255,0,0), LINE_THICKNESS);
+	}
 	putText(img_orig_contour, strbuf[0],
 		Point(static_cast<int>(FRAME_WIDTH/64),static_cast<int>(5*FRAME_HEIGHT/8)),
 		FONT_HERSHEY_SIMPLEX, FONT_SCALE, Scalar(0,255,0),
