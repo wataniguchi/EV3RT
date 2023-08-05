@@ -40,16 +40,21 @@ using std::this_thread::sleep_for;
 #define FRAME_HEIGHT 240
 //#define FRAME_WIDTH  128
 //#define FRAME_HEIGHT 96
+#define FRAME_X_CENTER int(FRAME_WIDTH/2)
 
-#define LINE_THICKNESS int(FRAME_WIDTH/80)
-#define BLK_AREA_MIN (23.0*FRAME_WIDTH/640.0)*(23.0*FRAME_WIDTH/640.0)
-#define ROI_BOUNDARY int(FRAME_WIDTH/16)
-#define FONT_SCALE double(FRAME_WIDTH)/640.0
-#define MORPH_KERNEL_SIZE roundUpToOdd(int(FRAME_WIDTH/40))
 #define BLK_ROI_U_LIMIT 0
 #define BLK_ROI_D_LIMIT int(7*FRAME_HEIGHT/8)
 #define BLK_ROI_L_LIMIT int(FRAME_WIDTH/8)   /* at bottom of the image */
 #define BLK_ROI_R_LIMIT int(7*FRAME_WIDTH/8) /* at bottom of the image */
+
+#define MORPH_KERNEL_SIZE roundUpToOdd(int(FRAME_WIDTH/40))
+#define BLK_AREA_MIN (23.0*FRAME_WIDTH/640.0)*(23.0*FRAME_WIDTH/640.0)
+#define ROI_BOUNDARY int(FRAME_WIDTH/16)
+#define LINE_THICKNESS int(FRAME_WIDTH/80)
+#define CIRCLE_RADIUS int(FRAME_WIDTH/40)
+#define SCAN_V_POS int(13*FRAME_HEIGHT/16 - LINE_THICKNESS)
+
+#define FONT_SCALE double(FRAME_WIDTH)/640.0
 
 /* frame size for X11 painting */
 #define OUT_FRAME_WIDTH  320
@@ -58,7 +63,6 @@ using std::this_thread::sleep_for;
 int b_min_tre=0,b_max_tre=50,g_min_tre=0,g_max_tre=40,r_min_tre=55,r_max_tre=255;
 int b_min_dec=50,b_max_dec=255,g_min_dec=0,g_max_dec=60,r_min_dec=0,r_max_dec=30;
 int gs_min=10,gs_max=100;
-char strbuf[4][40];
 vector<Point> blk_roi;
 
 int roundUpToOdd(int x) {
@@ -118,6 +122,9 @@ void binalizeWithColorMask(Mat& img_orig, Scalar& bgr_min, Scalar& bgr_max, int 
 }
 
 int main() {
+  char strbuf[4][40];
+  int cx, cy, mx;
+  
   utils::logging::setLogLevel(utils::logging::LOG_LEVEL_WARNING);
   /* set number of threads */
   setNumThreads(0);
@@ -220,13 +227,16 @@ int main() {
     locateBlocks(contours, hierarchy, cnt_idx);
     if (cnt_idx.size() > 0) {
       sort(cnt_idx.begin(), cnt_idx.end(), greater<>());
+      /* draw the largest contour on the original image in red */
+      polylines(img_orig_contour, contours[cnt_idx[0][1]], true, Scalar(0,0,255), LINE_THICKNESS);
+      cx = static_cast<int>(cnt_idx[0][3]);
+      cy = static_cast<int>(cnt_idx[0][4]);
+      mx = FRAME_X_CENTER + static_cast<int>((cx-FRAME_X_CENTER) * (FRAME_HEIGHT-SCAN_V_POS) / (FRAME_HEIGHT-cy));
       /* print information about the identified contour */
-      sprintf(strbuf[0], "cx = %03.0f, cy = %03.0f", cnt_idx[0][3], cnt_idx[0][4]);
+      sprintf(strbuf[0], "cx = %03d, cy = %03d", cx, cy);
       sprintf(strbuf[1], "area = %6.1f", cnt_idx[0][0]);
       sprintf(strbuf[2], "w/h = %4.16f", cnt_idx[0][2]);
       cout << strbuf[0] << ", " << strbuf[1] << ", " << strbuf[2] << endl;
-      /* draw the largest contour on the original image in red */
-      polylines(img_orig_contour, contours[cnt_idx[0][1]], true, Scalar(0,0,255), LINE_THICKNESS);
       putText(img_orig_contour, strbuf[0],
 	      Point(static_cast<int>(FRAME_WIDTH/64),static_cast<int>(5*FRAME_HEIGHT/8)),
 	      FONT_HERSHEY_SIMPLEX, FONT_SCALE, Scalar(0,255,0),
@@ -240,7 +250,7 @@ int main() {
 	      FONT_HERSHEY_SIMPLEX, FONT_SCALE, Scalar(0,255,0),
 	      static_cast<int>(LINE_THICKNESS/4), LINE_4);
       /* set new ROI */
-      int roi_u_limit = cnt_idx[0][4] - ROI_BOUNDARY;
+      int roi_u_limit = cy - ROI_BOUNDARY;
       if (roi_u_limit < 0) roi_u_limit = 0;
       int roi_ul_limit = roi_u_limit * BLK_ROI_L_LIMIT / FRAME_HEIGHT;
       int roi_ur_limit = FRAME_WIDTH - roi_ul_limit;
@@ -249,7 +259,10 @@ int main() {
       vector<Point> roi_new {{roi_ul_limit,roi_u_limit},{roi_ur_limit,roi_u_limit},
 			     {roi_dr_limit,BLK_ROI_D_LIMIT},{roi_dl_limit,BLK_ROI_D_LIMIT}};
       blk_roi = roi_new;
-    } else {
+    } else { /* cnt_idx.size() == 0 */
+      /* keep mx in order to maintain the current move of robot */
+      cx = (int)(FRAME_WIDTH/2);
+      cy = SCAN_V_POS;
       /* reset ROI */
       blk_roi = roi_init;
     }
@@ -272,7 +285,9 @@ int main() {
       }
     }
     /* draw ROI */
-    polylines(img_orig_contour, blk_roi, true, Scalar(0,255,0), LINE_THICKNESS);
+    polylines(img_orig_contour, blk_roi, true, Scalar(0,255,255), LINE_THICKNESS);
+    /* draw the trace target on the image */
+    circle(img_orig_contour, Point(mx, SCAN_V_POS), CIRCLE_RADIUS, Scalar(0,0,255), -1);
 
     /* concatinate the images - original + extracted + binary */
     Mat img_v;
