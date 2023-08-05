@@ -43,8 +43,13 @@ using std::this_thread::sleep_for;
 
 #define LINE_THICKNESS int(FRAME_WIDTH/80)
 #define BLK_AREA_MIN (23.0*FRAME_WIDTH/640.0)*(23.0*FRAME_WIDTH/640.0)
+#define ROI_BOUNDARY int(FRAME_WIDTH/16)
 #define FONT_SCALE double(FRAME_WIDTH)/640.0
 #define MORPH_KERNEL_SIZE roundUpToOdd(int(FRAME_WIDTH/40))
+#define BLK_ROI_U_LIMIT 0
+#define BLK_ROI_D_LIMIT int(7*FRAME_HEIGHT/8)
+#define BLK_ROI_L_LIMIT int(FRAME_WIDTH/8)   /* at bottom of the image */
+#define BLK_ROI_R_LIMIT int(7*FRAME_WIDTH/8) /* at bottom of the image */
 
 /* frame size for X11 painting */
 #define OUT_FRAME_WIDTH  320
@@ -54,6 +59,7 @@ int b_min_tre=0,b_max_tre=50,g_min_tre=0,g_max_tre=40,r_min_tre=55,r_max_tre=255
 int b_min_dec=50,b_max_dec=255,g_min_dec=0,g_max_dec=60,r_min_dec=0,r_max_dec=30;
 int gs_min=10,gs_max=100;
 char strbuf[4][40];
+vector<Point> blk_roi;
 
 int roundUpToOdd(int x) {
   return 2 * ceil(((float)x - 1.0) / 2.0) + 1;
@@ -65,20 +71,21 @@ void locateBlocks(vector<vector<Point>>& contours, vector<Vec4i>& hierarchy,
     if (hierarchy[i][3] == -1) { /* if contour is external */
       vector<Point> cnt = contours[i];
       float area = contourArea(cnt);
+      Moments mom = moments(cnt);
+      /* add 1e-5 to avoid division by zero */
+      float x = mom.m10 / (mom.m00 + 1e-5);
+      float y = mom.m01 / (mom.m00 + 1e-5);
       /* calculate a bounding box around the identified contour */
       Rect bbcnt = boundingRect(cnt);
       float wh = static_cast<float>(bbcnt.width) / bbcnt.height; /* width / height */
       vector<Point> hull;
       convexHull(cnt, hull);
       if (area > BLK_AREA_MIN && wh > 0.5 && wh < 2.0 &&
-	  1.45*area > contourArea(hull) ) { /* area and its hull are not much different */
-	if (hierarchy[i][2] == -1) { /* if the area has no child */
-	  Moments mom = moments(cnt);
-	  /* add 1e-5 to avoid division by zero */
-	  float x = mom.m10 / (mom.m00 + 1e-5);
-	  float y = mom.m01 / (mom.m00 + 1e-5);
+	  1.45*area > contourArea(hull) && /* the contour and its hull are not much different */
+	  pointPolygonTest(blk_roi, Point2f(x,y), false) == 1) { /* the contour is inside ROI */
+	if (hierarchy[i][2] == -1) { /* if the contour has no child */
 	  cnt_idx.push_back({area, float(i), wh, x, y});
-	} else { /* ensure the area is not donut-shaped */
+	} else { /* ensure the contour is not donut-shaped */
 	  bool donut = false;
 	  for (int j = hierarchy[i][2]; j != -1; j = hierarchy[j][0]){ /* traverse all child */
 	    vector<Point> cnt_chd = contours[j];
@@ -86,10 +93,6 @@ void locateBlocks(vector<vector<Point>>& contours, vector<Vec4i>& hierarchy,
 	    if (10.0 * area_chd > area) donut = true;
 	  }
 	  if (donut == false) {
-	    Moments mom = moments(cnt);
-	    /* add 1e-5 to avoid division by zero */
-	    float x = mom.m10 / (mom.m00 + 1e-5);
-	    float y = mom.m01 / (mom.m00 + 1e-5);
 	    cnt_idx.push_back({area, float(i), wh, x, y});
 	  }
 	}
@@ -156,6 +159,11 @@ int main() {
   setTrackbarPos("GS_min", "testTrace1", gs_min);
   createTrackbar("GS_max", "testTrace1", nullptr, 255, nullptr);
   setTrackbarPos("GS_max", "testTrace1", gs_max);
+  int roi_dl_limit = BLK_ROI_D_LIMIT * BLK_ROI_L_LIMIT / FRAME_HEIGHT;
+  int roi_dr_limit = FRAME_WIDTH - roi_dl_limit;
+  vector<Point> roi_init {{0,BLK_ROI_U_LIMIT},{FRAME_WIDTH,BLK_ROI_U_LIMIT},
+			      {roi_dr_limit,BLK_ROI_D_LIMIT},{roi_dl_limit,BLK_ROI_D_LIMIT}};
+  blk_roi = roi_init;
 
   while (true) {
     /* obtain values from the trackbars */
@@ -231,6 +239,19 @@ int main() {
 	      Point(static_cast<int>(FRAME_WIDTH/64),static_cast<int>(7*FRAME_HEIGHT/8)),
 	      FONT_HERSHEY_SIMPLEX, FONT_SCALE, Scalar(0,255,0),
 	      static_cast<int>(LINE_THICKNESS/4), LINE_4);
+      /* set new ROI */
+      int roi_u_limit = cnt_idx[0][4] - ROI_BOUNDARY;
+      if (roi_u_limit < 0) roi_u_limit = 0;
+      int roi_ul_limit = roi_u_limit * BLK_ROI_L_LIMIT / FRAME_HEIGHT;
+      int roi_ur_limit = FRAME_WIDTH - roi_ul_limit;
+      int roi_dl_limit = BLK_ROI_D_LIMIT * BLK_ROI_L_LIMIT / FRAME_HEIGHT;
+      int roi_dr_limit = FRAME_WIDTH - roi_dl_limit;
+      vector<Point> roi_new {{roi_ul_limit,roi_u_limit},{roi_ur_limit,roi_u_limit},
+			     {roi_dr_limit,BLK_ROI_D_LIMIT},{roi_dl_limit,BLK_ROI_D_LIMIT}};
+      blk_roi = roi_new;
+    } else {
+      /* reset ROI */
+      blk_roi = roi_init;
     }
 
     /* prepare for locating the decoy blocks */
@@ -250,6 +271,8 @@ int main() {
 	polylines(img_orig_contour, contours_dec[cnt_idx_dec[i][1]], true, Scalar(255,0,0), LINE_THICKNESS);
       }
     }
+    /* draw ROI */
+    polylines(img_orig_contour, blk_roi, true, Scalar(0,255,0), LINE_THICKNESS);
 
     /* concatinate the images - original + extracted + binary */
     Mat img_v;
