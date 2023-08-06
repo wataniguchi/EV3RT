@@ -778,20 +778,22 @@ protected:
 /*
     usage:
     ".leaf<RotateEV3>(30, speed, srew_rate)"
-    is to rotate robot 30 degrees (=clockwise) at the specified speed.
+    is to rotate robot 30 degrees (=clockwise in L course and counter-clockwise in R course)
+    at the specified speed.
     srew_rate = 0.0 indidates NO tropezoidal motion.
     srew_rate = 0.5 instructs FilteredMotor to change 1 pwm every two executions of update()
     until the current speed gradually reaches the instructed target speed.
 */
 class RotateEV3 : public BrainTree::Node {
 public:
-    RotateEV3(int16_t degree, int s, double srew_rate) : deltaDegreeTarget(degree),speed(s),srewRate(srew_rate) {
+    RotateEV3(int degree, int s, double srew_rate) : deltaDegreeTarget(degree),speed(s),srewRate(srew_rate) {
         updated = false;
         assert(degree >= -180 && degree <= 180);
-        if (degree > 0) {
-            clockwise = 1;
+	deltaDegreeTarget = _COURSE * degree; /* _COURSE = -1 when R course */
+        if (deltaDegreeTarget > 0) {
+	  clockwise = 1; 
         } else {
-            clockwise = -1;
+	  clockwise = -1;
         }
     }
     Status update() override {
@@ -802,12 +804,12 @@ public:
             /* stop the robot at start */
             leftMotor->setPWM(0);
             rightMotor->setPWM(0);
-            _log("ODO=%05d, Rotation started. Current degree = %d", plotter->getDistance(), originalDegree);
+            _log("ODO=%05d, Rotation for %d started. Current angle = %d", plotter->getDistance(), deltaDegreeTarget, originalDegree);
             updated = true;
             return Status::Running;
         }
 
-        int16_t deltaDegree = gyroSensor->getAngle() - originalDegree;
+        int deltaDegree = gyroSensor->getAngle() - originalDegree;
         if (deltaDegree > 180) {
             deltaDegree -= 360;
         } else if (deltaDegree < -180) {
@@ -824,12 +826,15 @@ public:
             }
             return Status::Running;
         } else {
-            _log("ODO=%05d, Rotation ended. Current degree = %d", plotter->getDistance(), gyroSensor->getAngle());
+            /* stop the robot at end */
+            leftMotor->setPWM(0);
+            rightMotor->setPWM(0);
+            _log("ODO=%05d, Rotation ended. Current angle = %d", plotter->getDistance(), gyroSensor->getAngle());
             return Status::Success;
         }
     }
 private:
-    int16_t deltaDegreeTarget, originalDegree;
+    int deltaDegreeTarget, originalDegree;
     int clockwise, speed;
     bool updated;
     double srewRate;
