@@ -151,8 +151,9 @@
 #define TR_RUN_L \
   /* RUN_L: camera line trace until Blue is detected by color sensor */ \
   .composite<BrainTree::MemSequence>() \
-    .composite<BrainTree::ParallelSequence>(1,2) \
+    .composite<BrainTree::ParallelSequence>(1,3) \
       .leaf<IsColorDetected>(CL_RED) \
+      .leaf<IsDistanceEarned>(prof->getValueAsNum("RUN_L1_DIST")) \
       .composite<BrainTree::MemSequence>() \
         .leaf<TraceLineCam>(prof->getValueAsNum("RUN_L1_SPEED"), \
 	      prof->getValueAsNumVec("RUN_Lx_PID_CONST"), \

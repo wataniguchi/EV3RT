@@ -234,8 +234,9 @@ Mat Video::calculateTarget(Mat f) {
       targetInSight = true;
     } else { /* cnt_idx.size() == 0 */
       /* keep mx in order to maintain the current move of robot */
-      cx = (int)(FRAME_WIDTH/2);
-      cy = SCAN_V_POS;
+      /* keep cx and cy as well in order for hasCaught() to work properly */
+      //cx = (int)(FRAME_WIDTH/2);
+      //cy = SCAN_V_POS;
       /* reset ROI */
       blk_roi = blk_roi_init;
       targetInSight = false;
@@ -254,9 +255,58 @@ Mat Video::calculateTarget(Mat f) {
       /* draw the two largest contour on the console image in blue */
       for (unsigned int i = 0; i < 2 && i < cnt_idx_dec.size(); i++) {
 	polylines(f, contours_dec[cnt_idx_dec[i][1]], true, Scalar(255,0,0), LINE_THICKNESS);
+	if (cnt_idx.size() > 0 && /* when treasure block is in-sight */
+	    cnt_idx_dec[0][4] > cy) { /* decoy block is closer than the treasure block */
+	  Point l_limit_dec, r_limit_dec, l_limit_tre, r_limit_tre;
+	  /* identify the left- and right-most point in the decoy block contour */ 
+	  vector<Point> cnt_dec = contours_dec[cnt_idx_dec[0][1]];
+	  l_limit_dec = r_limit_dec = cnt_dec[0];
+	  for (unsigned int j = 1; j < cnt_dec.size(); j++) {
+	    Point p_dec = cnt_dec[j];
+	    if (p_dec.x < l_limit_dec.x) {
+	      l_limit_dec = p_dec;
+	    } else if (p_dec.x > r_limit_dec.x) {
+	      r_limit_dec = p_dec;
+	    }
+	  }
+	  /* identify the left- and right-most point in the treasure block contour */ 
+	  vector<Point> cnt_tre = contours[cnt_idx[0][1]];
+	  l_limit_tre = r_limit_tre = cnt_tre[0];
+	  for (unsigned int j = 1; j < cnt_tre.size(); j++) {
+	    Point p_tre = cnt_tre[j];
+	    if (p_tre.x < l_limit_tre.x) {
+	      l_limit_tre = p_tre;
+	    } else if (p_tre.x > r_limit_tre.x) {
+	      r_limit_tre = p_tre;
+	    }
+	  }
+	  /* normalize x of the four points */
+	  int l_limit_dec_x = FRAME_X_CENTER + (static_cast<int>(l_limit_dec.x-FRAME_X_CENTER) * (FRAME_HEIGHT-SCAN_V_POS) / (FRAME_HEIGHT-l_limit_dec.y));
+	  int r_limit_dec_x = FRAME_X_CENTER + (static_cast<int>(r_limit_dec.x-FRAME_X_CENTER) * (FRAME_HEIGHT-SCAN_V_POS) / (FRAME_HEIGHT-r_limit_dec.y));
+	  int l_limit_tre_x = FRAME_X_CENTER + (static_cast<int>(l_limit_tre.x-FRAME_X_CENTER) * (FRAME_HEIGHT-SCAN_V_POS) / (FRAME_HEIGHT-l_limit_tre.y));
+	  int r_limit_tre_x = FRAME_X_CENTER + (static_cast<int>(r_limit_tre.x-FRAME_X_CENTER) * (FRAME_HEIGHT-SCAN_V_POS) / (FRAME_HEIGHT-r_limit_tre.y));
+	  /* set clearance using the width of decoy block and the distance to it */
+	  int clearance = (FRAME_HEIGHT/2) *(r_limit_dec_x - l_limit_dec_x) / (SCAN_V_POS - cnt_idx_dec[0][4]);
+	  /* determine if the decoy and treasure block are overlapping each other */
+	  if (r_limit_dec_x + clearance >= l_limit_tre_x && l_limit_dec_x - clearance <= r_limit_tre_x) {
+	    /* adjust the course of robot accordingly */
+	    if (l_limit_dec_x > l_limit_tre_x) {
+	      line(f, Point(l_limit_dec.x, l_limit_dec.y), Point(l_limit_dec_x, SCAN_V_POS), Scalar(255,0,0), int(LINE_THICKNESS/2));
+	      if (mx > l_limit_dec_x - clearance) mx = l_limit_dec_x - clearance;
+	    } else if (r_limit_dec_x < r_limit_tre_x) {
+	      line(f, Point(r_limit_dec.x, r_limit_dec.y), Point(r_limit_dec_x, SCAN_V_POS), Scalar(255,0,0), int(LINE_THICKNESS/2));
+	      if (mx < r_limit_dec_x + clearance) mx = r_limit_dec_x + clearance;
+	    } else if (abs(r_limit_dec_x-r_limit_tre_x) < abs(l_limit_dec_x-l_limit_tre_x)) {
+	      line(f, Point(r_limit_dec.x, r_limit_dec.y), Point(r_limit_dec_x, SCAN_V_POS), Scalar(255,0,0), int(LINE_THICKNESS/2));
+	      if (mx < r_limit_dec_x + clearance) mx = r_limit_dec_x + clearance;
+	    } else {
+	      line(f, Point(l_limit_dec.x, l_limit_dec.y), Point(l_limit_dec_x, SCAN_V_POS), Scalar(255,0,0), int(LINE_THICKNESS/2));
+	      if (mx > l_limit_dec_x - clearance) mx = l_limit_dec_x - clearance;
+	    }
+	  }
+	}
       }
-    }
-    
+    }   
     /* draw ROI */
     polylines(f, blk_roi, true, Scalar(0,255,255), LINE_THICKNESS);
 
