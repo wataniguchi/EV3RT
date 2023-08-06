@@ -10,7 +10,11 @@ extern "C" {
 #include "target_test.h"
 
 /* task priorities (smaller number has higher priority) */
+#define PRIORITY_UPD_TSK    TMIN_APP_TPRI
 #define PRIORITY_MAIN_TASK  TMIN_APP_TPRI
+
+/* task periods in micro seconds */
+#define PERIOD_UPD_TSK      (60 * 1000)
 
 /* default task stack size in bytes */
 #ifndef STACK_SIZE
@@ -21,6 +25,7 @@ extern "C" {
 #ifndef TOPPERS_MACRO_ONLY
 
 extern void main_task(intptr_t unused);
+extern void update_task(intptr_t unused);
 
 #endif /* TOPPERS_MACRO_ONLY */
 

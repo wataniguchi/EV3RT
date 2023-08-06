@@ -30,8 +30,8 @@ using namespace ev3api;
 
 //#include "FilteredMotor.hpp"
 //#include "SRLF.hpp"
-//#include "FilteredColorSensor.hpp"
-//#include "FIR.hpp"
+#include "FilteredColorSensor.hpp"
+#include "FIR.hpp"
 //#include "Plotter.hpp"
 //#include "PIDcalculator.hpp"
 
@@ -138,7 +138,7 @@ extern FILE*        bt;
 extern Clock*       ev3clock;
 extern TouchSensor* touchSensor;
 extern SonarSensor* sonarSensor;
-//extern FilteredColorSensor* colorSensor;
+extern FilteredColorSensor* colorSensor;
 extern GyroSensor*  gyroSensor;
 //extern SRLF*        srlf_l;
 //extern FilteredMotor*       leftMotor;

@@ -2,7 +2,7 @@ mkfile_path := $(dir $(lastword $(MAKEFILE_LIST)))
 
 APPL_COBJS +=
 
-APPL_CXXOBJS +=
+APPL_CXXOBJS += FIR.o FilteredColorSensor.o
 
 SRCLANG := c++
 
