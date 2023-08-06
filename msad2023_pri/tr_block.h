@@ -19,7 +19,7 @@
             prof->getValueAsNumVec("BLOCK_Lx_BGR_MIN_DEC"), \
             prof->getValueAsNumVec("BLOCK_Lx_BGR_MAX_DEC"))	\
     .composite<BrainTree::ParallelSequence>(1,2) \
-      .leaf<IsDistanceEarned>(800) \
+      .leaf<IsDistanceEarned>(1200) \
       .leaf<ApproachBlock>(prof->getValueAsNum("BLOCK_Lx_SPEED"), \
 	    prof->getValueAsNumVec("BLOCK_Lx_PID_CONST"), \
 	    prof->getValueAsNum("BLOCK_Lx_GS_MIN"), \

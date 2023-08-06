@@ -15,18 +15,19 @@ void Video::locateBlocks(vector<vector<Point>>& contours, vector<Vec4i>& hierarc
     if (hierarchy[i][3] == -1) { /* if contour is external */
       vector<Point> cnt = contours[i];
       float area = contourArea(cnt);
+      Moments mom = moments(cnt);
+      /* add 1e-5 to avoid division by zero */
+      float x = mom.m10 / (mom.m00 + 1e-5);
+      float y = mom.m01 / (mom.m00 + 1e-5);
       /* calculate a bounding box around the identified contour */
       Rect bbcnt = boundingRect(cnt);
       float wh = static_cast<float>(bbcnt.width) / bbcnt.height; /* width / height */
       vector<Point> hull;
       convexHull(cnt, hull);
-      if (area > BLK_AREA_MIN && wh > 0.5 && wh < 2.0 &&
-	  1.45*area > contourArea(hull) ) { /* area and its hull are not much different */
-	if (hierarchy[i][2] == -1) { /* if the area has no child */
-	  Moments mom = moments(cnt);
-	  /* add 1e-5 to avoid division by zero */
-	  float x = mom.m10 / (mom.m00 + 1e-5);
-	  float y = mom.m01 / (mom.m00 + 1e-5);
+      if (area > BLK_AREA_MIN && wh > 0.3 && wh < 3.0 &&
+	  1.45*area > contourArea(hull) && /* the contour and its hull are not much different */
+	  pointPolygonTest(blk_roi, Point2f(x,y), false) == 1) { /* the contour is inside ROI */
+	if (hierarchy[i][2] == -1) { /* if the contour has no child */
 	  cnt_idx.push_back({area, float(i), wh, x, y});
 	} else { /* ensure the area is not donut-shaped */
 	  bool donut = false;
@@ -36,10 +37,6 @@ void Video::locateBlocks(vector<vector<Point>>& contours, vector<Vec4i>& hierarc
 	    if (10.0 * area_chd > area) donut = true;
 	  }
 	  if (donut == false) {
-	    Moments mom = moments(cnt);
-	    /* add 1e-5 to avoid division by zero */
-	    float x = mom.m10 / (mom.m00 + 1e-5);
-	    float y = mom.m01 / (mom.m00 + 1e-5);
 	    cnt_idx.push_back({area, float(i), wh, x, y});
 	  }
 	}
@@ -119,6 +116,12 @@ Video::Video() {
 
   /* initial region of interest is set to crop zone */
   roi = Rect(CROP_L_LIMIT, CROP_U_LIMIT, CROP_WIDTH, CROP_HEIGHT);
+  /* initial ROI for TT_BLKS */
+  int roi_dl_limit = BLK_ROI_D_LIMIT * BLK_ROI_L_LIMIT / FRAME_HEIGHT;
+  int roi_dr_limit = FRAME_WIDTH - roi_dl_limit;
+  vector<Point> roi_init {{0,BLK_ROI_U_LIMIT},{FRAME_WIDTH,BLK_ROI_U_LIMIT},
+			  {roi_dr_limit,BLK_ROI_D_LIMIT},{roi_dl_limit,BLK_ROI_D_LIMIT}};
+  blk_roi = blk_roi_init = roi_init;
   /* prepare and keep kernel for morphology */
   kernel = Mat::ones(Size(MORPH_KERNEL_SIZE,MORPH_KERNEL_SIZE), CV_8UC1);
   /* initial trace target */
@@ -203,22 +206,6 @@ Mat Video::calculateTarget(Mat f) {
     /* keep the original image for repeated use for identifying all blocks */
     img_orig = f.clone();
 
-    /* prepare for locating the decoy blocks */
-    binalizeWithColorMask(img_orig, bgr_min_dec, bgr_max_dec, gsmin, gsmax, img_bin_dec);
-    /* locate the decoy blocks */
-    vector<vector<Point>> contours_dec;
-    vector<Vec4i> hierarchy_dec;
-    findContours(img_bin_dec, contours_dec, hierarchy_dec, RETR_TREE, CHAIN_APPROX_SIMPLE);
-    vector<vector<float>> cnt_idx_dec; /* cnt_idx: area, idx, w/h, x, y */
-    locateBlocks(contours_dec, hierarchy_dec, cnt_idx_dec);
-    if (cnt_idx_dec.size() > 0) {
-      sort(cnt_idx_dec.begin(), cnt_idx_dec.end(), greater<>());
-      /* draw the two largest contour on the console image in blue */
-      for (unsigned int i = 0; i < 2 && i < cnt_idx_dec.size(); i++) {
-	polylines(f, contours_dec[cnt_idx_dec[i][1]], true, Scalar(255,0,0), LINE_THICKNESS);
-      }
-    }
-
     /* prepare for locating the treasure block */
     binalizeWithColorMask(img_orig, bgr_min_tre, bgr_max_tre, gsmin, gsmax, img_bin_tre);
     /* locate the treasure block */
@@ -234,13 +221,45 @@ Mat Video::calculateTarget(Mat f) {
       cx = static_cast<int>(cnt_idx[0][3]);
       cy = static_cast<int>(cnt_idx[0][4]);
       mx = FRAME_X_CENTER + static_cast<int>((cx-FRAME_X_CENTER) * (FRAME_HEIGHT-SCAN_V_POS) / (FRAME_HEIGHT-cy));
+      /* set new ROI */
+      int roi_u_limit = cy - ROI_BOUNDARY;
+      if (roi_u_limit < 0) roi_u_limit = 0;
+      int roi_ul_limit = roi_u_limit * BLK_ROI_L_LIMIT / FRAME_HEIGHT;
+      int roi_ur_limit = FRAME_WIDTH - roi_ul_limit;
+      int roi_dl_limit = BLK_ROI_D_LIMIT * BLK_ROI_L_LIMIT / FRAME_HEIGHT;
+      int roi_dr_limit = FRAME_WIDTH - roi_dl_limit;
+      vector<Point> roi_new {{roi_ul_limit,roi_u_limit},{roi_ur_limit,roi_u_limit},
+			     {roi_dr_limit,BLK_ROI_D_LIMIT},{roi_dl_limit,BLK_ROI_D_LIMIT}};
+      blk_roi = roi_new;
       targetInSight = true;
     } else { /* cnt_idx.size() == 0 */
       /* keep mx in order to maintain the current move of robot */
       cx = (int)(FRAME_WIDTH/2);
       cy = SCAN_V_POS;
+      /* reset ROI */
+      blk_roi = blk_roi_init;
       targetInSight = false;
     }
+
+    /* prepare for locating the decoy blocks */
+    binalizeWithColorMask(img_orig, bgr_min_dec, bgr_max_dec, gsmin, gsmax, img_bin_dec);
+    /* locate the decoy blocks */
+    vector<vector<Point>> contours_dec;
+    vector<Vec4i> hierarchy_dec;
+    findContours(img_bin_dec, contours_dec, hierarchy_dec, RETR_TREE, CHAIN_APPROX_SIMPLE);
+    vector<vector<float>> cnt_idx_dec; /* cnt_idx: area, idx, w/h, x, y */
+    locateBlocks(contours_dec, hierarchy_dec, cnt_idx_dec);
+    if (cnt_idx_dec.size() > 0) {
+      sort(cnt_idx_dec.begin(), cnt_idx_dec.end(), greater<>());
+      /* draw the two largest contour on the console image in blue */
+      for (unsigned int i = 0; i < 2 && i < cnt_idx_dec.size(); i++) {
+	polylines(f, contours_dec[cnt_idx_dec[i][1]], true, Scalar(255,0,0), LINE_THICKNESS);
+      }
+    }
+    
+    /* draw ROI */
+    polylines(f, blk_roi, true, Scalar(0,255,255), LINE_THICKNESS);
+
   } else if (traceTargetType == TT_LINE) {
     Mat img_gray, img_gray_part, img_bin_part, img_bin, img_bin_mor, img_cnt_gray, scan_line;
 
@@ -463,6 +482,9 @@ void Video::setTraceTargetType(TargetType tt) {
   if (tt == TT_LINE) {
     /* initial region of interest is set to crop zone */
     roi = Rect(CROP_L_LIMIT, CROP_U_LIMIT, CROP_WIDTH, CROP_HEIGHT);
+  } else {
+    /* initial ROI */
+    blk_roi = blk_roi_init;
   }
   /* initial trace target */
   cx = (int)(FRAME_WIDTH/2);

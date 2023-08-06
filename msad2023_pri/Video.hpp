@@ -63,6 +63,10 @@ extern FilteredMotor*       rightMotor;
 #define CROP_D_LIMIT (CROP_U_LIMIT+CROP_HEIGHT)
 #define CROP_L_LIMIT int((FRAME_WIDTH-CROP_WIDTH)/2)
 #define CROP_R_LIMIT (CROP_L_LIMIT+CROP_WIDTH)
+#define BLK_ROI_U_LIMIT 0
+#define BLK_ROI_D_LIMIT int(7*FRAME_HEIGHT/8)
+#define BLK_ROI_L_LIMIT int(FRAME_WIDTH/8)   /* at bottom of the image */
+#define BLK_ROI_R_LIMIT int(7*FRAME_WIDTH/8) /* at bottom of the image */
 
 #define MORPH_KERNEL_SIZE roundUpToOdd(int(FRAME_WIDTH/40))
 #define BLK_AREA_MIN (23.0*FRAME_WIDTH/640.0)*(23.0*FRAME_WIDTH/640.0)
@@ -104,6 +108,7 @@ protected:
   RaspiVideoCapture cap;
 #endif /* WITH_V3CAM */
   Rect roi;
+  vector<Point> blk_roi, blk_roi_init;
   Display* disp;
   Screen* sc;
   Window win;
