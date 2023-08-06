@@ -48,8 +48,7 @@ using std::this_thread::sleep_for;
 #define BLK_ROI_R_LIMIT int(7*FRAME_WIDTH/8) /* at bottom of the image */
 
 #define MORPH_KERNEL_SIZE roundUpToOdd(int(FRAME_WIDTH/40))
-#define BLK_LEN_MIN (23.0*FRAME_WIDTH/640.0)
-#define BLK_AREA_MIN (BLK_LEN_MIN*BLK_LEN_MIN)
+#define BLK_AREA_MIN (23.0*FRAME_WIDTH/640.0)*(23.0*FRAME_WIDTH/640.0)
 #define ROI_BOUNDARY int(FRAME_WIDTH/16)
 #define LINE_THICKNESS int(FRAME_WIDTH/80)
 #define CIRCLE_RADIUS int(FRAME_WIDTH/40)
@@ -85,7 +84,7 @@ void locateBlocks(vector<vector<Point>>& contours, vector<Vec4i>& hierarchy,
       float wh = static_cast<float>(bbcnt.width) / bbcnt.height; /* width / height */
       vector<Point> hull;
       convexHull(cnt, hull);
-      if (area > BLK_AREA_MIN && wh > 0.5 && wh < 2.0 &&
+      if (area > BLK_AREA_MIN && wh > 0.3 && wh < 3.0 &&
 	  1.45*area > contourArea(hull) && /* the contour and its hull are not much different */
 	  pointPolygonTest(blk_roi, Point2f(x,y), false) == 1) { /* the contour is inside ROI */
 	if (hierarchy[i][2] == -1) { /* if the contour has no child */
@@ -313,10 +312,23 @@ int main() {
 	  int r_limit_dec_x = FRAME_X_CENTER + (static_cast<int>(r_limit_dec.x-FRAME_X_CENTER) * (FRAME_HEIGHT-SCAN_V_POS) / (FRAME_HEIGHT-r_limit_dec.y));
 	  int l_limit_tre_x = FRAME_X_CENTER + (static_cast<int>(l_limit_tre.x-FRAME_X_CENTER) * (FRAME_HEIGHT-SCAN_V_POS) / (FRAME_HEIGHT-l_limit_tre.y));
 	  int r_limit_tre_x = FRAME_X_CENTER + (static_cast<int>(r_limit_tre.x-FRAME_X_CENTER) * (FRAME_HEIGHT-SCAN_V_POS) / (FRAME_HEIGHT-r_limit_tre.y));
+	  int width_dec = r_limit_dec_x - l_limit_dec_x;
 	  /* determine if the decoy and treasure block are overlapping each other */
-	  if (r_limit_dec_x >= l_limit_tre_x && l_limit_dec_x <= r_limit_tre_x) {
-	    cout << "decoy block is on my path!!!" << endl;
-	    break;
+	  if (r_limit_dec_x + width_dec >= l_limit_tre_x && l_limit_dec_x - width_dec <= r_limit_tre_x) {
+	    /* adjust the course of robot accordingly */
+	    if (l_limit_dec_x > l_limit_tre_x) {
+	      line(img_orig_contour, Point(l_limit_dec.x, l_limit_dec.y), Point(l_limit_dec_x, SCAN_V_POS), Scalar(255,0,0), int(LINE_THICKNESS/2));
+	      if (mx > l_limit_dec_x - width_dec) mx = l_limit_dec_x - width_dec;
+	    } else if (r_limit_dec_x < r_limit_tre_x) {
+	      line(img_orig_contour, Point(r_limit_dec.x, r_limit_dec.y), Point(r_limit_dec_x, SCAN_V_POS), Scalar(255,0,0), int(LINE_THICKNESS/2));
+	      if (mx < r_limit_dec_x + width_dec) mx = r_limit_dec_x + width_dec;
+	    } else if (abs(r_limit_dec_x-r_limit_tre_x) < abs(l_limit_dec_x-l_limit_tre_x)) {
+	      line(img_orig_contour, Point(r_limit_dec.x, r_limit_dec.y), Point(r_limit_dec_x, SCAN_V_POS), Scalar(255,0,0), int(LINE_THICKNESS/2));
+	      if (mx < r_limit_dec_x + width_dec) mx = r_limit_dec_x + width_dec;
+	    } else {
+	      line(img_orig_contour, Point(l_limit_dec.x, l_limit_dec.y), Point(l_limit_dec_x, SCAN_V_POS), Scalar(255,0,0), int(LINE_THICKNESS/2));
+	      if (mx > l_limit_dec_x - width_dec) mx = l_limit_dec_x - width_dec;
+	    }
 	  }
 	}
       }
