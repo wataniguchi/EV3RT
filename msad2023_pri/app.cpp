@@ -334,45 +334,35 @@ public:
                 }
                 break;
 	    case CL_BLACK:
-                if (cur_rgb.r <= 20 && cur_rgb.g <= 20 && cur_rgb.b <= 20 &&
-		    abs(cur_rgb.r - cur_rgb.g) <= 3 &&
-		    abs(cur_rgb.g - cur_rgb.b) <= 3 &&
-		    abs(cur_rgb.b - cur_rgb.r) <= 3) {
+	        if (cur_rgb.r <= 30 && cur_rgb.g <= 30 && cur_rgb.b <= 30) {
                     _log("ODO=%05d, CL_BLACK detected.", plotter->getDistance());
                     return Status::Success;
                 }
                 break;
             case CL_BLUE:
-                if (cur_rgb.r <= 35 && cur_rgb.g <= 40 &&
-		    cur_rgb.b - cur_rgb.g >= 7 &&
-		    cur_rgb.b - cur_rgb.r >= 10) {
+	        if (cur_rgb.r <= 50 && cur_rgb.g <= 80 && cur_rgb.b >= 100) {
                     _log("ODO=%05d, CL_BLUE detected.", plotter->getDistance());
                     return Status::Success;
                 }
                 break;
-	    case CL_RED: /* working */
-                if (cur_rgb.r >= 70 &&
-		    cur_rgb.r - cur_rgb.g < 50 &&
-		    cur_rgb.r - cur_rgb.b >= 20) {
+	    case CL_RED:
+	        if (cur_rgb.r >= 100 && cur_rgb.g <= 70 && cur_rgb.b <= 70) {
                     _log("ODO=%05d, CL_RED detected.", plotter->getDistance());
                     return Status::Success;
                 }
                 break;
             case CL_YELLOW:
-                if (cur_rgb.r >= 30 && cur_rgb.g >= 25 &&
-		    cur_rgb.r - cur_rgb.g >= 7) {
+	        if (cur_rgb.r >= 140 && cur_rgb.g >= 120 && cur_rgb.b <= 110) {
                      _log("ODO=%05d, CL_YELLOW detected.", plotter->getDistance());
                      return Status::Success;
-                 }
-                 break;
+                }
+                break;
             case CL_GREEN:
-                if (cur_rgb.g >= 10 &&
-		    cur_rgb.g - cur_rgb.r >= 5 &&
-		    cur_rgb.g - cur_rgb.b >= 2) {
+	        if (cur_rgb.r <= 60 && cur_rgb.g >= 80 && cur_rgb.b <= 75) {
                      _log("ODO=%05d, CL_GREEN detected.", plotter->getDistance());
                      return Status::Success;
-                 }   
-                 break;
+                }   
+                break;
             default:
                 break;
         }
@@ -806,7 +796,7 @@ public:
     }
     Status update() override {
         if (!updated) {
-            originalDegree = plotter->getDegree();
+            originalDegree = gyroSensor->getAngle();
             srlfL->setRate(srewRate);
             srlfR->setRate(srewRate);
             /* stop the robot at start */
@@ -817,7 +807,7 @@ public:
             return Status::Running;
         }
 
-        int16_t deltaDegree = plotter->getDegree() - originalDegree;
+        int16_t deltaDegree = gyroSensor->getAngle() - originalDegree;
         if (deltaDegree > 180) {
             deltaDegree -= 360;
         } else if (deltaDegree < -180) {
@@ -834,7 +824,7 @@ public:
             }
             return Status::Running;
         } else {
-            _log("ODO=%05d, Rotation ended. Current degree = %d", plotter->getDistance(), plotter->getDegree());
+            _log("ODO=%05d, Rotation ended. Current degree = %d", plotter->getDistance(), gyroSensor->getAngle());
             return Status::Success;
         }
     }

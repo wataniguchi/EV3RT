@@ -68,11 +68,17 @@ void main_task(intptr_t unused)
 
 	rgb_raw_t cur_rgb;
 	hsv_raw_t cur_hsv;
+	uint8_t color = 0;
         colorSensor->getRawColor(cur_rgb);
         rgb_to_hsv(cur_rgb, cur_hsv);
-        _log("rgb = (%03u, %03u, %03u)", cur_rgb.r, cur_rgb.g, cur_rgb.b);
-        _log("hsv = (%03u, %03u, %03u)", cur_hsv.h, cur_hsv.s, cur_hsv.v);
-
+	if (cur_rgb.r <= 30 && cur_rgb.g <= 30 && cur_rgb.b <= 30) color |= 1; /* black */
+	if (cur_rgb.r >= 100 && cur_rgb.g <= 70 && cur_rgb.b <= 70) color |= 2; /* red */
+	if (cur_rgb.r <= 60 && cur_rgb.g >= 80 && cur_rgb.b <= 75) color |= 4; /* green */
+	if (cur_rgb.r <= 50 && cur_rgb.g <= 80 && cur_rgb.b >= 100) color |= 8; /* blue */
+	if (cur_rgb.r >= 140 && cur_rgb.g >= 120 && cur_rgb.b <= 110) color |= 16; /* yellow */
+	if (cur_rgb.r >= 200 && cur_rgb.g >= 200 && cur_rgb.b >= 200) color |= 32; /* white */
+        _log("color = %02u, rgb = (%03u, %03u, %03u), hsv = (%03u, %03u, %03u)",
+	     color, cur_rgb.r, cur_rgb.g, cur_rgb.b, cur_hsv.h, cur_hsv.s, cur_hsv.v);
 	int16_t gyro = gyroSensor->getAngle();
 	int16_t dist = 10 * (sonarSensor->getDistance());
         _log("gyro = %d, dist = %d", gyro, dist);
