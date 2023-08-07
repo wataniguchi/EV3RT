@@ -5,6 +5,65 @@
 #include "Video.hpp"
 #include "appusr.hpp"
 
+int roundUpToOdd(int x) {
+  return 2 * ceil(((float)x - 1.0) / 2.0) + 1;
+}
+
+void Video::locateBlocks(vector<vector<Point>>& contours, vector<Vec4i>& hierarchy,
+		  vector<vector<float>>& cnt_idx) { /* cnt_idx: area, idx, w/h, x, y */
+  for (unsigned int i = 0; i < contours.size(); i++) {
+    if (hierarchy[i][3] == -1) { /* if contour is external */
+      vector<Point> cnt = contours[i];
+      float area = contourArea(cnt);
+      /* calculate a bounding box around the identified contour */
+      Rect bbcnt = boundingRect(cnt);
+      float wh = static_cast<float>(bbcnt.width) / bbcnt.height; /* width / height */
+      vector<Point> hull;
+      convexHull(cnt, hull);
+      if (area > BLK_AREA_MIN && wh > 0.5 && wh < 2.0 &&
+	  1.45*area > contourArea(hull) ) { /* area and its hull are not much different */
+	if (hierarchy[i][2] == -1) { /* if the area has no child */
+	  Moments mom = moments(cnt);
+	  /* add 1e-5 to avoid division by zero */
+	  float x = mom.m10 / (mom.m00 + 1e-5);
+	  float y = mom.m01 / (mom.m00 + 1e-5);
+	  cnt_idx.push_back({area, float(i), wh, x, y});
+	} else { /* ensure the area is not donut-shaped */
+	  bool donut = false;
+	  for (int j = hierarchy[i][2]; j != -1; j = hierarchy[j][0]){ /* traverse all child */
+	    vector<Point> cnt_chd = contours[j];
+	    float area_chd = contourArea(cnt_chd);
+	    if (10.0 * area_chd > area) donut = true;
+	  }
+	  if (donut == false) {
+	    Moments mom = moments(cnt);
+	    /* add 1e-5 to avoid division by zero */
+	    float x = mom.m10 / (mom.m00 + 1e-5);
+	    float y = mom.m01 / (mom.m00 + 1e-5);
+	    cnt_idx.push_back({area, float(i), wh, x, y});
+	  }
+	}
+      }
+    }
+  }
+  return;
+}
+
+void Video::binalizeWithColorMask(Mat& img_orig, Scalar& bgr_min, Scalar& bgr_max, int gs_min, int gs_max, Mat& img_bin_mor) {
+  Mat img_mask, img_ext, img_gray, img_bin;
+  /* extract areas by color */
+  inRange(img_orig, bgr_min, bgr_max, img_mask);
+  bitwise_and(img_orig, img_orig, img_ext, img_mask);
+  /* convert the extracted image from BGR to grayscale */
+  cvtColor(img_ext, img_gray, COLOR_BGR2GRAY);
+  /* binarize the image */
+  inRange(img_gray, gs_min, gs_max, img_bin);
+  /* remove noise */
+  //Mat kernel = Mat::ones(Size(MORPH_KERNEL_SIZE,MORPH_KERNEL_SIZE), CV_8UC1);
+  morphologyEx(img_bin, img_bin_mor, MORPH_CLOSE, kernel);
+  return;
+}
+
 Video::Video() {
   utils::logging::setLogLevel(utils::logging::LOG_LEVEL_INFO);
   /* set number of threads */
@@ -26,11 +85,6 @@ Video::Video() {
   assert(cap.open(inFrameWidth, inFrameHeight, IN_FPS));
 #endif /* WITH_V3CAM */
   
-  /* initial region of interest is set to crop zone */
-  roi = Rect(CROP_L_LIMIT, CROP_U_LIMIT, CROP_WIDTH, CROP_HEIGHT);
-  /* prepare and keep kernel for morphology */
-  kernel = Mat::zeros(Size(7,7), CV_8UC1);
-
   //XInitThreads();
   disp = XOpenDisplay(NULL);
   sc = DefaultScreenOfDisplay(disp);
@@ -63,9 +117,14 @@ Video::Video() {
   ximg = XCreateImage(disp, vis, 24, ZPixmap, 0, (char*)gbuf, OUT_FRAME_WIDTH, 2*OUT_FRAME_HEIGHT, BitmapUnit(disp), 0);
   XInitImage(ximg);
 
+  /* initial region of interest is set to crop zone */
+  roi = Rect(CROP_L_LIMIT, CROP_U_LIMIT, CROP_WIDTH, CROP_HEIGHT);
+  /* prepare and keep kernel for morphology */
+  kernel = Mat::ones(Size(MORPH_KERNEL_SIZE,MORPH_KERNEL_SIZE), CV_8UC1);
   /* initial trace target */
   cx = (int)(FRAME_WIDTH/2);
-  cy = FRAME_HEIGHT-LINE_THICKNESS;
+  cy = SCAN_V_POS;
+  mx = cx;
   /* default values */
   gsmin = 0;
   gsmax = 100;
@@ -74,6 +133,8 @@ Video::Video() {
   side = 0;
   rangeOfEdges = 0;
   algo = BA_NORMAL;
+  traceTargetType = TT_LINE;
+  targetInSight = false;
 }
 
 Video::~Video() {
@@ -135,150 +196,209 @@ void Video::writeFrame(Mat f) {
 
 Mat Video::calculateTarget(Mat f) {
   if (f.empty()) return f;
-  
-  Mat img_gray, img_gray_part, img_bin_part, img_bin, img_bin_mor, img_cnt_gray, scan_line;
 
-  /* convert the image from BGR to grayscale */
-  cvtColor(f, img_gray, COLOR_BGR2GRAY);
-  /* crop a part of image for binarization */
-  img_gray_part = img_gray(Range(CROP_U_LIMIT,CROP_D_LIMIT), Range(CROP_L_LIMIT,CROP_R_LIMIT));
-  /* binarize the image */
-  switch (algo) {
-    case BA_NORMAL:
-      inRange(img_gray_part, gsmin, gsmax, img_bin_part);
-      break;
-    case BA_ADAPTIVE:
-      gs_block = 2 * ceil((gs_block - 1) / 2) + 1;
-      if (gs_block < 3) { gs_block = 3; }
-      adaptiveThreshold(img_gray_part, img_bin_part, gsmax, ADAPTIVE_THRESH_MEAN_C, THRESH_BINARY_INV, gs_block, gs_C); 
-      break;
-    case BA_OTSU:
-      threshold(img_gray_part, img_bin_part, gsmax, 255, THRESH_BINARY_INV+THRESH_OTSU); 
-      break;
-    default:
-      break;
-  }
-  /* prepare an empty matrix */
-  img_bin = Mat::zeros(FRAME_HEIGHT, FRAME_WIDTH, CV_8UC1);
-  /* copy img_bin_part into img_bin */
-  for (int i = CROP_U_LIMIT; i < CROP_D_LIMIT; i++) {
-    for (int j = CROP_L_LIMIT; j < CROP_R_LIMIT; j++) {
-      img_bin.at<uchar>(i,j) = img_bin_part.at<uchar>(i-CROP_U_LIMIT,j-CROP_L_LIMIT); /* type = CV_8U */
-    }
-  }
-  /* remove noise */
-  morphologyEx(img_bin, img_bin_mor, MORPH_CLOSE, kernel);
+  if (traceTargetType == TT_BLKS) {
+    Mat img_orig, img_bin_tre, img_bin_dec;
 
-  /* focus on the region of interest */
-  Mat img_roi(img_bin_mor, roi);
-  /* find contours in the roi with offset */
-  vector<vector<Point>> contours;
-  vector<Vec4i> hierarchy;
-  findContours(img_roi, contours, hierarchy, RETR_EXTERNAL, CHAIN_APPROX_SIMPLE, Point(roi.x,roi.y));
-  /* identify the largest contour */
-  if (contours.size() >= 1) {
-    int i_target = 0;
-    if (contours.size() >= 2) {
-      vector<vector<int>> contAreas;
-      for (int i = 0; i < (int)contours.size(); i++) {
-	vector<int> contArea;
-	contArea.push_back((int)contourArea(contours[i])); /* first element - area of the contour */
-	contArea.push_back(i); /* second element - index to contours */
-	contAreas.push_back(contArea);
+    /* keep the original image for repeated use for identifying all blocks */
+    img_orig = f.clone();
+
+    /* prepare for locating the decoy blocks */
+    binalizeWithColorMask(img_orig, bgr_min_dec, bgr_max_dec, gsmin, gsmax, img_bin_dec);
+    /* locate the decoy blocks */
+    vector<vector<Point>> contours_dec;
+    vector<Vec4i> hierarchy_dec;
+    findContours(img_bin_dec, contours_dec, hierarchy_dec, RETR_TREE, CHAIN_APPROX_SIMPLE);
+    vector<vector<float>> cnt_idx_dec; /* cnt_idx: area, idx, w/h, x, y */
+    locateBlocks(contours_dec, hierarchy_dec, cnt_idx_dec);
+    if (cnt_idx_dec.size() > 0) {
+      sort(cnt_idx_dec.begin(), cnt_idx_dec.end(), greater<>());
+      /* draw the two largest contour on the console image in blue */
+      for (unsigned int i = 0; i < 2 && i < cnt_idx_dec.size(); i++) {
+	polylines(f, contours_dec[cnt_idx_dec[i][1]], true, Scalar(255,0,0), LINE_THICKNESS);
       }
-      /* sort contAreas in descending order by area size */
-      sort(contAreas.begin(),contAreas.end(),[](const vector<int> &alpha,const vector<int> &beta){return alpha[0] > beta[0];});
-      /* calculate the bounding box around the two largest contours,
-         either of which is to be set as the new region of interest */
-      Rect bb1st = boundingRect(contours[contAreas[0][1]]);
-      Rect bb2nd = boundingRect(contours[contAreas[1][1]]);
-      if ( (bb2nd.y + bb2nd.height >= roi.height) && /* the second largest contour touches the roi bottom? */
-	   (2*contAreas[1][0] >= contAreas[0][0]) ) { /* the second largest contour is large enough? */
-	/* yes then compare the x location of 1st and 2nd bounding rectangles */
-	if (side == 0) { /* tracing the left edge needs the rectanble on the left */
-	  if (bb1st.x <= bb2nd.x) {
+    }
+
+    /* prepare for locating the treasure block */
+    binalizeWithColorMask(img_orig, bgr_min_tre, bgr_max_tre, gsmin, gsmax, img_bin_tre);
+    /* locate the treasure block */
+    vector<vector<Point>> contours;
+    vector<Vec4i> hierarchy;
+    findContours(img_bin_tre, contours, hierarchy, RETR_TREE, CHAIN_APPROX_SIMPLE);
+    vector<vector<float>> cnt_idx; /* cnt_idx: area, idx, w/h, x, y */
+    locateBlocks(contours, hierarchy, cnt_idx);
+    if (cnt_idx.size() > 0) {
+      sort(cnt_idx.begin(), cnt_idx.end(), greater<>());
+      /* draw the largest contour on the console image in red */
+      polylines(f, contours[cnt_idx[0][1]], true, Scalar(0,0,255), LINE_THICKNESS);
+      cx = static_cast<int>(cnt_idx[0][3]);
+      cy = static_cast<int>(cnt_idx[0][4]);
+      mx = FRAME_X_CENTER + static_cast<int>((cx-FRAME_X_CENTER) * (FRAME_HEIGHT-SCAN_V_POS) / (FRAME_HEIGHT-cy));
+      targetInSight = true;
+    } else { /* cnt_idx.size() == 0 */
+      /* keep mx in order to maintain the current move of robot */
+      cx = (int)(FRAME_WIDTH/2);
+      cy = SCAN_V_POS;
+      targetInSight = false;
+    }
+  } else if (traceTargetType == TT_LINE) {
+    Mat img_gray, img_gray_part, img_bin_part, img_bin, img_bin_mor, img_cnt_gray, scan_line;
+
+    /* convert the image from BGR to grayscale */
+    cvtColor(f, img_gray, COLOR_BGR2GRAY);
+    /* crop a part of image for binarization */
+    img_gray_part = img_gray(Range(CROP_U_LIMIT,CROP_D_LIMIT), Range(CROP_L_LIMIT,CROP_R_LIMIT));
+    /* binarize the image */
+    switch (algo) {
+      case BA_NORMAL:
+        inRange(img_gray_part, gsmin, gsmax, img_bin_part);
+        break;
+      case BA_ADAPTIVE:
+        gs_block = 2 * ceil((gs_block - 1) / 2) + 1;
+        if (gs_block < 3) { gs_block = 3; }
+        adaptiveThreshold(img_gray_part, img_bin_part, gsmax, ADAPTIVE_THRESH_MEAN_C, THRESH_BINARY_INV, gs_block, gs_C); 
+        break;
+      case BA_OTSU:
+        threshold(img_gray_part, img_bin_part, gsmax, 255, THRESH_BINARY_INV+THRESH_OTSU); 
+        break;
+      default:
+        break;
+    }
+    /* prepare an empty matrix */
+    img_bin = Mat::zeros(FRAME_HEIGHT, FRAME_WIDTH, CV_8UC1);
+    /* copy img_bin_part into img_bin */
+    for (int i = CROP_U_LIMIT; i < CROP_D_LIMIT; i++) {
+      for (int j = CROP_L_LIMIT; j < CROP_R_LIMIT; j++) {
+        img_bin.at<uchar>(i,j) = img_bin_part.at<uchar>(i-CROP_U_LIMIT,j-CROP_L_LIMIT); /* type = CV_8U */
+      }
+    }
+    /* remove noise */
+    morphologyEx(img_bin, img_bin_mor, MORPH_CLOSE, kernel);
+
+    /* convert the image from BGR to grayscale */
+    cvtColor(f, img_gray, COLOR_BGR2GRAY);
+    /* binarize the image */
+    inRange(img_gray, gsmin, gsmax, img_bin);
+    /* remove noise */
+    morphologyEx(img_bin, img_bin_mor, MORPH_CLOSE, kernel);
+
+    /* focus on the region of interest */
+    Mat img_roi(img_bin_mor, roi);
+    /* find contours in the roi with offset */
+    vector<vector<Point>> contours;
+    vector<Vec4i> hierarchy;
+    findContours(img_roi, contours, hierarchy, RETR_EXTERNAL, CHAIN_APPROX_SIMPLE, Point(roi.x,roi.y));
+    /* identify the largest contour */
+    if (contours.size() >= 1) {
+      int i_target = 0;
+      if (contours.size() >= 2) {
+        vector<vector<int>> contAreas;
+        for (int i = 0; i < (int)contours.size(); i++) {
+	  vector<int> contArea;
+	  contArea.push_back((int)contourArea(contours[i])); /* first element - area of the contour */
+	  contArea.push_back(i); /* second element - index to contours */
+	  contAreas.push_back(contArea);
+        }
+        /* sort contAreas in descending order by area size */
+        sort(contAreas.begin(),contAreas.end(),[](const vector<int> &alpha,const vector<int> &beta){return alpha[0] > beta[0];});
+        /* calculate the bounding box around the two largest contours,
+           either of which is to be set as the new region of interest */
+        Rect bb1st = boundingRect(contours[contAreas[0][1]]);
+        Rect bb2nd = boundingRect(contours[contAreas[1][1]]);
+        if ( (bb2nd.y + bb2nd.height >= roi.height) && /* the second largest contour touches the roi bottom? */
+	     (2*contAreas[1][0] >= contAreas[0][0]) ) { /* the second largest contour is large enough? */
+	  /* yes then compare the x location of 1st and 2nd bounding rectangles */
+	  if (side == 0) { /* tracing the left edge needs the rectanble on the left */
+	    if (bb1st.x <= bb2nd.x) {
+	      i_target = contAreas[0][1];
+	      roi = bb1st;
+	    } else {
+	      i_target = contAreas[1][1];
+	      roi = bb2nd;
+	    }
+	  } else if (side == 1) { /* tracing the right edge needs the rectangle on the right */
+	    if (bb1st.x + bb1st.width >= bb2nd.x + bb2nd.width) {
+	      i_target = contAreas[0][1];
+	      roi = bb1st;
+	    } else {
+	      i_target = contAreas[1][1];
+	      roi = bb2nd;
+	    }
+	  } else { /* tracing the line center goes after the largest contour */
 	    i_target = contAreas[0][1];
 	    roi = bb1st;
-	  } else {
-	    i_target = contAreas[1][1];
-	    roi = bb2nd;
 	  }
-	} else if (side == 1) { /* tracing the right edge needs the rectangle on the right */
-	  if (bb1st.x + bb1st.width >= bb2nd.x + bb2nd.width) {
-	    i_target = contAreas[0][1];
-	    roi = bb1st;
-	  } else {
-	    i_target = contAreas[1][1];
-	    roi = bb2nd;
-	  }
-	} else { /* tracing the line center goes after the largest contour */
+        } else { /* the second largest contour does not touch the roi bottom and shall be ignored */
 	  i_target = contAreas[0][1];
 	  roi = bb1st;
-	}
-      } else { /* the second largest contour does not touch the roi bottom and shall be ignored */
-	i_target = contAreas[0][1];
-	roi = bb1st;
+        }
       }
-    }
-    /* draw the target contour on the original image */
-    polylines(f, (vector<vector<Point>>){contours[i_target]}, 0, Scalar(0,255,0), LINE_THICKNESS);
+      /* draw the target contour on the original image */
+      polylines(f, (vector<vector<Point>>){contours[i_target]}, 0, Scalar(0,255,0), LINE_THICKNESS);
 
-    /* adjust the region of interest */
-    roi.x = roi.x - ROI_BOUNDARY;
-    roi.y = roi.y - ROI_BOUNDARY;
-    roi.width = roi.width + 2*ROI_BOUNDARY;
-    roi.height = roi.height + 2*ROI_BOUNDARY;
-    if (roi.x < CROP_L_LIMIT) {
-      roi.x = CROP_L_LIMIT;
-    }
-    if (roi.y < CROP_U_LIMIT) {
-      roi.y = CROP_U_LIMIT;
-    }
-    if (roi.x + roi.width > CROP_R_LIMIT) {
-      roi.width = CROP_R_LIMIT - roi.x;
-    }
-    if (roi.y + roi.height > CROP_D_LIMIT) {
-      roi.height = CROP_D_LIMIT - roi.y;
-    }
+      /* adjust the region of interest */
+      roi.x = roi.x - ROI_BOUNDARY;
+      roi.y = roi.y - ROI_BOUNDARY;
+      roi.width = roi.width + 2*ROI_BOUNDARY;
+      roi.height = roi.height + 2*ROI_BOUNDARY;
+      if (roi.x < CROP_L_LIMIT) {
+        roi.x = CROP_L_LIMIT;
+      }
+      if (roi.y < CROP_U_LIMIT) {
+        roi.y = CROP_U_LIMIT;
+      }
+      if (roi.x + roi.width > CROP_R_LIMIT) {
+        roi.width = CROP_R_LIMIT - roi.x;
+      }
+      if (roi.y + roi.height > CROP_D_LIMIT) {
+        roi.height = CROP_D_LIMIT - roi.y;
+      }
  
-    /* prepare for trace target calculation */
-    /*
-      Note: Mat::zeros with CV_8UC3 does NOT work and don't know why
-    */
-    Mat img_cnt(f.size(), CV_8UC3, Scalar(0,0,0));
-    drawContours(img_cnt, (vector<vector<Point>>){contours[i_target]}, 0, Scalar(0,255,0), 1);
-    cvtColor(img_cnt, img_cnt_gray, COLOR_BGR2GRAY);
-    /* scan the line at SCAN_V_POS to find edges */
-    scan_line = img_cnt_gray.row(SCAN_V_POS);
-    /* convert the Mat to a NumCpp array */
-    auto scan_line_nc = nc::NdArray<nc::uint8>(scan_line.data, scan_line.rows, scan_line.cols);
-    auto edges = scan_line_nc.flatnonzero();
-    if (edges.size() >= 2) {
-      rangeOfEdges = edges[edges.size()-1] - edges[0];
-      if (side == 0) {
-	cx = edges[0];
-      } else if (side == 1) {
-	cx = edges[edges.size()-1];
-      } else {
-	cx = (int)((edges[0]+edges[edges.size()-1]) / 2);
+      /* prepare for trace target calculation */
+      /*
+        Note: Mat::zeros with CV_8UC3 does NOT work and don't know why
+      */
+      Mat img_cnt(f.size(), CV_8UC3, Scalar(0,0,0));
+      drawContours(img_cnt, (vector<vector<Point>>){contours[i_target]}, 0, Scalar(0,255,0), 1);
+      cvtColor(img_cnt, img_cnt_gray, COLOR_BGR2GRAY);
+      /* scan the line at SCAN_V_POS to find edges */
+      scan_line = img_cnt_gray.row(SCAN_V_POS);
+      /* convert the Mat to a NumCpp array */
+      auto scan_line_nc = nc::NdArray<nc::uint8>(scan_line.data, scan_line.rows, scan_line.cols);
+      auto edges = scan_line_nc.flatnonzero();
+      if (edges.size() >= 2) {
+        rangeOfEdges = edges[edges.size()-1] - edges[0];
+        if (side == 0) {
+	  cx = edges[0];
+        } else if (side == 1) {
+	  cx = edges[edges.size()-1];
+        } else {
+	  cx = (int)((edges[0]+edges[edges.size()-1]) / 2);
+        }
+      } else if (edges.size() == 1) {
+        rangeOfEdges = 1;
+        cx = edges[0];
       }
-    } else if (edges.size() == 1) {
-      rangeOfEdges = 1;
-      cx = edges[0];
+      mx = cx;
+      targetInSight = true;
+    } else { /* contours.size() == 0 */
+      rangeOfEdges = 0;
+      roi = Rect(CROP_L_LIMIT, CROP_U_LIMIT, CROP_WIDTH, CROP_HEIGHT);
+      /* keep mx in order to maintain the current move of robot */
+      cx = (int)(FRAME_WIDTH/2);
+      cy = SCAN_V_POS;
+      targetInSight = false;
     }
-  } else { /* contours.size() == 0 */
-    rangeOfEdges = 0;
-    roi = Rect(CROP_L_LIMIT, CROP_U_LIMIT, CROP_WIDTH, CROP_HEIGHT);
-  }
-  //_logNoAsp("roe = %d", rangeOfEdges);
+    //_logNoAsp("roe = %d", rangeOfEdges);
 
-  /* draw the area of interest on the original image */
-  rectangle(f, Point(roi.x,roi.y), Point(roi.x+roi.width,roi.y+roi.height), Scalar(255,0,0), LINE_THICKNESS);
+    /* draw the area of interest on the original image */
+    rectangle(f, Point(roi.x,roi.y), Point(roi.x+roi.width,roi.y+roi.height), Scalar(255,0,0), LINE_THICKNESS);
+  } /* if(tradeTargetType == TT_LINE) */
+  
   /* draw the trace target on the image */
-  circle(f, Point(cx, SCAN_V_POS), CIRCLE_RADIUS, Scalar(0,0,255), -1);
-
+  circle(f, Point(mx, SCAN_V_POS), CIRCLE_RADIUS, Scalar(0,0,255), -1);
   /* calculate variance of cx from the center in pixel */
-  int vxp = cx - (int)(FRAME_WIDTH/2);
+  int vxp = mx - (int)(FRAME_WIDTH/2);
   /* convert the variance from pixel to milimeters
      245 mm is length of the closest horizontal line on ground within the camera vision */
   float vxm = vxp * 245 / FRAME_WIDTH;
@@ -289,7 +409,7 @@ Mat Video::calculateTarget(Mat f) {
   } else {
     theta = 180 * atan(vxm / 230) / M_PI;
   }
-  //_logNoAsp("cx = %d, vxm = %d, theta = %d", cx, (int)vxm, (int)theta);
+  //_logNoAsp("mx = %d, vxm = %d, theta = %d", mx, (int)vxm, (int)theta);
 
   return f;
 }
@@ -323,10 +443,43 @@ void Video::setThresholds(int gsMin, int gsMax) {
   gsmax = gsMax;
 }
 
+void Video::setMaskThresholds(Scalar& bgrMinTre, Scalar& bgrMaxTre, Scalar& bgrMinDec, Scalar& bgrMaxDec) {
+  bgr_min_tre = bgrMinTre;
+  bgr_max_tre = bgrMaxTre;
+  bgr_min_dec = bgrMinDec;
+  bgr_max_dec = bgrMaxDec;
+}
+
 void Video::setTraceSide(int traceSide) {
   side = traceSide;
 }
 
 void Video::setBinarizationAlgorithm(BinarizationAlgorithm ba) {
   algo = ba;
+}
+
+void Video::setTraceTargetType(TargetType tt) {
+  traceTargetType = tt;
+  if (tt == TT_LINE) {
+    /* initial region of interest is set to crop zone */
+    roi = Rect(CROP_L_LIMIT, CROP_U_LIMIT, CROP_WIDTH, CROP_HEIGHT);
+  }
+  /* initial trace target */
+  cx = (int)(FRAME_WIDTH/2);
+  cy = SCAN_V_POS;
+  mx = cx;
+}
+
+bool Video::isTargetInSight() {
+  return targetInSight;
+}
+
+bool Video::hasCaughtTarget() {
+  if (traceTargetType == TT_BLKS) {
+    if (cx > 7 * FRAME_WIDTH / 16 && cx < 9 * FRAME_WIDTH &&
+	cy > 3 * FRAME_HEIGHT / 4) {
+      return true;
+    }
+  }
+  return false;
 }
