@@ -138,7 +138,11 @@ extern FILE*        bt;
 extern Clock*       ev3clock;
 extern TouchSensor* touchSensor;
 extern SonarSensor* sonarSensor;
+#ifdef WITH_FILTER
 extern FilteredColorSensor* colorSensor;
+#else
+extern ColorSensor* colorSensor;
+#endif
 extern GyroSensor*  gyroSensor;
 //extern SRLF*        srlf_l;
 //extern FilteredMotor*       leftMotor;

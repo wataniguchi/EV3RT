@@ -5,8 +5,11 @@
 Clock*          ev3clock;
 TouchSensor*    touchSensor;
 SonarSensor*    sonarSensor;
+#ifdef WITH_FILTER
 FilteredColorSensor*    colorSensor;
-//ColorSensor*    colorSensor;
+#else
+ColorSensor*    colorSensor;
+#endif
 GyroSensor*     gyroSensor;
 
 typedef struct {
@@ -59,11 +62,9 @@ void main_task(intptr_t unused)
     _log("initialization started.");
     touchSensor = new TouchSensor(PORT_1);
     sonarSensor = new SonarSensor(PORT_3);
-    colorSensor = new FilteredColorSensor(PORT_2);
-    //colorSensor = new ColorSensor(PORT_2);
-    gyroSensor  = new GyroSensor(PORT_4);
-    gyroSensor->reset();
 
+#ifdef WITH_FILTER
+    colorSensor = new FilteredColorSensor(PORT_2);
     /* FIR parameters for a low-pass filter with normalized cut-off frequency of 0.2
         using a function of the Hamming Window */
     const int FIR_ORDER = 4; 
@@ -73,6 +74,12 @@ void main_task(intptr_t unused)
     Filter *lpf_g = new FIR_Transposed(hn, FIR_ORDER);
     Filter *lpf_b = new FIR_Transposed(hn, FIR_ORDER);
     colorSensor->setRawColorFilters(lpf_r, lpf_g, lpf_b);
+#else
+    colorSensor = new ColorSensor(PORT_2);
+#endif /* WITH_FILTER */
+
+    gyroSensor  = new GyroSensor(PORT_4);
+    gyroSensor->reset();
 
     /* register cyclic handler to EV3RT */
     _log("starting update task...");
@@ -88,12 +95,21 @@ void main_task(intptr_t unused)
 	uint8_t color = 0;
         colorSensor->getRawColor(cur_rgb);
         rgb_to_hsv(cur_rgb, cur_hsv);
+#ifdef WITH_FILTER
 	if (cur_rgb.r <= 30 && cur_rgb.g <= 30 && cur_rgb.b <= 30) color |= 1; /* black */
 	if (cur_rgb.r >= 80 && cur_rgb.g <= 50 && cur_rgb.b <= 50) color |= 2; /* red */
 	if (cur_rgb.r <= 35 && cur_rgb.g >= 40 && cur_rgb.b <= 50) color |= 4; /* green */
 	if (cur_rgb.r <= 30 && cur_rgb.g <= 50 && cur_rgb.b >= 70) color |= 8; /* blue */
 	if (cur_rgb.r >= 100 && cur_rgb.g >= 90 && cur_rgb.b <= 80) color |= 16; /* yellow */
 	if (cur_rgb.r >= 120 && cur_rgb.g >= 120 && cur_rgb.b >= 120) color |= 32; /* white */
+#else
+	if (cur_rgb.r <= 50 && cur_rgb.g <= 50 && cur_rgb.b <= 50) color |= 1; /* black */
+	if (cur_rgb.r >= 110 && cur_rgb.g <= 70 && cur_rgb.b <= 70) color |= 2; /* red */
+	if (cur_rgb.r <= 70 && cur_rgb.g >= 60 && cur_rgb.b <= 120) color |= 4; /* green */
+	if (cur_rgb.r <= 50 && cur_rgb.g <= 90 && cur_rgb.b >= 100) color |= 8; /* blue */
+	if (cur_rgb.r >= 170 && cur_rgb.g >= 120 && cur_rgb.b <= 120) color |= 16; /* yellow */
+	if (cur_rgb.r >= 170 && cur_rgb.g >= 170 && cur_rgb.b >= 170) color |= 32; /* white */
+#endif /* WITH_FILTER */
         _log("color = %02u, rgb = (%03u, %03u, %03u), hsv = (%03u, %03u, %03u)",
 	     color, cur_rgb.r, cur_rgb.g, cur_rgb.b, cur_hsv.h, cur_hsv.s, cur_hsv.v);
 	int16_t gyro = gyroSensor->getAngle();
@@ -109,6 +125,11 @@ void main_task(intptr_t unused)
     ev3clock->sleep(100000);
 
     /* destroy EV3 objects */
+#ifdef WITH_FILTER
+    delete lpf_b;
+    delete lpf_g;
+    delete lpf_r;
+#endif
     delete gyroSensor;
     delete colorSensor;
     delete sonarSensor;
@@ -119,5 +140,7 @@ void main_task(intptr_t unused)
 }
 
 void update_task(intptr_t unused) {
+#ifdef WITH_FILTER
   colorSensor->sense();
+#endif
 }

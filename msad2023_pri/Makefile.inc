@@ -59,6 +59,10 @@ ifdef ETROBO_BENCHMARK
 COPTS += -DBENCHMARK
 endif
 
+ifdef ETROBO_WITH_FILTER
+COPTS += -DWITH_FILTER
+endif
+
 #COPTS += -fno-use-cxa-atexit
 #COPTS += -DNDEBUG
 COPTS += -g $(USER_COPTS)

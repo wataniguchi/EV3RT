@@ -23,6 +23,10 @@ APPL_LIBS += -lm
 
 COPTS += -std=gnu++14
 
+ifdef ETROBO_WITH_FILTER
+COPTS += -DWITH_FILTER
+endif
+
 #COPTS += -fno-use-cxa-atexit
 #COPTS += -DNDEBUG
 COPTS += -g $(USER_COPTS)

@@ -69,7 +69,7 @@ extern FilteredMotor*       rightMotor;
 #define BLK_ROI_R_LIMIT int(7*FRAME_WIDTH/8) /* at bottom of the image */
 
 #define MORPH_KERNEL_SIZE roundUpToOdd(int(FRAME_WIDTH/40))
-#define BLK_AREA_MIN (23.0*FRAME_WIDTH/640.0)*(23.0*FRAME_WIDTH/640.0)
+#define BLK_AREA_MIN (20.0*FRAME_WIDTH/640.0)*(20.0*FRAME_WIDTH/640.0)
 #define ROI_BOUNDARY int(FRAME_WIDTH/16)
 #define LINE_THICKNESS int(FRAME_WIDTH/80)
 #define CIRCLE_RADIUS int(FRAME_WIDTH/40)

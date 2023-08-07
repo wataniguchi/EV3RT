@@ -48,7 +48,7 @@ using std::this_thread::sleep_for;
 #define BLK_ROI_R_LIMIT int(7*FRAME_WIDTH/8) /* at bottom of the image */
 
 #define MORPH_KERNEL_SIZE roundUpToOdd(int(FRAME_WIDTH/40))
-#define BLK_AREA_MIN (23.0*FRAME_WIDTH/640.0)*(23.0*FRAME_WIDTH/640.0)
+#define BLK_AREA_MIN (20.0*FRAME_WIDTH/640.0)*(20.0*FRAME_WIDTH/640.0)
 #define ROI_BOUNDARY int(FRAME_WIDTH/16)
 #define LINE_THICKNESS int(FRAME_WIDTH/80)
 #define CIRCLE_RADIUS int(FRAME_WIDTH/40)
@@ -61,7 +61,7 @@ using std::this_thread::sleep_for;
 #define OUT_FRAME_HEIGHT 240
 
 int b_min_tre=0,b_max_tre=50,g_min_tre=0,g_max_tre=40,r_min_tre=55,r_max_tre=255;
-int b_min_dec=50,b_max_dec=255,g_min_dec=0,g_max_dec=60,r_min_dec=0,r_max_dec=30;
+int b_min_dec=30,b_max_dec=255,g_min_dec=0,g_max_dec=60,r_min_dec=0,r_max_dec=30;
 int gs_min=10,gs_max=100;
 vector<Point> blk_roi;
 
@@ -179,7 +179,7 @@ int main() {
     g_min_tre  = getTrackbarPos("G_min(Tre)", "testTrace1");
     g_max_tre  = getTrackbarPos("G_max(Tre)", "testTrace1");
     b_min_tre  = getTrackbarPos("B_min(Tre)", "testTrace1");
-    b_max_dec  = getTrackbarPos("B_max(Tre)", "testTrace1");
+    b_max_tre  = getTrackbarPos("B_max(Tre)", "testTrace1");
     r_min_dec  = getTrackbarPos("R_min(Dec)", "testTrace1");
     r_max_dec  = getTrackbarPos("R_max(Dec)", "testTrace1");
     g_min_dec  = getTrackbarPos("G_min(Dec)", "testTrace1");
@@ -285,7 +285,8 @@ int main() {
 	if (cnt_idx.size() > 0 && /* when treasure block is in-sight */
 	    cnt_idx_dec[0][4] > cy) { /* decoy block is closer than the treasure block */
 	  Point l_limit_dec, r_limit_dec, l_limit_tre, r_limit_tre;
-	  /* identify the left- and right-most point in the decoy block contour */ 
+	  /* identify the left- and right-most point in the decoy block contour */
+	  /*
 	  vector<Point> cnt_dec = contours_dec[cnt_idx_dec[0][1]];
 	  l_limit_dec = r_limit_dec = cnt_dec[0];
 	  for (int j = 1; j < cnt_dec.size(); j++) {
@@ -296,6 +297,16 @@ int main() {
 	      r_limit_dec = p_dec;
 	    }
 	  }
+	  */
+	  /* calculate virtual left- and right-most point in the decoy block contour
+	     as if the contour is a square */
+	  l_limit_dec.y = r_limit_dec.y = cnt_idx_dec[0][4];
+	  int width_dec = static_cast<int>(sqrt(cnt_idx_dec[0][0]));
+	  int l_limit_dec_x_virt = cnt_idx_dec[0][3] - static_cast<int>(width_dec/2);
+	  int r_limit_dec_x_virt = cnt_idx_dec[0][3] + static_cast<int>(width_dec/2);
+	  /* consider clearance */
+	  l_limit_dec.x = l_limit_dec_x_virt - static_cast<int>(width_dec);
+	  r_limit_dec.x = r_limit_dec_x_virt + static_cast<int>(width_dec);
 	  /* identify the left- and right-most point in the treasure block contour */ 
 	  vector<Point> cnt_tre = contours[cnt_idx[0][1]];
 	  l_limit_tre = r_limit_tre = cnt_tre[0];
@@ -312,24 +323,18 @@ int main() {
 	  int r_limit_dec_x = FRAME_X_CENTER + (static_cast<int>(r_limit_dec.x-FRAME_X_CENTER) * (FRAME_HEIGHT-SCAN_V_POS) / (FRAME_HEIGHT-r_limit_dec.y));
 	  int l_limit_tre_x = FRAME_X_CENTER + (static_cast<int>(l_limit_tre.x-FRAME_X_CENTER) * (FRAME_HEIGHT-SCAN_V_POS) / (FRAME_HEIGHT-l_limit_tre.y));
 	  int r_limit_tre_x = FRAME_X_CENTER + (static_cast<int>(r_limit_tre.x-FRAME_X_CENTER) * (FRAME_HEIGHT-SCAN_V_POS) / (FRAME_HEIGHT-r_limit_tre.y));
-	  int width_dec = r_limit_dec_x - l_limit_dec_x;
-	  /* set clearance using the width of decoy block and the distance to it */
-	  int clearance = FRAME_HEIGHT * (r_limit_dec_x - l_limit_dec_x) / (SCAN_V_POS - cnt_idx_dec[0][4]);
 	  /* determine if the decoy and treasure block are overlapping each other */
-	  if (r_limit_dec_x + clearance >= l_limit_tre_x && l_limit_dec_x - clearance <= r_limit_tre_x) {
+	  if (r_limit_dec_x >= l_limit_tre_x && l_limit_dec_x <= r_limit_tre_x) {
 	    /* adjust the course of robot accordingly */
 	    if (l_limit_dec_x > l_limit_tre_x) {
 	      line(img_orig_contour, Point(l_limit_dec.x, l_limit_dec.y), Point(l_limit_dec_x, SCAN_V_POS), Scalar(255,0,0), int(LINE_THICKNESS/2));
-	      if (mx > l_limit_dec_x - clearance) mx = l_limit_dec_x - clearance;
+	      if (mx > l_limit_dec_x) mx = l_limit_dec_x;
 	    } else if (r_limit_dec_x < r_limit_tre_x) {
 	      line(img_orig_contour, Point(r_limit_dec.x, r_limit_dec.y), Point(r_limit_dec_x, SCAN_V_POS), Scalar(255,0,0), int(LINE_THICKNESS/2));
-	      if (mx < r_limit_dec_x + clearance) mx = r_limit_dec_x + clearance;
-	    } else if (abs(r_limit_dec_x-r_limit_tre_x) < abs(l_limit_dec_x-l_limit_tre_x)) {
-	      line(img_orig_contour, Point(r_limit_dec.x, r_limit_dec.y), Point(r_limit_dec_x, SCAN_V_POS), Scalar(255,0,0), int(LINE_THICKNESS/2));
-	      if (mx < r_limit_dec_x + clearance) mx = r_limit_dec_x + clearance;
-	    } else {
+	      if (mx < r_limit_dec_x) mx = r_limit_dec_x;
+	    } else { /* when treasure block is behind decoy, always pass around from left */
 	      line(img_orig_contour, Point(l_limit_dec.x, l_limit_dec.y), Point(l_limit_dec_x, SCAN_V_POS), Scalar(255,0,0), int(LINE_THICKNESS/2));
-	      if (mx > l_limit_dec_x - clearance) mx = l_limit_dec_x - clearance;
+	      if (mx > l_limit_dec_x) mx = l_limit_dec_x;
 	    }
 	  }
 	}

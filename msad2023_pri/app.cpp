@@ -35,7 +35,11 @@ Profile*        prof;
 Clock*          ev3clock;
 TouchSensor*    touchSensor;
 SonarSensor*    sonarSensor;
+#ifdef WITH_FILTER
 FilteredColorSensor*    colorSensor;
+#else
+ColorSensor*    colorSensor;
+#endif
 GyroSensor*     gyroSensor;
 SRLF*           srlfL;
 FilteredMotor*  leftMotor;
@@ -327,38 +331,32 @@ public:
         colorSensor->getRawColor(cur_rgb);
 
         switch(color){
-            case CL_JETBLACK:
-                if (cur_rgb.r <= 8 && cur_rgb.g <= 8 && cur_rgb.b <= 8) { 
-                    _log("ODO=%05d, CL_JETBLACK detected.", plotter->getDistance());
-                    return Status::Success;
-                }
-                break;
 	    case CL_BLACK:
-	        if (cur_rgb.r <= 30 && cur_rgb.g <= 30 && cur_rgb.b <= 30) {
+	        if (cur_rgb.r <= 50 && cur_rgb.g <= 50 && cur_rgb.b <= 50) {
                     _log("ODO=%05d, CL_BLACK detected.", plotter->getDistance());
                     return Status::Success;
                 }
                 break;
             case CL_BLUE:
-	        if (cur_rgb.r <= 30 && cur_rgb.g <= 50 && cur_rgb.b >= 70) {
+	        if (cur_rgb.r <= 50 && cur_rgb.g <= 90 && cur_rgb.b >= 100) {
                     _log("ODO=%05d, CL_BLUE detected.", plotter->getDistance());
                     return Status::Success;
                 }
                 break;
 	    case CL_RED:
-	        if (cur_rgb.r >= 80 && cur_rgb.g <= 50 && cur_rgb.b <= 50) {
+	        if (cur_rgb.r >= 110 && cur_rgb.g <= 70 && cur_rgb.b <= 70) {
                     _log("ODO=%05d, CL_RED detected.", plotter->getDistance());
                     return Status::Success;
                 }
                 break;
             case CL_YELLOW:
-	        if (cur_rgb.r >= 100 && cur_rgb.g >= 90 && cur_rgb.b <= 80) {
+	        if (cur_rgb.r >= 170 && cur_rgb.g >= 120 && cur_rgb.b <= 120) {
                      _log("ODO=%05d, CL_YELLOW detected.", plotter->getDistance());
                      return Status::Success;
                 }
                 break;
             case CL_GREEN:
-	        if (cur_rgb.r <= 35 && cur_rgb.g >= 40 && cur_rgb.b <= 50) {
+	        if (cur_rgb.r <= 70 && cur_rgb.g >= 60 && cur_rgb.b <= 120) {
                      _log("ODO=%05d, CL_GREEN detected.", plotter->getDistance());
                      return Status::Success;
                 }   
@@ -1064,7 +1062,11 @@ void main_task(intptr_t unused) {
     _log("Video object instantiated.");
     touchSensor = new TouchSensor(PORT_1);
     sonarSensor = new SonarSensor(PORT_3);
+#ifdef WITH_FILTER
     colorSensor = new FilteredColorSensor(PORT_2);
+#else
+    colorSensor = new ColorSensor(PORT_2);
+#endif
     gyroSensor  = new GyroSensor(PORT_4);
     leftMotor   = new FilteredMotor(PORT_C);
     rightMotor  = new FilteredMotor(PORT_B);
@@ -1079,7 +1081,8 @@ void main_task(intptr_t unused) {
       _COURSE = 1;
     }
     _DEBUG_LEVEL = prof->getValueAsNum("DEBUG_LEVEL");
- 
+
+#ifdef WITH_FILTER
     /* FIR parameters for a low-pass filter with normalized cut-off frequency of 0.2
         using a function of the Hamming Window */
     const int FIR_ORDER = 4; 
@@ -1089,7 +1092,8 @@ void main_task(intptr_t unused) {
     Filter *lpf_g = new FIR_Transposed(hn, FIR_ORDER);
     Filter *lpf_b = new FIR_Transposed(hn, FIR_ORDER);
     colorSensor->setRawColorFilters(lpf_r, lpf_g, lpf_b);
-
+#endif
+    
     gyroSensor->reset();
     leftMotor->reset();
     srlfL = new SRLF(0.0);
@@ -1172,9 +1176,11 @@ void main_task(intptr_t unused) {
     /* destroy profile object */
     delete prof;
     /* destroy EV3 objects */
+#ifdef WITH_FILTER
     delete lpf_b;
     delete lpf_g;
     delete lpf_r;
+#endif
     delete plotter;
     delete armMotor;
     delete rightMotor;
@@ -1202,7 +1208,9 @@ void update_task(intptr_t unused) {
     ts_upd = ts_upd_local;
     upd_process_count++;
 
+#ifdef WITH_FILTER
     colorSensor->sense();
+#endif
     plotter->plot();
 
 /*
