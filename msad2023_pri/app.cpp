@@ -350,10 +350,10 @@ public:
                     return Status::Success;
                 }
                 break;
-            case CL_RED:
-                if (cur_rgb.r >= 30 &&
-		    cur_rgb.r - cur_rgb.g >= 10 &&
-		    cur_rgb.r - cur_rgb.b >= 10) {
+	    case CL_RED: /* working */
+                if (cur_rgb.r >= 70 &&
+		    cur_rgb.r - cur_rgb.g < 50 &&
+		    cur_rgb.r - cur_rgb.b >= 20) {
                     _log("ODO=%05d, CL_RED detected.", plotter->getDistance());
                     return Status::Success;
                 }
@@ -466,6 +466,146 @@ protected:
 
 /*
     usage:
+    ".leaf<IsFoundBlock>(gs_min, gs_max, bgr_min_tre, bgr_max_tre, bgr_min_dec, bgr_max_dec)"
+    is to determine the RED block in sight.
+    gs_min, gs_max are grayscale threshold for object recognition binalization.
+    bgr_min_tre, bgr_max_tre are bgr vector threshold for identifying RED objects.
+    bgr_min_dec, bgr_max_dec are bgr vector threshold for identifying BLUE objects.
+*/
+class IsFoundBlock : public BrainTree::Node {
+public:
+  IsFoundBlock(int gs_min, int gs_max,
+	       std::vector<double> bgr_min_tre, std::vector<double> bgr_max_tre,
+	       std::vector<double> bgr_min_dec, std::vector<double> bgr_max_dec) : gsMin(gs_min),gsMax(gs_max) {
+        updated = false;
+	assert(bgr_min_tre.size() == 3);
+	assert(bgr_max_tre.size() == 3);
+	assert(bgr_min_dec.size() == 3);
+	assert(bgr_max_dec.size() == 3);
+	bgrMinTre = Scalar(bgr_min_tre[0], bgr_min_tre[1], bgr_min_tre[2]);
+	bgrMaxTre = Scalar(bgr_max_tre[0], bgr_max_tre[1], bgr_max_tre[2]);
+	bgrMinDec = Scalar(bgr_min_dec[0], bgr_min_dec[1], bgr_min_dec[2]);
+	bgrMaxDec = Scalar(bgr_max_dec[0], bgr_max_dec[1], bgr_max_dec[2]);
+	count = inSightCount = 0;
+    }
+    ~IsFoundBlock() {}
+    Status update() override {
+        if (!updated) {
+	    video->setTraceTargetType(TT_BLKS);
+	    video->setThresholds(gsMin, gsMax);
+	    video->setMaskThresholds(bgrMinTre, bgrMaxTre, bgrMinDec, bgrMaxDec);
+            updated = true;
+        }
+	if (count++ < 10) {
+	  if (video->isTargetInSight()) inSightCount++;
+	  return Status::Running;
+	} else {
+	  if (inSightCount > 7) {
+	    /* when target in sight more than 7 times out of 10 attempts */
+	    _log("ODO=%05d, target in sight at x=%d:y=%d:deg=%d:gyro=%d",
+		 plotter->getDistance(), plotter->getLocX(), plotter->getLocY(),
+		 plotter->getDegree(), gyroSensor->getAngle());
+	    count = inSightCount = 0;
+            return Status::Success;
+	  } else {
+	    _log("ODO=%05d, target NOT in sight at x=%d:y=%d:deg=%d:gyro=%d",
+		 plotter->getDistance(), plotter->getLocX(), plotter->getLocY(),
+		 plotter->getDegree(), gyroSensor->getAngle());
+	    count = inSightCount = 0;
+            return Status::Failure;
+	  }
+        }
+    }
+protected:
+    int gsMin, gsMax, count, inSightCount;
+    Scalar bgrMinTre, bgrMaxTre, bgrMinDec, bgrMaxDec;
+    bool updated;
+};
+
+/*
+    usage:
+    ".leaf<ApproachBlock>(speed, pid, gs_min, gs_max, bgr_min_tre, bgr_max_tre, bgr_min_dec, bgr_max_dec)"
+    is to instruct the robot to come closer the RED block at the given speed.
+    pid is a vector of three constants for PID control.
+    gs_min, gs_max are grayscale threshold for object recognition binalization.
+    bgr_min_tre, bgr_max_tre are bgr vector threshold for identifying RED objects.
+    bgr_min_dec, bgr_max_dec are bgr vector threshold for identifying BLUE objects.
+*/
+class ApproachBlock : public BrainTree::Node {
+public:
+  ApproachBlock(int s, std::vector<double> pid, int gs_min, int gs_max,
+		std::vector<double> bgr_min_tre, std::vector<double> bgr_max_tre,
+		std::vector<double> bgr_min_dec, std::vector<double> bgr_max_dec) : speed(s),gsMin(gs_min),gsMax(gs_max) {
+        updated = false;
+	assert(pid.size() == 3);
+        ltPid = new PIDcalculator(pid[0], pid[1], pid[2], PERIOD_UPD_TSK, -speed, speed);
+	assert(bgr_min_tre.size() == 3);
+	assert(bgr_max_tre.size() == 3);
+	assert(bgr_min_dec.size() == 3);
+	assert(bgr_max_dec.size() == 3);
+	bgrMinTre = Scalar(bgr_min_tre[0], bgr_min_tre[1], bgr_min_tre[2]);
+	bgrMaxTre = Scalar(bgr_max_tre[0], bgr_max_tre[1], bgr_max_tre[2]);
+	bgrMinDec = Scalar(bgr_min_dec[0], bgr_min_dec[1], bgr_min_dec[2]);
+	bgrMaxDec = Scalar(bgr_max_dec[0], bgr_max_dec[1], bgr_max_dec[2]);
+	count = hasCaughtCount = 0;
+    }
+    ~ApproachBlock() {
+        delete ltPid;
+    }
+    Status update() override {
+        if (!updated) {
+	    video->setTraceTargetType(TT_BLKS);
+	    video->setThresholds(gsMin, gsMax);
+	    video->setMaskThresholds(bgrMinTre, bgrMaxTre, bgrMinDec, bgrMaxDec);
+            /* The following code chunk is to properly set prevXin in SRLF */
+            srlfL->setRate(0.0);
+            leftMotor->setPWM(leftMotor->getPWM());
+            srlfR->setRate(0.0);
+            rightMotor->setPWM(rightMotor->getPWM());
+            _log("ODO=%05d, Approach Block run started.", plotter->getDistance());
+            updated = true;
+        }
+
+        int8_t forward, turn, pwmL, pwmR;
+	int theta = video->getTheta();
+	_debug(_log("ODO=%05d, theta = %d", plotter->getDistance(), theta),3); /* if _DEBUG_LEVEL >= 3 */
+	
+        /* compute necessary amount of steering by PID control */
+        turn = (-1) * ltPid->compute(theta, 0); /* 0 is the center */
+	_debug(_log("ODO=%05d, turn = %d", plotter->getDistance(), turn),3); /* if _DEBUG_LEVEL >= 3 */
+        forward = speed;
+        /* steer EV3 by setting different speed to the motors */
+        pwmL = forward - turn;
+        pwmR = forward + turn;
+        leftMotor->setPWM(pwmL);
+        rightMotor->setPWM(pwmR);
+
+	if (count++ < 5) {
+	  if (video->hasCaughtTarget()) hasCaughtCount++;
+	  return Status::Running;
+	} else {
+	  if (hasCaughtCount > 3) {
+	    /* when target determined has caught more than 3 times out of 4 attempts */
+	    leftMotor->setPWM(0);
+	    rightMotor->setPWM(0);
+	    _log("ODO=%05d, Approach Block run ended as caught target.", plotter->getDistance());
+	    count = hasCaughtCount = 0;
+	    return Status::Success;
+	  } else {
+	    count = hasCaughtCount = 0;
+	    return Status::Running;
+	  }
+        }
+    }
+protected:
+    int speed, gsMin, gsMax, count, hasCaughtCount;
+    PIDcalculator* ltPid;
+    Scalar bgrMinTre, bgrMaxTre, bgrMinDec, bgrMaxDec;
+    bool updated;
+};
+
+/*
+    usage:
     ".leaf<TraceLineCam>(speed, pid, gs_min, gs_max, srew_rate, trace_side)"
     is to instruct the robot to trace the line at the given speed.
     pid is a vector of three constants for PID control.
@@ -489,6 +629,7 @@ public:
     }
     Status update() override {
         if (!updated) {
+	    video->setTraceTargetType(TT_LINE);
 	    video->setThresholds(gsMin, gsMax);
 	    if (side == TS_NORMAL) {
 	      if (_COURSE == -1) { /* right course */
