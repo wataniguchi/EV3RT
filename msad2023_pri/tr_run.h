@@ -1,6 +1,7 @@
 #define TR_RUN_R \
   /* RUN_R: test bed for block challenge */ \
   .composite<BrainTree::MemSequence>() \
+    .leaf<ArmUpDownFull>(AD_DOWN) \
     .composite<BrainTree::ParallelSequence>(1,3) \
       .leaf<IsColorDetected>(CL_RED) \
       .leaf<IsDistanceEarned>(prof->getValueAsNum("RUN_R1_DIST")) \
@@ -18,6 +19,7 @@
 #define TR_RUN_L \
   /* RUN_L: test bed for block challenge */ \
   .composite<BrainTree::MemSequence>() \
+    .leaf<ArmUpDownFull>(AD_DOWN) \
     .composite<BrainTree::ParallelSequence>(1,3) \
       .leaf<IsColorDetected>(CL_RED) \
       .leaf<IsDistanceEarned>(prof->getValueAsNum("RUN_L1_DIST")) \

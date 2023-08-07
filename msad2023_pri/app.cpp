@@ -56,6 +56,7 @@ int             upd_process_count = 0; /* used in _intervalLog macro and
 BrainTree::BehaviorTree* tr_calibration = nullptr;
 BrainTree::BehaviorTree* tr_run         = nullptr;
 BrainTree::BehaviorTree* tr_block       = nullptr;
+BrainTree::BehaviorTree* tr_block2      = nullptr;
 State state = ST_INITIAL;
 
 std::chrono::system_clock::time_point ts_upd;
@@ -1115,9 +1116,11 @@ void main_task(intptr_t unused) {
     if (prof->getValueAsStr("COURSE") == "R") {
       tr_run   = (BrainTree::BehaviorTree*) BrainTree::Builder() TR_RUN_R   .build();
       tr_block = (BrainTree::BehaviorTree*) BrainTree::Builder() TR_BLOCK_R .build();
+      tr_block2 = (BrainTree::BehaviorTree*) BrainTree::Builder() TR_BLOCK2_R .build();
     } else {
       tr_run   = (BrainTree::BehaviorTree*) BrainTree::Builder() TR_RUN_L   .build();
       tr_block = (BrainTree::BehaviorTree*) BrainTree::Builder() TR_BLOCK_L .build();
+      tr_block2 = (BrainTree::BehaviorTree*) BrainTree::Builder() TR_BLOCK2_L .build();
     }
 /*
     === BEHAVIOR TREE DEFINITION ENDS HERE ===
@@ -1170,6 +1173,7 @@ void main_task(intptr_t unused) {
     }
 
     /* destroy behavior tree */
+    delete tr_block2;
     delete tr_block;
     delete tr_run;
     delete tr_calibration;
@@ -1259,9 +1263,26 @@ void update_task(intptr_t unused) {
             status = tr_block->update();
             switch (status) {
             case BrainTree::Node::Status::Success:
-            case BrainTree::Node::Status::Failure:
                 state = ST_ENDING;
                 _log("State changed: ST_BLOCK to ST_ENDING");
+                break;
+            case BrainTree::Node::Status::Failure:
+                state = ST_BLOCK2;
+                _log("State changed: ST_BLOCK to ST_BLOCK2");
+                break;
+            default:
+                break;
+            }
+        }
+        break;
+    case ST_BLOCK2:
+        if (tr_block2 != nullptr) {
+            status = tr_block2->update();
+            switch (status) {
+            case BrainTree::Node::Status::Success:
+            case BrainTree::Node::Status::Failure:
+                state = ST_ENDING;
+                _log("State changed: ST_BLOCK2 to ST_ENDING");
                 break;
             default:
                 break;

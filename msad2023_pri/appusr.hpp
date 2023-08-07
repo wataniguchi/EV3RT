@@ -94,6 +94,7 @@ enum State {
     ST_CALIBRATION,
     ST_RUN,
     ST_BLOCK,
+    ST_BLOCK2,
     ST_ENDING,
     ST_END,
 };
