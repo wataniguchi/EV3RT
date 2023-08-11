@@ -30,18 +30,20 @@ using std::this_thread::sleep_for;
 #define IN_FPS 90
 
 /* frame size for OpenCV */
-//#define FRAME_WIDTH  640
-//#define FRAME_HEIGHT 480
-#define FRAME_WIDTH  160
-#define FRAME_HEIGHT 120
+#define FRAME_WIDTH  320
+#define FRAME_HEIGHT 240
+//#define FRAME_WIDTH  160
+//#define FRAME_HEIGHT 120
 
 #define ROI_BOUNDARY int(FRAME_WIDTH/16)
 #define LINE_THICKNESS int(FRAME_WIDTH/80)
 #define CIRCLE_RADIUS int(FRAME_WIDTH/40)
 
 /* frame size for X11 painting */
-#define OUT_FRAME_WIDTH  160
-#define OUT_FRAME_HEIGHT 120
+//#define OUT_FRAME_WIDTH  160
+//#define OUT_FRAME_HEIGHT 120
+#define OUT_FRAME_WIDTH  320
+#define OUT_FRAME_HEIGHT 240
 
 int gs_min=0,gs_max=100,edge=0;
 

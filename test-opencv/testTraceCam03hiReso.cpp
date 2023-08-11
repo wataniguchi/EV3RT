@@ -35,13 +35,13 @@ using std::this_thread::sleep_for;
 #define IN_FPS 40
 
 /* frame size for OpenCV */
-//#define FRAME_WIDTH  640
-//#define FRAME_HEIGHT 480
-#define FRAME_WIDTH  128
-#define FRAME_HEIGHT 96
-#define CROP_WIDTH   int(5*FRAME_WIDTH/8)
-#define CROP_HEIGHT  int(3*FRAME_HEIGHT/4)
-#define CROP_U_LIMIT int(FRAME_HEIGHT/4)
+#define FRAME_WIDTH  320
+#define FRAME_HEIGHT 240
+//#define FRAME_WIDTH  128
+//#define FRAME_HEIGHT 96
+#define CROP_WIDTH   int(13*FRAME_WIDTH/16)
+#define CROP_HEIGHT  int(3*FRAME_HEIGHT/8)
+#define CROP_U_LIMIT int(5*FRAME_HEIGHT/8)
 #define CROP_D_LIMIT (CROP_U_LIMIT+CROP_HEIGHT)
 #define CROP_L_LIMIT int((FRAME_WIDTH-CROP_WIDTH)/2)
 #define CROP_R_LIMIT (CROP_L_LIMIT+CROP_WIDTH)
@@ -49,13 +49,15 @@ using std::this_thread::sleep_for;
 #define ROI_BOUNDARY int(FRAME_WIDTH/16)
 #define LINE_THICKNESS int(FRAME_WIDTH/80)
 #define CIRCLE_RADIUS int(FRAME_WIDTH/40)
-#define SCAN_V_POS int(3*FRAME_HEIGHT/4 - LINE_THICKNESS)
+#define SCAN_V_POS int(13*FRAME_HEIGHT/16 - LINE_THICKNESS)
 static_assert(SCAN_V_POS > CROP_U_LIMIT,"SCAN_V_POS > CROP_U_LIMIT");
 static_assert(SCAN_V_POS < CROP_D_LIMIT,"SCAN_V_POS < CROP_D_LIMIT");
 
 /* frame size for X11 painting */
-#define OUT_FRAME_WIDTH  160
-#define OUT_FRAME_HEIGHT 120
+//#define OUT_FRAME_WIDTH  160
+//#define OUT_FRAME_HEIGHT 120
+#define OUT_FRAME_WIDTH  320
+#define OUT_FRAME_HEIGHT 240
 
 int gs_min=0,gs_max=60,edge=0,algo=0,gs_block=50,gs_C=50;
 
