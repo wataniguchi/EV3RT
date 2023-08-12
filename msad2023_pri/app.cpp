@@ -55,8 +55,9 @@ int             upd_process_count = 0; /* used in _intervalLog macro and
 
 BrainTree::BehaviorTree* tr_calibration = nullptr;
 BrainTree::BehaviorTree* tr_run         = nullptr;
-BrainTree::BehaviorTree* tr_block       = nullptr;
+BrainTree::BehaviorTree* tr_block1      = nullptr;
 BrainTree::BehaviorTree* tr_block2      = nullptr;
+BrainTree::BehaviorTree* tr_block3      = nullptr;
 State state = ST_INITIAL;
 
 std::chrono::system_clock::time_point ts_upd;
@@ -491,7 +492,7 @@ public:
 	} else {
 	  if (inSightCount > 7) {
 	    /* when target in sight more than 7 times out of 10 attempts */
-	    _log("ODO=%05d, target in sight at x=%d:y=%d:deg=%d:gyro=%d",
+	    _log("ODO=%05d, target IN SIGHT at x=%d:y=%d:deg=%d:gyro=%d",
 		 plotter->getDistance(), plotter->getLocX(), plotter->getLocY(),
 		 plotter->getDegree(), gyroSensor->getAngle());
 	    count = inSightCount = 0;
@@ -839,6 +840,86 @@ private:
     double srewRate;
 };
 
+
+/*
+    usage:
+    ".leaf<ScanBlock>(max_rotate, degree, speed, pid, gs_min, gs_max, bgr_min_tre, bgr_max_tre, bgr_min_dec, bgr_max_dec)"
+    is to instruct the robot to scan the RED block in certain move pattern using IsFoundBlock and RotateEV3 class.
+    max_rotate is a number of rotating move per a scan.
+    degree is for a per move. e.g., max_rotate = 4, degree = 45 sets 4*45 = 180 scan range.
+    pid is a vector of three constants for PID control.
+    gs_min, gs_max are grayscale threshold for object recognition binalization.
+    bgr_min_tre, bgr_max_tre are bgr vector threshold for identifying RED objects.
+    bgr_min_dec, bgr_max_dec are bgr vector threshold for identifying BLUE objects.
+*/
+class ScanBlock : public BrainTree::Node {
+protected:
+enum ChildType {
+  CT_ISFOUND, /* IsFoundBlock   */
+  CT_ROTATE, /* RotateEV3 */
+};
+public:
+  ScanBlock(int max_rotate, int d, int s, std::vector<double> pid, int gs_min, int gs_max,
+		std::vector<double> bgr_min_tre, std::vector<double> bgr_max_tre,
+	    std::vector<double> bgr_min_dec, std::vector<double> bgr_max_dec) : maxRotate(max_rotate),degree(d),speed(s),gsMin(gs_min),gsMax(gs_max) {
+        updated = false;
+	assert(pid.size() == 3);
+	assert(bgr_min_tre.size() == 3);
+	assert(bgr_max_tre.size() == 3);
+	assert(bgr_min_dec.size() == 3);
+	assert(bgr_max_dec.size() == 3);
+	vPid = pid;
+	vBgrMinTre = bgr_min_tre;
+	vBgrMaxTre = bgr_max_tre;
+	vBgrMinDec = bgr_min_dec;
+	vBgrMaxDec = bgr_max_dec;
+
+	cntRotate = 0;
+	ndChild = new IsFoundBlock(gsMin, gsMax, vBgrMinTre, vBgrMaxTre, vBgrMinDec, vBgrMaxDec);
+	ct = CT_ISFOUND;
+    }
+    ~ScanBlock() {
+        delete ndChild;
+    }
+    Status update() override {
+        if (!updated) {
+            _log("ODO=%05d, ScanBlock started.", plotter->getDistance());
+            updated = true;
+        }
+	status = ndChild->update();
+	if (status == Status::Running) return status;
+	if (status == Status::Failure && ct == CT_ISFOUND) {
+	  delete ndChild;
+	  if (cntRotate++ >= maxRotate) {
+	    cntRotate = 0;
+	    degree *= -1; /* switch rotating direction */
+	  }
+	  ndChild = new RotateEV3(degree, speed, 0.0);
+	  ct = CT_ROTATE;
+	  return Status::Running;
+	}
+	if (status == Status::Success && ct == CT_ISFOUND) {
+          _log("ODO=%05d, ScanBlock ended.", plotter->getDistance());
+	  return status;
+	}
+	if (status == Status::Success && ct == CT_ROTATE) {
+	  delete ndChild;
+	  ndChild = new IsFoundBlock(gsMin, gsMax, vBgrMinTre, vBgrMaxTre, vBgrMinDec, vBgrMaxDec);
+	  ct = CT_ISFOUND;
+	  return Status::Running;
+	}
+        _log("ODO=%05d, ScanBlock failed!!!", plotter->getDistance());
+	return Status::Failure;
+    }
+protected:
+    int maxRotate, cntRotate, degree, speed, gsMin, gsMax;
+    std::vector<double> vPid, vBgrMinTre, vBgrMaxTre, vBgrMinDec, vBgrMaxDec;
+    Node* ndChild;
+    ChildType ct;
+    Status status;
+    bool updated;
+};
+
 /*
     usage:
     ".leaf<SetArmPosition>(target_degree, pwm)"
@@ -1115,12 +1196,14 @@ void main_task(intptr_t unused) {
 
     if (prof->getValueAsStr("COURSE") == "R") {
       tr_run   = (BrainTree::BehaviorTree*) BrainTree::Builder() TR_RUN_R   .build();
-      tr_block = (BrainTree::BehaviorTree*) BrainTree::Builder() TR_BLOCK_R .build();
+      tr_block1 = (BrainTree::BehaviorTree*) BrainTree::Builder() TR_BLOCK1_R .build();
       tr_block2 = (BrainTree::BehaviorTree*) BrainTree::Builder() TR_BLOCK2_R .build();
+      tr_block3 = (BrainTree::BehaviorTree*) BrainTree::Builder() TR_BLOCK3_R .build();
     } else {
       tr_run   = (BrainTree::BehaviorTree*) BrainTree::Builder() TR_RUN_L   .build();
-      tr_block = (BrainTree::BehaviorTree*) BrainTree::Builder() TR_BLOCK_L .build();
+      tr_block1 = (BrainTree::BehaviorTree*) BrainTree::Builder() TR_BLOCK1_L .build();
       tr_block2 = (BrainTree::BehaviorTree*) BrainTree::Builder() TR_BLOCK2_L .build();
+      tr_block3 = (BrainTree::BehaviorTree*) BrainTree::Builder() TR_BLOCK3_L .build();
     }
 /*
     === BEHAVIOR TREE DEFINITION ENDS HERE ===
@@ -1173,8 +1256,9 @@ void main_task(intptr_t unused) {
     }
 
     /* destroy behavior tree */
+    delete tr_block3;
     delete tr_block2;
-    delete tr_block;
+    delete tr_block1;
     delete tr_run;
     delete tr_calibration;
     /* destroy profile object */
@@ -1246,8 +1330,8 @@ void update_task(intptr_t unused) {
             status = tr_run->update();
             switch (status) {
             case BrainTree::Node::Status::Success:
-                state = ST_BLOCK;
-                _log("State changed: ST_RUN to ST_BLOCK");
+                state = ST_BLOCK1;
+                _log("State changed: ST_RUN to ST_BLOCK1");
                 break;
             case BrainTree::Node::Status::Failure:
                 state = ST_ENDING;
@@ -1258,17 +1342,17 @@ void update_task(intptr_t unused) {
             }
         }
         break;
-    case ST_BLOCK:
-        if (tr_block != nullptr) {
-            status = tr_block->update();
+    case ST_BLOCK1:
+        if (tr_block1 != nullptr) {
+            status = tr_block1->update();
             switch (status) {
             case BrainTree::Node::Status::Success:
-                state = ST_ENDING;
-                _log("State changed: ST_BLOCK to ST_ENDING");
+                state = ST_BLOCK3;
+                _log("State changed: ST_BLOCK1 to ST_BLOCK3");
                 break;
             case BrainTree::Node::Status::Failure:
                 state = ST_BLOCK2;
-                _log("State changed: ST_BLOCK to ST_BLOCK2");
+                _log("State changed: ST_BLOCK1 to ST_BLOCK2");
                 break;
             default:
                 break;
@@ -1280,9 +1364,26 @@ void update_task(intptr_t unused) {
             status = tr_block2->update();
             switch (status) {
             case BrainTree::Node::Status::Success:
+                state = ST_BLOCK3;
+                _log("State changed: ST_BLOCK2 to ST_BLOCK3");
+                break;
             case BrainTree::Node::Status::Failure:
                 state = ST_ENDING;
                 _log("State changed: ST_BLOCK2 to ST_ENDING");
+                break;
+            default:
+                break;
+            }
+        }
+        break;
+    case ST_BLOCK3:
+        if (tr_block3 != nullptr) {
+            status = tr_block3->update();
+            switch (status) {
+            case BrainTree::Node::Status::Success:
+            case BrainTree::Node::Status::Failure:
+                state = ST_ENDING;
+                _log("State changed: ST_BLOCK3 to ST_ENDING");
                 break;
             default:
                 break;
