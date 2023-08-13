@@ -48,6 +48,7 @@ FilteredMotor*  rightMotor;
 Motor*          armMotor;
 Plotter*        plotter;
 Video*          video;
+int             guideAngle = 0;
 int             _COURSE; /* -1 for R course and 1 for L course */
 int             _DEBUG_LEVEL; /* used in _debug macro in appusr.hpp */
 int             upd_process_count = 0; /* used in _intervalLog macro and
@@ -198,48 +199,6 @@ public:
     }
 protected:
     int32_t alertDistance;
-};
-
-/*
-    usage:
-    ".leaf<IsAngleLarger>(angle)"
-    is to determine if the angular location of the robot measured by the gyro sensor is larger than the spedified angular value.
-    angle is in degree.
-*/
-class IsAngleLarger : public BrainTree::Node {
-public:
-    IsAngleLarger(int ang) : angle(ang) {}
-    Status update() override {
-        int32_t curAngle = gyroSensor->getAngle(); 
-        if (curAngle >= angle){
-            return Status::Success;
-        } else {
-            return Status::Running;
-        }
-    }
-protected:
-    int32_t angle;
-};
-
-/*
-    usage:
-    ".leaf<IsAngleSmaller>(angle)"
-    is to determine if the angular location of the robot measured by the gyro sensor is smaller than the spedified angular value.
-    angle is in degree.
-*/
-class IsAngleSmaller : public BrainTree::Node {
-public:
-    IsAngleSmaller(int ang) : angle(ang) {}
-    Status update() override {
-        int32_t curAngle = gyroSensor->getAngle(); 
-        if (curAngle <= angle){
-            return Status::Success;
-        } else {
-            return Status::Running;
-        }
-    }
-protected:
-    int32_t angle;
 };
 
 /*
@@ -840,6 +799,70 @@ private:
     double srewRate;
 };
 
+
+/*
+    usage:
+    ".leaf<SetGuideAngle>()"
+    is to remember the direction that can be used later as a guide / basis.
+*/
+class SetGuideAngle : public BrainTree::Node {
+public:
+    Status update() override {
+        guideAngle = gyroSensor->getAngle();
+        _log("ODO=%05d, Guide angle set as %d", plotter->getDistance(), guideAngle);
+        return Status::Success;
+    }
+};
+
+/*
+    usage:
+    ".leaf<RunPerGuideAngle>(offset, speed, pid)"
+    is to move robot toward the saved guide angle with offset at the specified speed.
+    pid is a vector of three constants for PID control.
+*/
+class RunPerGuideAngle : public BrainTree::Node {
+public:
+    RunPerGuideAngle(int off, int s, std::vector<double> pid) : offset(off),speed(s) {
+        updated = false;
+	assert(pid.size() == 3);
+        ltPid = new PIDcalculator(pid[0], pid[1], pid[2], PERIOD_UPD_TSK, -speed, speed);
+        assert(off >= -180 && off <= 180);
+    }
+    Status update() override {
+        if (!updated) {
+  	    targetAngle = _COURSE * offset + guideAngle; /* _COURSE = -1 when R course */
+            if (targetAngle > 180) {
+                targetAngle -= 360;
+            } else if (targetAngle < -180) {
+                targetAngle += 360;
+            }
+            /* The following code chunk is to properly set prevXin in SRLF */
+            srlfL->setRate(0.0);
+            leftMotor->setPWM(leftMotor->getPWM());
+            srlfR->setRate(0.0);
+            rightMotor->setPWM(rightMotor->getPWM());
+            _log("ODO=%05d, MovePerGuideAngle started. Target angle = %d, Current angle = %d", plotter->getDistance(), targetAngle, gyroSensor->getAngle());
+            updated = true;
+            return Status::Running;
+        }
+
+        int8_t forward, turn, pwmL, pwmR;
+        turn = ltPid->compute((gyroSensor->getAngle())+180, targetAngle+180);
+        forward = speed;
+        /* steer EV3 by setting different speed to the motors */
+        pwmL = forward - turn;
+        pwmR = forward + turn;
+        srlfL->setRate(0.0);
+        leftMotor->setPWM(pwmL);
+        srlfR->setRate(0.0);
+        rightMotor->setPWM(pwmR);
+        return Status::Running;
+    }
+private:
+    int offset, speed, targetAngle;
+    PIDcalculator* ltPid;
+    bool updated;
+};
 
 /*
     usage:

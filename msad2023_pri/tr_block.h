@@ -56,7 +56,17 @@
   .end()
 
 #define TR_BLOCK1_L \
-  .leaf<StopNow>()
+  .composite<BrainTree::MemSequence>() \
+    .leaf<SetGuideAngle>() \
+    .composite<BrainTree::ParallelSequence>(1,2) \
+      .leaf<IsDistanceEarned>(prof->getValueAsNum("BLOCK_L101_DIST")) \
+      .leaf<RunPerGuideAngle>(prof->getValueAsNum("BLOCK_L101_OFFSET"), \
+	    prof->getValueAsNum("BLOCK_L101_SPEED"), \
+	    prof->getValueAsNumVec("BLOCK_Lx_PID_CONST")) \
+    .end() \
+    .leaf<StopNow>() \
+  .end()
+/* .leaf<StopNow>() */
 
 #define TR_BLOCK2_L \
   .leaf<StopNow>()
