@@ -292,9 +292,13 @@ Mat Video::calculateTarget(Mat f) {
 	    } else if (r_limit_dec_x < r_limit_tre_x) {
 	      line(f, Point(r_limit_dec.x, r_limit_dec.y), Point(r_limit_dec_x, SCAN_V_POS), Scalar(255,0,0), int(LINE_THICKNESS/2));
 	      if (mx < r_limit_dec_x) mx = r_limit_dec_x;
-	    } else { /* when treasure block is behind decoy, always pass around from left */
+	    } else { /* when treasure block is behind decoy, pass around from left in R and right in L */
 	      line(f, Point(l_limit_dec.x, l_limit_dec.y), Point(l_limit_dec_x, SCAN_V_POS), Scalar(255,0,0), int(LINE_THICKNESS/2));
-	      if (mx > l_limit_dec_x) mx = l_limit_dec_x;
+	      if (_COURSE == -1) { /* _COURSE = -1 when R course */
+		if (mx > l_limit_dec_x) mx = l_limit_dec_x;
+	      } else {
+		if (mx < r_limit_dec_x) mx = r_limit_dec_x;
+	      }
 	    }
 	  }
 	}

@@ -59,6 +59,7 @@ BrainTree::BehaviorTree* tr_run         = nullptr;
 BrainTree::BehaviorTree* tr_block1      = nullptr;
 BrainTree::BehaviorTree* tr_block2      = nullptr;
 BrainTree::BehaviorTree* tr_block3      = nullptr;
+BrainTree::BehaviorTree* tr_block4      = nullptr;
 State state = ST_INITIAL;
 
 std::chrono::system_clock::time_point ts_upd;
@@ -902,7 +903,7 @@ public:
 	ct = CT_ISFOUND;
     }
     ~ScanBlock() {
-        delete ndChild;
+      if (ndChild != nullptr) delete ndChild;
     }
     Status update() override {
         if (!updated) {
@@ -914,8 +915,10 @@ public:
 	if (status == Status::Failure && ct == CT_ISFOUND) {
 	  delete ndChild;
 	  if (cntRotate++ >= maxRotate) {
-	    cntRotate = 0;
-	    degree *= -1; /* switch rotating direction */
+            _log("ODO=%05d, ScanBlock failed!!!", plotter->getDistance());
+  	    return Status::Failure;
+	    //cntRotate = 0;
+	    //degree *= -1; /* switch rotating direction */
 	  }
 	  ndChild = new RotateEV3(degree, speed, 0.0);
 	  ct = CT_ROTATE;
@@ -931,8 +934,6 @@ public:
 	  ct = CT_ISFOUND;
 	  return Status::Running;
 	}
-        _log("ODO=%05d, ScanBlock failed!!!", plotter->getDistance());
-	return Status::Failure;
     }
 protected:
     int maxRotate, cntRotate, degree, speed, gsMin, gsMax;
@@ -1222,11 +1223,13 @@ void main_task(intptr_t unused) {
       tr_block1 = (BrainTree::BehaviorTree*) BrainTree::Builder() TR_BLOCK1_R .build();
       tr_block2 = (BrainTree::BehaviorTree*) BrainTree::Builder() TR_BLOCK2_R .build();
       tr_block3 = (BrainTree::BehaviorTree*) BrainTree::Builder() TR_BLOCK3_R .build();
+      tr_block4 = (BrainTree::BehaviorTree*) BrainTree::Builder() TR_BLOCK4_R .build();
     } else {
       tr_run   = (BrainTree::BehaviorTree*) BrainTree::Builder() TR_RUN_L   .build();
       tr_block1 = (BrainTree::BehaviorTree*) BrainTree::Builder() TR_BLOCK1_L .build();
       tr_block2 = (BrainTree::BehaviorTree*) BrainTree::Builder() TR_BLOCK2_L .build();
       tr_block3 = (BrainTree::BehaviorTree*) BrainTree::Builder() TR_BLOCK3_L .build();
+      tr_block4 = (BrainTree::BehaviorTree*) BrainTree::Builder() TR_BLOCK4_L .build();
     }
 /*
     === BEHAVIOR TREE DEFINITION ENDS HERE ===
@@ -1279,6 +1282,7 @@ void main_task(intptr_t unused) {
     }
 
     /* destroy behavior tree */
+    delete tr_block4;
     delete tr_block3;
     delete tr_block2;
     delete tr_block1;
@@ -1370,8 +1374,8 @@ void update_task(intptr_t unused) {
             status = tr_block1->update();
             switch (status) {
             case BrainTree::Node::Status::Success:
-                state = ST_BLOCK3;
-                _log("State changed: ST_BLOCK1 to ST_BLOCK3");
+                state = ST_BLOCK4;
+                _log("State changed: ST_BLOCK1 to ST_BLOCK4");
                 break;
             case BrainTree::Node::Status::Failure:
                 state = ST_BLOCK2;
@@ -1387,12 +1391,12 @@ void update_task(intptr_t unused) {
             status = tr_block2->update();
             switch (status) {
             case BrainTree::Node::Status::Success:
-                state = ST_BLOCK3;
-                _log("State changed: ST_BLOCK2 to ST_BLOCK3");
+                state = ST_BLOCK4;
+                _log("State changed: ST_BLOCK2 to ST_BLOCK4");
                 break;
             case BrainTree::Node::Status::Failure:
-                state = ST_ENDING;
-                _log("State changed: ST_BLOCK2 to ST_ENDING");
+                state = ST_BLOCK3;
+                _log("State changed: ST_BLOCK2 to ST_BLOCK3");
                 break;
             default:
                 break;
@@ -1404,9 +1408,26 @@ void update_task(intptr_t unused) {
             status = tr_block3->update();
             switch (status) {
             case BrainTree::Node::Status::Success:
+                state = ST_BLOCK4;
+                _log("State changed: ST_BLOCK3 to ST_BLOCK4");
+                break;
             case BrainTree::Node::Status::Failure:
                 state = ST_ENDING;
                 _log("State changed: ST_BLOCK3 to ST_ENDING");
+                break;
+            default:
+                break;
+            }
+        }
+        break;
+    case ST_BLOCK4:
+        if (tr_block4 != nullptr) {
+            status = tr_block4->update();
+            switch (status) {
+            case BrainTree::Node::Status::Success:
+            case BrainTree::Node::Status::Failure:
+                state = ST_ENDING;
+                _log("State changed: ST_BLOCK4 to ST_ENDING");
                 break;
             default:
                 break;
