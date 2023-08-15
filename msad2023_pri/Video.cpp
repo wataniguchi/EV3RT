@@ -114,6 +114,7 @@ Video::Video() {
   ximg = XCreateImage(disp, vis, 24, ZPixmap, 0, (char*)gbuf, OUT_FRAME_WIDTH, 2*OUT_FRAME_HEIGHT, BitmapUnit(disp), 0);
   XInitImage(ximg);
 
+  blockOffset = 0;
   /* initial region of interest is set to crop zone */
   roi = Rect(CROP_L_LIMIT, CROP_U_LIMIT, CROP_WIDTH, CROP_HEIGHT);
   /* initial ROI for TT_BLKS */
@@ -307,13 +308,13 @@ Mat Video::calculateTarget(Mat f) {
     /* draw ROI */
     polylines(f, blk_roi, true, Scalar(0,255,255), LINE_THICKNESS);
 
-  } else if (traceTargetType == TT_LINE) {
+  } else if (traceTargetType == TT_LINE || TT_LINE_WITH_BLK) {
     Mat img_gray, img_gray_part, img_bin_part, img_bin, img_bin_mor, img_cnt_gray, scan_line;
 
     /* convert the image from BGR to grayscale */
     cvtColor(f, img_gray, COLOR_BGR2GRAY);
     /* crop a part of image for binarization */
-    img_gray_part = img_gray(Range(CROP_U_LIMIT,CROP_D_LIMIT), Range(CROP_L_LIMIT,CROP_R_LIMIT));
+    img_gray_part = img_gray(Range(CROP_U_LIMIT-blockOffset,CROP_D_LIMIT-blockOffset), Range(CROP_L_LIMIT,CROP_R_LIMIT));
     /* binarize the image */
     switch (algo) {
       case BA_NORMAL:
@@ -333,10 +334,10 @@ Mat Video::calculateTarget(Mat f) {
     /* prepare an empty matrix */
     img_bin = Mat::zeros(FRAME_HEIGHT, FRAME_WIDTH, CV_8UC1);
     /* copy img_bin_part into img_bin */
-    for (int i = CROP_U_LIMIT; i < CROP_D_LIMIT; i++) {
+    for (int i = CROP_U_LIMIT-blockOffset; i < CROP_D_LIMIT-blockOffset; i++) {
       for (int j = CROP_L_LIMIT; j < CROP_R_LIMIT; j++) {
-        img_bin.at<uchar>(i,j) = img_bin_part.at<uchar>(i-CROP_U_LIMIT,j-CROP_L_LIMIT); /* type = CV_8U */
-      }
+        img_bin.at<uchar>(i,j) = img_bin_part.at<uchar>(i-(CROP_U_LIMIT-blockOffset),j-CROP_L_LIMIT); /* type = CV_8U */
+    	}
     }
     /* remove noise */
     morphologyEx(img_bin, img_bin_mor, MORPH_CLOSE, kernel);
@@ -408,16 +409,16 @@ Mat Video::calculateTarget(Mat f) {
       roi.width = roi.width + 2*ROI_BOUNDARY;
       roi.height = roi.height + 2*ROI_BOUNDARY;
       if (roi.x < CROP_L_LIMIT) {
-        roi.x = CROP_L_LIMIT;
+	roi.x = CROP_L_LIMIT;
       }
-      if (roi.y < CROP_U_LIMIT) {
-        roi.y = CROP_U_LIMIT;
+      if (roi.y < CROP_U_LIMIT-blockOffset) {
+	roi.y = CROP_U_LIMIT-blockOffset;
       }
       if (roi.x + roi.width > CROP_R_LIMIT) {
-        roi.width = CROP_R_LIMIT - roi.x;
+	roi.width = CROP_R_LIMIT - roi.x;
       }
-      if (roi.y + roi.height > CROP_D_LIMIT) {
-        roi.height = CROP_D_LIMIT - roi.y;
+      if (roi.y + roi.height > CROP_D_LIMIT-blockOffset) {
+	roi.height = CROP_D_LIMIT-blockOffset - roi.y;
       }
  
       /* prepare for trace target calculation */
@@ -428,7 +429,7 @@ Mat Video::calculateTarget(Mat f) {
       drawContours(img_cnt, (vector<vector<Point>>){contours[i_target]}, 0, Scalar(0,255,0), 1);
       cvtColor(img_cnt, img_cnt_gray, COLOR_BGR2GRAY);
       /* scan the line at SCAN_V_POS to find edges */
-      scan_line = img_cnt_gray.row(SCAN_V_POS);
+      scan_line = img_cnt_gray.row(SCAN_V_POS-blockOffset);
       /* convert the Mat to a NumCpp array */
       auto scan_line_nc = nc::NdArray<nc::uint8>(scan_line.data, scan_line.rows, scan_line.cols);
       auto edges = scan_line_nc.flatnonzero();
@@ -449,20 +450,20 @@ Mat Video::calculateTarget(Mat f) {
       targetInSight = true;
     } else { /* contours.size() == 0 */
       rangeOfEdges = 0;
-      roi = Rect(CROP_L_LIMIT, CROP_U_LIMIT, CROP_WIDTH, CROP_HEIGHT);
+      roi = Rect(CROP_L_LIMIT, CROP_U_LIMIT-blockOffset, CROP_WIDTH, CROP_HEIGHT);
       /* keep mx in order to maintain the current move of robot */
       cx = (int)(FRAME_WIDTH/2);
-      cy = SCAN_V_POS;
+      cy = SCAN_V_POS-blockOffset;
       targetInSight = false;
     }
     //_logNoAsp("roe = %d", rangeOfEdges);
 
     /* draw the area of interest on the original image */
     rectangle(f, Point(roi.x,roi.y), Point(roi.x+roi.width,roi.y+roi.height), Scalar(255,0,0), LINE_THICKNESS);
-  } /* if(tradeTargetType == TT_LINE) */
+  } /* if (traceTargetType == TT_LINE || traceTargetType == TT_LINE_WITH_BLK) */
   
   /* draw the trace target on the image */
-  circle(f, Point(mx, SCAN_V_POS), CIRCLE_RADIUS, Scalar(0,0,255), -1);
+  circle(f, Point(mx, SCAN_V_POS-blockOffset), CIRCLE_RADIUS, Scalar(0,0,255), -1);
   /* calculate variance of cx from the center in pixel */
   int vxp = mx - (int)(FRAME_WIDTH/2);
   /* convert the variance from pixel to milimeters
@@ -527,8 +528,13 @@ void Video::setBinarizationAlgorithm(BinarizationAlgorithm ba) {
 void Video::setTraceTargetType(TargetType tt) {
   traceTargetType = tt;
   if (tt == TT_LINE) {
+    blockOffset = 0;
     /* initial region of interest is set to crop zone */
     roi = Rect(CROP_L_LIMIT, CROP_U_LIMIT, CROP_WIDTH, CROP_HEIGHT);
+  } else if (tt == TT_LINE_WITH_BLK) {
+    blockOffset = BLOCK_OFFSET;
+    /* initial region of interest is set to crop zone */
+    Rect roi(CROP_L_LIMIT, CROP_U_LIMIT-blockOffset, CROP_WIDTH, CROP_HEIGHT);
   } else {
     /* initial ROI */
     blk_roi = blk_roi_init;

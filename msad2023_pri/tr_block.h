@@ -121,28 +121,8 @@
     .composite<BrainTree::ParallelSequence>(1,3) \
       .leaf<IsColorDetected>(CL_BLACK) \
       .leaf<IsDistanceEarned>(prof->getValueAsNum("BLOCK_R602_DIST")) \
-      .leaf<RunPerGuideAngle>(prof->getValueAsNum("BLOCK_R602_OFFSET"), \
-	    prof->getValueAsNum("BLOCK_R602_SPEED"), \
-	    prof->getValueAsNumVec("BLOCK_ANG_PID_CONST")) \
-    .end() \
-    /* section R603: face to Goal */ \
-    .composite<BrainTree::ParallelSequence>(1,2) \
-      .leaf<IsDistanceEarned>(prof->getValueAsNum("BLOCK_R603_DIST")) \
-      .leaf<RunAsInstructed>(prof->getValueAsNum("BLOCK_R603_PWML"), \
-	    prof->getValueAsNum("BLOCK_R603_PWMR"), 0.0) \
-    .end() \
-    /* section R604: face further to Goal */ \
-    .composite<BrainTree::ParallelSequence>(1,2) \
-      .leaf<IsDistanceEarned>(prof->getValueAsNum("BLOCK_R604_DIST")) \
-      .leaf<RunAsInstructed>(prof->getValueAsNum("BLOCK_R604_PWML"), \
-	    prof->getValueAsNum("BLOCK_R604_PWMR"), 0.0) \
-    .end() \
-    /* section R605: get closer to the course line until detecting BLACK line again */ \
-    .composite<BrainTree::ParallelSequence>(1,3) \
-      .leaf<IsColorDetected>(CL_BLACK) \
-      .leaf<IsDistanceEarned>(prof->getValueAsNum("BLOCK_R605_DIST")) \
-      .leaf<RunAsInstructed>(prof->getValueAsNum("BLOCK_R605_PWML"), \
-	    prof->getValueAsNum("BLOCK_R605_PWMR"), 0.0) \
+      .leaf<RunAsInstructed>(prof->getValueAsNum("BLOCK_R602_PWML"), \
+	    prof->getValueAsNum("BLOCK_R602_PWMR"), 0.0) \
     .end() \
     /* section R606: reach to Goal */ \
     .composite<BrainTree::ParallelSequence>(1,3) \

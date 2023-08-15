@@ -576,13 +576,14 @@ public:
         updated = false;
 	assert(pid.size() == 3);
         ltPid = new PIDcalculator(pid[0], pid[1], pid[2], PERIOD_UPD_TSK, -speed, speed);
+	targetType = TT_LINE;
     }
     ~TraceLineCam() {
         delete ltPid;
     }
     Status update() override {
         if (!updated) {
-	    video->setTraceTargetType(TT_LINE);
+	    video->setTraceTargetType(targetType);
 	    video->setThresholds(gsMin, gsMax);
 	    if (side == TS_NORMAL) {
 	      if (_COURSE == -1) { /* right course */
@@ -631,8 +632,20 @@ protected:
     double srewRate;
     TraceSide side;
     bool updated;
+    TargetType targetType;
 };
 
+/*
+    usage:
+    ".leaf<TraceLineCamWithBlockInArm>(speed, pid, gs_min, gs_max, srew_rate, trace_side)"
+    is to instruct the robot to trace the line at the given speed,
+    while keeping a block in the arm.
+    Usage is same as its base class, TraceLineCam 
+*/
+class TraceLineCamWithBlockInArm : public TraceLineCam {
+public:
+  TraceLineCamWithBlockInArm (int s, std::vector<double> pid, int gs_min, int gs_max, double srew_rate, TraceSide trace_side) : TraceLineCam(s,pid,gs_min,gs_max,srew_rate,trace_side) { targetType = TT_LINE_WITH_BLK; }
+};
 
 /*
     usage:
@@ -1031,6 +1044,8 @@ public:
 	  ct = CT_ISFOUND;
 	  return Status::Running;
 	}
+        _log("ODO=%05d, ScanBlock *** invalid state ***", plotter->getDistance());
+	return Status::Invalid;
     }
 protected:
     int maxRotate, cntRotate, degree, speed, gsMin, gsMax;

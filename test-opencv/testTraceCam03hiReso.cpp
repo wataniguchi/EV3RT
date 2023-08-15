@@ -45,6 +45,8 @@ using std::this_thread::sleep_for;
 #define CROP_D_LIMIT (CROP_U_LIMIT+CROP_HEIGHT)
 #define CROP_L_LIMIT int((FRAME_WIDTH-CROP_WIDTH)/2)
 #define CROP_R_LIMIT (CROP_L_LIMIT+CROP_WIDTH)
+#define BLOCK_OFFSET int(3*FRAME_HEIGHT/8)
+static_assert(CROP_U_LIMIT > BLOCK_OFFSET,"CROP_U_LIMIT > BLOCK_OFFSET");
 
 #define ROI_BOUNDARY int(FRAME_WIDTH/16)
 #define LINE_THICKNESS int(FRAME_WIDTH/80)
@@ -59,12 +61,18 @@ static_assert(SCAN_V_POS < CROP_D_LIMIT,"SCAN_V_POS < CROP_D_LIMIT");
 #define OUT_FRAME_WIDTH  320
 #define OUT_FRAME_HEIGHT 240
 
-int gs_min=0,gs_max=60,edge=0,algo=0,gs_block=50,gs_C=50;
+int gs_min=0,gs_max=60,edge=0,algo=0,gs_block=50,gs_C=50,traceTargetType=0;
 
 enum BinarizationAlgorithm {
   BA_NORMAL = 0,
   BA_ADAPTIVE = 1,
   BA_OTSU = 2,
+};
+
+enum TargetType {
+  TT_LINE = 0, /* Line   */
+  TT_LINE_WITH_BLK = 1, /* Line with a block in the arm */
+  TT_BLKS = 2, /* Blocks */
 };
 
 static char algoName[3][25] = {"normal binarization", "adaptive binarization", "Otsu's binarization"};
@@ -95,7 +103,10 @@ int main() {
   setTrackbarPos("GS_block (adaptive)", "testTrace1", gs_block);
   createTrackbar("GS_C (adaptive)", "testTrace1", nullptr, 255, nullptr);
   setTrackbarPos("GS_C (adaptive)", "testTrace1", gs_C);
+  createTrackbar("Trace Target",   "testTrace1", nullptr, 1, nullptr);
+  setTrackbarPos("Trace Target",   "testTrace1", traceTargetType);
 
+  int blockOffset = 0;
   /* initial region of interest is set to crop zone */
   Rect roi(CROP_L_LIMIT, CROP_U_LIMIT, CROP_WIDTH, CROP_HEIGHT);
   /* initial trace target */
@@ -111,6 +122,29 @@ int main() {
     algo   = getTrackbarPos("Bin Algorithm",   "testTrace1");
     gs_block = getTrackbarPos("GS_block (adaptive)",   "testTrace1");
     gs_C   = getTrackbarPos("GS_C (adaptive)",   "testTrace1");
+    traceTargetType = getTrackbarPos("Trace Target",   "testTrace1");
+    switch (traceTargetType) {
+      case TT_LINE:
+	if (blockOffset != 0) { /* choice flipped */
+	  blockOffset = 0;
+	  /* initial region of interest is set to crop zone */
+	  Rect roi(CROP_L_LIMIT, CROP_U_LIMIT, CROP_WIDTH, CROP_HEIGHT);
+	  /* initial trace target */
+	  int mx = (int)(FRAME_WIDTH/2);
+	}
+        break;
+      case TT_LINE_WITH_BLK:
+	if (blockOffset != BLOCK_OFFSET) { /* choice flipped */
+	  blockOffset = BLOCK_OFFSET;
+	  /* initial region of interest is set to crop zone */
+	  Rect roi(CROP_L_LIMIT, CROP_U_LIMIT-blockOffset, CROP_WIDTH, CROP_HEIGHT);
+	  /* initial trace target */
+	  int mx = (int)(FRAME_WIDTH/2);
+	}
+	break;
+      default:
+	break;
+    }
 
     Mat frame, img_orig, img_gray, img_gray_part, img_bin_part, img_bin, img_bin_mor;
     int c;
@@ -137,7 +171,7 @@ int main() {
     /* convert the image from BGR to grayscale */
     cvtColor(img_orig, img_gray, COLOR_BGR2GRAY);
     /* crop a part of the image */
-    img_gray_part = img_gray(Range(CROP_U_LIMIT,CROP_D_LIMIT), Range(CROP_L_LIMIT,CROP_R_LIMIT));
+    img_gray_part = img_gray(Range(CROP_U_LIMIT-blockOffset,CROP_D_LIMIT-blockOffset), Range(CROP_L_LIMIT,CROP_R_LIMIT));
     /* binarize the image */
     switch (algo) {
       case BA_NORMAL:
@@ -157,9 +191,9 @@ int main() {
     /* prepare an empty matrix */
     img_bin = Mat::zeros(FRAME_HEIGHT, FRAME_WIDTH, CV_8UC1);
     /* copy img_bin_part into img_bin */
-    for (int i = CROP_U_LIMIT; i < CROP_D_LIMIT; i++) {
+    for (int i = CROP_U_LIMIT-blockOffset; i < CROP_D_LIMIT-blockOffset; i++) {
       for (int j = CROP_L_LIMIT; j < CROP_R_LIMIT; j++) {
-        img_bin.at<uchar>(i,j) = img_bin_part.at<uchar>(i-CROP_U_LIMIT,j-CROP_L_LIMIT); /* type = CV_8U */
+        img_bin.at<uchar>(i,j) = img_bin_part.at<uchar>(i-(CROP_U_LIMIT-blockOffset),j-CROP_L_LIMIT); /* type = CV_8U */
     	}
     }
     /* remove noise */
@@ -198,14 +232,14 @@ int main() {
       if (roi.x < CROP_L_LIMIT) {
 	roi.x = CROP_L_LIMIT;
       }
-      if (roi.y < CROP_U_LIMIT) {
-	roi.y = CROP_U_LIMIT;
+      if (roi.y < CROP_U_LIMIT-blockOffset) {
+	roi.y = CROP_U_LIMIT-blockOffset;
       }
       if (roi.x + roi.width > CROP_R_LIMIT) {
 	roi.width = CROP_R_LIMIT - roi.x;
       }
-      if (roi.y + roi.height > CROP_D_LIMIT) {
-	roi.height = CROP_D_LIMIT - roi.y;
+      if (roi.y + roi.height > CROP_D_LIMIT-blockOffset) {
+	roi.height = CROP_D_LIMIT-blockOffset - roi.y;
       }
  
       /* prepare for trace target calculation */
@@ -214,7 +248,7 @@ int main() {
       Mat img_cnt_gray;
       cvtColor(img_cnt, img_cnt_gray, COLOR_BGR2GRAY);
       /* scan the line at SCAN_V_POS to find edges */
-      Mat scan_line = img_cnt_gray.row(SCAN_V_POS);
+      Mat scan_line = img_cnt_gray.row(SCAN_V_POS-blockOffset);
       /* convert the Mat to a NumCpp array */
       auto scan_line_nc = nc::NdArray<nc::uint8>(scan_line.data, scan_line.rows, scan_line.cols);
       auto edges = scan_line_nc.flatnonzero();
@@ -230,13 +264,13 @@ int main() {
 	mx = edges[0];
       }
     } else { /* contours.size() == 0 */
-      roi = Rect(CROP_L_LIMIT, CROP_U_LIMIT, CROP_WIDTH, CROP_HEIGHT);
+      roi = Rect(CROP_L_LIMIT, CROP_U_LIMIT-blockOffset, CROP_WIDTH, CROP_HEIGHT);
     }
 
     /* draw the area of interest on the original image */
     rectangle(img_orig, Point(roi.x,roi.y), Point(roi.x+roi.width,roi.y+roi.height), Scalar(255,0,0), LINE_THICKNESS);
     /* draw the trace target on the image */
-    circle(img_orig, Point(mx, SCAN_V_POS), CIRCLE_RADIUS, Scalar(0,0,255), -1);
+    circle(img_orig, Point(mx, SCAN_V_POS-blockOffset), CIRCLE_RADIUS, Scalar(0,0,255), -1);
     /* calculate variance of mx from the center in pixel */
     int vxp = mx - (int)(FRAME_WIDTH/2);
     /* convert the variance from pixel to milimeters
