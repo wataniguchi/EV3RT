@@ -48,7 +48,7 @@ FilteredMotor*  rightMotor;
 Motor*          armMotor;
 Plotter*        plotter;
 Video*          video;
-int             guideAngle = 0;
+int             guideAngle = 0, guideLocX = 0, guideLocY = 0;
 int             _COURSE; /* -1 for R course and 1 for L course */
 int             _DEBUG_LEVEL; /* used in _debug macro in appusr.hpp */
 int             upd_process_count = 0; /* used in _intervalLog macro and
@@ -60,6 +60,8 @@ BrainTree::BehaviorTree* tr_block1      = nullptr;
 BrainTree::BehaviorTree* tr_block2      = nullptr;
 BrainTree::BehaviorTree* tr_block3      = nullptr;
 BrainTree::BehaviorTree* tr_block4      = nullptr;
+BrainTree::BehaviorTree* tr_block5      = nullptr;
+BrainTree::BehaviorTree* tr_block6      = nullptr;
 State state = ST_INITIAL;
 
 std::chrono::system_clock::time_point ts_upd;
@@ -803,6 +805,97 @@ private:
 
 /*
     usage:
+    ".leaf<SetGuideLocation>()"
+    is to remember the current location that can be used later as a guide / basis.
+*/
+class SetGuideLocation : public BrainTree::Node {
+public:
+    Status update() override {
+        guideLocX = plotter->getLocX();
+        guideLocY = plotter->getLocX();
+        _log("ODO=%05d, Guide position set as X = %d, Y = %d", plotter->getDistance(), guideLocX, guideLocY);
+        return Status::Success;
+    }
+};
+
+/*
+    usage:
+    ".leaf<IsXdiffFromGuideLocationLarger>(value)"
+    is to determine if the X-difference between the robot Guide Location is larger than the specified value.
+*/
+class IsXdiffFromGuideLocationLarger : public BrainTree::Node {
+public:
+    IsXdiffFromGuideLocationLarger(int v) : value(v) {
+        updated = false;
+        earned = false;
+    }
+    Status update() override {
+        if (!updated) {
+	    _log("ODO=%05d, Xdiff comparison to %d started at X = %d, Y = %d.", plotter->getDistance(), value,
+	       plotter->getLocX(), plotter->getLocY());
+            updated = true;
+        }
+	int currentLocX = plotter->getLocX();
+	int currentLocY = plotter->getLocY();
+        int delta = currentLocX - guideLocX;
+	if (delta < 0) delta = -delta;
+        
+        if (delta >= value) {
+            if (!earned) {
+	        _log("ODO=%05d, Xdiff is larger than %d at X = %d, Y = %d.", plotter->getDistance(), value,
+		     currentLocX, currentLocY);
+                earned = true;
+            }
+            return Status::Success;
+        } else {
+            return Status::Failure;
+        }
+    }
+protected:
+    int32_t value;
+    bool updated, earned;
+};
+
+/*
+    usage:
+    ".leaf<IsYdiffFromGuideLocationLarger>(value)"
+    is to determine if the Y-difference between the robot Guide Location is larger than the specified value.
+*/
+class IsYdiffFromGuideLocationLarger : public BrainTree::Node {
+public:
+    IsYdiffFromGuideLocationLarger(int v) : value(v) {
+        updated = false;
+        earned = false;
+    }
+    Status update() override {
+        if (!updated) {
+	    _log("ODO=%05d, Ydiff comparison to %d started at X = %d, Y = %d.", plotter->getDistance(), value,
+	       plotter->getLocX(), plotter->getLocY());
+            updated = true;
+        }
+	int currentLocX = plotter->getLocX();
+	int currentLocY = plotter->getLocY();
+        int delta = currentLocY - guideLocY;
+	if (delta < 0) delta = -delta;
+        
+        if (delta >= value) {
+            if (!earned) {
+	        _log("ODO=%05d, Ydiff is larger than %d at X = %d, Y = %d.", plotter->getDistance(), value,
+		     currentLocX, currentLocY);
+                earned = true;
+            }
+            return Status::Success;
+        } else {
+            return Status::Failure;
+        }
+    }
+protected:
+    int32_t value;
+    bool updated, earned;
+};
+
+/*
+    usage:
     ".leaf<SetGuideAngle>()"
     is to remember the direction that can be used later as a guide / basis.
 */
@@ -871,7 +964,6 @@ private:
     is to instruct the robot to scan the RED block in certain move pattern using IsFoundBlock and RotateEV3 class.
     max_rotate is a number of rotating move per a scan.
     degree is for a per move. e.g., max_rotate = 4, degree = 45 sets 4*45 = 180 scan range.
-    pid is a vector of three constants for PID control.
     gs_min, gs_max are grayscale threshold for object recognition binalization.
     bgr_min_tre, bgr_max_tre are bgr vector threshold for identifying RED objects.
     bgr_min_dec, bgr_max_dec are bgr vector threshold for identifying BLUE objects.
@@ -883,16 +975,14 @@ enum ChildType {
   CT_ROTATE, /* RotateEV3 */
 };
 public:
-  ScanBlock(int max_rotate, int d, int s, std::vector<double> pid, int gs_min, int gs_max,
+  ScanBlock(int max_rotate, int d, int s, int gs_min, int gs_max,
 		std::vector<double> bgr_min_tre, std::vector<double> bgr_max_tre,
 	    std::vector<double> bgr_min_dec, std::vector<double> bgr_max_dec) : maxRotate(max_rotate),degree(d),speed(s),gsMin(gs_min),gsMax(gs_max) {
         updated = false;
-	assert(pid.size() == 3);
 	assert(bgr_min_tre.size() == 3);
 	assert(bgr_max_tre.size() == 3);
 	assert(bgr_min_dec.size() == 3);
 	assert(bgr_max_dec.size() == 3);
-	vPid = pid;
 	vBgrMinTre = bgr_min_tre;
 	vBgrMaxTre = bgr_max_tre;
 	vBgrMinDec = bgr_min_dec;
@@ -937,7 +1027,7 @@ public:
     }
 protected:
     int maxRotate, cntRotate, degree, speed, gsMin, gsMax;
-    std::vector<double> vPid, vBgrMinTre, vBgrMaxTre, vBgrMinDec, vBgrMaxDec;
+    std::vector<double> vBgrMinTre, vBgrMaxTre, vBgrMinDec, vBgrMaxDec;
     Node* ndChild;
     ChildType ct;
     Status status;
@@ -1224,12 +1314,16 @@ void main_task(intptr_t unused) {
       tr_block2 = (BrainTree::BehaviorTree*) BrainTree::Builder() TR_BLOCK2_R .build();
       tr_block3 = (BrainTree::BehaviorTree*) BrainTree::Builder() TR_BLOCK3_R .build();
       tr_block4 = (BrainTree::BehaviorTree*) BrainTree::Builder() TR_BLOCK4_R .build();
+      tr_block5 = (BrainTree::BehaviorTree*) BrainTree::Builder() TR_BLOCK5_R .build();
+      tr_block6 = (BrainTree::BehaviorTree*) BrainTree::Builder() TR_BLOCK6_R .build();
     } else {
       tr_run   = (BrainTree::BehaviorTree*) BrainTree::Builder() TR_RUN_L   .build();
       tr_block1 = (BrainTree::BehaviorTree*) BrainTree::Builder() TR_BLOCK1_L .build();
       tr_block2 = (BrainTree::BehaviorTree*) BrainTree::Builder() TR_BLOCK2_L .build();
       tr_block3 = (BrainTree::BehaviorTree*) BrainTree::Builder() TR_BLOCK3_L .build();
       tr_block4 = (BrainTree::BehaviorTree*) BrainTree::Builder() TR_BLOCK4_L .build();
+      tr_block5 = (BrainTree::BehaviorTree*) BrainTree::Builder() TR_BLOCK5_L .build();
+      tr_block6 = (BrainTree::BehaviorTree*) BrainTree::Builder() TR_BLOCK6_L .build();
     }
 /*
     === BEHAVIOR TREE DEFINITION ENDS HERE ===
@@ -1282,6 +1376,8 @@ void main_task(intptr_t unused) {
     }
 
     /* destroy behavior tree */
+    delete tr_block6;
+    delete tr_block5;
     delete tr_block4;
     delete tr_block3;
     delete tr_block2;
@@ -1425,9 +1521,43 @@ void update_task(intptr_t unused) {
             status = tr_block4->update();
             switch (status) {
             case BrainTree::Node::Status::Success:
+                state = ST_BLOCK5;
+                _log("State changed: ST_BLOCK4 to ST_BLOCK5");
+                break;
+            case BrainTree::Node::Status::Failure:
+                state = ST_BLOCK6;
+                _log("State changed: ST_BLOCK4 to ST_BLOCK6");
+                break;
+            default:
+                break;
+            }
+        }
+        break;
+    case ST_BLOCK5:
+        if (tr_block5 != nullptr) {
+            status = tr_block5->update();
+            switch (status) {
+            case BrainTree::Node::Status::Success:
+                state = ST_BLOCK6;
+                _log("State changed: ST_BLOCK5 to ST_BLOCK6");
+                break;
             case BrainTree::Node::Status::Failure:
                 state = ST_ENDING;
-                _log("State changed: ST_BLOCK4 to ST_ENDING");
+                _log("State changed: ST_BLOCK5 to ST_ENDING");
+                break;
+            default:
+                break;
+            }
+        }
+        break;
+    case ST_BLOCK6:
+        if (tr_block6 != nullptr) {
+            status = tr_block6->update();
+            switch (status) {
+            case BrainTree::Node::Status::Success:
+            case BrainTree::Node::Status::Failure:
+                state = ST_ENDING;
+                _log("State changed: ST_BLOCK6 to ST_ENDING");
                 break;
             default:
                 break;
