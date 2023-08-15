@@ -48,7 +48,8 @@ FilteredMotor*  rightMotor;
 Motor*          armMotor;
 Plotter*        plotter;
 Video*          video;
-int             guideAngle = 0, guideLocX = 0, guideLocY = 0;
+int16_t         guideAngle = 0;
+int             guideLocX = 0, guideLocY = 0;
 int             _COURSE; /* -1 for R course and 1 for L course */
 int             _DEBUG_LEVEL; /* used in _debug macro in appusr.hpp */
 int             upd_process_count = 0; /* used in _intervalLog macro and
@@ -296,7 +297,7 @@ public:
 
         switch(color){
 	    case CL_BLACK:
-	        if (cur_rgb.r <= 50 && cur_rgb.g <= 50 && cur_rgb.b <= 50) {
+	        if (cur_rgb.r <= 70 && cur_rgb.g <= 90 && cur_rgb.b <= 120) {
                     _log("ODO=%05d, CL_BLACK detected.", plotter->getDistance());
                     return Status::Success;
                 }
@@ -796,7 +797,8 @@ public:
         }
     }
 private:
-    int deltaDegreeTarget, originalDegree;
+    int deltaDegreeTarget;
+    int16_t originalDegree;
     int clockwise, speed;
     bool updated;
     double srewRate;
@@ -852,7 +854,7 @@ public:
         }
     }
 protected:
-    int32_t value;
+    int value;
     bool updated, earned;
 };
 
@@ -890,7 +892,7 @@ public:
         }
     }
 protected:
-    int32_t value;
+    int value;
     bool updated, earned;
 };
 
@@ -940,8 +942,15 @@ public:
             return Status::Running;
         }
 
+        int deltaAngle = targetAngle - gyroSensor->getAngle();
+        if (deltaAngle > 180) {
+            deltaAngle -= 360;
+        } else if (deltaAngle < -180) {
+            deltaAngle += 360;
+        }
+
         int8_t forward, turn, pwmL, pwmR;
-        turn = ltPid->compute((gyroSensor->getAngle())+180, targetAngle+180);
+        turn = ltPid->compute(0, deltaAngle);
         forward = speed;
         /* steer EV3 by setting different speed to the motors */
         pwmL = forward - turn;
@@ -987,16 +996,13 @@ public:
 	vBgrMaxTre = bgr_max_tre;
 	vBgrMinDec = bgr_min_dec;
 	vBgrMaxDec = bgr_max_dec;
-
-	cntRotate = 0;
-	ndChild = new IsFoundBlock(gsMin, gsMax, vBgrMinTre, vBgrMaxTre, vBgrMinDec, vBgrMaxDec);
-	ct = CT_ISFOUND;
     }
-    ~ScanBlock() {
-      if (ndChild != nullptr) delete ndChild;
-    }
+    ~ScanBlock() {}
     Status update() override {
         if (!updated) {
+	    cntRotate = 0;
+	    ndChild = new IsFoundBlock(gsMin, gsMax, vBgrMinTre, vBgrMaxTre, vBgrMinDec, vBgrMaxDec);
+	    ct = CT_ISFOUND;
             _log("ODO=%05d, ScanBlock started.", plotter->getDistance());
             updated = true;
         }
@@ -1015,6 +1021,7 @@ public:
 	  return Status::Running;
 	}
 	if (status == Status::Success && ct == CT_ISFOUND) {
+	  delete ndChild;
           _log("ODO=%05d, ScanBlock ended.", plotter->getDistance());
 	  return status;
 	}
