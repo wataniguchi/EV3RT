@@ -133,6 +133,13 @@
 	    prof->getValueAsNum("BLOCK_R603_SPEED"), \
 	    prof->getValueAsNumVec("BLOCK_ANG_PID_CONST")) \
     .end() \
+    /* section R604: move along the course line to help TraceLine to find the line */ \
+    .composite<BrainTree::ParallelSequence>(1,2) \
+      .leaf<IsDistanceEarned>(prof->getValueAsNum("BLOCK_R604_DIST")) \
+      .leaf<RunPerGuideAngle>(prof->getValueAsNum("BLOCK_R604_OFFSET"), \
+	    prof->getValueAsNum("BLOCK_R604_SPEED"), \
+	    prof->getValueAsNumVec("BLOCK_ANG_PID_CONST")) \
+    .end() \
     /* section R606: reach to Goal */ \
     .composite<BrainTree::ParallelSequence>(1,3) \
       .leaf<IsColorDetected>(CL_BLUE) \
@@ -146,10 +153,8 @@
     /* section R607: get into Goal!!! */ \
     .composite<BrainTree::ParallelSequence>(1,2) \
       .leaf<IsDistanceEarned>(prof->getValueAsNum("BLOCK_R607_DIST")) \
-      .leaf<TraceLine>(prof->getValueAsNum("BLOCK_R607_SPEED"), \
-	    prof->getValueAsNum("BLOCK_TRACESEN_GS_TARGET"), \
-	    prof->getValueAsNumVec("BLOCK_TRACESEN_PID_CONST"), 0.0, \
-            (TraceSide)prof->getValueAsIntFromEnum("BLOCK_R607_TS", gEnumPairs)) \
+      .leaf<RunAsInstructed>(prof->getValueAsNum("BLOCK_R607_PWML"), \
+	    prof->getValueAsNum("BLOCK_R607_PWMR"), 0.0) \
     .end() \
     .leaf<StopNow>() \
   .end()

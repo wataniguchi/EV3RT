@@ -24,7 +24,7 @@ void Video::locateBlocks(vector<vector<Point>>& contours, vector<Vec4i>& hierarc
       float wh = static_cast<float>(bbcnt.width) / bbcnt.height; /* width / height */
       vector<Point> hull;
       convexHull(cnt, hull);
-      if (area > BLK_AREA_MIN && wh > 0.3 && wh < 3.0 &&
+      if (area > BLK_AREA_MIN && wh > 0.5 && wh < 2 &&
 	  1.45*area > contourArea(hull) && /* the contour and its hull are not much different */
 	  pointPolygonTest(blk_roi, Point2f(x,y), false) == 1) { /* the contour is inside ROI */
 	if (hierarchy[i][2] == -1) { /* if the contour has no child */
@@ -308,7 +308,7 @@ Mat Video::calculateTarget(Mat f) {
     /* draw ROI */
     polylines(f, blk_roi, true, Scalar(0,255,255), LINE_THICKNESS);
 
-  } else if (traceTargetType == TT_LINE || TT_LINE_WITH_BLK) {
+  } else if (traceTargetType == TT_LINE || traceTargetType == TT_LINE_WITH_BLK) {
     Mat img_gray, img_gray_part, img_bin_part, img_bin, img_bin_mor, img_cnt_gray, scan_line;
 
     /* convert the image from BGR to grayscale */
@@ -533,10 +533,10 @@ void Video::setTraceTargetType(TargetType tt) {
     roi = Rect(CROP_L_LIMIT, CROP_U_LIMIT, CROP_WIDTH, CROP_HEIGHT);
   } else if (tt == TT_LINE_WITH_BLK) {
     blockOffset = BLOCK_OFFSET;
-    /* initial region of interest is set to crop zone */
-    Rect roi(CROP_L_LIMIT, CROP_U_LIMIT-blockOffset, CROP_WIDTH, CROP_HEIGHT);
+    /* initial region of interest is set to crop zone with block offset */
+    roi = Rect(CROP_L_LIMIT, CROP_U_LIMIT-blockOffset, CROP_WIDTH, CROP_HEIGHT);
   } else {
-    /* initial ROI */
+    /* initial ROI for block challenge */
     blk_roi = blk_roi_init;
   }
   /* initial trace target */

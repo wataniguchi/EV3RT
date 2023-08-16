@@ -453,8 +453,8 @@ public:
 	  if (video->isTargetInSight()) inSightCount++;
 	  return Status::Running;
 	} else {
-	  if (inSightCount >= 9) {
-	    /* when target in sight 9 times out of 10 attempts */
+	  if (inSightCount >= 8) {
+	    /* when target in sight 8 times out of 10 attempts */
 	    _log("ODO=%05d, target IN SIGHT at x=%d:y=%d:deg=%d:gyro=%d",
 		 plotter->getDistance(), plotter->getLocX(), plotter->getLocY(),
 		 plotter->getDegree(), gyroSensor->getAngle());
@@ -577,6 +577,7 @@ public:
 	assert(pid.size() == 3);
         ltPid = new PIDcalculator(pid[0], pid[1], pid[2], PERIOD_UPD_TSK, -speed, speed);
 	targetType = TT_LINE;
+	algo = BA_NORMAL;
     }
     ~TraceLineCam() {
         delete ltPid;
@@ -584,6 +585,7 @@ public:
     Status update() override {
         if (!updated) {
 	    video->setTraceTargetType(targetType);
+	    video->setBinarizationAlgorithm(algo);
 	    video->setThresholds(gsMin, gsMax);
 	    if (side == TS_NORMAL) {
 	      if (_COURSE == -1) { /* right course */
@@ -634,6 +636,7 @@ protected:
     TraceSide side;
     bool updated;
     TargetType targetType;
+    BinarizationAlgorithm algo;
 };
 
 /*
@@ -645,7 +648,10 @@ protected:
 */
 class TraceLineCamWithBlockInArm : public TraceLineCam {
 public:
-  TraceLineCamWithBlockInArm (int s, std::vector<double> pid, int gs_min, int gs_max, double srew_rate, TraceSide trace_side) : TraceLineCam(s,pid,gs_min,gs_max,srew_rate,trace_side) { targetType = TT_LINE_WITH_BLK; }
+  TraceLineCamWithBlockInArm (int s, std::vector<double> pid, int gs_min, int gs_max, double srew_rate, TraceSide trace_side) : TraceLineCam(s,pid,gs_min,gs_max,srew_rate,trace_side) {
+    targetType = TT_LINE_WITH_BLK;
+    algo = BA_ADAPTIVE;
+  }
 };
 
 /*
