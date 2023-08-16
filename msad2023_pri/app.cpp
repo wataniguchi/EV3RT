@@ -453,8 +453,8 @@ public:
 	  if (video->isTargetInSight()) inSightCount++;
 	  return Status::Running;
 	} else {
-	  if (inSightCount > 7) {
-	    /* when target in sight more than 7 times out of 10 attempts */
+	  if (inSightCount >= 9) {
+	    /* when target in sight 9 times out of 10 attempts */
 	    _log("ODO=%05d, target IN SIGHT at x=%d:y=%d:deg=%d:gyro=%d",
 		 plotter->getDistance(), plotter->getLocX(), plotter->getLocY(),
 		 plotter->getDegree(), gyroSensor->getAngle());
@@ -541,7 +541,7 @@ public:
 	    /* when target determined has caught more than 3 times out of 4 attempts */
 	    leftMotor->setPWM(0);
 	    rightMotor->setPWM(0);
-	    _log("ODO=%05d, Approach Block run ended as caught target.", plotter->getDistance());
+	    _log("ODO=%05d, Approach Block run ended as CAUGHT TARGET.", plotter->getDistance());
 	    count = hasCaughtCount = 0;
 	    return Status::Success;
 	  } else {
@@ -618,6 +618,7 @@ public:
 	_debug(_log("ODO=%05d, turn = %d", plotter->getDistance(), turn),3); /* if _DEBUG_LEVEL >= 3 */
         forward = speed;
         /* steer EV3 by setting different speed to the motors */
+	/* TODO: take care of overflow case pwm <= 100 */
         pwmL = forward - turn;
         pwmR = forward + turn;
         srlfL->setRate(srewRate);
@@ -774,7 +775,7 @@ public:
     }
     Status update() override {
         if (!updated) {
-            originalDegree = gyroSensor->getAngle();
+	    originalDegree = gyroSensor->getAngle();
             srlfL->setRate(srewRate);
             srlfR->setRate(srewRate);
             /* stop the robot at start */
@@ -962,15 +963,13 @@ public:
             deltaAngle += 360;
         }
 
-        int8_t forward, turn, pwmL, pwmR;
-        turn = ltPid->compute(0, deltaAngle);
-        forward = speed;
+        int turn = ltPid->compute(0, deltaAngle);
         /* steer EV3 by setting different speed to the motors */
-        pwmL = forward - turn;
-        pwmR = forward + turn;
-        srlfL->setRate(0.0);
+        int pwmL = speed - turn;
+        int pwmR = speed + turn;
+        //srlfL->setRate(0.0);
         leftMotor->setPWM(pwmL);
-        srlfR->setRate(0.0);
+        //srlfR->setRate(0.0);
         rightMotor->setPWM(pwmR);
         return Status::Running;
     }
