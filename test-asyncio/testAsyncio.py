@@ -93,8 +93,8 @@ def receive_packet():
         print("cmd value error!")
     if type == "status":
         rx_data_area[cmd_id] = val
-        if cmd_id == 64:
-            print(f" pkt = [{cmd_id}:{val}]")
+        #if cmd_id == 64:
+        #    print(f" pkt = [{cmd_id}:{val}]")
     else:
         if cmd_id != 127:
             print(f" -- ack = {cmd_id}")
@@ -149,24 +149,24 @@ MOTOR_C = 2
 MOTOR_D = 3
 motor_power = np.zeros(4, dtype=np.int16)
 
-#def motor_get_angle(motor) -> int:
-#    rx_data_area[
+def motor_get_angle(motor) -> int: # opOUTPUT_GET_COUNT
+    return rx_data_area[MOTOR_A_CONFIG + motor]
 
-def motor_clr_angle(motor):
+def motor_clr_angle(motor): # opOUTPUT_CLR_COUNT
     tx_data_area[MOTOR_A_RESET + motor] = 1
 
-def motor_set_power(motor, power):
+def motor_set_power(motor, power): # opOUTPUT_POWER & opOUTPUT_SPEED
     motor_power[motor] = power
 
-def motor_start(motor):
+def motor_start(motor): # opOUTPUT_START
     tx_data_area[MOTOR_A_POWER + motor] = motor_power[motor]
 
-def motor_break(motor, brake):
+def motor_break(motor, brake): # opOUTPUT_STOP
     tx_data_area[MOTOR_A_POWER + motor] = 0
     tx_data_area[MOTOR_A_STOP + motor] = brake
 
 def motor_config(motor):
-    tx_data_area[MOTOR_A_CONFIG + motor] = 20
+    tx_data_area[MOTOR_A_CONFIG + motor] = 20 # opOUTPUT_SET_TYPE
 
 # reference: RasPike/sdk/common/library/libcpp-ev3/src/Motor.cpp
 #            RasPike/sdk/common/library/libcpp-ev3/include/Motor.h
@@ -174,15 +174,14 @@ def motor_config(motor):
 PWM_MAX = 100
 PWM_MIN = -100
 brake_mode = 0
-def ev3_motor_init(motor):
-    motor_config(motor) # ev3_motor_config
+def ev3_motor_config(motor):
+    motor_config(motor)
     motor_break(motor, 0) 
 
-def ev3_motor_reset(motor):
-    motor_break(motor, 1) # ev3_motor_stop
-    motor_clr_angle(motor) # ev3_motor_reset_counts
+def ev3_motor_reset_counts(motor):
+    motor_clr_angle(motor)
 
-def ev3_motor_setPWM(motor, pwm):
+def ev3_motor_set_power(motor, pwm):
     if pwm > PWM_MAX:
         pwm = PWM_MAX
     if pwm < PWM_MIN:
@@ -193,8 +192,8 @@ def ev3_motor_setPWM(motor, pwm):
         motor_set_power(motor, pwm) # ev3_motor_set_power
         motor_start(motor) # ev3_motor_set_power
 
-def ev3_motor_setBreak(brake):
-    brake_mode = brake
+def ev3_motor_stop(motor, brake):
+    motor_break(motor, brake)
         
 async def main_task():
     print(" -- main task start")
@@ -202,13 +201,14 @@ async def main_task():
     task2 = asyncio.create_task(send_packet())
     
     print(" -- main task logic start")
-    ev3_motor_init(MOTOR_A)
-    ev3_motor_reset(MOTOR_A)
-    ev3_motor_setPWM(MOTOR_A, -30)
+    ev3_motor_config(MOTOR_A)
+    ev3_motor_reset_counts(MOTOR_A)
+    ev3_motor_set_power(MOTOR_A, -30)
     await asyncio.sleep(1.0)
-    ev3_motor_setPWM(MOTOR_A, 30)
+    ev3_motor_set_power(MOTOR_A, 30)
     await asyncio.sleep(1.0)
-    ev3_motor_setPWM(MOTOR_A, 0)
+    ev3_motor_stop(MOTOR_A, 0)
+    # TODO: send_packet() to send everything before cancelled
     await asyncio.sleep(1.0)
     print(" -- main task logic end")
     
