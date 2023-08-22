@@ -65,4 +65,4 @@ endif
 
 #COPTS += -fno-use-cxa-atexit
 #COPTS += -DNDEBUG
-COPTS += -g $(USER_COPTS)
+COPTS += -g $(USER_COPTS) -DAPP_HEAP_SIZE=67108864
