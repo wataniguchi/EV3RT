@@ -12,7 +12,6 @@ extern "C" {
 
 /* common header files */
 #include "ev3api.h"
-#include "target_test.h"
 
 /* task priorities (smaller number has higher priority) */
 #define PRIORITY_UPD_TSK    TMIN_APP_TPRI

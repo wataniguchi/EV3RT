@@ -20,6 +20,7 @@
 #include <list>
 #include <numeric>
 #include <math.h>
+#include <signal.h>
 
 /* behavior tree stanza files */
 #include "tr_calibration.h"
