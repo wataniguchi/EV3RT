@@ -782,7 +782,7 @@ public:
     }
     Status update() override {
         if (!updated) {
-	    originalDegree = gyroSensor->getAngle();
+	    originalDegree = plotter->getDegree();
             srlfL->setRate(srewRate);
             srlfR->setRate(srewRate);
             /* stop the robot at start */
@@ -793,7 +793,7 @@ public:
             return Status::Running;
         }
 
-        int deltaDegree = gyroSensor->getAngle() - originalDegree;
+        int deltaDegree = plotter->getDegree() - originalDegree;
         if (deltaDegree > 180) {
             deltaDegree -= 360;
         } else if (deltaDegree < -180) {
