@@ -925,7 +925,7 @@ protected:
 class SetGuideAngle : public BrainTree::Node {
 public:
     Status update() override {
-        guideAngle = gyroSensor->getAngle();
+        guideAngle = plotter->getDegree();
         _log("ODO=%05d, Guide angle set as %d", plotter->getDistance(), guideAngle);
         return Status::Success;
     }
@@ -963,7 +963,7 @@ public:
             return Status::Running;
         }
 
-        int deltaAngle = targetAngle - gyroSensor->getAngle();
+        int deltaAngle = targetAngle - plotter->getDegree();
         if (deltaAngle > 180) {
             deltaAngle -= 360;
         } else if (deltaAngle < -180) {
