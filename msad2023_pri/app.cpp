@@ -310,7 +310,8 @@ public:
                 }
                 break;
 	    case CL_RED:
-	        if (cur_rgb.r >= 110 && cur_rgb.g <= 70 && cur_rgb.b <= 70) {
+	        if (cur_rgb.r > 70 && cur_rgb.g < 50 &&
+		    cur_rgb.r - cur_rgb.b >= 20) {
                     _log("ODO=%05d, CL_RED detected.", plotter->getDistance());
                     return Status::Success;
                 }
@@ -782,7 +783,7 @@ public:
     }
     Status update() override {
         if (!updated) {
-	    originalDegree = gyroSensor->getAngle();
+	    originalDegree = plotter->getDegree();
             srlfL->setRate(srewRate);
             srlfR->setRate(srewRate);
             /* stop the robot at start */
@@ -793,7 +794,7 @@ public:
             return Status::Running;
         }
 
-        int deltaDegree = gyroSensor->getAngle() - originalDegree;
+        int deltaDegree = plotter->getDegree() - originalDegree;
         if (deltaDegree > 180) {
             deltaDegree -= 360;
         } else if (deltaDegree < -180) {
@@ -835,7 +836,7 @@ class SetGuideLocation : public BrainTree::Node {
 public:
     Status update() override {
         guideLocX = plotter->getLocX();
-        guideLocY = plotter->getLocX();
+        guideLocY = plotter->getLocY();
         _log("ODO=%05d, Guide position set as X = %d, Y = %d", plotter->getDistance(), guideLocX, guideLocY);
         return Status::Success;
     }
@@ -925,7 +926,7 @@ protected:
 class SetGuideAngle : public BrainTree::Node {
 public:
     Status update() override {
-        guideAngle = gyroSensor->getAngle();
+        guideAngle = plotter->getDegree();
         _log("ODO=%05d, Guide angle set as %d", plotter->getDistance(), guideAngle);
         return Status::Success;
     }
@@ -963,7 +964,7 @@ public:
             return Status::Running;
         }
 
-        int deltaAngle = targetAngle - gyroSensor->getAngle();
+        int deltaAngle = targetAngle - plotter->getDegree();
         if (deltaAngle > 180) {
             deltaAngle -= 360;
         } else if (deltaAngle < -180) {
