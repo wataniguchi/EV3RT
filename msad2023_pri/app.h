@@ -21,9 +21,9 @@ extern "C" {
 #define PERIOD_UPD_TSK      (60 * 1000)
 
 /* default task stack size in bytes */
-#ifndef STACK_SIZE
-#define STACK_SIZE          4096
-#endif /* STACK_SIZE */
+//#ifndef STACK_SIZE
+#define STACK_SIZE          16384
+//#endif /* STACK_SIZE */
     
 /* prototypes for configuration */
 #ifndef TOPPERS_MACRO_ONLY
