@@ -65,7 +65,6 @@ endif
 
 #COPTS += -fno-use-cxa-atexit
 #COPTS += -DNDEBUG
-#COPTS += -g $(USER_COPTS) -DSTACK_SIZE=16384
 COPTS += -g $(USER_COPTS)
 
 #OBJ_LDFLAGS += -Wl,-Map,$(mkfile_path)/map.txt

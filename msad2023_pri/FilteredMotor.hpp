@@ -15,10 +15,12 @@ public:
     inline int getPWM() const;
     inline void setPWM(int pwm);
     void setPWMFilter(Filter *filter);
+    void setAdjustmentFactor(double d);
     void drive();
 protected:
     Filter *fil;
     int original_pwm, filtered_pwm;
+    double adjFactor;
 };
 
 inline int FilteredMotor::getPWM() const {
@@ -26,7 +28,7 @@ inline int FilteredMotor::getPWM() const {
 }
 
 inline void FilteredMotor::setPWM(int pwm) {
-    original_pwm = pwm;
+    original_pwm = adjFactor * pwm;
 }
 
 #endif /* FilteredMotor_hpp */

@@ -5,10 +5,14 @@
 */
 #include "FilteredMotor.hpp"
 
-FilteredMotor::FilteredMotor(ePortM port) : Motor(port, true, MEDIUM_MOTOR),fil(nullptr) {}
+FilteredMotor::FilteredMotor(ePortM port) : Motor(port, true, MEDIUM_MOTOR),fil(nullptr),adjFactor(1.0) {}
 
 void FilteredMotor::setPWMFilter(Filter *filter) {
     fil = filter;
+}
+
+void FilteredMotor::setAdjustmentFactor(double d) {
+    adjFactor = d;
 }
 
 void FilteredMotor::drive() {

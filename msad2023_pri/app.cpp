@@ -151,6 +151,30 @@ public:
 
 /*
     usage:
+    ".leaf<SetMotorAdjustmentFactors>(adj_factors)"
+    is to set adjustment factor for left and right motor
+    in order to absorb difference between motors.
+    adj_factors is a vector of factors, the first item for the left motor and the second for the right.
+*/
+class SetMotorAdjustmentFactors : public BrainTree::Node {
+public:
+  SetMotorAdjustmentFactors(std::vector<double> adj_factors) {
+    assert(adj_factors.size() == 2);
+    adjFactorLeft  = adj_factors[0];
+    adjFactorRight = adj_factors[1];
+  }
+  Status update() override {
+    leftMotor->setAdjustmentFactor(adjFactorLeft);
+    rightMotor->setAdjustmentFactor(adjFactorRight);
+    _log("motor adjustment factors set");
+    return Status::Success;
+  }
+protected:
+  double adjFactorLeft, adjFactorRight;
+};
+
+/*
+    usage:
     ".leaf<IsTouchOn>()"
     is to check if the touch sensor gets pressed.
 */
