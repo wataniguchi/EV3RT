@@ -54,10 +54,12 @@ void Plotter::plot() {
     double deltaDistL = M_PI * TIRE_DIAMETER * (curAngL - prevAngL) / 360.0;
     double deltaDistR = M_PI * TIRE_DIAMETER * (curAngR - prevAngR) / 360.0;
     double deltaDist = (deltaDistL + deltaDistR) / 2.0;
-    if (deltaDist >= 0) { /* cumulative distance must be always positive */
-      distance += deltaDist;
-    } else {
-      distance -= deltaDist;
+    if (deltaDistL * deltaDistR >= 0) { /* cumulate only when both wheels spin in the same direction */  
+      if (deltaDist >= 0) { /* cumulative distance must be always positive */
+	distance += deltaDist;
+      } else {
+	distance -= deltaDist;
+      }
     }
     prevAngL = curAngL;
     prevAngR = curAngR;
@@ -69,7 +71,9 @@ void Plotter::plot() {
     } else if (azimuth < 0.0) {
         azimuth += M_TWOPI;
     }
-    /* estimate location */
-    locX += (deltaDist * sin(azimuth));
-    locY += (deltaDist * cos(azimuth));
+    if (deltaDistL * deltaDistR >= 0) { /* change location only when both wheels spin in the same direction */  
+      /* estimate location */
+      locX += (deltaDist * sin(azimuth));
+      locY += (deltaDist * cos(azimuth));
+    }
 }
