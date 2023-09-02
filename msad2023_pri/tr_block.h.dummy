@@ -1,0 +1,17 @@
+#define TR_BLOCK1_R \
+  .leaf<StopNow>()
+
+#define TR_BLOCK2_L \
+  .leaf<StopNow>()
+
+#define TR_BLOCK3_L				\
+  .leaf<StopNow>()
+
+#define TR_BLOCK4_L				\
+  .leaf<StopNow>()
+
+#define TR_BLOCK5_L				\
+  .leaf<StopNow>()
+
+#define TR_BLOCK6_L				\
+  .leaf<StopNow>()
