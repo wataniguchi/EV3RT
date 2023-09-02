@@ -20,6 +20,7 @@
 #include <list>
 #include <numeric>
 #include <math.h>
+#include <signal.h>
 
 /* behavior tree stanza files */
 #include "tr_calibration.h"
@@ -35,7 +36,11 @@ Profile*        prof;
 Clock*          ev3clock;
 TouchSensor*    touchSensor;
 SonarSensor*    sonarSensor;
+#ifdef WITH_FILTER
 FilteredColorSensor*    colorSensor;
+#else
+ColorSensor*    colorSensor;
+#endif
 GyroSensor*     gyroSensor;
 SRLF*           srlfL;
 FilteredMotor*  leftMotor;
@@ -44,6 +49,8 @@ FilteredMotor*  rightMotor;
 Motor*          armMotor;
 Plotter*        plotter;
 Video*          video;
+int16_t         guideAngle = 0;
+int             guideLocX = 0, guideLocY = 0;
 int             _COURSE; /* -1 for R course and 1 for L course */
 int             _DEBUG_LEVEL; /* used in _debug macro in appusr.hpp */
 int             upd_process_count = 0; /* used in _intervalLog macro and
@@ -51,7 +58,12 @@ int             upd_process_count = 0; /* used in _intervalLog macro and
 
 BrainTree::BehaviorTree* tr_calibration = nullptr;
 BrainTree::BehaviorTree* tr_run         = nullptr;
-BrainTree::BehaviorTree* tr_block       = nullptr;
+BrainTree::BehaviorTree* tr_block1      = nullptr;
+BrainTree::BehaviorTree* tr_block2      = nullptr;
+BrainTree::BehaviorTree* tr_block3      = nullptr;
+BrainTree::BehaviorTree* tr_block4      = nullptr;
+BrainTree::BehaviorTree* tr_block5      = nullptr;
+BrainTree::BehaviorTree* tr_block6      = nullptr;
 State state = ST_INITIAL;
 
 std::chrono::system_clock::time_point ts_upd;
@@ -139,6 +151,30 @@ public:
 
 /*
     usage:
+    ".leaf<SetMotorAdjustmentFactors>(adj_factors)"
+    is to set adjustment factor for left and right motor
+    in order to absorb difference between motors.
+    adj_factors is a vector of factors, the first item for the left motor and the second for the right.
+*/
+class SetMotorAdjustmentFactors : public BrainTree::Node {
+public:
+  SetMotorAdjustmentFactors(std::vector<double> adj_factors) {
+    assert(adj_factors.size() == 2);
+    adjFactorLeft  = adj_factors[0];
+    adjFactorRight = adj_factors[1];
+  }
+  Status update() override {
+    leftMotor->setAdjustmentFactor(adjFactorLeft);
+    rightMotor->setAdjustmentFactor(adjFactorRight);
+    _log("motor adjustment factors set");
+    return Status::Success;
+  }
+protected:
+  double adjFactorLeft, adjFactorRight;
+};
+
+/*
+    usage:
     ".leaf<IsTouchOn>()"
     is to check if the touch sensor gets pressed.
 */
@@ -192,48 +228,6 @@ public:
     }
 protected:
     int32_t alertDistance;
-};
-
-/*
-    usage:
-    ".leaf<IsAngleLarger>(angle)"
-    is to determine if the angular location of the robot measured by the gyro sensor is larger than the spedified angular value.
-    angle is in degree.
-*/
-class IsAngleLarger : public BrainTree::Node {
-public:
-    IsAngleLarger(int ang) : angle(ang) {}
-    Status update() override {
-        int32_t curAngle = gyroSensor->getAngle(); 
-        if (curAngle >= angle){
-            return Status::Success;
-        } else {
-            return Status::Running;
-        }
-    }
-protected:
-    int32_t angle;
-};
-
-/*
-    usage:
-    ".leaf<IsAngleSmaller>(angle)"
-    is to determine if the angular location of the robot measured by the gyro sensor is smaller than the spedified angular value.
-    angle is in degree.
-*/
-class IsAngleSmaller : public BrainTree::Node {
-public:
-    IsAngleSmaller(int ang) : angle(ang) {}
-    Status update() override {
-        int32_t curAngle = gyroSensor->getAngle(); 
-        if (curAngle <= angle){
-            return Status::Success;
-        } else {
-            return Status::Running;
-        }
-    }
-protected:
-    int32_t angle;
 };
 
 /*
@@ -327,52 +321,37 @@ public:
         colorSensor->getRawColor(cur_rgb);
 
         switch(color){
-            case CL_JETBLACK:
-                if (cur_rgb.r <= 8 && cur_rgb.g <= 8 && cur_rgb.b <= 8) { 
-                    _log("ODO=%05d, CL_JETBLACK detected.", plotter->getDistance());
-                    return Status::Success;
-                }
-                break;
 	    case CL_BLACK:
-                if (cur_rgb.r <= 20 && cur_rgb.g <= 20 && cur_rgb.b <= 20 &&
-		    abs(cur_rgb.r - cur_rgb.g) <= 3 &&
-		    abs(cur_rgb.g - cur_rgb.b) <= 3 &&
-		    abs(cur_rgb.b - cur_rgb.r) <= 3) {
+	        if (cur_rgb.r <= 70 && cur_rgb.g <= 90 && cur_rgb.b <= 120) {
                     _log("ODO=%05d, CL_BLACK detected.", plotter->getDistance());
                     return Status::Success;
                 }
                 break;
             case CL_BLUE:
-                if (cur_rgb.r <= 35 && cur_rgb.g <= 40 &&
-		    cur_rgb.b - cur_rgb.g >= 7 &&
-		    cur_rgb.b - cur_rgb.r >= 10) {
+	        if (cur_rgb.r <= 50 && cur_rgb.g <= 90 && cur_rgb.b >= 100) {
                     _log("ODO=%05d, CL_BLUE detected.", plotter->getDistance());
                     return Status::Success;
                 }
                 break;
-            case CL_RED:
-                if (cur_rgb.r > 70 &&
-		            cur_rgb.g < 50 &&
-		            cur_rgb.r - cur_rgb.b >= 20) {
+	    case CL_RED:
+	        if (cur_rgb.r > 70 && cur_rgb.g < 50 &&
+		    cur_rgb.r - cur_rgb.b >= 20) {
                     _log("ODO=%05d, CL_RED detected.", plotter->getDistance());
                     return Status::Success;
                 }
                 break;
             case CL_YELLOW:
-                if (cur_rgb.r >= 30 && cur_rgb.g >= 25 &&
-		    cur_rgb.r - cur_rgb.g >= 7) {
+	        if (cur_rgb.r >= 170 && cur_rgb.g >= 120 && cur_rgb.b <= 120) {
                      _log("ODO=%05d, CL_YELLOW detected.", plotter->getDistance());
                      return Status::Success;
-                 }
-                 break;
+                }
+                break;
             case CL_GREEN:
-                if (cur_rgb.g >= 10 &&
-		    cur_rgb.g - cur_rgb.r >= 5 &&
-		    cur_rgb.g - cur_rgb.b >= 2) {
+	        if (cur_rgb.r <= 70 && cur_rgb.g >= 60 && cur_rgb.b <= 120) {
                      _log("ODO=%05d, CL_GREEN detected.", plotter->getDistance());
                      return Status::Success;
-                 }   
-                 break;
+                }   
+                break;
             default:
                 break;
         }
@@ -466,6 +445,146 @@ protected:
 
 /*
     usage:
+    ".leaf<IsFoundBlock>(gs_min, gs_max, bgr_min_tre, bgr_max_tre, bgr_min_dec, bgr_max_dec)"
+    is to determine the RED block in sight.
+    gs_min, gs_max are grayscale threshold for object recognition binalization.
+    bgr_min_tre, bgr_max_tre are bgr vector threshold for identifying RED objects.
+    bgr_min_dec, bgr_max_dec are bgr vector threshold for identifying BLUE objects.
+*/
+class IsFoundBlock : public BrainTree::Node {
+public:
+  IsFoundBlock(int gs_min, int gs_max,
+	       std::vector<double> bgr_min_tre, std::vector<double> bgr_max_tre,
+	       std::vector<double> bgr_min_dec, std::vector<double> bgr_max_dec) : gsMin(gs_min),gsMax(gs_max) {
+        updated = false;
+	assert(bgr_min_tre.size() == 3);
+	assert(bgr_max_tre.size() == 3);
+	assert(bgr_min_dec.size() == 3);
+	assert(bgr_max_dec.size() == 3);
+	bgrMinTre = Scalar(bgr_min_tre[0], bgr_min_tre[1], bgr_min_tre[2]);
+	bgrMaxTre = Scalar(bgr_max_tre[0], bgr_max_tre[1], bgr_max_tre[2]);
+	bgrMinDec = Scalar(bgr_min_dec[0], bgr_min_dec[1], bgr_min_dec[2]);
+	bgrMaxDec = Scalar(bgr_max_dec[0], bgr_max_dec[1], bgr_max_dec[2]);
+	count = inSightCount = 0;
+    }
+    ~IsFoundBlock() {}
+    Status update() override {
+        if (!updated) {
+	    video->setTraceTargetType(TT_BLKS);
+	    video->setThresholds(gsMin, gsMax);
+	    video->setMaskThresholds(bgrMinTre, bgrMaxTre, bgrMinDec, bgrMaxDec);
+            updated = true;
+        }
+	if (count++ < 10) {
+	  if (video->isTargetInSight()) inSightCount++;
+	  return Status::Running;
+	} else {
+	  if (inSightCount >= 8) {
+	    /* when target in sight 8 times out of 10 attempts */
+	    _log("ODO=%05d, target IN SIGHT at x=%d:y=%d:deg=%d:gyro=%d",
+		 plotter->getDistance(), plotter->getLocX(), plotter->getLocY(),
+		 plotter->getDegree(), gyroSensor->getAngle());
+	    count = inSightCount = 0;
+            return Status::Success;
+	  } else {
+	    _log("ODO=%05d, target NOT in sight at x=%d:y=%d:deg=%d:gyro=%d",
+		 plotter->getDistance(), plotter->getLocX(), plotter->getLocY(),
+		 plotter->getDegree(), gyroSensor->getAngle());
+	    count = inSightCount = 0;
+            return Status::Failure;
+	  }
+        }
+    }
+protected:
+    int gsMin, gsMax, count, inSightCount;
+    Scalar bgrMinTre, bgrMaxTre, bgrMinDec, bgrMaxDec;
+    bool updated;
+};
+
+/*
+    usage:
+    ".leaf<ApproachBlock>(speed, pid, gs_min, gs_max, bgr_min_tre, bgr_max_tre, bgr_min_dec, bgr_max_dec)"
+    is to instruct the robot to come closer the RED block at the given speed.
+    pid is a vector of three constants for PID control.
+    gs_min, gs_max are grayscale threshold for object recognition binalization.
+    bgr_min_tre, bgr_max_tre are bgr vector threshold for identifying RED objects.
+    bgr_min_dec, bgr_max_dec are bgr vector threshold for identifying BLUE objects.
+*/
+class ApproachBlock : public BrainTree::Node {
+public:
+  ApproachBlock(int s, std::vector<double> pid, int gs_min, int gs_max,
+		std::vector<double> bgr_min_tre, std::vector<double> bgr_max_tre,
+		std::vector<double> bgr_min_dec, std::vector<double> bgr_max_dec) : speed(s),gsMin(gs_min),gsMax(gs_max) {
+        updated = false;
+	assert(pid.size() == 3);
+        ltPid = new PIDcalculator(pid[0], pid[1], pid[2], PERIOD_UPD_TSK, -speed, speed);
+	assert(bgr_min_tre.size() == 3);
+	assert(bgr_max_tre.size() == 3);
+	assert(bgr_min_dec.size() == 3);
+	assert(bgr_max_dec.size() == 3);
+	bgrMinTre = Scalar(bgr_min_tre[0], bgr_min_tre[1], bgr_min_tre[2]);
+	bgrMaxTre = Scalar(bgr_max_tre[0], bgr_max_tre[1], bgr_max_tre[2]);
+	bgrMinDec = Scalar(bgr_min_dec[0], bgr_min_dec[1], bgr_min_dec[2]);
+	bgrMaxDec = Scalar(bgr_max_dec[0], bgr_max_dec[1], bgr_max_dec[2]);
+	count = hasCaughtCount = 0;
+    }
+    ~ApproachBlock() {
+        delete ltPid;
+    }
+    Status update() override {
+        if (!updated) {
+	    video->setTraceTargetType(TT_BLKS);
+	    video->setThresholds(gsMin, gsMax);
+	    video->setMaskThresholds(bgrMinTre, bgrMaxTre, bgrMinDec, bgrMaxDec);
+            /* The following code chunk is to properly set prevXin in SRLF */
+            srlfL->setRate(0.0);
+            leftMotor->setPWM(leftMotor->getPWM());
+            srlfR->setRate(0.0);
+            rightMotor->setPWM(rightMotor->getPWM());
+            _log("ODO=%05d, Approach Block run started.", plotter->getDistance());
+            updated = true;
+        }
+
+        int8_t forward, turn, pwmL, pwmR;
+	int theta = video->getTheta();
+	_debug(_log("ODO=%05d, theta = %d", plotter->getDistance(), theta),3); /* if _DEBUG_LEVEL >= 3 */
+	
+        /* compute necessary amount of steering by PID control */
+        turn = (-1) * ltPid->compute(theta, 0); /* 0 is the center */
+	_debug(_log("ODO=%05d, turn = %d", plotter->getDistance(), turn),3); /* if _DEBUG_LEVEL >= 3 */
+        forward = speed;
+        /* steer EV3 by setting different speed to the motors */
+        pwmL = forward - turn;
+        pwmR = forward + turn;
+        leftMotor->setPWM(pwmL);
+        rightMotor->setPWM(pwmR);
+
+	if (count++ < 5) {
+	  if (video->hasCaughtTarget()) hasCaughtCount++;
+	  return Status::Running;
+	} else {
+	  if (hasCaughtCount > 3) {
+	    /* when target determined has caught more than 3 times out of 4 attempts */
+	    leftMotor->setPWM(0);
+	    rightMotor->setPWM(0);
+	    _log("ODO=%05d, Approach Block run ended as CAUGHT TARGET.", plotter->getDistance());
+	    count = hasCaughtCount = 0;
+	    return Status::Success;
+	  } else {
+	    count = hasCaughtCount = 0;
+	    return Status::Running;
+	  }
+        }
+    }
+protected:
+    int speed, gsMin, gsMax, count, hasCaughtCount;
+    PIDcalculator* ltPid;
+    Scalar bgrMinTre, bgrMaxTre, bgrMinDec, bgrMaxDec;
+    bool updated;
+};
+
+/*
+    usage:
     ".leaf<TraceLineCam>(speed, pid, gs_min, gs_max, srew_rate, trace_side)"
     is to instruct the robot to trace the line at the given speed.
     pid is a vector of three constants for PID control.
@@ -483,12 +602,16 @@ public:
         updated = false;
 	assert(pid.size() == 3);
         ltPid = new PIDcalculator(pid[0], pid[1], pid[2], PERIOD_UPD_TSK, -speed, speed);
+	targetType = TT_LINE;
+	algo = BA_NORMAL;
     }
     ~TraceLineCam() {
         delete ltPid;
     }
     Status update() override {
         if (!updated) {
+	    video->setTraceTargetType(targetType);
+	    video->setBinarizationAlgorithm(algo);
 	    video->setThresholds(gsMin, gsMax);
 	    if (side == TS_NORMAL) {
 	      if (_COURSE == -1) { /* right course */
@@ -523,6 +646,7 @@ public:
 	_debug(_log("ODO=%05d, turn = %d", plotter->getDistance(), turn),3); /* if _DEBUG_LEVEL >= 3 */
         forward = speed;
         /* steer EV3 by setting different speed to the motors */
+	/* TODO: take care of overflow case pwm <= 100 */
         pwmL = forward - turn;
         pwmR = forward + turn;
         srlfL->setRate(srewRate);
@@ -537,8 +661,24 @@ protected:
     double srewRate;
     TraceSide side;
     bool updated;
+    TargetType targetType;
+    BinarizationAlgorithm algo;
 };
 
+/*
+    usage:
+    ".leaf<TraceLineCamWithBlockInArm>(speed, pid, gs_min, gs_max, srew_rate, trace_side)"
+    is to instruct the robot to trace the line at the given speed,
+    while keeping a block in the arm.
+    Usage is same as its base class, TraceLineCam 
+*/
+class TraceLineCamWithBlockInArm : public TraceLineCam {
+public:
+  TraceLineCamWithBlockInArm (int s, std::vector<double> pid, int gs_min, int gs_max, double srew_rate, TraceSide trace_side) : TraceLineCam(s,pid,gs_min,gs_max,srew_rate,trace_side) {
+    targetType = TT_LINE_WITH_BLK;
+    algo = BA_ADAPTIVE;
+  }
+};
 
 /*
     usage:
@@ -647,36 +787,38 @@ protected:
 /*
     usage:
     ".leaf<RotateEV3>(30, speed, srew_rate)"
-    is to rotate robot 30 degrees (=clockwise) at the specified speed.
+    is to rotate robot 30 degrees (=clockwise in L course and counter-clockwise in R course)
+    at the specified speed.
     srew_rate = 0.0 indidates NO tropezoidal motion.
     srew_rate = 0.5 instructs FilteredMotor to change 1 pwm every two executions of update()
     until the current speed gradually reaches the instructed target speed.
 */
 class RotateEV3 : public BrainTree::Node {
 public:
-    RotateEV3(int16_t degree, int s, double srew_rate) : deltaDegreeTarget(degree),speed(s),srewRate(srew_rate) {
+    RotateEV3(int degree, int s, double srew_rate) : deltaDegreeTarget(degree),speed(s),srewRate(srew_rate) {
         updated = false;
         assert(degree >= -180 && degree <= 180);
-        if (degree > 0) {
-            clockwise = 1;
+	deltaDegreeTarget = _COURSE * degree; /* _COURSE = -1 when R course */
+        if (deltaDegreeTarget > 0) {
+	  clockwise = 1; 
         } else {
-            clockwise = -1;
+	  clockwise = -1;
         }
     }
     Status update() override {
         if (!updated) {
-            originalDegree = plotter->getDegree();
+	    originalDegree = plotter->getDegree();
             srlfL->setRate(srewRate);
             srlfR->setRate(srewRate);
             /* stop the robot at start */
             leftMotor->setPWM(0);
             rightMotor->setPWM(0);
-            _log("ODO=%05d, Rotation started. Current degree = %d", plotter->getDistance(), originalDegree);
+            _log("ODO=%05d, Rotation for %d started. Current angle = %d", plotter->getDistance(), deltaDegreeTarget, originalDegree);
             updated = true;
             return Status::Running;
         }
 
-        int16_t deltaDegree = plotter->getDegree() - originalDegree;
+        int deltaDegree = plotter->getDegree() - originalDegree;
         if (deltaDegree > 180) {
             deltaDegree -= 360;
         } else if (deltaDegree < -180) {
@@ -693,15 +835,256 @@ public:
             }
             return Status::Running;
         } else {
-            _log("ODO=%05d, Rotation ended. Current degree = %d", plotter->getDistance(), plotter->getDegree());
+            /* stop the robot at end */
+            leftMotor->setPWM(0);
+            rightMotor->setPWM(0);
+            _log("ODO=%05d, Rotation ended. Current angle = %d", plotter->getDistance(), gyroSensor->getAngle());
             return Status::Success;
         }
     }
 private:
-    int16_t deltaDegreeTarget, originalDegree;
+    int deltaDegreeTarget;
+    int16_t originalDegree;
     int clockwise, speed;
     bool updated;
     double srewRate;
+};
+
+
+/*
+    usage:
+    ".leaf<SetGuideLocation>()"
+    is to remember the current location that can be used later as a guide / basis.
+*/
+class SetGuideLocation : public BrainTree::Node {
+public:
+    Status update() override {
+        guideLocX = plotter->getLocX();
+        guideLocY = plotter->getLocY();
+        _log("ODO=%05d, Guide position set as X = %d, Y = %d", plotter->getDistance(), guideLocX, guideLocY);
+        return Status::Success;
+    }
+};
+
+/*
+    usage:
+    ".leaf<IsXdiffFromGuideLocationLarger>(value)"
+    is to determine if the X-difference between the robot Guide Location is larger than the specified value.
+*/
+class IsXdiffFromGuideLocationLarger : public BrainTree::Node {
+public:
+    IsXdiffFromGuideLocationLarger(int v) : value(v) {
+        updated = false;
+        earned = false;
+    }
+    Status update() override {
+        if (!updated) {
+	    _log("ODO=%05d, Xdiff comparison to %d started at X = %d, Y = %d.", plotter->getDistance(), value,
+	       plotter->getLocX(), plotter->getLocY());
+            updated = true;
+        }
+	int currentLocX = plotter->getLocX();
+	int currentLocY = plotter->getLocY();
+        int delta = currentLocX - guideLocX;
+	if (delta < 0) delta = -delta;
+        
+        if (delta >= value) {
+            if (!earned) {
+	        _log("ODO=%05d, Xdiff is larger than %d at X = %d, Y = %d.", plotter->getDistance(), value,
+		     currentLocX, currentLocY);
+                earned = true;
+            }
+            return Status::Success;
+        } else {
+            return Status::Failure;
+        }
+    }
+protected:
+    int value;
+    bool updated, earned;
+};
+
+/*
+    usage:
+    ".leaf<IsYdiffFromGuideLocationLarger>(value)"
+    is to determine if the Y-difference between the robot Guide Location is larger than the specified value.
+*/
+class IsYdiffFromGuideLocationLarger : public BrainTree::Node {
+public:
+    IsYdiffFromGuideLocationLarger(int v) : value(v) {
+        updated = false;
+        earned = false;
+    }
+    Status update() override {
+        if (!updated) {
+	    _log("ODO=%05d, Ydiff comparison to %d started at X = %d, Y = %d.", plotter->getDistance(), value,
+	       plotter->getLocX(), plotter->getLocY());
+            updated = true;
+        }
+	int currentLocX = plotter->getLocX();
+	int currentLocY = plotter->getLocY();
+        int delta = currentLocY - guideLocY;
+	if (delta < 0) delta = -delta;
+        
+        if (delta >= value) {
+            if (!earned) {
+	        _log("ODO=%05d, Ydiff is larger than %d at X = %d, Y = %d.", plotter->getDistance(), value,
+		     currentLocX, currentLocY);
+                earned = true;
+            }
+            return Status::Success;
+        } else {
+            return Status::Failure;
+        }
+    }
+protected:
+    int value;
+    bool updated, earned;
+};
+
+/*
+    usage:
+    ".leaf<SetGuideAngle>()"
+    is to remember the direction that can be used later as a guide / basis.
+*/
+class SetGuideAngle : public BrainTree::Node {
+public:
+    Status update() override {
+        guideAngle = plotter->getDegree();
+        _log("ODO=%05d, Guide angle set as %d", plotter->getDistance(), guideAngle);
+        return Status::Success;
+    }
+};
+
+/*
+    usage:
+    ".leaf<RunPerGuideAngle>(offset, speed, pid)"
+    is to move robot toward the saved guide angle with offset at the specified speed.
+    pid is a vector of three constants for PID control.
+*/
+class RunPerGuideAngle : public BrainTree::Node {
+public:
+    RunPerGuideAngle(int off, int s, std::vector<double> pid) : offset(off),speed(s) {
+        updated = false;
+	assert(pid.size() == 3);
+        ltPid = new PIDcalculator(pid[0], pid[1], pid[2], PERIOD_UPD_TSK, -speed, speed);
+        assert(off >= -180 && off <= 180);
+    }
+    Status update() override {
+        if (!updated) {
+  	    targetAngle = _COURSE * offset + guideAngle; /* _COURSE = -1 when R course */
+            if (targetAngle > 180) {
+                targetAngle -= 360;
+            } else if (targetAngle < -180) {
+                targetAngle += 360;
+            }
+            /* The following code chunk is to properly set prevXin in SRLF */
+            srlfL->setRate(0.0);
+            leftMotor->setPWM(leftMotor->getPWM());
+            srlfR->setRate(0.0);
+            rightMotor->setPWM(rightMotor->getPWM());
+            _log("ODO=%05d, MovePerGuideAngle started. Target angle = %d, Current angle = %d", plotter->getDistance(), targetAngle, gyroSensor->getAngle());
+            updated = true;
+            return Status::Running;
+        }
+
+        int deltaAngle = targetAngle - plotter->getDegree();
+        if (deltaAngle > 180) {
+            deltaAngle -= 360;
+        } else if (deltaAngle < -180) {
+            deltaAngle += 360;
+        }
+
+        int turn = ltPid->compute(0, deltaAngle);
+        /* steer EV3 by setting different speed to the motors */
+        int pwmL = speed - turn;
+        int pwmR = speed + turn;
+        //srlfL->setRate(0.0);
+        leftMotor->setPWM(pwmL);
+        //srlfR->setRate(0.0);
+        rightMotor->setPWM(pwmR);
+        return Status::Running;
+    }
+private:
+    int offset, speed, targetAngle;
+    PIDcalculator* ltPid;
+    bool updated;
+};
+
+/*
+    usage:
+    ".leaf<ScanBlock>(max_rotate, degree, speed, pid, gs_min, gs_max, bgr_min_tre, bgr_max_tre, bgr_min_dec, bgr_max_dec)"
+    is to instruct the robot to scan the RED block in certain move pattern using IsFoundBlock and RotateEV3 class.
+    max_rotate is a number of rotating move per a scan.
+    degree is for a per move. e.g., max_rotate = 4, degree = 45 sets 4*45 = 180 scan range.
+    gs_min, gs_max are grayscale threshold for object recognition binalization.
+    bgr_min_tre, bgr_max_tre are bgr vector threshold for identifying RED objects.
+    bgr_min_dec, bgr_max_dec are bgr vector threshold for identifying BLUE objects.
+*/
+class ScanBlock : public BrainTree::Node {
+protected:
+enum ChildType {
+  CT_ISFOUND, /* IsFoundBlock   */
+  CT_ROTATE, /* RotateEV3 */
+};
+public:
+  ScanBlock(int max_rotate, int d, int s, int gs_min, int gs_max,
+		std::vector<double> bgr_min_tre, std::vector<double> bgr_max_tre,
+	    std::vector<double> bgr_min_dec, std::vector<double> bgr_max_dec) : maxRotate(max_rotate),degree(d),speed(s),gsMin(gs_min),gsMax(gs_max) {
+        updated = false;
+	assert(bgr_min_tre.size() == 3);
+	assert(bgr_max_tre.size() == 3);
+	assert(bgr_min_dec.size() == 3);
+	assert(bgr_max_dec.size() == 3);
+	vBgrMinTre = bgr_min_tre;
+	vBgrMaxTre = bgr_max_tre;
+	vBgrMinDec = bgr_min_dec;
+	vBgrMaxDec = bgr_max_dec;
+    }
+    ~ScanBlock() {}
+    Status update() override {
+        if (!updated) {
+	    cntRotate = 0;
+	    ndChild = new IsFoundBlock(gsMin, gsMax, vBgrMinTre, vBgrMaxTre, vBgrMinDec, vBgrMaxDec);
+	    ct = CT_ISFOUND;
+            _log("ODO=%05d, ScanBlock started.", plotter->getDistance());
+            updated = true;
+        }
+	status = ndChild->update();
+	if (status == Status::Running) return status;
+	if (status == Status::Failure && ct == CT_ISFOUND) {
+	  delete ndChild;
+	  if (cntRotate++ >= maxRotate) {
+            _log("ODO=%05d, ScanBlock failed!!!", plotter->getDistance());
+  	    return Status::Failure;
+	    //cntRotate = 0;
+	    //degree *= -1; /* switch rotating direction */
+	  }
+	  ndChild = new RotateEV3(degree, speed, 0.0);
+	  ct = CT_ROTATE;
+	  return Status::Running;
+	}
+	if (status == Status::Success && ct == CT_ISFOUND) {
+	  delete ndChild;
+          _log("ODO=%05d, ScanBlock ended.", plotter->getDistance());
+	  return status;
+	}
+	if (status == Status::Success && ct == CT_ROTATE) {
+	  delete ndChild;
+	  ndChild = new IsFoundBlock(gsMin, gsMax, vBgrMinTre, vBgrMaxTre, vBgrMinDec, vBgrMaxDec);
+	  ct = CT_ISFOUND;
+	  return Status::Running;
+	}
+        _log("ODO=%05d, ScanBlock *** invalid state ***", plotter->getDistance());
+	return Status::Invalid;
+    }
+protected:
+    int maxRotate, cntRotate, degree, speed, gsMin, gsMax;
+    std::vector<double> vBgrMinTre, vBgrMaxTre, vBgrMinDec, vBgrMaxDec;
+    Node* ndChild;
+    ChildType ct;
+    Status status;
+    bool updated;
 };
 
 /*
@@ -928,7 +1311,11 @@ void main_task(intptr_t unused) {
     _log("Video object instantiated.");
     touchSensor = new TouchSensor(PORT_1);
     sonarSensor = new SonarSensor(PORT_3);
+#ifdef WITH_FILTER
     colorSensor = new FilteredColorSensor(PORT_2);
+#else
+    colorSensor = new ColorSensor(PORT_2);
+#endif
     gyroSensor  = new GyroSensor(PORT_4);
     leftMotor   = new FilteredMotor(PORT_C);
     rightMotor  = new FilteredMotor(PORT_B);
@@ -943,7 +1330,8 @@ void main_task(intptr_t unused) {
       _COURSE = 1;
     }
     _DEBUG_LEVEL = prof->getValueAsNum("DEBUG_LEVEL");
- 
+
+#ifdef WITH_FILTER
     /* FIR parameters for a low-pass filter with normalized cut-off frequency of 0.2
         using a function of the Hamming Window */
     const int FIR_ORDER = 4; 
@@ -953,7 +1341,8 @@ void main_task(intptr_t unused) {
     Filter *lpf_g = new FIR_Transposed(hn, FIR_ORDER);
     Filter *lpf_b = new FIR_Transposed(hn, FIR_ORDER);
     colorSensor->setRawColorFilters(lpf_r, lpf_g, lpf_b);
-
+#endif
+    
     gyroSensor->reset();
     leftMotor->reset();
     srlfL = new SRLF(0.0);
@@ -974,10 +1363,20 @@ void main_task(intptr_t unused) {
 
     if (prof->getValueAsStr("COURSE") == "R") {
       tr_run   = (BrainTree::BehaviorTree*) BrainTree::Builder() TR_RUN_R   .build();
-      tr_block = (BrainTree::BehaviorTree*) BrainTree::Builder() TR_BLOCK_R .build();
+      tr_block1 = (BrainTree::BehaviorTree*) BrainTree::Builder() TR_BLOCK1_R .build();
+      tr_block2 = (BrainTree::BehaviorTree*) BrainTree::Builder() TR_BLOCK2_R .build();
+      tr_block3 = (BrainTree::BehaviorTree*) BrainTree::Builder() TR_BLOCK3_R .build();
+      tr_block4 = (BrainTree::BehaviorTree*) BrainTree::Builder() TR_BLOCK4_R .build();
+      tr_block5 = (BrainTree::BehaviorTree*) BrainTree::Builder() TR_BLOCK5_R .build();
+      tr_block6 = (BrainTree::BehaviorTree*) BrainTree::Builder() TR_BLOCK6_R .build();
     } else {
       tr_run   = (BrainTree::BehaviorTree*) BrainTree::Builder() TR_RUN_L   .build();
-      tr_block = (BrainTree::BehaviorTree*) BrainTree::Builder() TR_BLOCK_L .build();
+      tr_block1 = (BrainTree::BehaviorTree*) BrainTree::Builder() TR_BLOCK1_L .build();
+      tr_block2 = (BrainTree::BehaviorTree*) BrainTree::Builder() TR_BLOCK2_L .build();
+      tr_block3 = (BrainTree::BehaviorTree*) BrainTree::Builder() TR_BLOCK3_L .build();
+      tr_block4 = (BrainTree::BehaviorTree*) BrainTree::Builder() TR_BLOCK4_L .build();
+      tr_block5 = (BrainTree::BehaviorTree*) BrainTree::Builder() TR_BLOCK5_L .build();
+      tr_block6 = (BrainTree::BehaviorTree*) BrainTree::Builder() TR_BLOCK6_L .build();
     }
 /*
     === BEHAVIOR TREE DEFINITION ENDS HERE ===
@@ -1030,15 +1429,22 @@ void main_task(intptr_t unused) {
     }
 
     /* destroy behavior tree */
-    delete tr_block;
+    delete tr_block6;
+    delete tr_block5;
+    delete tr_block4;
+    delete tr_block3;
+    delete tr_block2;
+    delete tr_block1;
     delete tr_run;
     delete tr_calibration;
     /* destroy profile object */
     delete prof;
     /* destroy EV3 objects */
+#ifdef WITH_FILTER
     delete lpf_b;
     delete lpf_g;
     delete lpf_r;
+#endif
     delete plotter;
     delete armMotor;
     delete rightMotor;
@@ -1066,10 +1472,9 @@ void update_task(intptr_t unused) {
     ts_upd = ts_upd_local;
     upd_process_count++;
 
+#ifdef WITH_FILTER
     colorSensor->sense();
-    /*rgb_raw_t cur_rgb;
-    colorSensor->getRawColor(cur_rgb);
-    _log("r=%d g=%d b=%d",cur_rgb.r,cur_rgb.g,cur_rgb.b);*/
+#endif
     plotter->plot();
 
 /*
@@ -1101,8 +1506,8 @@ void update_task(intptr_t unused) {
             status = tr_run->update();
             switch (status) {
             case BrainTree::Node::Status::Success:
-                state = ST_BLOCK;
-                _log("State changed: ST_RUN to ST_BLOCK");
+                state = ST_BLOCK1;
+                _log("State changed: ST_RUN to ST_BLOCK1");
                 break;
             case BrainTree::Node::Status::Failure:
                 state = ST_ENDING;
@@ -1113,14 +1518,99 @@ void update_task(intptr_t unused) {
             }
         }
         break;
-    case ST_BLOCK:
-        if (tr_block != nullptr) {
-            status = tr_block->update();
+    case ST_BLOCK1:
+        if (tr_block1 != nullptr) {
+            status = tr_block1->update();
+            switch (status) {
+            case BrainTree::Node::Status::Success:
+                state = ST_BLOCK4;
+                _log("State changed: ST_BLOCK1 to ST_BLOCK4");
+                break;
+            case BrainTree::Node::Status::Failure:
+                state = ST_BLOCK2;
+                _log("State changed: ST_BLOCK1 to ST_BLOCK2");
+                break;
+            default:
+                break;
+            }
+        }
+        break;
+    case ST_BLOCK2:
+        if (tr_block2 != nullptr) {
+            status = tr_block2->update();
+            switch (status) {
+            case BrainTree::Node::Status::Success:
+                state = ST_BLOCK4;
+                _log("State changed: ST_BLOCK2 to ST_BLOCK4");
+                break;
+            case BrainTree::Node::Status::Failure:
+                state = ST_BLOCK3;
+                _log("State changed: ST_BLOCK2 to ST_BLOCK3");
+                break;
+            default:
+                break;
+            }
+        }
+        break;
+    case ST_BLOCK3:
+        if (tr_block3 != nullptr) {
+            status = tr_block3->update();
+            switch (status) {
+            case BrainTree::Node::Status::Success:
+                state = ST_BLOCK4;
+                _log("State changed: ST_BLOCK3 to ST_BLOCK4");
+                break;
+            case BrainTree::Node::Status::Failure:
+                state = ST_ENDING;
+                _log("State changed: ST_BLOCK3 to ST_ENDING");
+                break;
+            default:
+                break;
+            }
+        }
+        break;
+    case ST_BLOCK4:
+        if (tr_block4 != nullptr) {
+            status = tr_block4->update();
+            switch (status) {
+            case BrainTree::Node::Status::Success:
+                state = ST_BLOCK5;
+                _log("State changed: ST_BLOCK4 to ST_BLOCK5");
+                break;
+            case BrainTree::Node::Status::Failure:
+                state = ST_BLOCK6;
+                _log("State changed: ST_BLOCK4 to ST_BLOCK6");
+                break;
+            default:
+                break;
+            }
+        }
+        break;
+    case ST_BLOCK5:
+        if (tr_block5 != nullptr) {
+            status = tr_block5->update();
+            switch (status) {
+            case BrainTree::Node::Status::Success:
+                state = ST_BLOCK6;
+                _log("State changed: ST_BLOCK5 to ST_BLOCK6");
+                break;
+            case BrainTree::Node::Status::Failure:
+                state = ST_ENDING;
+                _log("State changed: ST_BLOCK5 to ST_ENDING");
+                break;
+            default:
+                break;
+            }
+        }
+        break;
+    case ST_BLOCK6:
+        if (tr_block6 != nullptr) {
+            status = tr_block6->update();
             switch (status) {
             case BrainTree::Node::Status::Success:
             case BrainTree::Node::Status::Failure:
                 state = ST_ENDING;
-                _log("State changed: ST_BLOCK to ST_ENDING");
+                _log("State changed: ST_BLOCK6 to ST_ENDING");
                 break;
             default:
                 break;

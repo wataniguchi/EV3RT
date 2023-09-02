@@ -79,7 +79,6 @@ using namespace ev3api;
 
 #define SONAR_ALERT_DISTANCE    100     /* in millimeter                           */
 #define ARM_SHIFT_PWM            30
-#define ARM_INITIAL_ANGLE        30
 
 enum Color {
     CL_JETBLACK,
@@ -94,7 +93,12 @@ enum State {
     ST_INITIAL,
     ST_CALIBRATION,
     ST_RUN,
-    ST_BLOCK,
+    ST_BLOCK1,
+    ST_BLOCK2,
+    ST_BLOCK3,
+    ST_BLOCK4,
+    ST_BLOCK5,
+    ST_BLOCK6,
     ST_ENDING,
     ST_END,
 };
@@ -139,7 +143,11 @@ extern FILE*        bt;
 extern Clock*       ev3clock;
 extern TouchSensor* touchSensor;
 extern SonarSensor* sonarSensor;
+#ifdef WITH_FILTER
 extern FilteredColorSensor* colorSensor;
+#else
+extern ColorSensor* colorSensor;
+#endif
 extern GyroSensor*  gyroSensor;
 extern SRLF*        srlf_l;
 extern FilteredMotor*       leftMotor;

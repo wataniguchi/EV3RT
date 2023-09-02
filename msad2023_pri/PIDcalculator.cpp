@@ -24,7 +24,7 @@ int PIDcalculator::math_limit(double input, int min, int max) {
     } else if (input > max) {
         return max;
     }
-    return (int16_t)input;
+    return (int)input;
 }
 
 int PIDcalculator::compute(int sensor, int target) {
