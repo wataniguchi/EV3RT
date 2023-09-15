@@ -135,6 +135,7 @@
     .end() \
     /* section R604: move along the course line to help TraceLine to find the line */ \
     .composite<BrainTree::ParallelSequence>(1,2) \
+      .leaf<IsColorDetected>(CL_BLUE) \
       .leaf<IsDistanceEarned>(prof->getValueAsNum("BLOCK_R604_DIST")) \
       .leaf<RunPerGuideAngle>(prof->getValueAsNum("BLOCK_R604_OFFSET"), \
 	    prof->getValueAsNum("BLOCK_R604_SPEED"), \
