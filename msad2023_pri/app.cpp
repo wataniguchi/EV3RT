@@ -322,21 +322,21 @@ public:
 
         switch(color){
 	    case CL_BLACK:
-	        if (cur_rgb.r <= 70 && cur_rgb.g <= 90 && cur_rgb.b <= 120) {
+	        if (cur_rgb.r <= 20 && cur_rgb.g <= 20 && cur_rgb.b <= 20) {
                     _log("ODO=%05d, CL_BLACK detected.", plotter->getDistance());
                     return Status::Success;
                 }
                 break;
             case CL_BLUE:
-	        if (cur_rgb.r <= 50 && cur_rgb.g <= 90 && cur_rgb.b >= 100) {
+	        if (cur_rgb.r <= 20 && cur_rgb.g <= 50 && cur_rgb.b >=60) {
                     _log("ODO=%05d, CL_BLUE detected.", plotter->getDistance());
                     return Status::Success;
                 }
                 break;
 	    case CL_RED:
-	        if (cur_rgb.r > 70 && cur_rgb.g < 50 &&
-		    cur_rgb.r - cur_rgb.b >= 20) {
-                    _log("ODO=%05d, CL_RED detected.", plotter->getDistance());
+	        if (cur_rgb.r > 100 && cur_rgb.g < 50 && cur_rgb.b < 60 && cur_rgb.b > 10 && cur_rgb.g > 10 &&
+		    cur_rgb.r - cur_rgb.g >= 50) {
+                    _log("ODO=%05d,R=%03d, G=%03d, B=%03d,CL_RED detected.", plotter->getDistance(),cur_rgb.r, cur_rgb.g, cur_rgb.b);
                     return Status::Success;
                 }
                 break;

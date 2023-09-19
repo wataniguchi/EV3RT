@@ -6,8 +6,8 @@
     .leaf<SetArmPosition>(prof->getValueAsNum("CAL_x_ARM_ANGLE"),ARM_SHIFT_PWM) /* then down */ \
     .leaf<SetMotorAdjustmentFactors>(prof->getValueAsNumVec("CAL_x_MOTOR_ADJ_FACTORS")) \
     /* wait until Touch Button is pressed */ \
-    /*.decorator<BrainTree::UntilSuccess>()  \
+    .decorator<BrainTree::UntilSuccess>()  \
       .leaf<IsEnterOn>() \
-      .end() */		 \
+      .end() 		 \
     .leaf<ResetClock>()	\
   .end()
