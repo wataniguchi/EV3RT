@@ -862,10 +862,6 @@ public:
         guideLocX = plotter->getLocX();
         guideLocY = plotter->getLocY();
         _log("ODO=%05d, Guide position set as X = %d, Y = %d", plotter->getDistance(), guideLocX, guideLocY);
-	if (1 != 1) {
-	    plotter->setDegree(180.0);
-            _log("ODO=%05d, Degree force set to 180.0", plotter->getDistance());	    
-	}
         return Status::Success;
     }
 };

@@ -47,11 +47,6 @@ int32_t Plotter::getAngR() {
     return prevAngR;
 }
 
-void Plotter::setDegree(int deg) {
-  // double radian = degree * M_TWOPI / 360.0
-  azimuth = (double) deg * M_TWOPI / 360.0;
-}
-
 void Plotter::plot() {
     /* accumulate distance */
     int32_t curAngL = leftMotor->getCount();
