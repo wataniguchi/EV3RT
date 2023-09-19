@@ -15,18 +15,19 @@ void Video::locateBlocks(vector<vector<Point>>& contours, vector<Vec4i>& hierarc
     if (hierarchy[i][3] == -1) { /* if contour is external */
       vector<Point> cnt = contours[i];
       float area = contourArea(cnt);
+      Moments mom = moments(cnt);
+      /* add 1e-5 to avoid division by zero */
+      float x = mom.m10 / (mom.m00 + 1e-5);
+      float y = mom.m01 / (mom.m00 + 1e-5);
       /* calculate a bounding box around the identified contour */
       Rect bbcnt = boundingRect(cnt);
       float wh = static_cast<float>(bbcnt.width) / bbcnt.height; /* width / height */
       vector<Point> hull;
       convexHull(cnt, hull);
-      if (area > BLK_AREA_MIN && wh > 0.5 && wh < 2.0 &&
-	  1.45*area > contourArea(hull) ) { /* area and its hull are not much different */
-	if (hierarchy[i][2] == -1) { /* if the area has no child */
-	  Moments mom = moments(cnt);
-	  /* add 1e-5 to avoid division by zero */
-	  float x = mom.m10 / (mom.m00 + 1e-5);
-	  float y = mom.m01 / (mom.m00 + 1e-5);
+      if (area > BLK_AREA_MIN && wh > 0.5 && wh < 2 &&
+	  1.45*area > contourArea(hull) && /* the contour and its hull are not much different */
+	  pointPolygonTest(blk_roi, Point2f(x,y), false) == 1) { /* the contour is inside ROI */
+	if (hierarchy[i][2] == -1) { /* if the contour has no child */
 	  cnt_idx.push_back({area, float(i), wh, x, y});
 	} else { /* ensure the area is not donut-shaped */
 	  bool donut = false;
@@ -36,10 +37,6 @@ void Video::locateBlocks(vector<vector<Point>>& contours, vector<Vec4i>& hierarc
 	    if (10.0 * area_chd > area) donut = true;
 	  }
 	  if (donut == false) {
-	    Moments mom = moments(cnt);
-	    /* add 1e-5 to avoid division by zero */
-	    float x = mom.m10 / (mom.m00 + 1e-5);
-	    float y = mom.m01 / (mom.m00 + 1e-5);
 	    cnt_idx.push_back({area, float(i), wh, x, y});
 	  }
 	}
@@ -117,8 +114,15 @@ Video::Video() {
   ximg = XCreateImage(disp, vis, 24, ZPixmap, 0, (char*)gbuf, OUT_FRAME_WIDTH, 2*OUT_FRAME_HEIGHT, BitmapUnit(disp), 0);
   XInitImage(ximg);
 
+  blockOffset = 0;
   /* initial region of interest is set to crop zone */
   roi = Rect(CROP_L_LIMIT, CROP_U_LIMIT, CROP_WIDTH, CROP_HEIGHT);
+  /* initial ROI for TT_BLKS */
+  int roi_dl_limit = BLK_ROI_D_LIMIT * BLK_ROI_L_LIMIT / FRAME_HEIGHT;
+  int roi_dr_limit = FRAME_WIDTH - roi_dl_limit;
+  vector<Point> roi_init {{0,BLK_ROI_U_LIMIT},{FRAME_WIDTH,BLK_ROI_U_LIMIT},
+			  {roi_dr_limit,BLK_ROI_D_LIMIT},{roi_dl_limit,BLK_ROI_D_LIMIT}};
+  blk_roi = blk_roi_init = roi_init;
   /* prepare and keep kernel for morphology */
   kernel = Mat::ones(Size(MORPH_KERNEL_SIZE,MORPH_KERNEL_SIZE), CV_8UC1);
   /* initial trace target */
@@ -203,22 +207,6 @@ Mat Video::calculateTarget(Mat f) {
     /* keep the original image for repeated use for identifying all blocks */
     img_orig = f.clone();
 
-    /* prepare for locating the decoy blocks */
-    binalizeWithColorMask(img_orig, bgr_min_dec, bgr_max_dec, gsmin, gsmax, img_bin_dec);
-    /* locate the decoy blocks */
-    vector<vector<Point>> contours_dec;
-    vector<Vec4i> hierarchy_dec;
-    findContours(img_bin_dec, contours_dec, hierarchy_dec, RETR_TREE, CHAIN_APPROX_SIMPLE);
-    vector<vector<float>> cnt_idx_dec; /* cnt_idx: area, idx, w/h, x, y */
-    locateBlocks(contours_dec, hierarchy_dec, cnt_idx_dec);
-    if (cnt_idx_dec.size() > 0) {
-      sort(cnt_idx_dec.begin(), cnt_idx_dec.end(), greater<>());
-      /* draw the two largest contour on the console image in blue */
-      for (unsigned int i = 0; i < 2 && i < cnt_idx_dec.size(); i++) {
-	polylines(f, contours_dec[cnt_idx_dec[i][1]], true, Scalar(255,0,0), LINE_THICKNESS);
-      }
-    }
-
     /* prepare for locating the treasure block */
     binalizeWithColorMask(img_orig, bgr_min_tre, bgr_max_tre, gsmin, gsmax, img_bin_tre);
     /* locate the treasure block */
@@ -234,20 +222,99 @@ Mat Video::calculateTarget(Mat f) {
       cx = static_cast<int>(cnt_idx[0][3]);
       cy = static_cast<int>(cnt_idx[0][4]);
       mx = FRAME_X_CENTER + static_cast<int>((cx-FRAME_X_CENTER) * (FRAME_HEIGHT-SCAN_V_POS) / (FRAME_HEIGHT-cy));
+      /* set new ROI */
+      int roi_u_limit = cy - ROI_BOUNDARY;
+      if (roi_u_limit < 0) roi_u_limit = 0;
+      int roi_ul_limit = roi_u_limit * BLK_ROI_L_LIMIT / FRAME_HEIGHT;
+      int roi_ur_limit = FRAME_WIDTH - roi_ul_limit;
+      int roi_dl_limit = BLK_ROI_D_LIMIT * BLK_ROI_L_LIMIT / FRAME_HEIGHT;
+      int roi_dr_limit = FRAME_WIDTH - roi_dl_limit;
+      vector<Point> roi_new {{roi_ul_limit,roi_u_limit},{roi_ur_limit,roi_u_limit},
+			     {roi_dr_limit,BLK_ROI_D_LIMIT},{roi_dl_limit,BLK_ROI_D_LIMIT}};
+      blk_roi = roi_new;
       targetInSight = true;
     } else { /* cnt_idx.size() == 0 */
       /* keep mx in order to maintain the current move of robot */
-      cx = (int)(FRAME_WIDTH/2);
-      cy = SCAN_V_POS;
+      /* keep cx and cy as well in order for hasCaught() to work properly */
+      //cx = (int)(FRAME_WIDTH/2);
+      //cy = SCAN_V_POS;
+      /* reset ROI */
+      blk_roi = blk_roi_init;
       targetInSight = false;
     }
-  } else if (traceTargetType == TT_LINE) {
+
+    /* prepare for locating the decoy blocks */
+    binalizeWithColorMask(img_orig, bgr_min_dec, bgr_max_dec, gsmin, gsmax, img_bin_dec);
+    /* locate the decoy blocks */
+    vector<vector<Point>> contours_dec;
+    vector<Vec4i> hierarchy_dec;
+    findContours(img_bin_dec, contours_dec, hierarchy_dec, RETR_TREE, CHAIN_APPROX_SIMPLE);
+    vector<vector<float>> cnt_idx_dec; /* cnt_idx: area, idx, w/h, x, y */
+    locateBlocks(contours_dec, hierarchy_dec, cnt_idx_dec);
+    if (cnt_idx_dec.size() > 0) {
+      sort(cnt_idx_dec.begin(), cnt_idx_dec.end(), greater<>());
+      /* draw the two largest contour on the console image in blue */
+      for (unsigned int i = 0; i < 2 && i < cnt_idx_dec.size(); i++) {
+	polylines(f, contours_dec[cnt_idx_dec[i][1]], true, Scalar(255,0,0), LINE_THICKNESS);
+	if (cnt_idx.size() > 0 && /* when treasure block is in-sight */
+	    cnt_idx_dec[0][4] > cy) { /* decoy block is closer than the treasure block */
+	  Point l_limit_dec, r_limit_dec, l_limit_tre, r_limit_tre;
+	  /* calculate virtual left- and right-most point in the decoy block contour
+	     as if the contour is a square */
+	  l_limit_dec.y = r_limit_dec.y = cnt_idx_dec[0][4];
+	  int width_dec = static_cast<int>(sqrt(cnt_idx_dec[0][0]));
+	  int l_limit_dec_x_virt = cnt_idx_dec[0][3] - static_cast<int>(width_dec/2);
+	  int r_limit_dec_x_virt = cnt_idx_dec[0][3] + static_cast<int>(width_dec/2);
+	  /* consider clearance */
+	  l_limit_dec.x = l_limit_dec_x_virt - static_cast<int>(width_dec);
+	  r_limit_dec.x = r_limit_dec_x_virt + static_cast<int>(width_dec);
+	  /* identify the left- and right-most point in the treasure block contour */ 
+	  vector<Point> cnt_tre = contours[cnt_idx[0][1]];
+	  l_limit_tre = r_limit_tre = cnt_tre[0];
+	  for (unsigned int j = 1; j < cnt_tre.size(); j++) {
+	    Point p_tre = cnt_tre[j];
+	    if (p_tre.x < l_limit_tre.x) {
+	      l_limit_tre = p_tre;
+	    } else if (p_tre.x > r_limit_tre.x) {
+	      r_limit_tre = p_tre;
+	    }
+	  }
+	  /* normalize x of the four points */
+	  int l_limit_dec_x = FRAME_X_CENTER + (static_cast<int>(l_limit_dec.x-FRAME_X_CENTER) * (FRAME_HEIGHT-SCAN_V_POS) / (FRAME_HEIGHT-l_limit_dec.y));
+	  int r_limit_dec_x = FRAME_X_CENTER + (static_cast<int>(r_limit_dec.x-FRAME_X_CENTER) * (FRAME_HEIGHT-SCAN_V_POS) / (FRAME_HEIGHT-r_limit_dec.y));
+	  int l_limit_tre_x = FRAME_X_CENTER + (static_cast<int>(l_limit_tre.x-FRAME_X_CENTER) * (FRAME_HEIGHT-SCAN_V_POS) / (FRAME_HEIGHT-l_limit_tre.y));
+	  int r_limit_tre_x = FRAME_X_CENTER + (static_cast<int>(r_limit_tre.x-FRAME_X_CENTER) * (FRAME_HEIGHT-SCAN_V_POS) / (FRAME_HEIGHT-r_limit_tre.y));
+	  /* determine if the decoy and treasure block are overlapping each other */
+	  if (r_limit_dec_x >= l_limit_tre_x && l_limit_dec_x <= r_limit_tre_x) {
+	    /* adjust the course of robot accordingly */
+	    if (l_limit_dec_x > l_limit_tre_x) {
+	      line(f, Point(l_limit_dec.x, l_limit_dec.y), Point(l_limit_dec_x, SCAN_V_POS), Scalar(255,0,0), int(LINE_THICKNESS/2));
+	      if (mx > l_limit_dec_x) mx = l_limit_dec_x;
+	    } else if (r_limit_dec_x < r_limit_tre_x) {
+	      line(f, Point(r_limit_dec.x, r_limit_dec.y), Point(r_limit_dec_x, SCAN_V_POS), Scalar(255,0,0), int(LINE_THICKNESS/2));
+	      if (mx < r_limit_dec_x) mx = r_limit_dec_x;
+	    } else { /* when treasure block is behind decoy, pass around from left in R and right in L */
+	      line(f, Point(l_limit_dec.x, l_limit_dec.y), Point(l_limit_dec_x, SCAN_V_POS), Scalar(255,0,0), int(LINE_THICKNESS/2));
+	      if (_COURSE == -1) { /* _COURSE = -1 when R course */
+		if (mx > l_limit_dec_x) mx = l_limit_dec_x;
+	      } else {
+		if (mx < r_limit_dec_x) mx = r_limit_dec_x;
+	      }
+	    }
+	  }
+	}
+      }
+    }   
+    /* draw ROI */
+    polylines(f, blk_roi, true, Scalar(0,255,255), LINE_THICKNESS);
+
+  } else if (traceTargetType == TT_LINE || traceTargetType == TT_LINE_WITH_BLK) {
     Mat img_gray, img_gray_part, img_bin_part, img_bin, img_bin_mor, img_cnt_gray, scan_line;
 
     /* convert the image from BGR to grayscale */
     cvtColor(f, img_gray, COLOR_BGR2GRAY);
     /* crop a part of image for binarization */
-    img_gray_part = img_gray(Range(CROP_U_LIMIT,CROP_D_LIMIT), Range(CROP_L_LIMIT,CROP_R_LIMIT));
+    img_gray_part = img_gray(Range(CROP_U_LIMIT-blockOffset,CROP_D_LIMIT-blockOffset), Range(CROP_L_LIMIT,CROP_R_LIMIT));
     /* binarize the image */
     switch (algo) {
       case BA_NORMAL:
@@ -267,10 +334,10 @@ Mat Video::calculateTarget(Mat f) {
     /* prepare an empty matrix */
     img_bin = Mat::zeros(FRAME_HEIGHT, FRAME_WIDTH, CV_8UC1);
     /* copy img_bin_part into img_bin */
-    for (int i = CROP_U_LIMIT; i < CROP_D_LIMIT; i++) {
+    for (int i = CROP_U_LIMIT-blockOffset; i < CROP_D_LIMIT-blockOffset; i++) {
       for (int j = CROP_L_LIMIT; j < CROP_R_LIMIT; j++) {
-        img_bin.at<uchar>(i,j) = img_bin_part.at<uchar>(i-CROP_U_LIMIT,j-CROP_L_LIMIT); /* type = CV_8U */
-      }
+        img_bin.at<uchar>(i,j) = img_bin_part.at<uchar>(i-(CROP_U_LIMIT-blockOffset),j-CROP_L_LIMIT); /* type = CV_8U */
+    	}
     }
     /* remove noise */
     morphologyEx(img_bin, img_bin_mor, MORPH_CLOSE, kernel);
@@ -342,16 +409,16 @@ Mat Video::calculateTarget(Mat f) {
       roi.width = roi.width + 2*ROI_BOUNDARY;
       roi.height = roi.height + 2*ROI_BOUNDARY;
       if (roi.x < CROP_L_LIMIT) {
-        roi.x = CROP_L_LIMIT;
+	roi.x = CROP_L_LIMIT;
       }
-      if (roi.y < CROP_U_LIMIT) {
-        roi.y = CROP_U_LIMIT;
+      if (roi.y < CROP_U_LIMIT-blockOffset) {
+	roi.y = CROP_U_LIMIT-blockOffset;
       }
       if (roi.x + roi.width > CROP_R_LIMIT) {
-        roi.width = CROP_R_LIMIT - roi.x;
+	roi.width = CROP_R_LIMIT - roi.x;
       }
-      if (roi.y + roi.height > CROP_D_LIMIT) {
-        roi.height = CROP_D_LIMIT - roi.y;
+      if (roi.y + roi.height > CROP_D_LIMIT-blockOffset) {
+	roi.height = CROP_D_LIMIT-blockOffset - roi.y;
       }
  
       /* prepare for trace target calculation */
@@ -362,7 +429,7 @@ Mat Video::calculateTarget(Mat f) {
       drawContours(img_cnt, (vector<vector<Point>>){contours[i_target]}, 0, Scalar(0,255,0), 1);
       cvtColor(img_cnt, img_cnt_gray, COLOR_BGR2GRAY);
       /* scan the line at SCAN_V_POS to find edges */
-      scan_line = img_cnt_gray.row(SCAN_V_POS);
+      scan_line = img_cnt_gray.row(SCAN_V_POS-blockOffset);
       /* convert the Mat to a NumCpp array */
       auto scan_line_nc = nc::NdArray<nc::uint8>(scan_line.data, scan_line.rows, scan_line.cols);
       auto edges = scan_line_nc.flatnonzero();
@@ -383,20 +450,20 @@ Mat Video::calculateTarget(Mat f) {
       targetInSight = true;
     } else { /* contours.size() == 0 */
       rangeOfEdges = 0;
-      roi = Rect(CROP_L_LIMIT, CROP_U_LIMIT, CROP_WIDTH, CROP_HEIGHT);
+      roi = Rect(CROP_L_LIMIT, CROP_U_LIMIT-blockOffset, CROP_WIDTH, CROP_HEIGHT);
       /* keep mx in order to maintain the current move of robot */
       cx = (int)(FRAME_WIDTH/2);
-      cy = SCAN_V_POS;
+      cy = SCAN_V_POS-blockOffset;
       targetInSight = false;
     }
     //_logNoAsp("roe = %d", rangeOfEdges);
 
     /* draw the area of interest on the original image */
     rectangle(f, Point(roi.x,roi.y), Point(roi.x+roi.width,roi.y+roi.height), Scalar(255,0,0), LINE_THICKNESS);
-  } /* if(tradeTargetType == TT_LINE) */
+  } /* if (traceTargetType == TT_LINE || traceTargetType == TT_LINE_WITH_BLK) */
   
   /* draw the trace target on the image */
-  circle(f, Point(mx, SCAN_V_POS), CIRCLE_RADIUS, Scalar(0,0,255), -1);
+  circle(f, Point(mx, SCAN_V_POS-blockOffset), CIRCLE_RADIUS, Scalar(0,0,255), -1);
   /* calculate variance of cx from the center in pixel */
   int vxp = mx - (int)(FRAME_WIDTH/2);
   /* convert the variance from pixel to milimeters
@@ -461,8 +528,16 @@ void Video::setBinarizationAlgorithm(BinarizationAlgorithm ba) {
 void Video::setTraceTargetType(TargetType tt) {
   traceTargetType = tt;
   if (tt == TT_LINE) {
+    blockOffset = 0;
     /* initial region of interest is set to crop zone */
     roi = Rect(CROP_L_LIMIT, CROP_U_LIMIT, CROP_WIDTH, CROP_HEIGHT);
+  } else if (tt == TT_LINE_WITH_BLK) {
+    blockOffset = BLOCK_OFFSET;
+    /* initial region of interest is set to crop zone with block offset */
+    roi = Rect(CROP_L_LIMIT, CROP_U_LIMIT-blockOffset, CROP_WIDTH, CROP_HEIGHT);
+  } else {
+    /* initial ROI for block challenge */
+    blk_roi = blk_roi_init;
   }
   /* initial trace target */
   cx = (int)(FRAME_WIDTH/2);

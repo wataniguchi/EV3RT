@@ -85,14 +85,16 @@ def receive_packet():
         else:
             print(f'@={c.hex()}')
 
-    data = ser.read(RASPIKE_RX_SIZE)
-    data = data.decode('utf-8').split(':')
+    rawdata = ser.read(RASPIKE_RX_SIZE)
+    data = rawdata.decode('utf-8').split(':')
     cmd_id = int(data[0])
     val = int(data[1])
     if (cmd_id < 0 or cmd_id > MAX_CMD_ID):
         print("cmd value error!")
     if type == "status":
         rx_data_area[cmd_id] = val
+        #if cmd_id == 64:
+        #    print(f" pkt = [{cmd_id}:{val}]")
     else:
         if cmd_id != 127:
             print(f" -- ack = {cmd_id}")
@@ -104,7 +106,7 @@ async def receiver():
         receive_packet()
         await asyncio.sleep(0.01)
 
-def make_cmd(cmd_id, value):
+def make_cmd(cmd_id, value) -> bytearray:
     buf = bytearray(3)
     value_abs = int(abs(value))
     # Byte 1: MSB = 1
@@ -116,7 +118,8 @@ def make_cmd(cmd_id, value):
         buf[1] |= 0x20
     # Byte 3: MSB = 0 + 7 lower value bits
     buf[2] = value_abs & 0x7f
-    print(f" -- cmd = {buf.hex()}[{cmd_id}:{value}]")
+    if cmd_id != 127:
+        print(f" -- cmd = {buf.hex()}[{cmd_id}:{value}]")
     return buf
         
 async def send_packet():
@@ -130,12 +133,13 @@ async def send_packet():
                 k += 1
                 if type == WAIT_ACK_CMD:
                     while True:
+                        #print(f" --- waiting for ack = {cmd_id}")
                         if ack_received[cmd_id]:
                             break
-                        await ayncio.sleep(0.01)
+                        await asyncio.sleep(0.01)
                 tx_data_area_prev[cmd_id] = tx_data_area[cmd_id]
-                if k == 0:
-                    ser.write(make_cmd(127,0))
+        if k == 0:
+            ser.write(make_cmd(127,0))
         await asyncio.sleep(0.01)
         
 # reference: RasPike/target/raspi_gcc/drivers/motor/src/motor_dri.c
@@ -145,21 +149,24 @@ MOTOR_C = 2
 MOTOR_D = 3
 motor_power = np.zeros(4, dtype=np.int16)
 
-def motor_clr_angle(motor):
+def motor_get_angle(motor) -> int: # opOUTPUT_GET_COUNT
+    return rx_data_area[MOTOR_A_CONFIG + motor]
+
+def motor_clr_angle(motor): # opOUTPUT_CLR_COUNT
     tx_data_area[MOTOR_A_RESET + motor] = 1
 
-def motor_set_power(motor, power):
+def motor_set_power(motor, power): # opOUTPUT_POWER & opOUTPUT_SPEED
     motor_power[motor] = power
 
-def motor_start(motor):
+def motor_start(motor): # opOUTPUT_START
     tx_data_area[MOTOR_A_POWER + motor] = motor_power[motor]
 
-def motor_break(motor, brake):
+def motor_break(motor, brake): # opOUTPUT_STOP
     tx_data_area[MOTOR_A_POWER + motor] = 0
     tx_data_area[MOTOR_A_STOP + motor] = brake
 
 def motor_config(motor):
-    tx_data_area[MOTOR_A_CONFIG + motor] = 20
+    tx_data_area[MOTOR_A_CONFIG + motor] = 20 # opOUTPUT_SET_TYPE
 
 # reference: RasPike/sdk/common/library/libcpp-ev3/src/Motor.cpp
 #            RasPike/sdk/common/library/libcpp-ev3/include/Motor.h
@@ -167,15 +174,14 @@ def motor_config(motor):
 PWM_MAX = 100
 PWM_MIN = -100
 brake_mode = 0
-def cppev3_motor_init(motor):
-    motor_config(motor) # ev3_motor_config
+def ev3_motor_config(motor):
+    motor_config(motor)
     motor_break(motor, 0) 
 
-def cppev3_motor_reset(motor):
-    motor_break(motor, 1) # ev3_motor_stop
-    motor_clr_angle(motor) # ev3_motor_reset_counts
+def ev3_motor_reset_counts(motor):
+    motor_clr_angle(motor)
 
-def cppev3_motor_setPWM(motor, pwm):
+def ev3_motor_set_power(motor, pwm):
     if pwm > PWM_MAX:
         pwm = PWM_MAX
     if pwm < PWM_MIN:
@@ -186,21 +192,28 @@ def cppev3_motor_setPWM(motor, pwm):
         motor_set_power(motor, pwm) # ev3_motor_set_power
         motor_start(motor) # ev3_motor_set_power
 
-def cppev3_setBreak(brake):
-    brake_mode = brake
+def ev3_motor_stop(motor, brake):
+    motor_break(motor, brake)
         
 async def main_task():
+    print(" -- main task start")
     task1 = asyncio.create_task(receiver())
     task2 = asyncio.create_task(send_packet())
+    
     print(" -- main task logic start")
-    cppev3_motor_init(MOTOR_A)
-    cppev3_motor_setPWM(MOTOR_A, -30)
-    await asyncio.sleep(2.0)
-    cppev3_motor_setPWM(MOTOR_A, 30)
+    ev3_motor_config(MOTOR_A)
+    ev3_motor_reset_counts(MOTOR_A)
+    ev3_motor_set_power(MOTOR_A, -30)
     await asyncio.sleep(1.0)
-    cppev3_motor_reset(MOTOR_A)
-    await task1
-    await task2
+    ev3_motor_set_power(MOTOR_A, 30)
+    await asyncio.sleep(1.0)
+    ev3_motor_stop(MOTOR_A, 0)
+    # TODO: send_packet() to send everything before cancelled
+    await asyncio.sleep(1.0)
+    print(" -- main task logic end")
+    
+    task1.cancel()
+    task2.cancel()
     print(" -- main task end")
         
 asyncio.run(main_task())

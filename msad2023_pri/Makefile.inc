@@ -46,19 +46,25 @@ APPL_LIBS += -lm -lX11 \
 ifdef ETROBO_WITH_V3CAM
 
 INCLUDES += -I/usr/include/libcamera
+APPL_CFLAGS += -std=gnu++17 -DWITH_V3CAM
 APPL_LIBS += -lcamera -lcamera-base -llccv
-COPTS += -std=gnu++17 -DWITH_V3CAM
 
 else # ifdef ETROBO_WITH_V3CAM
 
-COPTS += -std=gnu++14
+APPL_CFLAGS += -std=gnu++14
 
 endif # ifdef ETROBO_WITH_V3CAM
 
 ifdef ETROBO_BENCHMARK
-COPTS += -DBENCHMARK
+APPL_CFLAGS += -DBENCHMARK
+endif
+
+ifdef ETROBO_WITH_FILTER
+APPL_CFLAGS += -DWITH_FILTER
 endif
 
 #COPTS += -fno-use-cxa-atexit
 #COPTS += -DNDEBUG
 COPTS += -g $(USER_COPTS)
+
+#OBJ_LDFLAGS += -Wl,-Map,$(mkfile_path)/map.txt

@@ -40,20 +40,30 @@ using std::this_thread::sleep_for;
 #define FRAME_HEIGHT 240
 //#define FRAME_WIDTH  128
 //#define FRAME_HEIGHT 96
+#define FRAME_X_CENTER int(FRAME_WIDTH/2)
 
-#define LINE_THICKNESS int(FRAME_WIDTH/80)
-#define BLK_AREA_MIN (23.0*FRAME_WIDTH/640.0)*(23.0*FRAME_WIDTH/640.0)
-#define FONT_SCALE double(FRAME_WIDTH)/640.0
+#define BLK_ROI_U_LIMIT 0
+#define BLK_ROI_D_LIMIT int(7*FRAME_HEIGHT/8)
+#define BLK_ROI_L_LIMIT int(FRAME_WIDTH/8)   /* at bottom of the image */
+#define BLK_ROI_R_LIMIT int(7*FRAME_WIDTH/8) /* at bottom of the image */
+
 #define MORPH_KERNEL_SIZE roundUpToOdd(int(FRAME_WIDTH/40))
+#define BLK_AREA_MIN (20.0*FRAME_WIDTH/640.0)*(20.0*FRAME_WIDTH/640.0)
+#define ROI_BOUNDARY int(FRAME_WIDTH/16)
+#define LINE_THICKNESS int(FRAME_WIDTH/80)
+#define CIRCLE_RADIUS int(FRAME_WIDTH/40)
+#define SCAN_V_POS int(13*FRAME_HEIGHT/16 - LINE_THICKNESS)
+
+#define FONT_SCALE double(FRAME_WIDTH)/640.0
 
 /* frame size for X11 painting */
 #define OUT_FRAME_WIDTH  320
 #define OUT_FRAME_HEIGHT 240
 
-int b_min_tre=0,b_max_tre=50,g_min_tre=0,g_max_tre=40,r_min_tre=55,r_max_tre=255;
-int b_min_dec=50,b_max_dec=255,g_min_dec=0,g_max_dec=60,r_min_dec=0,r_max_dec=30;
+int b_min_tre=0,b_max_tre=50,g_min_tre=0,g_max_tre=48,r_min_tre=58,r_max_tre=167;
+int b_min_dec=46,b_max_dec=87,g_min_dec=26,g_max_dec=42,r_min_dec=0,r_max_dec=30;
 int gs_min=10,gs_max=100;
-char strbuf[4][40];
+vector<Point> blk_roi;
 
 int roundUpToOdd(int x) {
   return 2 * ceil(((float)x - 1.0) / 2.0) + 1;
@@ -65,20 +75,21 @@ void locateBlocks(vector<vector<Point>>& contours, vector<Vec4i>& hierarchy,
     if (hierarchy[i][3] == -1) { /* if contour is external */
       vector<Point> cnt = contours[i];
       float area = contourArea(cnt);
+      Moments mom = moments(cnt);
+      /* add 1e-5 to avoid division by zero */
+      float x = mom.m10 / (mom.m00 + 1e-5);
+      float y = mom.m01 / (mom.m00 + 1e-5);
       /* calculate a bounding box around the identified contour */
       Rect bbcnt = boundingRect(cnt);
       float wh = static_cast<float>(bbcnt.width) / bbcnt.height; /* width / height */
       vector<Point> hull;
       convexHull(cnt, hull);
-      if (area > BLK_AREA_MIN && wh > 0.5 && wh < 2.0 &&
-	  1.45*area > contourArea(hull) ) { /* area and its hull are not much different */
-	if (hierarchy[i][2] == -1) { /* if the area has no child */
-	  Moments mom = moments(cnt);
-	  /* add 1e-5 to avoid division by zero */
-	  float x = mom.m10 / (mom.m00 + 1e-5);
-	  float y = mom.m01 / (mom.m00 + 1e-5);
+      if (area > BLK_AREA_MIN && wh > 0.3 && wh < 3.0 &&
+	  1.45*area > contourArea(hull) && /* the contour and its hull are not much different */
+	  pointPolygonTest(blk_roi, Point2f(x,y), false) == 1) { /* the contour is inside ROI */
+	if (hierarchy[i][2] == -1) { /* if the contour has no child */
 	  cnt_idx.push_back({area, float(i), wh, x, y});
-	} else { /* ensure the area is not donut-shaped */
+	} else { /* ensure the contour is not donut-shaped */
 	  bool donut = false;
 	  for (int j = hierarchy[i][2]; j != -1; j = hierarchy[j][0]){ /* traverse all child */
 	    vector<Point> cnt_chd = contours[j];
@@ -86,10 +97,6 @@ void locateBlocks(vector<vector<Point>>& contours, vector<Vec4i>& hierarchy,
 	    if (10.0 * area_chd > area) donut = true;
 	  }
 	  if (donut == false) {
-	    Moments mom = moments(cnt);
-	    /* add 1e-5 to avoid division by zero */
-	    float x = mom.m10 / (mom.m00 + 1e-5);
-	    float y = mom.m01 / (mom.m00 + 1e-5);
 	    cnt_idx.push_back({area, float(i), wh, x, y});
 	  }
 	}
@@ -115,6 +122,9 @@ void binalizeWithColorMask(Mat& img_orig, Scalar& bgr_min, Scalar& bgr_max, int 
 }
 
 int main() {
+  char strbuf[4][40];
+  int cx, cy, mx;
+  
   utils::logging::setLogLevel(utils::logging::LOG_LEVEL_WARNING);
   /* set number of threads */
   setNumThreads(0);
@@ -156,6 +166,11 @@ int main() {
   setTrackbarPos("GS_min", "testTrace1", gs_min);
   createTrackbar("GS_max", "testTrace1", nullptr, 255, nullptr);
   setTrackbarPos("GS_max", "testTrace1", gs_max);
+  int roi_dl_limit = BLK_ROI_D_LIMIT * BLK_ROI_L_LIMIT / FRAME_HEIGHT;
+  int roi_dr_limit = FRAME_WIDTH - roi_dl_limit;
+  vector<Point> roi_init {{0,BLK_ROI_U_LIMIT},{FRAME_WIDTH,BLK_ROI_U_LIMIT},
+			      {roi_dr_limit,BLK_ROI_D_LIMIT},{roi_dl_limit,BLK_ROI_D_LIMIT}};
+  blk_roi = roi_init;
 
   while (true) {
     /* obtain values from the trackbars */
@@ -164,7 +179,7 @@ int main() {
     g_min_tre  = getTrackbarPos("G_min(Tre)", "testTrace1");
     g_max_tre  = getTrackbarPos("G_max(Tre)", "testTrace1");
     b_min_tre  = getTrackbarPos("B_min(Tre)", "testTrace1");
-    b_max_dec  = getTrackbarPos("B_max(Tre)", "testTrace1");
+    b_max_tre  = getTrackbarPos("B_max(Tre)", "testTrace1");
     r_min_dec  = getTrackbarPos("R_min(Dec)", "testTrace1");
     r_max_dec  = getTrackbarPos("R_max(Dec)", "testTrace1");
     g_min_dec  = getTrackbarPos("G_min(Dec)", "testTrace1");
@@ -212,13 +227,16 @@ int main() {
     locateBlocks(contours, hierarchy, cnt_idx);
     if (cnt_idx.size() > 0) {
       sort(cnt_idx.begin(), cnt_idx.end(), greater<>());
+      /* draw the largest contour on the original image in red */
+      polylines(img_orig_contour, contours[cnt_idx[0][1]], true, Scalar(0,0,255), LINE_THICKNESS);
+      cx = static_cast<int>(cnt_idx[0][3]);
+      cy = static_cast<int>(cnt_idx[0][4]);
+      mx = FRAME_X_CENTER + static_cast<int>((cx-FRAME_X_CENTER) * (FRAME_HEIGHT-SCAN_V_POS) / (FRAME_HEIGHT-cy));
       /* print information about the identified contour */
-      sprintf(strbuf[0], "cx = %03.0f, cy = %03.0f", cnt_idx[0][3], cnt_idx[0][4]);
+      sprintf(strbuf[0], "cx = %03d, cy = %03d", cx, cy);
       sprintf(strbuf[1], "area = %6.1f", cnt_idx[0][0]);
       sprintf(strbuf[2], "w/h = %4.16f", cnt_idx[0][2]);
       cout << strbuf[0] << ", " << strbuf[1] << ", " << strbuf[2] << endl;
-      /* draw the largest contour on the original image in red */
-      polylines(img_orig_contour, contours[cnt_idx[0][1]], true, Scalar(0,0,255), LINE_THICKNESS);
       putText(img_orig_contour, strbuf[0],
 	      Point(static_cast<int>(FRAME_WIDTH/64),static_cast<int>(5*FRAME_HEIGHT/8)),
 	      FONT_HERSHEY_SIMPLEX, FONT_SCALE, Scalar(0,255,0),
@@ -231,6 +249,22 @@ int main() {
 	      Point(static_cast<int>(FRAME_WIDTH/64),static_cast<int>(7*FRAME_HEIGHT/8)),
 	      FONT_HERSHEY_SIMPLEX, FONT_SCALE, Scalar(0,255,0),
 	      static_cast<int>(LINE_THICKNESS/4), LINE_4);
+      /* set new ROI */
+      int roi_u_limit = cy - ROI_BOUNDARY;
+      if (roi_u_limit < 0) roi_u_limit = 0;
+      int roi_ul_limit = roi_u_limit * BLK_ROI_L_LIMIT / FRAME_HEIGHT;
+      int roi_ur_limit = FRAME_WIDTH - roi_ul_limit;
+      int roi_dl_limit = BLK_ROI_D_LIMIT * BLK_ROI_L_LIMIT / FRAME_HEIGHT;
+      int roi_dr_limit = FRAME_WIDTH - roi_dl_limit;
+      vector<Point> roi_new {{roi_ul_limit,roi_u_limit},{roi_ur_limit,roi_u_limit},
+			     {roi_dr_limit,BLK_ROI_D_LIMIT},{roi_dl_limit,BLK_ROI_D_LIMIT}};
+      blk_roi = roi_new;
+    } else { /* cnt_idx.size() == 0 */
+      /* keep mx in order to maintain the current move of robot */
+      cx = (int)(FRAME_WIDTH/2);
+      cy = SCAN_V_POS;
+      /* reset ROI */
+      blk_roi = roi_init;
     }
 
     /* prepare for locating the decoy blocks */
@@ -248,8 +282,68 @@ int main() {
       /* draw the two largest contour on the original image in blue */
       for (int i = 0; i < 2 && i < cnt_idx_dec.size(); i++) {
 	polylines(img_orig_contour, contours_dec[cnt_idx_dec[i][1]], true, Scalar(255,0,0), LINE_THICKNESS);
+	if (cnt_idx.size() > 0 && /* when treasure block is in-sight */
+	    cnt_idx_dec[0][4] > cy) { /* decoy block is closer than the treasure block */
+	  Point l_limit_dec, r_limit_dec, l_limit_tre, r_limit_tre;
+	  /* identify the left- and right-most point in the decoy block contour */
+	  /*
+	  vector<Point> cnt_dec = contours_dec[cnt_idx_dec[0][1]];
+	  l_limit_dec = r_limit_dec = cnt_dec[0];
+	  for (int j = 1; j < cnt_dec.size(); j++) {
+	    Point p_dec = cnt_dec[j];
+	    if (p_dec.x < l_limit_dec.x) {
+	      l_limit_dec = p_dec;
+	    } else if (p_dec.x > r_limit_dec.x) {
+	      r_limit_dec = p_dec;
+	    }
+	  }
+	  */
+	  /* calculate virtual left- and right-most point in the decoy block contour
+	     as if the contour is a square */
+	  l_limit_dec.y = r_limit_dec.y = cnt_idx_dec[0][4];
+	  int width_dec = static_cast<int>(sqrt(cnt_idx_dec[0][0]));
+	  int l_limit_dec_x_virt = cnt_idx_dec[0][3] - static_cast<int>(width_dec/2);
+	  int r_limit_dec_x_virt = cnt_idx_dec[0][3] + static_cast<int>(width_dec/2);
+	  /* consider clearance */
+	  l_limit_dec.x = l_limit_dec_x_virt - static_cast<int>(width_dec);
+	  r_limit_dec.x = r_limit_dec_x_virt + static_cast<int>(width_dec);
+	  /* identify the left- and right-most point in the treasure block contour */ 
+	  vector<Point> cnt_tre = contours[cnt_idx[0][1]];
+	  l_limit_tre = r_limit_tre = cnt_tre[0];
+	  for (int j = 1; j < cnt_tre.size(); j++) {
+	    Point p_tre = cnt_tre[j];
+	    if (p_tre.x < l_limit_tre.x) {
+	      l_limit_tre = p_tre;
+	    } else if (p_tre.x > r_limit_tre.x) {
+	      r_limit_tre = p_tre;
+	    }
+	  }
+	  /* normalize x of the four points */
+	  int l_limit_dec_x = FRAME_X_CENTER + (static_cast<int>(l_limit_dec.x-FRAME_X_CENTER) * (FRAME_HEIGHT-SCAN_V_POS) / (FRAME_HEIGHT-l_limit_dec.y));
+	  int r_limit_dec_x = FRAME_X_CENTER + (static_cast<int>(r_limit_dec.x-FRAME_X_CENTER) * (FRAME_HEIGHT-SCAN_V_POS) / (FRAME_HEIGHT-r_limit_dec.y));
+	  int l_limit_tre_x = FRAME_X_CENTER + (static_cast<int>(l_limit_tre.x-FRAME_X_CENTER) * (FRAME_HEIGHT-SCAN_V_POS) / (FRAME_HEIGHT-l_limit_tre.y));
+	  int r_limit_tre_x = FRAME_X_CENTER + (static_cast<int>(r_limit_tre.x-FRAME_X_CENTER) * (FRAME_HEIGHT-SCAN_V_POS) / (FRAME_HEIGHT-r_limit_tre.y));
+	  /* determine if the decoy and treasure block are overlapping each other */
+	  if (r_limit_dec_x >= l_limit_tre_x && l_limit_dec_x <= r_limit_tre_x) {
+	    /* adjust the course of robot accordingly */
+	    if (l_limit_dec_x > l_limit_tre_x) {
+	      line(img_orig_contour, Point(l_limit_dec.x, l_limit_dec.y), Point(l_limit_dec_x, SCAN_V_POS), Scalar(255,0,0), int(LINE_THICKNESS/2));
+	      if (mx > l_limit_dec_x) mx = l_limit_dec_x;
+	    } else if (r_limit_dec_x < r_limit_tre_x) {
+	      line(img_orig_contour, Point(r_limit_dec.x, r_limit_dec.y), Point(r_limit_dec_x, SCAN_V_POS), Scalar(255,0,0), int(LINE_THICKNESS/2));
+	      if (mx < r_limit_dec_x) mx = r_limit_dec_x;
+	    } else { /* when treasure block is behind decoy, always pass around from left */
+	      line(img_orig_contour, Point(l_limit_dec.x, l_limit_dec.y), Point(l_limit_dec_x, SCAN_V_POS), Scalar(255,0,0), int(LINE_THICKNESS/2));
+	      if (mx > l_limit_dec_x) mx = l_limit_dec_x;
+	    }
+	  }
+	}
       }
     }
+    /* draw ROI */
+    polylines(img_orig_contour, blk_roi, true, Scalar(0,255,255), LINE_THICKNESS);
+    /* draw the trace target on the image */
+    circle(img_orig_contour, Point(mx, SCAN_V_POS), CIRCLE_RADIUS, Scalar(0,0,255), -1);
 
     /* concatinate the images - original + extracted + binary */
     Mat img_v;

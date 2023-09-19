@@ -1,7 +1,7 @@
 /*
     app.h
 
-    Copyright © 2021 Wataru Taniguchi. All rights reserved.
+    Copyright © 2023 MS&AD Mode2P. All rights reserved.
 */
 #ifndef app_h
 #define app_h
@@ -12,7 +12,6 @@ extern "C" {
 
 /* common header files */
 #include "ev3api.h"
-#include "target_test.h"
 
 /* task priorities (smaller number has higher priority) */
 #define PRIORITY_UPD_TSK    TMIN_APP_TPRI
@@ -23,8 +22,10 @@ extern "C" {
 
 /* default task stack size in bytes */
 #ifndef STACK_SIZE
-#define STACK_SIZE          4096
+#define STACK_SIZE          (4096)
 #endif /* STACK_SIZE */
+#define MAIN_STACK_SIZE     (16384)
+#define UPD_STACK_SIZE      (4096)
     
 /* prototypes for configuration */
 #ifndef TOPPERS_MACRO_ONLY

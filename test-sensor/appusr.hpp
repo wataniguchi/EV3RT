@@ -28,12 +28,12 @@ using namespace ev3api;
    this program is compiled under -std=gnu++11 option */
 #include <math.h>
 
-#include "FilteredMotor.hpp"
-#include "SRLF.hpp"
+//#include "FilteredMotor.hpp"
+//#include "SRLF.hpp"
 #include "FilteredColorSensor.hpp"
 #include "FIR.hpp"
-#include "Plotter.hpp"
-#include "PIDcalculator.hpp"
+//#include "Plotter.hpp"
+//#include "PIDcalculator.hpp"
 
 #define _debug(x, level) do { \
     if (_DEBUG_LEVEL >= (level)) { x; }		\
@@ -93,12 +93,7 @@ enum State {
     ST_INITIAL,
     ST_CALIBRATION,
     ST_RUN,
-    ST_BLOCK1,
-    ST_BLOCK2,
-    ST_BLOCK3,
-    ST_BLOCK4,
-    ST_BLOCK5,
-    ST_BLOCK6,
+    ST_BLOCK,
     ST_ENDING,
     ST_END,
 };
@@ -149,12 +144,12 @@ extern FilteredColorSensor* colorSensor;
 extern ColorSensor* colorSensor;
 #endif
 extern GyroSensor*  gyroSensor;
-extern SRLF*        srlf_l;
-extern FilteredMotor*       leftMotor;
-extern SRLF*        srlf_r;
-extern FilteredMotor*       rightMotor;
-extern Motor*       armMotor;
-extern Plotter*     plotter;
+//extern SRLF*        srlf_l;
+//extern FilteredMotor*       leftMotor;
+//extern SRLF*        srlf_r;
+//extern FilteredMotor*       rightMotor;
+//extern Motor*       armMotor;
+//extern Plotter*     plotter;
 extern int          _COURSE;
 extern int          _DEBUG_LEVEL;
 extern int          upd_process_count;
