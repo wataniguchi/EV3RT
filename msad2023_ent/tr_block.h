@@ -70,7 +70,7 @@
             .composite<BrainTree::MemSequence>() \
                 .composite<BrainTree::ParallelSequence>(1,3) \
                     .leaf<IsColorDetected>(CL_RED) \
-                    .leaf<IsTimeEarned>(12000000) \
+                    .leaf<IsTimeEarned>(13500000) \
                     .leaf<TraceLine>(20, GS_TARGET, P_CONST, I_CONST, D_CONST, 0.0, TS_NORMAL) \
                 .end() \
                 .composite<BrainTree::ParallelSequence>(1,2) \
