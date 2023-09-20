@@ -7,7 +7,7 @@
                     .leaf<TraceLine>(20, GS_TARGET, P_CONST, I_CONST, D_CONST, 0.0, TS_NORMAL) \
                 .end() \
 /* Reset Arm Pos. \
-                .leaf<SetArmPosition>(ARM_INITIAL_ANGLE, ARM_SHIFT_PWM) \
+                .leaf<SetArmPosition>(ARM_INITIAL_ANGLE, ARM_SHIFT_PWM)  \
 */ \
                 .composite<BrainTree::ParallelSequence>(1,3) \
                     .leaf<IsSonarOn>(300) \
