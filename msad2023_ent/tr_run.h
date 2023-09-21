@@ -25,7 +25,7 @@
                 .end() \  
                 .composite<BrainTree::ParallelSequence>(1,2) \
                     .leaf<IsTimeEarned>(1200000) \
-                    .leaf<RunAsInstructed>(100, 45, 0.5) \
+                    .leaf<RunAsInstructed>(100, 47, 0.5) \
                 .end() \                              
                 .composite<BrainTree::ParallelSequence>(1,2) \
                     .leaf<IsColorDetected>(CL_BLUE) \
