@@ -12,28 +12,24 @@
                     .leaf<RunAsInstructed>(90, 65, 0.0) \
                 .end() \
                 .composite<BrainTree::ParallelSequence>(1,2) \
-                    .leaf<IsTimeEarned>(1600000) \
-                    .leaf<RunAsInstructed>(90, 80, 0.0) \
-                .end() \
-                .composite<BrainTree::ParallelSequence>(1,2) \
-                    .leaf<IsTimeEarned>(2300000) \
-                    .leaf<RunAsInstructed>(90, 90, 0.0) \
+                    .leaf<IsTimeEarned>(1200000) \
+                    .leaf<RunAsInstructed>(90, 73, 0.0) \
                 .end() \
                 .composite<BrainTree::ParallelSequence>(1,2) \
                     .leaf<IsTimeEarned>(2000000) \
-                    .leaf<RunAsInstructed>(90, 60, 0.0) \
-                .end() \
+                    .leaf<RunAsInstructed>(90, 90, 0.0) \
+                .end() \                
+                .composite<BrainTree::ParallelSequence>(1,2) \
+                    .leaf<IsTimeEarned>(700000) \
+                    .leaf<RunAsInstructed>(75, 90, 0.0) \
+                .end() \  
+                .composite<BrainTree::ParallelSequence>(1,2) \
+                    .leaf<IsTimeEarned>(1500000) \
+                    .leaf<RunAsInstructed>(90, 45, 0.5) \
+                .end() \                  
                 .composite<BrainTree::ParallelSequence>(1,2) \
                     .leaf<IsColorDetected>(CL_BLUE) \
-                    .leaf<RunAsInstructed>(5, 5, 0.0) \
-                .end() \
-                .composite<BrainTree::ParallelSequence>(1,2) \
-                    .leaf<IsTimeEarned>(1300000) \
-                    .leaf<RunAsInstructed>(0, 0, 0.0) \
-                .end() \
-                .composite<BrainTree::ParallelSequence>(1,2) \
-                    .leaf<IsTimeEarned>(1000000) \
-                    .leaf<TraceLine>(20, GS_TARGET, P_CONST, I_CONST, D_CONST, 0.0, TS_NORMAL) \
+                    .leaf<TraceLine>(77, GS_TARGET, P_CONST, I_CONST, D_CONST, 0.0, TS_NORMAL) \
                 .end() \
             .end() \
         .end()
