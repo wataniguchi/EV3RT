@@ -175,6 +175,27 @@ protected:
 
 /*
     usage:
+    ".leaf<SetPlotterDegree>(deg)"
+    is to forcefully set the current degree Plotter class is updating by calculation
+    in order to correct cumulated calculation error.
+*/
+class SetPlotterDegree : public BrainTree::Node {
+public:
+  SetPlotterDegree(int deg) {
+    degree = deg;
+  }
+  Status update() override {
+    int origDeg = plotter->getDegree();
+    plotter->setDegree(degree);
+    _log("ODO=%05d, Plotter degree forcefully changed from %d to %d.", plotter->getDistance(), origDeg, degree);
+    return Status::Success;
+  }
+protected:
+  int degree;
+};
+
+/*
+    usage:
     ".leaf<IsTouchOn>()"
     is to check if the touch sensor gets pressed.
 */
