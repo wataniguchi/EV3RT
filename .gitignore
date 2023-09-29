@@ -16,6 +16,9 @@
 /msad2023_ent/work/
 !/msad2023_pri/
 /msad2023_pri/work/
+!/test-asyncio/
+/test-asyncio/*
+!/test-asyncio/*.py
 !/test-opencv/
 /test-opencv/*
 !/test-opencv/*.py
