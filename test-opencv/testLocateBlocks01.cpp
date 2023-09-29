@@ -61,10 +61,14 @@ using std::this_thread::sleep_for;
 #define OUT_FRAME_HEIGHT 240
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 int b_min_tre=0,b_max_tre=50,g_min_tre=0,g_max_tre=44,r_min_tre=53,r_max_tre=155;
 =======
 int b_min_tre=0,b_max_tre=50,g_min_tre=0,g_max_tre=48,r_min_tre=58,r_max_tre=167;
 >>>>>>> d05e01429aa5f3e607e6438cff6d8e1b3a974b86
+=======
+int b_min_tre=0,b_max_tre=50,g_min_tre=0,g_max_tre=48,r_min_tre=58,r_max_tre=167;
+>>>>>>> fd7ff27ef1011074d9a87733784ca5aadb4c49bf
 int b_min_dec=46,b_max_dec=87,g_min_dec=26,g_max_dec=42,r_min_dec=0,r_max_dec=30;
 int gs_min=10,gs_max=100;
 vector<Point> blk_roi;
