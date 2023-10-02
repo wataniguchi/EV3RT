@@ -1,7 +1,7 @@
 /*
   how to compile:
 
-  g++ testTraceCam03hiReso.cpp -std=c++14 `pkg-config --cflags --libs opencv4` -I../msad2023_pri -I/opt/raspivideocap/include -lraspivideocap -L/opt/raspivideocap/lib -o testTraceCam03hiReso
+  g++ testTraceCam04.cpp -std=c++14 `pkg-config --cflags --libs opencv4` -I../msad2023_pri -I/opt/raspivideocap/include -lraspivideocap -L/opt/raspivideocap/lib -o testTraceCam04
 */
 
 /* 
