@@ -80,6 +80,10 @@ static_assert(SCAN_V_POS > CROP_U_LIMIT,"SCAN_V_POS > CROP_U_LIMIT");
 static_assert(SCAN_V_POS < CROP_D_LIMIT,"SCAN_V_POS < CROP_D_LIMIT");
 #define DATA_INDENT int(OUT_FRAME_HEIGHT/16)
 
+#define AREA_DILATE_KERNEL_SIZE roundUpToOdd(int(FRAME_WIDTH/40))
+#define AREA_GS_MIN 130
+#define AREA_GS_MAX 255
+
 /* frame size for X11 painting */
 #define OUT_FRAME_WIDTH  128
 #define OUT_FRAME_HEIGHT 96
@@ -121,7 +125,7 @@ protected:
   Font font;
   void* gbuf;
   Mat frame_prev;
-  Mat kernel;
+  Mat kernel, kernel_dil;
   unsigned long* buf;
   char strbuf[5][40];
   int mx, cx, cy, gsmin, gsmax, gs_block, gs_C, side, rangeOfEdges, blockOffset;

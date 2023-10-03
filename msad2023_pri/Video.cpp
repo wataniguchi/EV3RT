@@ -9,6 +9,26 @@ int roundUpToOdd(int x) {
   return 2 * ceil(((float)x - 1.0) / 2.0) + 1;
 }
 
+vector<Point> findLargestContour(Mat img_bin) {
+  vector<vector<Point>> contours;
+  vector<Vec4i> hierarchy;
+  findContours(img_bin, contours, hierarchy, RETR_EXTERNAL, CHAIN_APPROX_SIMPLE);
+  if (contours.size() >= 1) {
+    int i_area_max = 0;
+    double area_max = 0.0;
+    for (int i = 0; i < (int)contours.size(); i++) {
+      double area = contourArea(contours[i]);
+      if (area > area_max) {
+	area_max = area;
+	i_area_max = i;
+      }
+    }
+    return contours[i_area_max];
+  } else {
+    return {Point(0,0),Point(img_bin.cols-1,0),Point(img_bin.cols-1,img_bin.rows-1),Point(0,img_bin.rows-1)};
+  }
+}
+
 void Video::locateBlocks(vector<vector<Point>>& contours, vector<Vec4i>& hierarchy,
 		  vector<vector<float>>& cnt_idx) { /* cnt_idx: area, idx, w/h, x, y */
   for (unsigned int i = 0; i < contours.size(); i++) {
@@ -123,8 +143,9 @@ Video::Video() {
   vector<Point> roi_init {{0,BLK_ROI_U_LIMIT},{FRAME_WIDTH,BLK_ROI_U_LIMIT},
 			  {roi_dr_limit,BLK_ROI_D_LIMIT},{roi_dl_limit,BLK_ROI_D_LIMIT}};
   blk_roi = blk_roi_init = roi_init;
-  /* prepare and keep kernel for morphology */
+  /* prepare and keep kernel for morphology and dilate */
   kernel = Mat::ones(Size(MORPH_KERNEL_SIZE,MORPH_KERNEL_SIZE), CV_8UC1);
+  kernel_dil = Mat::ones(Size(AREA_DILATE_KERNEL_SIZE,AREA_DILATE_KERNEL_SIZE), CV_8UC1);
   /* initial trace target */
   cx = (int)(FRAME_WIDTH/2);
   cy = SCAN_V_POS;
@@ -309,12 +330,32 @@ Mat Video::calculateTarget(Mat f) {
     polylines(f, blk_roi, true, Scalar(0,255,255), LINE_THICKNESS);
 
   } else if (traceTargetType == TT_LINE || traceTargetType == TT_LINE_WITH_BLK) {
-    Mat img_gray, img_gray_part, img_bin_part, img_bin, img_bin_mor, img_cnt_gray, scan_line;
+    Mat img_gray, img_bin_white_area, img_bin_white_area_dil, img_mask, img_mask_gray, img_gray_part, img_bin_part, img_bin, img_bin_mor, img_cnt_gray, scan_line;
 
     /* convert the image from BGR to grayscale */
     cvtColor(f, img_gray, COLOR_BGR2GRAY);
+    /* generate a binarized image of white area */
+    inRange(img_gray, AREA_GS_MIN, AREA_GS_MAX, img_bin_white_area);
+    /* dilate the image */
+    dilate(img_bin_white_area, img_bin_white_area_dil, kernel_dil, Point(-1,-1), 3);
+    /* find the largest contour */
+    vector<Point> cnt_white_area = findLargestContour(img_bin_white_area_dil);
+    /* create mask for extraction */
+    /*
+      Note: Mat::ones/zeros with CV_8UC3 does NOT work and don't know why
+    */
+    Mat mask(f.size(), CV_8UC3, Scalar(255,255,255));
+    fillPoly(mask, {cnt_white_area}, Scalar(0,0,0));
+    /* paint outside of the contour to white */
+    bitwise_or(f, mask, img_mask);
+    
+    /* modify img_orig to show masked area as blurred on monitor window */
+    addWeighted(img_mask, 0.5, f, 0.5, 0, f);
+    
+    /* convert the extracted image from BGR to grayscale */
+    cvtColor(img_mask, img_mask_gray, COLOR_BGR2GRAY);
     /* crop a part of image for binarization */
-    img_gray_part = img_gray(Range(CROP_U_LIMIT-blockOffset,CROP_D_LIMIT-blockOffset), Range(CROP_L_LIMIT,CROP_R_LIMIT));
+    img_gray_part = img_mask_gray(Range(CROP_U_LIMIT-blockOffset,CROP_D_LIMIT-blockOffset), Range(CROP_L_LIMIT,CROP_R_LIMIT));
     /* binarize the image */
     switch (algo) {
       case BA_NORMAL:
@@ -339,13 +380,6 @@ Mat Video::calculateTarget(Mat f) {
         img_bin.at<uchar>(i,j) = img_bin_part.at<uchar>(i-(CROP_U_LIMIT-blockOffset),j-CROP_L_LIMIT); /* type = CV_8U */
     	}
     }
-    /* remove noise */
-    morphologyEx(img_bin, img_bin_mor, MORPH_CLOSE, kernel);
-
-    /* convert the image from BGR to grayscale */
-    cvtColor(f, img_gray, COLOR_BGR2GRAY);
-    /* binarize the image */
-    inRange(img_gray, gsmin, gsmax, img_bin);
     /* remove noise */
     morphologyEx(img_bin, img_bin_mor, MORPH_CLOSE, kernel);
 
