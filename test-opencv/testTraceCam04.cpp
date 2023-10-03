@@ -33,6 +33,22 @@ int roundUpToOdd(int x) {
   return 2 * ceil(((float)x - 1.0) / 2.0) + 1;
 }
 
+vector<Point> findLargestContour(Mat img_bin) {
+  vector<vector<Point>> contours;
+  vector<Vec4i> hierarchy;
+  findContours(img_bin, contours, hierarchy, RETR_EXTERNAL, CHAIN_APPROX_SIMPLE);
+  int i_area_max = 0;
+  double area_max = 0.0;
+  for (int i = 0; i < contours.size(); i++) {
+    double area = contourArea(contours[i]);
+    if (area > area_max) {
+      area_max = area;
+      i_area_max = i;
+    }
+  }
+  return contours[i_area_max];
+}
+
 /* frame size for Raspberry Pi camera capture */
 #define IN_FRAME_WIDTH  1640
 #define IN_FRAME_HEIGHT 1232
@@ -59,6 +75,10 @@ static_assert(CROP_U_LIMIT > BLOCK_OFFSET,"CROP_U_LIMIT > BLOCK_OFFSET");
 #define SCAN_V_POS int(13*FRAME_HEIGHT/16 - LINE_THICKNESS)
 static_assert(SCAN_V_POS > CROP_U_LIMIT,"SCAN_V_POS > CROP_U_LIMIT");
 static_assert(SCAN_V_POS < CROP_D_LIMIT,"SCAN_V_POS < CROP_D_LIMIT");
+
+#define AREA_DILATE_KERNEL_SIZE roundUpToOdd(int(FRAME_WIDTH/24))
+#define AREA_GS_MIN 130
+#define AREA_GS_MAX 255
 
 /* frame size for X11 painting */
 //#define OUT_FRAME_WIDTH  160
@@ -151,7 +171,7 @@ int main() {
 	break;
     }
 
-    Mat frame, img_orig, img_gray, img_gray_part, img_bin_part, img_bin, img_bin_mor;
+    Mat frame, img_orig, img_gray, img_bin_white_area, img_bin_white_area_dil, img_mask, img_mask_gray, img_gray_part, img_bin_part, img_bin, img_bin_mor;
     int c;
 
     sleep_for(chrono::milliseconds(10));
@@ -175,8 +195,30 @@ int main() {
     }
     /* convert the image from BGR to grayscale */
     cvtColor(img_orig, img_gray, COLOR_BGR2GRAY);
+
+    /* generate a binarized image of white area */
+    inRange(img_gray, AREA_GS_MIN, AREA_GS_MAX, img_bin_white_area);
+    /* dilate the image */
+    Mat kernel = Mat::ones(Size(AREA_DILATE_KERNEL_SIZE,AREA_DILATE_KERNEL_SIZE), CV_8UC1);
+    dilate(img_bin_white_area, img_bin_white_area_dil, kernel, Point(-1,-1), 4);
+    /* find the largest contour */
+    vector<Point> cnt_white_area = findLargestContour(img_bin_white_area_dil);
+    /* create mask for extraction */
+    /*
+      Note: Mat::ones/zeros with CV_8UC3 does NOT work and don't know why
+    */
+    Mat mask(img_orig.size(), CV_8UC3, Scalar(255,255,255));
+    fillPoly(mask, {cnt_white_area}, Scalar(0,0,0));
+    /* paint outside of the contour to white */
+    bitwise_or(img_orig, mask, img_mask);
+    
+    /* modify img_orig to show masked area as blurred on monitor window */
+    addWeighted(img_mask, 0.5, img_orig, 0.5, 0, img_orig);
+    
+    /* convert the extracted image from BGR to grayscale */
+    cvtColor(img_mask, img_mask_gray, COLOR_BGR2GRAY);
     /* crop a part of the image */
-    img_gray_part = img_gray(Range(CROP_U_LIMIT-blockOffset,CROP_D_LIMIT-blockOffset), Range(CROP_L_LIMIT,CROP_R_LIMIT));
+    img_gray_part = img_mask_gray(Range(CROP_U_LIMIT-blockOffset,CROP_D_LIMIT-blockOffset), Range(CROP_L_LIMIT,CROP_R_LIMIT));
     /* binarize the image */
     switch (algo) {
       case BA_NORMAL:
@@ -194,7 +236,7 @@ int main() {
 	break;
     }
     /* prepare an empty matrix */
-    img_bin = Mat::zeros(FRAME_HEIGHT, FRAME_WIDTH, CV_8UC1);
+    img_bin = Mat::zeros(img_orig.size(), CV_8UC1);
     /* copy img_bin_part into img_bin */
     for (int i = CROP_U_LIMIT-blockOffset; i < CROP_D_LIMIT-blockOffset; i++) {
       for (int j = CROP_L_LIMIT; j < CROP_R_LIMIT; j++) {
@@ -202,7 +244,7 @@ int main() {
     	}
     }
     /* remove noise */
-    Mat kernel = Mat::ones(Size(MORPH_KERNEL_SIZE,MORPH_KERNEL_SIZE), CV_8UC1);
+    kernel = Mat::ones(Size(MORPH_KERNEL_SIZE,MORPH_KERNEL_SIZE), CV_8UC1);
     morphologyEx(img_bin, img_bin_mor, MORPH_CLOSE, kernel);
 
     /* focus on the region of interest */
@@ -224,7 +266,7 @@ int main() {
       }
       /* draw the largest contour on the original image */
       //drawContours(img_orig, (vector<vector<Point>>){contours[i_area_max]}, 0, Scalar(0,255,0), LINE_THICKNESS);
-      polylines(img_orig, (vector<vector<Point>>){contours[i_area_max]}, 0, Scalar(0,255,0), LINE_THICKNESS);
+      polylines(img_orig, (vector<vector<Point>>){contours[i_area_max]}, true, Scalar(0,255,0), LINE_THICKNESS);
 
       /* calculate the bounding box around the largest contour
 	 and set it as the new region of interest */ 
