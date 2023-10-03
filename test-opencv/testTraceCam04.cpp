@@ -37,16 +37,20 @@ vector<Point> findLargestContour(Mat img_bin) {
   vector<vector<Point>> contours;
   vector<Vec4i> hierarchy;
   findContours(img_bin, contours, hierarchy, RETR_EXTERNAL, CHAIN_APPROX_SIMPLE);
-  int i_area_max = 0;
-  double area_max = 0.0;
-  for (int i = 0; i < contours.size(); i++) {
-    double area = contourArea(contours[i]);
-    if (area > area_max) {
-      area_max = area;
-      i_area_max = i;
+  if (contours.size() >= 1) {
+    int i_area_max = 0;
+    double area_max = 0.0;
+    for (int i = 0; i < contours.size(); i++) {
+      double area = contourArea(contours[i]);
+      if (area > area_max) {
+	area_max = area;
+	i_area_max = i;
+      }
     }
+    return contours[i_area_max];
+  } else {
+    return {Point(0,0),Point(img_bin.cols-1,0),Point(img_bin.cols-1,img_bin.rows-1),Point(0,img_bin.rows-1)};
   }
-  return contours[i_area_max];
 }
 
 /* frame size for Raspberry Pi camera capture */
@@ -76,7 +80,7 @@ static_assert(CROP_U_LIMIT > BLOCK_OFFSET,"CROP_U_LIMIT > BLOCK_OFFSET");
 static_assert(SCAN_V_POS > CROP_U_LIMIT,"SCAN_V_POS > CROP_U_LIMIT");
 static_assert(SCAN_V_POS < CROP_D_LIMIT,"SCAN_V_POS < CROP_D_LIMIT");
 
-#define AREA_DILATE_KERNEL_SIZE roundUpToOdd(int(FRAME_WIDTH/24))
+#define AREA_DILATE_KERNEL_SIZE roundUpToOdd(int(FRAME_WIDTH/40))
 #define AREA_GS_MIN 130
 #define AREA_GS_MAX 255
 
@@ -200,7 +204,7 @@ int main() {
     inRange(img_gray, AREA_GS_MIN, AREA_GS_MAX, img_bin_white_area);
     /* dilate the image */
     Mat kernel = Mat::ones(Size(AREA_DILATE_KERNEL_SIZE,AREA_DILATE_KERNEL_SIZE), CV_8UC1);
-    dilate(img_bin_white_area, img_bin_white_area_dil, kernel, Point(-1,-1), 4);
+    dilate(img_bin_white_area, img_bin_white_area_dil, kernel, Point(-1,-1), 3);
     /* find the largest contour */
     vector<Point> cnt_white_area = findLargestContour(img_bin_white_area_dil);
     /* create mask for extraction */

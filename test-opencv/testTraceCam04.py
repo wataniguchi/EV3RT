@@ -45,7 +45,7 @@ LINE_THICKNESS = int(FRAME_WIDTH/80)
 CIRCLE_RADIUS  = int(FRAME_WIDTH/40)
 SCAN_V_POS     = int(13*FRAME_HEIGHT/16 - LINE_THICKNESS)
 
-AREA_DILATE_KERNEL_SIZE = round_up_to_odd(int(FRAME_WIDTH/24))
+AREA_DILATE_KERNEL_SIZE = round_up_to_odd(int(FRAME_WIDTH/40))
 AREA_GS_MIN = 130
 AREA_GS_MAX = 255
 
@@ -113,7 +113,7 @@ while True:
     img_bin_white_area = cv2.inRange(img_gray, AREA_GS_MIN, AREA_GS_MAX)
     # dilate the image
     kernel = np.ones((AREA_DILATE_KERNEL_SIZE,AREA_DILATE_KERNEL_SIZE), np.uint8)
-    img_bin_white_area_dil = cv2.dilate(img_bin_white_area, kernel, iterations = 4)
+    img_bin_white_area_dil = cv2.dilate(img_bin_white_area, kernel, iterations = 3)
     # find the largest contour
     cnt_white_area = findLargestContour(img_bin_white_area_dil)
     # create mask for extraction
