@@ -68,6 +68,7 @@ extern FilteredMotor*       rightMotor;
 #define BLK_ROI_L_LIMIT int(FRAME_WIDTH/8)   /* at bottom of the image */
 #define BLK_ROI_R_LIMIT int(7*FRAME_WIDTH/8) /* at bottom of the image */
 #define BLOCK_OFFSET int(3*FRAME_HEIGHT/8)
+#define BLOCK_CROP_ADJ int(2*FRAME_WIDTH/16) 
 static_assert(CROP_U_LIMIT > BLOCK_OFFSET,"CROP_U_LIMIT > BLOCK_OFFSET");
 
 #define MORPH_KERNEL_SIZE roundUpToOdd(int(FRAME_WIDTH/40))
@@ -128,7 +129,7 @@ protected:
   Mat kernel, kernel_dil;
   unsigned long* buf;
   char strbuf[5][40];
-  int mx, cx, cy, gsmin, gsmax, gs_block, gs_C, side, rangeOfEdges, blockOffset;
+  int mx, cx, cy, gsmin, gsmax, gs_block, gs_C, side, rangeOfEdges, blockOffset, blockCropAdj;
   int inFrameWidth, inFrameHeight;
   Scalar bgr_min_tre, bgr_max_tre, bgr_min_dec, bgr_max_dec;
   float theta;

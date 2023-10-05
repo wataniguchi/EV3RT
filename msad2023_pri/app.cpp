@@ -697,7 +697,7 @@ class TraceLineCamWithBlockInArm : public TraceLineCam {
 public:
   TraceLineCamWithBlockInArm (int s, std::vector<double> pid, int gs_min, int gs_max, double srew_rate, TraceSide trace_side) : TraceLineCam(s,pid,gs_min,gs_max,srew_rate,trace_side) {
     targetType = TT_LINE_WITH_BLK;
-    algo = BA_ADAPTIVE;
+    algo = BA_NORMAL;
   }
 };
 

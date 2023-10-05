@@ -135,6 +135,7 @@ Video::Video() {
   XInitImage(ximg);
 
   blockOffset = 0;
+  blockCropAdj = 0;
   /* initial region of interest is set to crop zone */
   roi = Rect(CROP_L_LIMIT, CROP_U_LIMIT, CROP_WIDTH, CROP_HEIGHT);
   /* initial ROI for TT_BLKS */
@@ -442,14 +443,14 @@ Mat Video::calculateTarget(Mat f) {
       roi.y = roi.y - ROI_BOUNDARY;
       roi.width = roi.width + 2*ROI_BOUNDARY;
       roi.height = roi.height + 2*ROI_BOUNDARY;
-      if (roi.x < CROP_L_LIMIT) {
-	roi.x = CROP_L_LIMIT;
+      if (roi.x < CROP_L_LIMIT+blockCropAdj) {
+	roi.x = CROP_L_LIMIT+blockCropAdj;
       }
       if (roi.y < CROP_U_LIMIT-blockOffset) {
 	roi.y = CROP_U_LIMIT-blockOffset;
       }
-      if (roi.x + roi.width > CROP_R_LIMIT) {
-	roi.width = CROP_R_LIMIT - roi.x;
+      if (roi.x + roi.width > CROP_R_LIMIT-blockCropAdj) {
+	roi.width = CROP_R_LIMIT-blockCropAdj - roi.x;
       }
       if (roi.y + roi.height > CROP_D_LIMIT-blockOffset) {
 	roi.height = CROP_D_LIMIT-blockOffset - roi.y;
@@ -484,7 +485,7 @@ Mat Video::calculateTarget(Mat f) {
       targetInSight = true;
     } else { /* contours.size() == 0 */
       rangeOfEdges = 0;
-      roi = Rect(CROP_L_LIMIT, CROP_U_LIMIT-blockOffset, CROP_WIDTH, CROP_HEIGHT);
+      roi = Rect(CROP_L_LIMIT+blockCropAdj, CROP_U_LIMIT-blockOffset, CROP_WIDTH-2*blockCropAdj, CROP_HEIGHT);
       /* keep mx in order to maintain the current move of robot */
       cx = (int)(FRAME_WIDTH/2);
       cy = SCAN_V_POS-blockOffset;
@@ -563,12 +564,14 @@ void Video::setTraceTargetType(TargetType tt) {
   traceTargetType = tt;
   if (tt == TT_LINE) {
     blockOffset = 0;
+    blockCropAdj = 0;
     /* initial region of interest is set to crop zone */
     roi = Rect(CROP_L_LIMIT, CROP_U_LIMIT, CROP_WIDTH, CROP_HEIGHT);
   } else if (tt == TT_LINE_WITH_BLK) {
     blockOffset = BLOCK_OFFSET;
+    blockCropAdj = BLOCK_CROP_ADJ;
     /* initial region of interest is set to crop zone with block offset */
-    roi = Rect(CROP_L_LIMIT, CROP_U_LIMIT-blockOffset, CROP_WIDTH, CROP_HEIGHT);
+    roi = Rect(CROP_L_LIMIT+blockCropAdj, CROP_U_LIMIT-blockOffset, CROP_WIDTH-2*blockCropAdj, CROP_HEIGHT);
   } else {
     /* initial ROI for block challenge */
     blk_roi = blk_roi_init;
