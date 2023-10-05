@@ -64,6 +64,10 @@ BrainTree::BehaviorTree* tr_block3      = nullptr;
 BrainTree::BehaviorTree* tr_block4      = nullptr;
 BrainTree::BehaviorTree* tr_block5      = nullptr;
 BrainTree::BehaviorTree* tr_block6      = nullptr;
+BrainTree::BehaviorTree* tr_block7      = nullptr;
+BrainTree::BehaviorTree* tr_block8      = nullptr;
+BrainTree::BehaviorTree* tr_block9      = nullptr;
+BrainTree::BehaviorTree* tr_block10      = nullptr;
 State state = ST_INITIAL;
 
 std::chrono::system_clock::time_point ts_upd;
@@ -349,8 +353,8 @@ public:
                 }
                 break;
             case CL_BLUE:
-	        if (cur_rgb.r <= 45 && cur_rgb.g >= 50 && cur_rgb.b >=75 && cur_rgb.b - cur_rgb.r >= 40) {
-                    _log("ODO=%05d,R=%03d, G=%03d, B=%03d,CL_BLUE detected.", plotter->getDistance(),cur_rgb.r, cur_rgb.g, cur_rgb.b);
+	        if (cur_rgb.r <= 20 && cur_rgb.g <= 50 && cur_rgb.b >=60) {
+                    _log("ODO=%05d, CL_BLUE detected.", plotter->getDistance());
                     return Status::Success;
                 }
                 break;
@@ -925,26 +929,26 @@ protected:
     bool updated, earned;
 };
 
-class IsYdiffFromGuideLocationLower : public BrainTree::Node {
+class IsXdiffFromGuideLocationLower : public BrainTree::Node {
 public:
-    IsYdiffFromGuideLocationLower(int v) : value(v) {
+    IsXdiffFromGuideLocationLower(int v) : value(v) {
         updated = false;
         earned = false;
     }
     Status update() override {
         if (!updated) {
-	    _log("ODO=%05d, Ydiff comparison to %d started at X = %d, Y = %d.", plotter->getDistance(), value,
+	    _log("ODO=%05d, Xdiff comparison to %d started at X = %d, Y = %d.", plotter->getDistance(), value,
 	       plotter->getLocX(), plotter->getLocY());
             updated = true;
         }
 	int currentLocX = plotter->getLocX();
 	int currentLocY = plotter->getLocY();
-        int delta = currentLocY - guideLocY;
+        int delta = currentLocX - guideLocX;
 	if (delta < 0) delta = -delta;
         
         if (delta <= value) {
             if (!earned) {
-	        _log("ODO=%05d, Ydiff is larger than %d at X = %d, Y = %d.", plotter->getDistance(), value,
+	        _log("ODO=%05d, Xdiff is larger than %d at X = %d, Y = %d.", plotter->getDistance(), value,
 		     currentLocX, currentLocY);
                 earned = true;
             }
@@ -957,6 +961,7 @@ protected:
     int value;
     bool updated, earned;
 };
+
 /*
     usage:
     ".leaf<IsYdiffFromGuideLocationLarger>(value)"
@@ -1430,6 +1435,10 @@ void main_task(intptr_t unused) {
       tr_block4 = (BrainTree::BehaviorTree*) BrainTree::Builder() TR_BLOCK4_L .build();
       tr_block5 = (BrainTree::BehaviorTree*) BrainTree::Builder() TR_BLOCK5_L .build();
       tr_block6 = (BrainTree::BehaviorTree*) BrainTree::Builder() TR_BLOCK6_L .build();
+      tr_block7 = (BrainTree::BehaviorTree*) BrainTree::Builder() TR_BLOCK7_L .build();
+      tr_block8 = (BrainTree::BehaviorTree*) BrainTree::Builder() TR_BLOCK8_L .build();
+      tr_block9 = (BrainTree::BehaviorTree*) BrainTree::Builder() TR_BLOCK9_L .build();
+      tr_block10 = (BrainTree::BehaviorTree*) BrainTree::Builder() TR_BLOCK10_L .build();
     }
 /*
     === BEHAVIOR TREE DEFINITION ENDS HERE ===
@@ -1482,6 +1491,10 @@ void main_task(intptr_t unused) {
     }
 
     /* destroy behavior tree */
+    delete tr_block10;
+    delete tr_block9;
+    delete tr_block8;
+    delete tr_block7;
     delete tr_block6;
     delete tr_block5;
     delete tr_block4;
@@ -1644,8 +1657,8 @@ void update_task(intptr_t unused) {
             status = tr_block5->update();
             switch (status) {
             case BrainTree::Node::Status::Success:
-                state = ST_BLOCK6;
-                _log("State changed: ST_BLOCK5 to ST_BLOCK6");
+                state = ST_BLOCK7;
+                _log("State changed: ST_BLOCK5 to ST_BLOCK7");
                 break;
             case BrainTree::Node::Status::Failure:
                 state = ST_ENDING;
@@ -1664,6 +1677,74 @@ void update_task(intptr_t unused) {
             case BrainTree::Node::Status::Failure:
                 state = ST_ENDING;
                 _log("State changed: ST_BLOCK6 to ST_ENDING");
+                break;
+            default:
+                break;
+            }
+        }
+        break;
+    case ST_BLOCK7:
+        if (tr_block7 != nullptr) {
+            status = tr_block7->update();
+            switch (status) {
+            case BrainTree::Node::Status::Success:
+                state = ST_BLOCK9;
+                _log("State changed: ST_BLOCK2 to ST_BLOCK4");
+                break;
+            case BrainTree::Node::Status::Failure:
+                state = ST_BLOCK8;
+                _log("State changed: ST_BLOCK2 to ST_BLOCK3");
+                break;
+            default:
+                break;
+            }
+        }
+        break;
+    case ST_BLOCK8:
+        if (tr_block8 != nullptr) {
+            status = tr_block8->update();
+            switch (status) {
+            case BrainTree::Node::Status::Success:
+                state = ST_BLOCK9;
+                _log("State changed: ST_BLOCK3 to ST_BLOCK4");
+                break;
+            case BrainTree::Node::Status::Failure:
+                state = ST_ENDING;
+                _log("State changed: ST_BLOCK3 to ST_ENDING");
+                break;
+            default:
+                break;
+            }
+        }
+        break;
+    case ST_BLOCK9:
+        if (tr_block9 != nullptr) {
+            status = tr_block9->update();
+            switch (status) {
+            case BrainTree::Node::Status::Success:
+                state = ST_BLOCK10;
+                _log("State changed: ST_BLOCK4 to ST_BLOCK5");
+                break;
+            case BrainTree::Node::Status::Failure:
+                state = ST_BLOCK6;
+                _log("State changed: ST_BLOCK4 to ST_BLOCK6");
+                break;
+            default:
+                break;
+            }
+        }
+        break;
+        case ST_BLOCK10:
+        if (tr_block10 != nullptr) {
+            status = tr_block10->update();
+            switch (status) {
+            case BrainTree::Node::Status::Success:
+                state = ST_BLOCK6;
+                _log("State changed: ST_BLOCK5 to ST_BLOCK7");
+                break;
+            case BrainTree::Node::Status::Failure:
+                state = ST_ENDING;
+                _log("State changed: ST_BLOCK5 to ST_ENDING");
                 break;
             default:
                 break;
