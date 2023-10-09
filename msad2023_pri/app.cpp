@@ -859,7 +859,7 @@ public:
             /* stop the robot at end */
             leftMotor->setPWM(0);
             rightMotor->setPWM(0);
-            _log("ODO=%05d, Rotation ended. Current angle = %d", plotter->getDistance(), gyroSensor->getAngle());
+            _log("ODO=%05d, Rotation ended. Current angle = %d", plotter->getDistance(), plotter->getDegree());
             return Status::Success;
         }
     }
@@ -1004,7 +1004,7 @@ public:
             leftMotor->setPWM(leftMotor->getPWM());
             srlfR->setRate(0.0);
             rightMotor->setPWM(rightMotor->getPWM());
-            _log("ODO=%05d, MovePerGuideAngle started. Target angle = %d, Current angle = %d", plotter->getDistance(), targetAngle, gyroSensor->getAngle());
+            _log("ODO=%05d, MovePerGuideAngle started. Target angle = %d, Current angle = %d", plotter->getDistance(), targetAngle, plotter->getDegree());
             updated = true;
             return Status::Running;
         }
