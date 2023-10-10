@@ -12,6 +12,8 @@ using namespace cv;
 #include <filesystem>
 namespace fs = std::filesystem;
 #include <regex>
+#include <chrono>
+#include <iostream>
 
 #define _log(fmt, ...) \
     printf("%08u, %s: " fmt "\n", \
@@ -19,6 +21,9 @@ namespace fs = std::filesystem;
 
 int main() 
 {
+  std::chrono::system_clock::time_point tpStart, tpEnd;
+  tpStart = std::chrono::system_clock::now();
+
   const fs::path targetPath("./msad2023_pri/work");
   const auto dirIter = fs::directory_iterator(targetPath);
   std::vector<Mat> imgArray;
@@ -38,6 +43,11 @@ int main()
   Stitcher::Mode mode = Stitcher::PANORAMA;
   Ptr<cv::Stitcher> stitcher = Stitcher::create(mode);
   stitcher->stitch(imgArray, pano);
+
+  tpEnd = std::chrono::system_clock::now();
+  std::uint32_t elaps = std::chrono::duration_cast<std::chrono::milliseconds>(tpEnd - tpStart).count();
+  _log("elaps = %05u (msec)", elaps);
+  
   imshow("panorama", pano);
   waitKey(0);
 
