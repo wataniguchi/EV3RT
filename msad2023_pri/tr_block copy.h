@@ -105,12 +105,6 @@
 	    prof->getValueAsNum("BLOCK_R501_SPEED"), \
 	    prof->getValueAsNumVec("BLOCK_ANG_PID_CONST")) \
     .end() \
-    .composite<BrainTree::ParallelSequence>(1,2) \
-      .leaf<IsXdiffFromGuideLocationLarger>(prof->getValueAsNum("BLOCK_R502_XDIFF")) \
-      .leaf<RunPerGuideAngle>(prof->getValueAsNum("BLOCK_R502_OFFSET"), \
-	    prof->getValueAsNum("BLOCK_R502_SPEED"), \
-	    prof->getValueAsNumVec("BLOCK_ANG_PID_CONST")) \
-    .end() \
   .end()
 
 #define TR_BLOCK6_R	\
@@ -148,21 +142,21 @@
 	    prof->getValueAsNumVec("BLOCK_ANG_PID_CONST")) \
     .end() \
     /* section R606: reach to Goal */ \
-    /*.composite<BrainTree::ParallelSequence>(1,3) */ \
-    /*  .leaf<IsColorDetected>(CL_BLUE) */ \
-    /*  .leaf<IsDistanceEarned>(prof->getValueAsNum("BLOCK_R606_DIST"))  */ \
-    /*  .leaf<TraceLineCamWithBlockInArm>(prof->getValueAsNum("BLOCK_R606_SPEED"), */\
-    /*        prof->getValueAsNumVec("BLOCK_TRACECAM_PID_CONST"),  */ \
-    /*        prof->getValueAsNum("BLOCK_TRACECAM_GS_MIN"),    */ \
-    /*       prof->getValueAsNum("BLOCK_TRACECAM_GS_MAX"), 0.0,  */ \
-    /*        (TraceSide)prof->getValueAsIntFromEnum("BLOCK_R606_TS", gEnumPairs)) */ \
-    /*.end() */\
+    .composite<BrainTree::ParallelSequence>(1,3)  \
+      .leaf<IsColorDetected>(CL_BLUE)  \
+      .leaf<IsDistanceEarned>(prof->getValueAsNum("BLOCK_R606_DIST"))   \
+      .leaf<TraceLineCamWithBlockInArm>(prof->getValueAsNum("BLOCK_R606_SPEED"), \
+            prof->getValueAsNumVec("BLOCK_TRACECAM_PID_CONST"),   \
+            prof->getValueAsNum("BLOCK_TRACECAM_GS_MIN"),     \
+           prof->getValueAsNum("BLOCK_TRACECAM_GS_MAX"), 0.0,   \
+            (TraceSide)prof->getValueAsIntFromEnum("BLOCK_R606_TS", gEnumPairs))  \
+    .end() \
     /* section R607: get into Goal!!! */ \
-    /*.composite<BrainTree::ParallelSequence>(1,2)  */\
-    /*  .leaf<IsDistanceEarned>(prof->getValueAsNum("BLOCK_R607_DIST")) */\
-    /*  .leaf<RunAsInstructed>(prof->getValueAsNum("BLOCK_R607_PWML"), */\
-	  /*  prof->getValueAsNum("BLOCK_R607_PWMR"), 0.0) */\
-    /*.end() */ \
+    .composite<BrainTree::ParallelSequence>(1,2)  \
+      .leaf<IsDistanceEarned>(prof->getValueAsNum("BLOCK_R607_DIST")) \
+      .leaf<RunAsInstructed>(prof->getValueAsNum("BLOCK_R607_PWML"), \
+	    prof->getValueAsNum("BLOCK_R607_PWMR"), 0.0) \
+    .end()  \
     .leaf<StopNow>() \
   .end()
 
@@ -266,17 +260,12 @@
 #define TR_BLOCK5_L \
   /* BLOCK5: move away from Goal paralle to the course line */ \
   .composite<BrainTree::MemSequence>() \
-    /* section R501: move */ \
+    /* section L501: move */ \
     .composite<BrainTree::ParallelSequence>(1,2) \
-      .leaf<IsDistanceEarned>(prof->getValueAsNum("BLOCK_R501_DIST")) \
-      .leaf<RunPerGuideAngle>(prof->getValueAsNum("BLOCK_R501_OFFSET"), \
-	    prof->getValueAsNum("BLOCK_R501_SPEED"), \
-	    prof->getValueAsNumVec("BLOCK_ANG_PID_CONST")) \
-    .end() \
-    .composite<BrainTree::ParallelSequence>(1,2) \
-      .leaf<IsXdiffFromGuideLocationLower>(prof->getValueAsNum("BLOCK_R502_XDIFF")) \
-      .leaf<RunPerGuideAngle>(prof->getValueAsNum("BLOCK_R502_OFFSET"), \
-	    prof->getValueAsNum("BLOCK_R502_SPEED"), \
+      .leaf<IsDistanceEarned>(prof->getValueAsNum("BLOCK_L501_DIST")) \
+      .leaf<IsYdiffFromGuideLocationLower>(prof->getValueAsNum("BLOCK_L501_YDIFF")) \
+      .leaf<RunPerGuideAngle>(prof->getValueAsNum("BLOCK_L501_OFFSET"), \
+	    prof->getValueAsNum("BLOCK_L501_SPEED"), \
 	    prof->getValueAsNumVec("BLOCK_ANG_PID_CONST")) \
     .end() \
   .end()
@@ -309,124 +298,28 @@
     .end() \
     /* section L604: move along the course line to help TraceLine to find the line */ \
     .composite<BrainTree::ParallelSequence>(1,2) \
-      .leaf<IsColorDetected>(CL_BLUE) \
       .leaf<IsDistanceEarned>(prof->getValueAsNum("BLOCK_L604_DIST")) \
       .leaf<RunPerGuideAngle>(prof->getValueAsNum("BLOCK_L604_OFFSET"), \
 	    prof->getValueAsNum("BLOCK_L604_SPEED"), \
 	    prof->getValueAsNumVec("BLOCK_ANG_PID_CONST")) \
     .end() \
     /* section L606: reach to Goal */ \
-    /*.composite<BrainTree::ParallelSequence>(1,3) */ \
-    /*  .leaf<IsColorDetected>(CL_BLUE) */ \
-    /*  .leaf<IsDistanceEarned>(prof->getValueAsNum("BLOCK_L606_DIST"))  */ \
-    /*  .leaf<TraceLineCamWithBlockInArm>(prof->getValueAsNum("BLOCK_L606_SPEED"), */\
-    /*        prof->getValueAsNumVec("BLOCK_TRACECAM_PID_CONST"),  */ \
-    /*        prof->getValueAsNum("BLOCK_TRACECAM_GS_MIN"),    */ \
-    /*       prof->getValueAsNum("BLOCK_TRACECAM_GS_MAX"), 0.0,  */ \
-    /*        (TraceSide)prof->getValueAsIntFromEnum("BLOCK_L606_TS", gEnumPairs)) */ \
-    /*.end() */\
+    .composite<BrainTree::ParallelSequence>(1,3)  \
+      .leaf<IsDistanceEarned>(prof->getValueAsNum("BLOCK_L606_DIST"))   \
+      .leaf<TraceLineCamWithBlockInArm>(prof->getValueAsNum("BLOCK_L606_SPEED"), \
+            prof->getValueAsNumVec("BLOCK_TRACECAM_PID_CONST"),   \
+            prof->getValueAsNum("BLOCK_TRACECAM_GS_MIN"),     \
+           prof->getValueAsNum("BLOCK_TRACECAM_GS_MAX"), 0.0,   \
+            (TraceSide)prof->getValueAsIntFromEnum("BLOCK_L606_TS", gEnumPairs))  \
+    .end() \
     /* section L607: get into Goal!!! */ \
-    /*.composite<BrainTree::ParallelSequence>(1,2)  */\
-    /*  .leaf<IsDistanceEarned>(prof->getValueAsNum("BLOCK_L607_DIST")) */\
-    /*  .leaf<RunAsInstructed>(prof->getValueAsNum("BLOCK_L607_PWML"), */\
-	  /*  prof->getValueAsNum("BLOCK_L607_PWMR"), 0.0) */\
-    /*.end() */ \
+    .composite<BrainTree::ParallelSequence>(1,2)  \
+      .leaf<IsDistanceEarned>(prof->getValueAsNum("BLOCK_L607_DIST")) \
+      .leaf<IsColorDetected>(CL_BLUE) \
+      .leaf<TraceLine>(prof->getValueAsNum("BLOCK_L607_SPEED"), \
+                       prof->getValueAsNum("BLOCK_Rx_R_TARGET"), \
+                       prof->getValueAsNumVec("RUN_Rx_PID_CONST"), 0.0, \
+                       (TraceSide)prof->getValueAsIntFromEnum("BLOCK_L607_TS", gEnumPairs)) \
+    .end()  \
     .leaf<StopNow>() \
-  .end()
-
-  #define TR_BLOCK7_L	\
-  /* BLOCK2: place between the red Block Circle and Blue Circle, */\
-          /*  then scan the area until finding the Treasure Block  */ \
-  .composite<BrainTree::MemSequence>() \
-    /* section L201: move further toward the area */ \
-    .composite<BrainTree::ParallelSequence>(1,2) \
-      .leaf<IsDistanceEarned>(prof->getValueAsNum("BLOCK_L201_DIST")) \
-      .leaf<RunPerGuideAngle>(prof->getValueAsNum("BLOCK_L201_OFFSET"), \
-	    prof->getValueAsNum("BLOCK_L201_SPEED"), \
-	    prof->getValueAsNumVec("BLOCK_ANG_PID_CONST")) \
-    .end() \
-    /* section L202: move parallel to the course line */ \
-    .composite<BrainTree::ParallelSequence>(1,2) \
-      .leaf<IsDistanceEarned>(prof->getValueAsNum("BLOCK_L202_DIST")) \
-      .leaf<RunPerGuideAngle>(prof->getValueAsNum("BLOCK_L202_OFFSET"), \
-	    prof->getValueAsNum("BLOCK_L202_SPEED"), \
-	    prof->getValueAsNumVec("BLOCK_ANG_PID_CONST")) \
-    .end() \
-    .leaf<StopNow>() \
-    /* section L203: scan the area until finding the Treasure Block */ \
-    .leaf<ScanBlock>(prof->getValueAsNum("BLOCK_L203_MAX_ROTATE"), \
-            prof->getValueAsNum("BLOCK_L203_DEGREE"), \
-	    prof->getValueAsNum("BLOCK_L203_SPEED"), \
-	    prof->getValueAsNum("BLOCK_GS_MIN"), \
-            prof->getValueAsNum("BLOCK_GS_MAX"), \
-            prof->getValueAsNumVec("BLOCK_BGR_MIN_TRE"), \
-	    prof->getValueAsNumVec("BLOCK_BGR_MAX_TRE"), \
-            prof->getValueAsNumVec("BLOCK_BGR_MIN_DEC"), \
-            prof->getValueAsNumVec("BLOCK_BGR_MAX_DEC"))	\
-    .leaf<StopNow>() \
-  .end()
-
-#define TR_BLOCK8_L	\
-  /* BLOCK3: move again into the lattice area, */ \
-           /*  then scan the area until finding the Treasure Block  */ \
-  .composite<BrainTree::MemSequence>() \
-    /* section L301: move further into the area */ \
-    .composite<BrainTree::ParallelSequence>(1,2) \ 
-      .leaf<IsDistanceEarned>(prof->getValueAsNum("BLOCK_L301_DIST")) \
-      .leaf<RunPerGuideAngle>(prof->getValueAsNum("BLOCK_L301_OFFSET"), \
-	    prof->getValueAsNum("BLOCK_L301_SPEED"), \
-	    prof->getValueAsNumVec("BLOCK_ANG_PID_CONST")) \
-    .end() \
-    /* section L302: face parallel to the course line */ \
-    .leaf<RotateEV3>(prof->getValueAsNum("BLOCK_L302_DEGREE"), \
-		     prof->getValueAsNum("BLOCK_L302_SPEED"), 0.0) \
-    /* section L303: scan the area until finding the Treasure Block */ \
-    .leaf<ScanBlock>(prof->getValueAsNum("BLOCK_L303_MAX_ROTATE"), \
-            prof->getValueAsNum("BLOCK_L303_DEGREE"), \
-	    prof->getValueAsNum("BLOCK_L303_SPEED"), \
-	    prof->getValueAsNum("BLOCK_GS_MIN"), \
-            prof->getValueAsNum("BLOCK_GS_MAX"), \
-            prof->getValueAsNumVec("BLOCK_BGR_MIN_TRE"), \
-	    prof->getValueAsNumVec("BLOCK_BGR_MAX_TRE"), \
-            prof->getValueAsNumVec("BLOCK_BGR_MIN_DEC"), \
-            prof->getValueAsNumVec("BLOCK_BGR_MAX_DEC"))	\
-    .leaf<StopNow>() \
-  .end()
-
-#define TR_BLOCK9_L \
-  /* BLOCK4: capture Treasure Block and see if the current position requires addtional move */ \
-  .composite<BrainTree::MemSequence>() \
-    /* section L401: capture the block */ \
-    .composite<BrainTree::ParallelSequence>(1,2) \
-      .leaf<IsDistanceEarned>(prof->getValueAsNum("BLOCK_L401_DIST")) \
-      .leaf<ApproachBlock>(prof->getValueAsNum("BLOCK_L401_SPEED"), \
-	    prof->getValueAsNumVec("BLOCK_PID_CONST"), \
-	    prof->getValueAsNum("BLOCK_GS_MIN"), \
-            prof->getValueAsNum("BLOCK_GS_MAX"), \
-            prof->getValueAsNumVec("BLOCK_BGR_MIN_TRE"), \
-	    prof->getValueAsNumVec("BLOCK_BGR_MAX_TRE"), \
-            prof->getValueAsNumVec("BLOCK_BGR_MIN_DEC"), \
-            prof->getValueAsNumVec("BLOCK_BGR_MAX_DEC"))	\
-    .end() \
-    .leaf<StopNow>() \
-    /* section L402: check Ydiff */ \
-    .leaf<IsYdiffFromGuideLocationLarger>(prof->getValueAsNum("BLOCK_L402_YDIFF")) \
-  .end()
-
-#define TR_BLOCK10_L \
-  /* BLOCK5: move away from Goal paralle to the course line */ \
-  .composite<BrainTree::MemSequence>() \
-    /* section R501: move */ \
-    .composite<BrainTree::ParallelSequence>(1,2) \
-      .leaf<IsDistanceEarned>(prof->getValueAsNum("BLOCK_R501_DIST")) \
-      .leaf<RunPerGuideAngle>(prof->getValueAsNum("BLOCK_R501_OFFSET"), \
-	    prof->getValueAsNum("BLOCK_R501_SPEED"), \
-	    prof->getValueAsNumVec("BLOCK_ANG_PID_CONST")) \
-    .end() \
-    .composite<BrainTree::ParallelSequence>(1,2) \
-      .leaf<IsXdiffFromGuideLocationLower>(prof->getValueAsNum("BLOCK_R502_XDIFF")) \
-      .leaf<RunPerGuideAngle>(prof->getValueAsNum("BLOCK_R502_OFFSET"), \
-	    prof->getValueAsNum("BLOCK_R502_SPEED"), \
-	    prof->getValueAsNumVec("BLOCK_ANG_PID_CONST")) \
-    .end() \
   .end()
