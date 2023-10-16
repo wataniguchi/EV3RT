@@ -16,10 +16,15 @@
 /msad2023_ent/work/
 !/msad2023_pri/
 /msad2023_pri/batch_stitch
+/msad2023_pri/batch_generateTrainData
 /msad2023_pri/work/
 !/test-asyncio/
 /test-asyncio/*
 !/test-asyncio/*.py
+!/test-match/
+/test-match/*
+!/test-match/*.py
+!/test-match/*.cpp
 !/test-opencv/
 /test-opencv/*
 !/test-opencv/*.py
