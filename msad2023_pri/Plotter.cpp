@@ -28,6 +28,7 @@ int16_t Plotter::getAzimuth() {
 int16_t Plotter::getDegree() {
     // degree = 360.0 * radian / M_TWOPI;
     int16_t degree = (360.0 * azimuth / M_TWOPI);
+    if (degree == 360) degree = 0; /* guarantee 0 <= degree <= 359 */ 
     return degree;
 }
 
@@ -71,7 +72,7 @@ void Plotter::plot() {
     /* calculate azimuth */
     double deltaAzi = (deltaDistL - deltaDistR) / WHEEL_TREAD;
     azimuth += deltaAzi;
-    if (azimuth > M_TWOPI) {
+    if (azimuth >= M_TWOPI) {
         azimuth -= M_TWOPI;
     } else if (azimuth < 0.0) {
         azimuth += M_TWOPI;

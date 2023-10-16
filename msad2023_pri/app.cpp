@@ -85,7 +85,11 @@ Mat frame_out;
 std::chrono::system_clock::time_point te_cap_copy, te_cal;
 /* flag to indicate vcal_thd to store image as file */
 bool vcal_thd_store_file = false;
-int prev_vcal_thd_count = 0, vcal_thd_store_file_interval = 4; /* vcal_thd execution */
+int vcal_thd_store_file_num = 0;
+std::vector<std::string> vcal_thd_store_file_path;
+int prev_vcal_thd_count = 0, vcal_thd_store_file_interval = 3; /* vcal_thd execution */
+int vcal_thd_store_file_num_max = 24; /* stopper not to generate too many files */
+#define TARGET_PATH "./msad2023_pri/work"
 
 int EnumStringToNum(const EnumPair *enum_data, const char *name, int *out_num) {
   for (; enum_data->name; enum_data++) {
@@ -822,7 +826,7 @@ class RotateEV3 : public BrainTree::Node {
 public:
     RotateEV3(int degree, int s, double srew_rate) : deltaDegreeTarget(degree),speed(s),srewRate(srew_rate) {
         updated = false;
-        assert(degree >= -180 && degree <= 180);
+        assert(degree > -360 && degree < 360);
 	deltaDegreeTarget = _COURSE * degree; /* _COURSE = -1 when R course */
         if (deltaDegreeTarget > 0) {
 	  clockwise = 1; 
@@ -843,12 +847,10 @@ public:
             return Status::Running;
         }
 
-        int deltaDegree = plotter->getDegree() - originalDegree;
-        if (deltaDegree > 180) {
-            deltaDegree -= 360;
-        } else if (deltaDegree < -180) {
-            deltaDegree += 360;
-        }
+	int currentDegree = plotter->getDegree();
+	if ( deltaDegreeTarget > 0 && currentDegree < originalDegree ) currentDegree += 360;
+	if ( deltaDegreeTarget < 0 && currentDegree > originalDegree ) currentDegree -= 360;
+        int deltaDegree = currentDegree - originalDegree;
         if (clockwise * deltaDegree < clockwise * deltaDegreeTarget) {
             if ((srewRate != 0.0) && (clockwise * deltaDegree >= clockwise * deltaDegreeTarget - 5)) {
                 /* when comes to the half-way, start decreazing the speed by tropezoidal motion */    
@@ -888,7 +890,7 @@ class RotatePanorama : public BrainTree::Node {
 public:
     RotatePanorama(int degree, int s, double srew_rate) : deltaDegreeTarget(degree),speed(s),srewRate(srew_rate) {
         updated = false;
-        assert(degree >= -180 && degree <= 180);
+        assert(degree > -360 && degree < 360);
 	deltaDegreeTarget = _COURSE * degree; /* _COURSE = -1 when R course */
         if (deltaDegreeTarget > 0) {
 	  clockwise = 1; 
@@ -898,6 +900,8 @@ public:
     }
     Status update() override {
         if (!updated) {
+	  vcal_thd_store_file_path.clear();
+	  vcal_thd_store_file_num = 0;
 	  vcal_thd_store_file = true; /* tell vcal_thd to store image files */
 	    originalDegree = plotter->getDegree();
             srlfL->setRate(srewRate);
@@ -910,13 +914,18 @@ public:
             return Status::Running;
         }
 
-        int deltaDegree = plotter->getDegree() - originalDegree;
-        if (deltaDegree > 180) {
-            deltaDegree -= 360;
-        } else if (deltaDegree < -180) {
-            deltaDegree += 360;
-        }
+	int currentDegree = plotter->getDegree();
+	if ( deltaDegreeTarget > 0 && currentDegree < originalDegree ) currentDegree += 360;
+	if ( deltaDegreeTarget < 0 && currentDegree > originalDegree ) currentDegree -= 360;
+        int deltaDegree = currentDegree - originalDegree;
         if (clockwise * deltaDegree < clockwise * deltaDegreeTarget) {
+	  if ( !vcal_thd_store_file ) {
+            /* stop the robot at end */
+            leftMotor->setPWM(0);
+            rightMotor->setPWM(0);
+            _log("ODO=%05d, Rotation aborted. Current angle = %d", plotter->getDistance(), plotter->getDegree());
+            return Status::Failure;	    
+	  }
             if ((srewRate != 0.0) && (clockwise * deltaDegree >= clockwise * deltaDegreeTarget - 5)) {
                 /* when comes to the half-way, start decreazing the speed by tropezoidal motion */    
                 leftMotor->setPWM(clockwise * 3);
@@ -1312,11 +1321,24 @@ public:
 	/* check file store flag and if specified interval is passed */
 	if (vcal_thd_store_file &&
 	    vcal_thd_count >= prev_vcal_thd_count + vcal_thd_store_file_interval) {
-	  prev_vcal_thd_count = vcal_thd_count;
-	  std::ostringstream oss;
-	  oss << "./msad2023_pri/work/img" << setw(7) << setfill('0') << vcal_thd_count << ".jpg";
-	  _logNoAsp("vcal_thd writing frame as file - %s", oss.str().c_str());
-	  imwrite(oss.str(), f);
+	  if (vcal_thd_store_file_num++ < vcal_thd_store_file_num_max) {
+	    prev_vcal_thd_count = vcal_thd_count;
+	    std::ostringstream oss;
+	    oss << TARGET_PATH << "/img" << setw(7) << setfill('0') << vcal_thd_count << ".jpg";
+	    _logNoAsp("writing frame as file - %s", oss.str().c_str());
+	    imwrite(oss.str(), f);
+	    vcal_thd_store_file_path.push_back(oss.str());
+	  } else {
+	    /* delete all image files written by this */
+	    for (std::string path : vcal_thd_store_file_path) {
+	      _log("deleting image file %s", path.c_str());
+	      std::remove(path.c_str());
+	    }
+	    vcal_thd_store_file = 0;
+	    vcal_thd_store_file_path.clear();
+	    /* abort writing */
+	    vcal_thd_store_file = false; /* this flag works as a mutex */
+	  }
 	}
 	f = video->calculateTarget(f);
 	std::chrono::system_clock::time_point te_cal_local = std::chrono::system_clock::now();
