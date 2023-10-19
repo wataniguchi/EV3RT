@@ -23,9 +23,11 @@ namespace fs = std::filesystem;
 #define TARGET_PATH "./msad2023_pri/work"
 #define TRAINING_PATH "./msad2023_pri/trainData"
 #define MORPH_KERNEL_SIZE 9
+#define CROP_U_LIMIT (0.0/16.0) /* cut top part of images for a better stitch */
+#define CROP_D_LIMIT (7.0/16.0) /* cut bottom part of images for a better stitch */
 
-int b_min_tre=0,g_min_tre=0,r_min_tre=60,b_max_tre=50,g_max_tre=40,r_max_tre=255;
-int b_min_dec=40,g_min_dec=0,r_min_dec=0,b_max_dec=255,g_max_dec=60,r_max_dec=30;
+int b_min_tre=0,g_min_tre=0,r_min_tre=50,b_max_tre=50,g_max_tre=40,r_max_tre=255;
+int b_min_dec=25,g_min_dec=0,r_min_dec=0,b_max_dec=255,g_max_dec=60,r_max_dec=30;
 int gs_min=10,gs_max=100;
 
 void binalizeWithColorMask(Mat& img_orig, Scalar& bgr_min, Scalar& bgr_max, int gs_min, int gs_max, Mat& img_bin_mor) {
@@ -66,7 +68,9 @@ int main()
       std::string f = m[0].str();
       _log("reading image file %s", f.c_str());
       Mat img = imread(path.string(), IMREAD_UNCHANGED);
-      imgArray.push_back(img);
+      Rect roi = Rect(0, static_cast<int>(img.rows * CROP_U_LIMIT), img.cols, static_cast<int>(img.rows * (CROP_D_LIMIT-CROP_U_LIMIT)));
+      Mat img_cropped = img(roi);
+      imgArray.push_back(img_cropped);
       imgPathArray.push_back(path.string());
     }
   }
@@ -87,6 +91,11 @@ int main()
   std::uint32_t elaps = std::chrono::duration_cast<std::chrono::milliseconds>(tpEnd - tpStart).count();
   _log("elaps = %05u (msec)", elaps);
 
+  if (pano.empty()) {
+    _log("*** ERROR - panorama view NOT generated");
+    return EXIT_FAILURE;
+  }
+  
   /* prepare an empty image */
   Mat img_bin_red, img_bin_blue;
   Mat pano_simple = Mat::zeros(pano.size(), CV_8UC3);
