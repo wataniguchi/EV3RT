@@ -8,36 +8,13 @@ import glob
 import re
 from picamera import PiCamera
 
-# frame size for Raspberry Pi camera capture
-IN_FRAME_WIDTH  = 1640
-IN_FRAME_HEIGHT = 1232
-SENSOR_MODE = 5
-IN_FPS = 40
-
-# frame size for OpenCV
-FRAME_WIDTH  = 320
-FRAME_HEIGHT = 240
-
-HOUGH_LINES_THRESH = int(FRAME_HEIGHT/6)
-MIN_LINE_LENGTH = int(FRAME_HEIGHT/4)
-MAX_LINE_GAP = int(MIN_LINE_LENGTH/2)
-LINE_THICKNESS = int(FRAME_WIDTH/80)
-AREA_GS_MIN = 120
-AREA_GS_MAX = 255
-
-# frame size for X11 painting
-#OUT_FRAME_WIDTH  = 160
-#OUT_FRAME_HEIGHT = 120
-OUT_FRAME_WIDTH  = 320
-OUT_FRAME_HEIGHT = 240
-
 # callback function for trackbars
 def nothing(x):
     pass
 
 # round up to the next odd number
-def round_up_to_odd(f):
-    return np.ceil(f) // 2 * 2 + 1
+def round_up_to_odd(f) -> int:
+    return int(np.ceil(f) // 2 * 2 + 1)
 
 # find the largest contour
 def findLargestContour(img_bin):
@@ -50,6 +27,30 @@ def findLargestContour(img_bin):
             area_max = area
             i_area_max = i
     return contours[i_area_max]
+
+# frame size for Raspberry Pi camera capture
+IN_FRAME_WIDTH  = 1640
+IN_FRAME_HEIGHT = 1232
+SENSOR_MODE = 5
+IN_FPS = 40
+
+# frame size for OpenCV
+FRAME_WIDTH  = 320
+FRAME_HEIGHT = 240
+
+AREA_DILATE_KERNEL_SIZE = round_up_to_odd(int(FRAME_WIDTH/40))
+HOUGH_LINES_THRESH = int(FRAME_HEIGHT/6)
+MIN_LINE_LENGTH = int(FRAME_HEIGHT/4)
+MAX_LINE_GAP = int(MIN_LINE_LENGTH/2)
+LINE_THICKNESS = int(FRAME_WIDTH/80)
+AREA_GS_MIN = 120
+AREA_GS_MAX = 255
+
+# frame size for X11 painting
+#OUT_FRAME_WIDTH  = 160
+#OUT_FRAME_HEIGHT = 120
+OUT_FRAME_WIDTH  = 320
+OUT_FRAME_HEIGHT = 240
 
 # check if exist any arguments
 args = sys.argv
@@ -74,7 +75,7 @@ else:
 cv2.namedWindow("testTrace1")
 
 cv2.createTrackbar("R_min", "testTrace1", 0, 255, nothing)
-cv2.createTrackbar("R_max", "testTrace1", 80, 255, nothing)
+cv2.createTrackbar("R_max", "testTrace1", 60, 255, nothing)
 cv2.createTrackbar("G_min", "testTrace1", 0, 255, nothing)
 cv2.createTrackbar("G_max", "testTrace1", 55, 255, nothing)
 cv2.createTrackbar("B_min", "testTrace1", 0, 255, nothing)
@@ -123,8 +124,7 @@ while True:
     # generate a binarized image of white area
     img_bin_white_area = cv2.inRange(img_gray, AREA_GS_MIN, AREA_GS_MAX)
     # dilate the image
-    size = int(round_up_to_odd(FRAME_WIDTH/80))
-    kernel = np.ones((size,size), np.uint8)
+    kernel = np.ones((AREA_DILATE_KERNEL_SIZE,AREA_DILATE_KERNEL_SIZE), np.uint8)
     img_bin_white_area = cv2.dilate(img_bin_white_area, kernel, iterations = 1)
 
     # find the largest contour
@@ -154,23 +154,50 @@ while True:
     lines = cv2.HoughLinesP(img_bin_mor, rho=1, theta=np.pi/360, threshold=HOUGH_LINES_THRESH, minLineLength=MIN_LINE_LENGTH, maxLineGap=MAX_LINE_GAP)
     # indicate lines on the original image
     img_lines = img_inner_white
+    tx1 = ty1 = tx2 = ty2 = 0
+    x_bottom_min = 2 * FRAME_WIDTH
     if lines is not None:
         for line in lines:
             x1, y1, x2, y2 = line[0]
-            #img_lines = cv2.line(img_lines, (x1,y1), (x2,y2), (0,255,0), LINE_THICKNESS)
-            if x2-x1 == 0:
-                img_lines = cv2.line(img_lines, (x1,y1), (x2,y2), (0,0,255), LINE_THICKNESS)
-            elif abs((y2-y1)/(x2-x1)) > FRAME_HEIGHT/FRAME_WIDTH:
-                img_lines = cv2.line(img_lines, (x1,y1), (x2,y2), (0,0,255), LINE_THICKNESS)
+            # add 1e-5 to avoid division by zero
+            dx = x2-x1 + 1e-5
+            dy = y2-y1 + 1e-5
+            if abs(dy/dx) > FRAME_HEIGHT/FRAME_WIDTH:
+                img_lines = cv2.line(img_lines, (x1,y1), (x2,y2), (0,255,0), LINE_THICKNESS)
+                # calculate where the extention of this line touches the bottom and top edge of image
+                x_bottom = int((FRAME_HEIGHT - y1)*dx/dy + x1)
+                x_top    = int(-y1*dx/dy + x1)
+                if abs(x_bottom - FRAME_WIDTH/2) < abs(x_bottom_min - FRAME_WIDTH/2):
+                    x_bottom_min = x_bottom
+                    if x_bottom >= 0 and x_bottom <= FRAME_WIDTH:
+                        tx1 = x_bottom
+                        ty1 = FRAME_HEIGHT
+                    elif x_bottom < 0:
+                        tx1 = 0
+                        ty1 = int(y1 - x1*dy/dx)
+                    else: # x_bottom > FRAME_WIDTH
+                        tx1 = FRAME_WIDTH
+                        ty1 = int((FRAME_WIDTH-x1)*dy/dx + y1)
+                    if x_top >= 0 and x_top <= FRAME_WIDTH:
+                        tx2 = x_top
+                        ty2 = 0
+                    elif x_top < 0:
+                        tx2 = 0
+                        ty2 = int(y1 - x1*dy/dx)
+                    else: # x_top > FRAME_WIDTH
+                        tx2 = FRAME_WIDTH
+                        ty2 = int((FRAME_WIDTH-x1)*dy/dx + y1)
             else:
                 img_lines = cv2.line(img_lines, (x1,y1), (x2,y2), (0,255,0), LINE_THICKNESS)
+        if tx1 != 0 or ty1 != 0 or tx2 != 0 or ty2 != 0:
+            img_lines = cv2.line(img_lines, (tx1,ty1), (tx2,ty2), (0,0,255), LINE_THICKNESS)
  
     # calculate a bounding box around the identified contour
     #x,y,w,h = cv2.boundingRect(cnt_max)
     # print information about the identified contour
     #mom = cv2.moments(cnt_max)
     # add 1e-5 to avoid division by zero
-    #txt1 = f"cx = {int(mom['m10']/(mom['m00'] + 1e-5))}, cy = {int(mom['m01']/(mom['m00'] + 1e-5))},"
+    #txt1 = f"lines = {num_lines}"
     #txt2 = f"area = {mom['m00']},"
     #txt3 = f"w/h = {w/h}"
     #print(txt1, txt2, txt3)
