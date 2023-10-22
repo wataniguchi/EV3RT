@@ -8,13 +8,39 @@ import glob
 import re
 from picamera import PiCamera
 
+# round up to the next odd number
+def roundUpToOdd(f) -> int:
+    return int(np.ceil(f) // 2 * 2 + 1)
+
+# frame size for Raspberry Pi camera capture
+IN_FRAME_WIDTH  = 1640
+IN_FRAME_HEIGHT = 1232
+SENSOR_MODE = 5
+IN_FPS = 40
+
+# frame size for OpenCV
+FRAME_WIDTH  = 320
+FRAME_HEIGHT = 240
+
+MORPH_KERNEL_SIZE = roundUpToOdd(int(FRAME_WIDTH/48))
+AREA_DILATE_KERNEL_SIZE = roundUpToOdd(int(FRAME_WIDTH/24))
+HOUGH_LINES_THRESH = int(FRAME_HEIGHT/6)
+MIN_LINE_LENGTH = int(FRAME_HEIGHT/5)
+MAX_LINE_GAP = int(FRAME_HEIGHT/8)
+LINE_THICKNESS = int(FRAME_WIDTH/80)
+AREA_GS_MIN = 120
+AREA_GS_MAX = 255
+
+# frame size for X11 painting
+#OUT_FRAME_WIDTH  = 160
+#OUT_FRAME_HEIGHT = 120
+OUT_FRAME_WIDTH  = 320
+OUT_FRAME_HEIGHT = 240
+
+
 # callback function for trackbars
 def nothing(x):
     pass
-
-# round up to the next odd number
-def round_up_to_odd(f) -> int:
-    return int(np.ceil(f) // 2 * 2 + 1)
 
 # find the largest contour
 def findLargestContour(img_bin):
@@ -28,29 +54,20 @@ def findLargestContour(img_bin):
             i_area_max = i
     return contours[i_area_max]
 
-# frame size for Raspberry Pi camera capture
-IN_FRAME_WIDTH  = 1640
-IN_FRAME_HEIGHT = 1232
-SENSOR_MODE = 5
-IN_FPS = 40
+# binalize with a color mask
+def binalizeWithColorMask(img_orig, bgr_min, bgr_max, gs_min, gs_max):
+    # extract areas by color
+    img_mask = cv2.inRange(img_orig, bgr_min, bgr_max)
+    img_ext = cv2.bitwise_and(img_orig, img_orig, mask=img_mask)
+    # convert the extracted image from BGR to grayscale
+    img_gray = cv2.cvtColor(img_ext, cv2.COLOR_BGR2GRAY)
+    # binarize the image
+    img_bin = cv2.inRange(img_gray, gs_min, gs_max)
+    # remove noise
+    kernel = np.ones((MORPH_KERNEL_SIZE,MORPH_KERNEL_SIZE), np.uint8)
+    img_bin_mor = cv2.morphologyEx(img_bin, cv2.MORPH_CLOSE, kernel)
+    return img_bin_mor
 
-# frame size for OpenCV
-FRAME_WIDTH  = 320
-FRAME_HEIGHT = 240
-
-AREA_DILATE_KERNEL_SIZE = round_up_to_odd(int(FRAME_WIDTH/24))
-HOUGH_LINES_THRESH = int(FRAME_HEIGHT/6)
-MIN_LINE_LENGTH = int(FRAME_HEIGHT/5)
-MAX_LINE_GAP = int(FRAME_HEIGHT/8)
-LINE_THICKNESS = int(FRAME_WIDTH/80)
-AREA_GS_MIN = 120
-AREA_GS_MAX = 255
-
-# frame size for X11 painting
-#OUT_FRAME_WIDTH  = 160
-#OUT_FRAME_HEIGHT = 120
-OUT_FRAME_WIDTH  = 320
-OUT_FRAME_HEIGHT = 240
 
 # check if exist any arguments
 args = sys.argv
@@ -136,17 +153,8 @@ while True:
     # mask the original image to extract image inside white area
     img_inner_white = cv2.bitwise_or(img_orig, mask)
 
-    # create another mask by color
-    mask = cv2.inRange(img_inner_white, np.array([b_min, g_min, r_min]), np.array([b_max, g_max, r_max]))
-    # try to filter only black lines and remove colorful block circles as much as possible
-    img_ext = cv2.bitwise_and(img_inner_white, img_inner_white, mask=mask)
-    # convert the extracted image from BGR to grayscale
-    img_ext_gray = cv2.cvtColor(img_ext, cv2.COLOR_BGR2GRAY)
-    # binarize the image
-    img_bin = cv2.inRange(img_ext_gray, gs_min, gs_max)
-    # remove noise
-    kernel = np.ones((7,7), np.uint8)
-    img_bin_mor = cv2.morphologyEx(img_bin, cv2.MORPH_CLOSE, kernel)
+    # try to filter only black lines while removing colorful block circles as much as possible
+    img_bin_mor = binalizeWithColorMask(img_inner_white, np.array([b_min, g_min, r_min]), np.array([b_max, g_max, r_max]), gs_min, gs_max)
     # find contours
     contours, _ = cv2.findContours(img_bin_mor, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     # create a blank image and draw contours on it
