@@ -24,12 +24,25 @@ FRAME_HEIGHT = 240
 
 MORPH_KERNEL_SIZE = roundUpToOdd(int(FRAME_WIDTH/48))
 AREA_DILATE_KERNEL_SIZE = roundUpToOdd(int(FRAME_WIDTH/24))
+BLK_AREA_MIN = (20.0*FRAME_WIDTH/640.0)*(20.0*FRAME_WIDTH/640.0)
 HOUGH_LINES_THRESH = int(FRAME_HEIGHT/6)
 MIN_LINE_LENGTH = int(FRAME_HEIGHT/5)
 MAX_LINE_GAP = int(FRAME_HEIGHT/8)
 LINE_THICKNESS = int(FRAME_WIDTH/80)
 AREA_GS_MIN = 120
 AREA_GS_MAX = 255
+B_MIN_TRE = 0
+G_MIN_TRE = 0
+R_MIN_TRE = 80
+B_MAX_TRE = 50
+G_MAX_TRE = 40
+R_MAX_TRE = 255
+B_MIN_DEC = 30
+G_MIN_DEC = 0
+R_MIN_DEC = 0
+B_MAX_DEC = 255
+G_MAX_DEC = 60
+R_MAX_DEC = 30
 
 # frame size for X11 painting
 #OUT_FRAME_WIDTH  = 160
@@ -53,6 +66,34 @@ def findLargestContour(img_bin):
             area_max = area
             i_area_max = i
     return contours[i_area_max]
+
+# locate blocks
+def locateBlocks(contours, hierarchy):
+    cnt_idx = [] # cnt_idx: area, idx, w/h, x, y
+    for i, cnt in enumerate(contours):
+        if hierarchy[0][i][3] == -1:
+            area = cv2.contourArea(cnt)
+            mom = cv2.moments(cnt)
+            # add 1e-5 to avoid division by zero
+            x = mom['m10'] / (mom['m00'] + 1e-5)
+            y = mom['m01'] / (mom['m00'] + 1e-5)
+            # calculate a bounding box around the identified contour
+            _,_,width,height = cv2.boundingRect(cnt)
+            wh = width / height
+            hull = cv2.convexHull(cnt)
+            if area > BLK_AREA_MIN and wh > 0.5 and wh < 2 and 1.45*area > cv2.contourArea(hull):
+                if hierarchy[0][i][2] == -1: # if the contour has no child
+                    cnt_idx.append([area, i, wh, x, y])
+                else:
+                    donut = False
+                    j = hiararchy[0][i][2]
+                    while (j != -1):
+                        area_chd = cv2.contourArea(contours[j])
+                        if 10.0*area_chd > area:
+                            donut = True
+                    if donut == False:
+                        cnt_idx.append([area, i, wh, x, y])
+    return cnt_idx
 
 # binalize with a color mask
 def binalizeWithColorMask(img_orig, bgr_min, bgr_max, gs_min, gs_max):
@@ -136,6 +177,17 @@ while True:
         if img_orig.shape[1] != FRAME_WIDTH or img_orig.shape[0] != FRAME_HEIGHT:
             sys.exit(-1)
 
+    # prepare for locating the treasure block
+    img_bin_tre = binalizeWithColorMask(img_orig, np.array([B_MIN_TRE, G_MIN_TRE, R_MIN_TRE]), np.array([B_MAX_TRE, G_MAX_TRE, R_MAX_TRE]), gs_min, gs_max)
+    # locate the treasure block
+    contours_tre, hierarchy_tre = cv2.findContours(img_bin_tre, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+    cnt_idx_tre = locateBlocks(contours_tre, hierarchy_tre) # cnt_idx: area, idx, w/h, x, y
+    # prepare for locating decoy blocks
+    img_bin_dec = binalizeWithColorMask(img_orig, np.array([B_MIN_DEC, G_MIN_DEC, R_MIN_DEC]), np.array([B_MAX_DEC, G_MAX_DEC, R_MAX_DEC]), gs_min, gs_max)
+    # locate decoy blocks
+    contours_dec, hierarchy_dec = cv2.findContours(img_bin_dec, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+    cnt_idx_dec = locateBlocks(contours_dec, hierarchy_dec) # cnt_idx: area, idx, w/h, x, y
+
     # convert the image from BGR to grayscale
     img_gray = cv2.cvtColor(img_orig, cv2.COLOR_BGR2GRAY)
     # generate a binarized image of white area
@@ -207,10 +259,21 @@ while True:
                 else: # x_top > FRAME_WIDTH
                     tx2 = FRAME_WIDTH
                     ty2 = int((FRAME_WIDTH-x1)*dy/dx + y1)
-                img_lines = cv2.line(img_lines, (tx1,ty1), (tx2,ty2), (0,0,255), LINE_THICKNESS)                    
+                img_lines = cv2.line(img_lines, (tx1,ty1), (tx2,ty2), (0,255,255), LINE_THICKNESS)                    
             else: # i >= 2
                 img_lines = cv2.line(img_lines, (x1,y1), (x2,y2), (0,255,0), LINE_THICKNESS)
- 
+
+    # draw the blocks
+    if cnt_idx_tre: # if cnt_idx_tre is NOT empty
+        cnt_idx_tre = sorted(cnt_idx_tre, reverse=True, key=lambda x: x[0])
+        for i, cnt_idx_entry in enumerate(cnt_idx_tre):
+            area, idx, wh, x, y = cnt_idx_entry
+            img_lines = cv2.polylines(img_lines, [contours_tre[idx]], True, (0,0,255), LINE_THICKNESS)
+    if cnt_idx_dec: # if cnt_idx_tre is NOT empty
+        cnt_idx_dec = sorted(cnt_idx_dec, reverse=True, key=lambda x: x[0])
+        for i, cnt_idx_entry in enumerate(cnt_idx_dec):
+            area, idx, wh, x, y = cnt_idx_entry
+            img_lines = cv2.polylines(img_lines, [contours_dec[idx]], True, (255,0,0), LINE_THICKNESS)
     # calculate a bounding box around the identified contour
     #x,y,w,h = cv2.boundingRect(cnt_max)
     # print information about the identified contour
@@ -222,6 +285,7 @@ while True:
     #print(txt1, txt2, txt3)
     # draw the white area on the original image
     img_orig_contour = cv2.polylines(img_orig, [hull_white_area], True, (0,255,0), LINE_THICKNESS)
+    
     # draw the primary target line on the original image
     #img_orig_contour = cv2.polylines(img_orig, [cnt_line], 1, (255,0,0), LINE_THICKNESS)
     #cv2.putText(img_orig_contour, txt1, (int(FRAME_WIDTH/64),int(5*FRAME_HEIGHT/8)), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0,255,0), int(LINE_THICKNESS/4), cv2.LINE_4)
