@@ -37,7 +37,7 @@ R_MIN_TRE = 80
 B_MAX_TRE = 50
 G_MAX_TRE = 40
 R_MAX_TRE = 255
-B_MIN_DEC = 30
+B_MIN_DEC = 35
 G_MIN_DEC = 0
 R_MIN_DEC = 0
 B_MAX_DEC = 255
@@ -81,16 +81,17 @@ def locateBlocks(contours, hierarchy):
             _,_,width,height = cv2.boundingRect(cnt)
             wh = width / height
             hull = cv2.convexHull(cnt)
-            if area > BLK_AREA_MIN and wh > 0.5 and wh < 2 and 1.45*area > cv2.contourArea(hull):
+            if area > BLK_AREA_MIN and wh > 0.3 and wh < 3.0 and 2.0*area > cv2.contourArea(hull):
                 if hierarchy[0][i][2] == -1: # if the contour has no child
                     cnt_idx.append([area, i, wh, x, y])
                 else:
                     donut = False
-                    j = hiararchy[0][i][2]
+                    j = hierarchy[0][i][2]
                     while (j != -1):
                         area_chd = cv2.contourArea(contours[j])
                         if 10.0*area_chd > area:
                             donut = True
+                        j = hierarchy[0][j][0]
                     if donut == False:
                         cnt_idx.append([area, i, wh, x, y])
     return cnt_idx
@@ -109,6 +110,13 @@ def binalizeWithColorMask(img_orig, bgr_min, bgr_max, gs_min, gs_max):
     img_bin_mor = cv2.morphologyEx(img_bin, cv2.MORPH_CLOSE, kernel)
     return img_bin_mor
 
+# determine if two lines segments are crossed
+def intersect(p1, p2, p3, p4):
+    tc1 = (p1[0] - p2[0]) * (p3[1] - p1[1]) + (p1[1] - p2[1]) * (p1[0] - p3[0])
+    tc2 = (p1[0] - p2[0]) * (p4[1] - p1[1]) + (p1[1] - p2[1]) * (p1[0] - p4[0])
+    td1 = (p3[0] - p4[0]) * (p1[1] - p3[1]) + (p3[1] - p4[1]) * (p3[0] - p1[0])
+    td2 = (p3[0] - p4[0]) * (p2[1] - p3[1]) + (p3[1] - p4[1]) * (p3[0] - p2[0])
+    return tc1*tc2<0 and td1*td2<0
 
 # check if exist any arguments
 args = sys.argv
@@ -217,8 +225,12 @@ while True:
     img_bin_rgb = cv2.cvtColor(img_bin_cnt, cv2.COLOR_GRAY2BGR)
     # find lines
     lines = cv2.HoughLinesP(img_bin_cnt, rho=1, theta=np.pi/360, threshold=HOUGH_LINES_THRESH, minLineLength=MIN_LINE_LENGTH, maxLineGap=MAX_LINE_GAP)
-    # indicate lines on the original image
+    # prepare empty cnt_idx array for blocks on the lines
+    cnt_idx_tre_online = []
+    cnt_idx_dec_online = []
+    # indicate lines on a different image
     img_lines = img_inner_white
+    # select appropriate lines
     if lines is not None:
         tlines = []
         for line in lines:
@@ -226,8 +238,7 @@ while True:
             # add 1e-5 to avoid division by zero
             dx = x2-x1 + 1e-5
             dy = y2-y1 + 1e-5
-            if abs(dy/dx) > FRAME_HEIGHT/FRAME_WIDTH:
-                img_lines = cv2.line(img_lines, (x1,y1), (x2,y2), (0,255,0), LINE_THICKNESS)
+            if abs(dy/dx) > FRAME_HEIGHT/FRAME_WIDTH and not(x1 == 0 and x2 == 0) and not(x1 == FRAME_WIDTH and x2 == FRAME_WIDTH):
                 # calculate where the extention of this line touches the bottom and top edge of image
                 x_bottom = int((FRAME_HEIGHT - y1)*dx/dy + x1)
                 x_top    = int(-y1*dx/dy + x1)
@@ -235,7 +246,7 @@ while True:
         if tlines: # if tlines is NOT empty
             tlines = sorted(tlines, reverse=False, key=lambda x: x[0])
         for i, tline in enumerate(tlines):
-            if (i < 2):
+            if i < 2: # select two lines most close to the bottom center 
                 _, x_bottom, x_top, x1, y1, x2, y2 = tline
                 # add 1e-5 to avoid division by zero
                 dx = x2-x1 + 1e-5
@@ -259,38 +270,33 @@ while True:
                 else: # x_top > FRAME_WIDTH
                     tx2 = FRAME_WIDTH
                     ty2 = int((FRAME_WIDTH-x1)*dy/dx + y1)
-                img_lines = cv2.line(img_lines, (tx1,ty1), (tx2,ty2), (0,255,255), LINE_THICKNESS)                    
-            else: # i >= 2
-                img_lines = cv2.line(img_lines, (x1,y1), (x2,y2), (0,255,0), LINE_THICKNESS)
+                img_lines = cv2.line(img_lines, (tx1,ty1), (tx2,ty2), (0,255,255), LINE_THICKNESS)
+                # see if blocks are on the closest line
+                if i == 0:
+                    for cnt_idx_entry in cnt_idx_tre:
+                        _, idx, _, _, _ = cnt_idx_entry
+                        x,y,width,height = cv2.boundingRect(contours_tre[idx])
+                        if intersect((x,y+height), (x+width,y+height), (tx1,ty1), (tx2,ty2)):
+                            cnt_idx_tre_online.append(cnt_idx_entry)
+                    for cnt_idx_entry in cnt_idx_dec:
+                        _, idx, _, _, _ = cnt_idx_entry
+                        x,y,width,height = cv2.boundingRect(contours_dec[idx])
+                        if intersect((x,y+height), (x+width,y+height), (tx1,ty1), (tx2,ty2)):
+                            cnt_idx_dec_online.append(cnt_idx_entry)            
+            #else: # i >= 2
+            #    img_lines = cv2.line(img_lines, (x1,y1), (x2,y2), (0,255,0), LINE_THICKNESS)
 
     # draw the blocks
-    if cnt_idx_tre: # if cnt_idx_tre is NOT empty
-        cnt_idx_tre = sorted(cnt_idx_tre, reverse=True, key=lambda x: x[0])
-        for i, cnt_idx_entry in enumerate(cnt_idx_tre):
+    if cnt_idx_tre_online: # if cnt_idx_tre is NOT empty
+        for cnt_idx_entry in cnt_idx_tre_online:
             area, idx, wh, x, y = cnt_idx_entry
             img_lines = cv2.polylines(img_lines, [contours_tre[idx]], True, (0,0,255), LINE_THICKNESS)
-    if cnt_idx_dec: # if cnt_idx_tre is NOT empty
-        cnt_idx_dec = sorted(cnt_idx_dec, reverse=True, key=lambda x: x[0])
-        for i, cnt_idx_entry in enumerate(cnt_idx_dec):
+    if cnt_idx_dec_online: # if cnt_idx_tre is NOT empty
+        for cnt_idx_entry in cnt_idx_dec_online:
             area, idx, wh, x, y = cnt_idx_entry
             img_lines = cv2.polylines(img_lines, [contours_dec[idx]], True, (255,0,0), LINE_THICKNESS)
-    # calculate a bounding box around the identified contour
-    #x,y,w,h = cv2.boundingRect(cnt_max)
-    # print information about the identified contour
-    #mom = cv2.moments(cnt_max)
-    # add 1e-5 to avoid division by zero
-    #txt1 = f"lines = {num_lines}"
-    #txt2 = f"area = {mom['m00']},"
-    #txt3 = f"w/h = {w/h}"
-    #print(txt1, txt2, txt3)
     # draw the white area on the original image
     img_orig_contour = cv2.polylines(img_orig, [hull_white_area], True, (0,255,0), LINE_THICKNESS)
-    
-    # draw the primary target line on the original image
-    #img_orig_contour = cv2.polylines(img_orig, [cnt_line], 1, (255,0,0), LINE_THICKNESS)
-    #cv2.putText(img_orig_contour, txt1, (int(FRAME_WIDTH/64),int(5*FRAME_HEIGHT/8)), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0,255,0), int(LINE_THICKNESS/4), cv2.LINE_4)
-    #cv2.putText(img_orig_contour, txt2, (int(FRAME_WIDTH/64),int(6*FRAME_HEIGHT/8)), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0,255,0), int(LINE_THICKNESS/4), cv2.LINE_4)
-    #cv2.putText(img_orig_contour, txt3, (int(FRAME_WIDTH/64),int(7*FRAME_HEIGHT/8)), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0,255,0), int(LINE_THICKNESS/4), cv2.LINE_4)
 
     # concatinate the images - original + extracted + binary
     img_comm = cv2.vconcat([img_orig_contour,img_lines,img_bin_rgb])
