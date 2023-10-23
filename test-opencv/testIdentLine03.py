@@ -25,8 +25,8 @@ FRAME_HEIGHT = 240
 MORPH_KERNEL_SIZE = roundUpToOdd(int(FRAME_WIDTH/48))
 AREA_DILATE_KERNEL_SIZE = roundUpToOdd(int(FRAME_WIDTH/24))
 BLK_AREA_MIN = (20.0*FRAME_WIDTH/640.0)*(20.0*FRAME_WIDTH/640.0)
-HOUGH_LINES_THRESH = int(FRAME_HEIGHT/6)
-MIN_LINE_LENGTH = int(FRAME_HEIGHT/5)
+HOUGH_LINES_THRESH = int(FRAME_HEIGHT/10)
+MIN_LINE_LENGTH = int(FRAME_HEIGHT/10)
 MAX_LINE_GAP = int(FRAME_HEIGHT/8)
 LINE_THICKNESS = int(FRAME_WIDTH/80)
 AREA_GS_MIN = 120
@@ -141,11 +141,11 @@ else:
 cv2.namedWindow("testTrace1")
 
 cv2.createTrackbar("R_min", "testTrace1", 0, 255, nothing)
-cv2.createTrackbar("R_max", "testTrace1", 60, 255, nothing)
+cv2.createTrackbar("R_max", "testTrace1", 65, 255, nothing)
 cv2.createTrackbar("G_min", "testTrace1", 0, 255, nothing)
-cv2.createTrackbar("G_max", "testTrace1", 55, 255, nothing)
+cv2.createTrackbar("G_max", "testTrace1", 60, 255, nothing)
 cv2.createTrackbar("B_min", "testTrace1", 0, 255, nothing)
-cv2.createTrackbar("B_max", "testTrace1", 60, 255, nothing)
+cv2.createTrackbar("B_max", "testTrace1", 70, 255, nothing)
 cv2.createTrackbar("GS_min", "testTrace1", 10, 255, nothing)
 cv2.createTrackbar("GS_max", "testTrace1", 100, 255, nothing)
 
@@ -235,6 +235,7 @@ while True:
         tlines = []
         for line in lines:
             x1, y1, x2, y2 = line[0]
+            img_lines = cv2.line(img_lines, (x1,y1), (x2,y2), (255,255,0), 1) # DEBUG
             # add 1e-5 to avoid division by zero
             dx = x2-x1 + 1e-5
             dy = y2-y1 + 1e-5
@@ -288,13 +289,19 @@ while True:
 
     # draw the blocks
     if cnt_idx_tre_online: # if cnt_idx_tre is NOT empty
-        for cnt_idx_entry in cnt_idx_tre_online:
+        for i, cnt_idx_entry in enumerate(cnt_idx_tre_online):
             area, idx, wh, x, y = cnt_idx_entry
             img_lines = cv2.polylines(img_lines, [contours_tre[idx]], True, (0,0,255), LINE_THICKNESS)
+            if i == 0:
+                txt1 = f"y = {int(y)}"
+                cv2.putText(img_lines, txt1, (int(FRAME_WIDTH/64),int(5*FRAME_HEIGHT/8)), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0,0,255), int(LINE_THICKNESS/4), cv2.LINE_4)
     if cnt_idx_dec_online: # if cnt_idx_tre is NOT empty
-        for cnt_idx_entry in cnt_idx_dec_online:
+        for i, cnt_idx_entry in enumerate(cnt_idx_dec_online):
             area, idx, wh, x, y = cnt_idx_entry
             img_lines = cv2.polylines(img_lines, [contours_dec[idx]], True, (255,0,0), LINE_THICKNESS)
+            if i == 0:
+                txt2 = f"y = {int(y)}"
+                cv2.putText(img_lines, txt2, (int(FRAME_WIDTH/64),int(6*FRAME_HEIGHT/8)), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255,0,0), int(LINE_THICKNESS/4), cv2.LINE_4)
     # draw the white area on the original image
     img_orig_contour = cv2.polylines(img_orig, [hull_white_area], True, (0,255,0), LINE_THICKNESS)
 
