@@ -267,6 +267,8 @@ int main() {
     fillPoly(mask, {hull_white_area}, Scalar(0,0,0));
     /* mask the original image to extract image inside white area */
     bitwise_or(img_orig, mask, img_inner_white);
+    /* modify img_orig to show masked area as blurred on monitor window */
+    addWeighted(img_inner_white, 0.5, img_orig, 0.5, 0, img_orig);
 
     /* try to filter only black lines while removing colorful block circles as much as possible */
     binalizeWithColorMask(img_inner_white, bgr_min, bgr_max, gs_min, gs_max, img_bin_mor);
@@ -296,7 +298,7 @@ int main() {
 	int y1 = lines[i][1];
 	int x2 = lines[i][2];
 	int y2 = lines[i][3];
-	line(img_lines, Point(x1,y1), Point(x2,y2), Scalar(255,255,0), 1, LINE_4); /* DEBUG */
+	line(img_lines, Point(x1,y1), Point(x2,y2), Scalar(255,255,0), 1, LINE_4);
 	/* add 1e-5 to avoid division by zero */
 	float dx = x2-x1 + 1e-5;
 	float dy = y2-y1 + 1e-5;
@@ -346,7 +348,7 @@ int main() {
 	    tx2 = FRAME_WIDTH;
 	    ty2 = static_cast<int>(static_cast<float>(FRAME_WIDTH-x1)*dy/dx + y1);
 	  }
-	  line(img_lines, Point(tx1,ty1), Point(tx2,ty2), Scalar(0,255,255), LINE_THICKNESS, LINE_4);
+	  line(img_orig, Point(tx1,ty1), Point(tx2,ty2), Scalar(0,255,0), LINE_THICKNESS, LINE_4);
 	  /* see if blocks are on the closest line */
 	  if (i == 0) {
 	    for (int j = 0; j < cnt_idx_tre.size(); j++) {
@@ -370,7 +372,7 @@ int main() {
     if (cnt_idx_tre_online.size() != 0) {
       for (int i = 0; i < cnt_idx_tre_online.size(); i++) {
 	vector<float> cnt_idx_entry = cnt_idx_tre_online[i];
-	polylines(img_lines, (vector<vector<Point>>){contours_tre[cnt_idx_entry[1]]}, true, Scalar(0,0,255), LINE_THICKNESS);
+	polylines(img_orig, (vector<vector<Point>>){contours_tre[cnt_idx_entry[1]]}, true, Scalar(0,0,255), LINE_THICKNESS);
 	if (i == 0) {
 	  sprintf(strbuf[0], "y = %d", int(cnt_idx_entry[4]));
 	  putText(img_lines, strbuf[0],
@@ -383,7 +385,7 @@ int main() {
     if (cnt_idx_dec_online.size() != 0) {
       for (int i = 0; i < cnt_idx_dec_online.size(); i++) {
 	vector<float> cnt_idx_entry = cnt_idx_dec_online[i];
-	polylines(img_lines, (vector<vector<Point>>){contours_dec[cnt_idx_entry[1]]}, true, Scalar(255,0,0), LINE_THICKNESS);
+	polylines(img_orig, (vector<vector<Point>>){contours_dec[cnt_idx_entry[1]]}, true, Scalar(255,0,0), LINE_THICKNESS);
 	if (i == 0) {
 	  sprintf(strbuf[1], "y = %d", int(cnt_idx_entry[4]));
 	  putText(img_lines, strbuf[1],
@@ -393,10 +395,7 @@ int main() {
 	}
       }
     }
-      
-    /* draw the white area on the original image */
-    polylines(img_orig, (vector<vector<Point>>){hull_white_area}, true, Scalar(0,255,0), LINE_THICKNESS);
-
+    
     /* draw ROI */
     polylines(img_orig, blk_roi, true, Scalar(0,255,255), LINE_THICKNESS);
     /* concatinate the images - original + extracted + binary */

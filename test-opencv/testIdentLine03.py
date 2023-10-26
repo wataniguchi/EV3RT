@@ -230,6 +230,8 @@ while True:
     cv2.fillPoly(mask, [hull_white_area], (0,0,0))
     # mask the original image to extract image inside white area
     img_inner_white = cv2.bitwise_or(img_orig, mask)
+    # modify img_orig to show masked area as blurred on monitor window
+    img_orig = cv2.addWeighted(img_inner_white, 0.5, img_orig, 0.5, 0);
 
     # try to filter only black lines while removing colorful block circles as much as possible
     img_bin_mor = binalizeWithColorMask(img_inner_white, np.array([b_min, g_min, r_min]), np.array([b_max, g_max, r_max]), gs_min, gs_max)
@@ -247,13 +249,13 @@ while True:
     cnt_idx_tre_online = []
     cnt_idx_dec_online = []
     # indicate lines on a different image
-    img_lines = img_inner_white
+    img_lines = img_inner_white.copy()
     # select appropriate lines
     if lines is not None:
         tlines = []
         for line in lines:
             x1, y1, x2, y2 = line[0]
-            img_lines = cv2.line(img_lines, (x1,y1), (x2,y2), (255,255,0), 1) # DEBUG
+            img_lines = cv2.line(img_lines, (x1,y1), (x2,y2), (255,255,0), 1)
             # add 1e-5 to avoid division by zero
             dx = x2-x1 + 1e-5
             dy = y2-y1 + 1e-5
@@ -289,7 +291,7 @@ while True:
                 else: # x_top > FRAME_WIDTH
                     tx2 = FRAME_WIDTH
                     ty2 = int((FRAME_WIDTH-x1)*dy/dx + y1)
-                img_lines = cv2.line(img_lines, (tx1,ty1), (tx2,ty2), (0,255,255), LINE_THICKNESS)
+                img_orig = cv2.line(img_orig, (tx1,ty1), (tx2,ty2), (0,255,0), LINE_THICKNESS)
                 # see if blocks are on the closest line
                 if i == 0:
                     for cnt_idx_entry in cnt_idx_tre:
@@ -309,20 +311,18 @@ while True:
     if cnt_idx_tre_online: # if cnt_idx_tre is NOT empty
         for i, cnt_idx_entry in enumerate(cnt_idx_tre_online):
             area, idx, wh, x, y = cnt_idx_entry
-            img_lines = cv2.polylines(img_lines, [contours_tre[idx]], True, (0,0,255), LINE_THICKNESS)
+            img_orig = cv2.polylines(img_orig, [contours_tre[idx]], True, (0,0,255), LINE_THICKNESS)
             if i == 0:
                 txt1 = f"y = {int(y)}"
                 cv2.putText(img_lines, txt1, (int(FRAME_WIDTH/64),int(5*FRAME_HEIGHT/8)), cv2.FONT_HERSHEY_SIMPLEX, FONT_SCALE, (0,0,255), int(LINE_THICKNESS/4), cv2.LINE_4)
     if cnt_idx_dec_online: # if cnt_idx_dec is NOT empty
         for i, cnt_idx_entry in enumerate(cnt_idx_dec_online):
             area, idx, wh, x, y = cnt_idx_entry
-            img_lines = cv2.polylines(img_lines, [contours_dec[idx]], True, (255,0,0), LINE_THICKNESS)
+            img_orig = cv2.polylines(img_orig, [contours_dec[idx]], True, (255,0,0), LINE_THICKNESS)
             if i == 0:
                 txt2 = f"y = {int(y)}"
                 cv2.putText(img_lines, txt2, (int(FRAME_WIDTH/64),int(6*FRAME_HEIGHT/8)), cv2.FONT_HERSHEY_SIMPLEX, FONT_SCALE, (255,0,0), int(LINE_THICKNESS/4), cv2.LINE_4)
-    # draw the white area on the original image
-    img_orig = cv2.polylines(img_orig, [hull_white_area], True, (0,255,0), LINE_THICKNESS)
-
+                
     # draw ROI
     img_orig = cv2.polylines(img_orig, [blk_roi], True, (0,255,255), LINE_THICKNESS);
     # concatinate the images - original + extracted + binary
