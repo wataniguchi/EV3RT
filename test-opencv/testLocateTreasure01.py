@@ -44,12 +44,12 @@ else:
 # create trackbars
 cv2.namedWindow("testTrace1")
 
-cv2.createTrackbar("R_min", "testTrace1", 0, 255, nothing)
-cv2.createTrackbar("R_max", "testTrace1", 255, 255, nothing)
+cv2.createTrackbar("B_min", "testTrace1", 0, 255, nothing)
+cv2.createTrackbar("B_max", "testTrace1", 255, 255, nothing)
 cv2.createTrackbar("G_min", "testTrace1", 0, 255, nothing)
 cv2.createTrackbar("G_max", "testTrace1", 50, 255, nothing)
-cv2.createTrackbar("B_min", "testTrace1", 52, 255, nothing)
-cv2.createTrackbar("B_max", "testTrace1", 200, 255, nothing)
+cv2.createTrackbar("R_min", "testTrace1", 52, 255, nothing)
+cv2.createTrackbar("R_max", "testTrace1", 200, 255, nothing)
 cv2.createTrackbar("GS_min", "testTrace1", 10, 255, nothing)
 cv2.createTrackbar("GS_max", "testTrace1", 100, 255, nothing)
 
@@ -90,7 +90,7 @@ while True:
             sys.exit(-1)
 
     # extract areas by color
-    img_mask = cv2.inRange(img_orig, np.array([r_min, g_min, b_min]), np.array([r_max, g_max, b_max]))
+    img_mask = cv2.inRange(img_orig, np.array([b_min, g_min, r_min]), np.array([b_max, g_max, r_max]))
     img_ext = cv2.bitwise_and(img_orig, img_orig, mask=img_mask)
     # convert the extracted image from BGR to grayscale
     img_gray = cv2.cvtColor(img_ext, cv2.COLOR_BGR2GRAY)

@@ -822,7 +822,7 @@ class RotateEV3 : public BrainTree::Node {
 public:
     RotateEV3(int degree, int s, double srew_rate) : deltaDegreeTarget(degree),speed(s),srewRate(srew_rate) {
         updated = false;
-        assert(degree >= -180 && degree <= 180);
+	assert(degree > -360 && degree < 360);
 	deltaDegreeTarget = _COURSE * degree; /* _COURSE = -1 when R course */
         if (deltaDegreeTarget > 0) {
 	  clockwise = 1; 
@@ -843,12 +843,10 @@ public:
             return Status::Running;
         }
 
-        int deltaDegree = plotter->getDegree() - originalDegree;
-        if (deltaDegree > 180) {
-            deltaDegree -= 360;
-        } else if (deltaDegree < -180) {
-            deltaDegree += 360;
-        }
+	int currentDegree = plotter->getDegree();
+	if ( deltaDegreeTarget > 0 && currentDegree < originalDegree ) currentDegree += 360;
+	if ( deltaDegreeTarget < 0 && currentDegree > originalDegree ) currentDegree -= 360;
+	int deltaDegree = currentDegree - originalDegree;
         if (clockwise * deltaDegree < clockwise * deltaDegreeTarget) {
             if ((srewRate != 0.0) && (clockwise * deltaDegree >= clockwise * deltaDegreeTarget - 5)) {
                 /* when comes to the half-way, start decreazing the speed by tropezoidal motion */    
