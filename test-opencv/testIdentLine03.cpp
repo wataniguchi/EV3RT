@@ -51,6 +51,7 @@ using std::this_thread::sleep_for;
 #define AREA_GS_MIN 120
 #define AREA_GS_MAX 255
 
+#define BLK_FRAME_U_LIMIT int(FRAME_HEIGHT/6)
 #define BLK_ROI_U_LIMIT 0
 #define BLK_ROI_D_LIMIT int(7*FRAME_HEIGHT/8)
 #define BLK_ROI_L_LIMIT int(FRAME_WIDTH/8)   /* at bottom of the image */
@@ -63,7 +64,7 @@ using std::this_thread::sleep_for;
 
 int b_min_tre=0,g_min_tre=0,r_min_tre=80,b_max_tre=50,g_max_tre=40,r_max_tre=255;
 int b_min_dec=35,g_min_dec=0,r_min_dec=0,b_max_dec=255,g_max_dec=60,r_max_dec=30;
-int b_min=35,g_min=0,r_min=0,b_max=65,g_max=60,r_max=70;
+int b_min=0,g_min=0,r_min=0,b_max=70,g_max=60,r_max=65;
 int gs_min=10,gs_max=100;
 vector<Point> blk_roi;
 
@@ -144,7 +145,7 @@ void binalizeWithColorMask(Mat& img_orig, Scalar& bgr_min, Scalar& bgr_max, int 
 }
 
 /* determina if two line segments are crossed */
-bool intersect(Point& p1, Point& p2, Point& p3, Point& p4) {
+bool intersect(Point p1, Point p2, Point p3, Point p4) {
   int tc1 = (p1.x - p2.x) * (p3.y - p1.y) + (p1.y - p2.y) * (p1.x - p3.x);
   int tc2 = (p1.x - p2.x) * (p4.y - p1.y) + (p1.y - p2.y) * (p1.x - p4.x);
   int td1 = (p3.x - p4.x) * (p1.y - p3.y) + (p3.y - p4.y) * (p3.x - p1.x);
@@ -170,17 +171,17 @@ int main() {
   /* create trackbars */
   namedWindow("testTrace1");
   createTrackbar("B_min", "testTrace1", nullptr, 255, nullptr);
-  setTrackbarPos("B_min", "testTrace1", b_min_tre);
+  setTrackbarPos("B_min", "testTrace1", b_min);
   createTrackbar("G_min", "testTrace1", nullptr, 255, nullptr);
-  setTrackbarPos("G_min", "testTrace1", g_min_tre);
+  setTrackbarPos("G_min", "testTrace1", g_min);
   createTrackbar("R_min", "testTrace1", nullptr, 255, nullptr);
-  setTrackbarPos("R_min", "testTrace1", r_min_tre);
+  setTrackbarPos("R_min", "testTrace1", r_min);
   createTrackbar("B_max", "testTrace1", nullptr, 255, nullptr);
-  setTrackbarPos("B_max", "testTrace1", b_max_tre);
+  setTrackbarPos("B_max", "testTrace1", b_max);
   createTrackbar("G_max", "testTrace1", nullptr, 255, nullptr);
-  setTrackbarPos("G_max", "testTrace1", g_max_tre);
+  setTrackbarPos("G_max", "testTrace1", g_max);
   createTrackbar("R_max", "testTrace1", nullptr, 255, nullptr);
-  setTrackbarPos("R_max", "testTrace1", r_max_tre);
+  setTrackbarPos("R_max", "testTrace1", r_max);
   createTrackbar("GS_min", "testTrace1", nullptr, 255, nullptr);
   setTrackbarPos("GS_min", "testTrace1", gs_min);
   createTrackbar("GS_max", "testTrace1", nullptr, 255, nullptr);
@@ -249,6 +250,10 @@ int main() {
     cvtColor(img_orig, img_gray, COLOR_BGR2GRAY);
     /* generate a binarized image of white area */
     inRange(img_gray, AREA_GS_MIN, AREA_GS_MAX, img_bin_white_area);
+    /* cut the top part of image */
+    Mat destRoi = img_bin_white_area(Rect(0,0,FRAME_WIDTH,BLK_FRAME_U_LIMIT));
+    Mat blank = Mat::zeros(Size(FRAME_WIDTH,BLK_FRAME_U_LIMIT), CV_8UC1);
+    blank.copyTo(destRoi);
     /* dilate the image */
     Mat kernel = Mat::ones(Size(AREA_DILATE_KERNEL_SIZE,AREA_DILATE_KERNEL_SIZE), CV_8UC1);
     dilate(img_bin_white_area, img_bin_white_area_dil, kernel, Point(-1,-1), 1);
@@ -272,7 +277,7 @@ int main() {
     /* create a blank image and draw contours on it */
     img_bin_cnt = Mat::zeros(Size(FRAME_WIDTH,FRAME_HEIGHT), CV_8UC1);
     for (int i = 0; i < contours.size(); i++) {
-      polylines(img_bin_cnt, (vector<vector<Point>>){contours[i]}, true, Scalar(0,0,255), 1);
+      polylines(img_bin_cnt, (vector<vector<Point>>){contours[i]}, true, 255, 1);
     }
     /* convert the binary image from grayscale to BGR for later */
     cvtColor(img_bin_cnt, img_bin_rgb, COLOR_GRAY2BGR);
@@ -280,7 +285,7 @@ int main() {
     vector<Vec4i> lines;
     HoughLinesP(img_bin_cnt, lines, 1.0, M_PI/360.0, HOUGH_LINES_THRESH, MIN_LINE_LENGTH, MAX_LINE_GAP);
     /* repare empty cnt_idx array for blocks on the lines */
-    vector<vector<Point>> cnt_idx_tre_online, cnt_idx_dec_online;
+    vector<vector<float>> cnt_idx_tre_online, cnt_idx_dec_online;
     /* indicate lines on a different image */
     img_lines = img_inner_white.clone();
     /* select appropriate lines */
@@ -295,75 +300,102 @@ int main() {
 	/* add 1e-5 to avoid division by zero */
 	float dx = x2-x1 + 1e-5;
 	float dy = y2-y1 + 1e-5;
-	if ((abs(dx/dy) > static_cast<float>(FRAME_HEIGHT)/FRAME_WIDTH) &&
+	if ((abs(dy/dx) > static_cast<float>(FRAME_HEIGHT)/FRAME_WIDTH) &&
 	    !(x1 == 0 && x2 == 0) &&
 	    !(x1 == FRAME_WIDTH and x2 == FRAME_WIDTH)) {
 	  /* calculate where the extention of this line touches the bottom and top edge of image */
-	  int x_bottom = static_cast<int>(static_cast<float>(FRAME_HEIGHT - y1)*dx/dx + x1);
-	  int x_top    = static_cast<int>(static_cast<float>(-y1)*dx/dx + x1);
+	  int x_bottom = static_cast<int>(static_cast<float>(FRAME_HEIGHT - y1)*dx/dy + x1);
+	  int x_top    = static_cast<int>(static_cast<float>(-y1)*dx/dy + x1);
 	  vector<int> tline = {abs(x_bottom - static_cast<int>(FRAME_WIDTH/2)), x_bottom, x_top, x1, y1, x2, y2};
 	  tlines.push_back(tline);
 	}
-	if (tlines.size() > 1) {
-	  sort(tlines.begin(), tlines.end(), [](const vector<int> &alpha, const vector<int> &beta){return alpha[0] < beta[0];});
-	}
-	for (int j = 0; j < tlines.size(); j++) {
-	  if (i < 2) { /* select two lines closest to the bottom center */
-	    int x_bottom = tlines[i][1];
-	    int x_top = tlines[i][2];
-	    int x1 = tlines[i][3];
-	    int y1 = tlines[i][4];
-	    int x2 = tlines[i][5];
-	    int y2 = tlines[i][6];
-	    /* add 1e-5 to avoid division by zero */
-	    float dx = x2-x1 + 1e-5;
-	    float dy = y2-y1 + 1e-5;
-	    /* calculate where the line crosses edges of image */
-	    int tx1, ty1, tx2, ty2;
-	    if ((x_bottom >= 0) && (x_bottom <= FRAME_WIDTH)) {
-	      tx1 = x_bottom;
-	      ty1 = FRAME_HEIGHT;
-	    } else if (x_bottom < 0) {
-	      tx1 = 0;
-	      ty1 = static_cast<int>(- static_cast<float>(x1)*dy/dx + y1);
-	    } else { /* x_bottom > FRAME_WIDTH */
-	      tx1 = FRAME_WIDTH;
-	      ty1 = static_cast<int>(static_cast<float>(FRAME_WIDTH-x1)*dy/dx + y1);
+      }
+      if (tlines.size() > 1) {
+	sort(tlines.begin(), tlines.end(), [](const vector<int> &alpha, const vector<int> &beta){return alpha[0] < beta[0];});
+      }
+      for (int i = 0; i < tlines.size(); i++) {
+	if (i < 2) { /* select two lines closest to the bottom center */
+	  int x_bottom = tlines[i][1];
+	  int x_top = tlines[i][2];
+	  int x1 = tlines[i][3];
+	  int y1 = tlines[i][4];
+	  int x2 = tlines[i][5];
+	  int y2 = tlines[i][6];
+	  /* add 1e-5 to avoid division by zero */
+	  float dx = x2-x1 + 1e-5;
+	  float dy = y2-y1 + 1e-5;
+	  /* calculate where the line crosses edges of image */
+	  int tx1, ty1, tx2, ty2;
+	  if ((x_bottom >= 0) && (x_bottom <= FRAME_WIDTH)) {
+	    tx1 = x_bottom;
+	    ty1 = FRAME_HEIGHT;
+	  } else if (x_bottom < 0) {
+	    tx1 = 0;
+	    ty1 = static_cast<int>(- static_cast<float>(x1)*dy/dx + y1);
+	  } else { /* x_bottom > FRAME_WIDTH */
+	    tx1 = FRAME_WIDTH;
+	    ty1 = static_cast<int>(static_cast<float>(FRAME_WIDTH-x1)*dy/dx + y1);
+	  }
+	  if ((x_top >= 0) && (x_top <= FRAME_WIDTH)) {
+	    tx2 = x_top;
+	    ty2 = 0;
+	  } else if (x_top < 0) {
+	    tx2 = 0;
+	    ty2 = static_cast<int>(- static_cast<float>(x1)*dy/dx + y1);
+	  } else { /* x_top > FRAME_WIDTH */
+	    tx2 = FRAME_WIDTH;
+	    ty2 = static_cast<int>(static_cast<float>(FRAME_WIDTH-x1)*dy/dx + y1);
+	  }
+	  line(img_lines, Point(tx1,ty1), Point(tx2,ty2), Scalar(0,255,255), LINE_THICKNESS, LINE_4);
+	  /* see if blocks are on the closest line */
+	  if (i == 0) {
+	    for (int j = 0; j < cnt_idx_tre.size(); j++) {
+	      vector<float> cnt_idx_entry = cnt_idx_tre[j];
+	      Rect blk = boundingRect(contours_tre[cnt_idx_entry[1]]);
+	      if ( intersect(Point(blk.x,blk.y+blk.height), Point(blk.x+blk.width,blk.y+blk.height), Point(tx1,ty1), Point(tx2,ty2)) ) {
+		cnt_idx_tre_online.push_back(cnt_idx_entry);
+	      }
 	    }
-	    if ((x_top >= 0) && (x_top <= FRAME_WIDTH)) {
-	      tx2 = x_top;
-	      ty2 = 0;
-	    } else if (x_top < 0) {
-	      tx2 = 0;
-	      ty2 = static_cast<int>(- static_cast<float>(x1)*dy/dx + y1);
-	    } else { /* x_top > FRAME_WIDTH */
-	      tx2 = FRAME_WIDTH;
-	      ty2 = static_cast<int>(static_cast<float>(FRAME_WIDTH-x1)*dy/dx + y1);
-	    }
-	    line(img_lines, Point(tx1,ty1), Point(tx2,ty2), Scalar(0,255,255), LINE_THICKNESS, LINE_4);
-	    /* see if blocks are on the closest line */
-	    if (i == 0) {
+	    for (int j = 0; j < cnt_idx_tre.size(); j++) {
+	      vector<float> cnt_idx_entry = cnt_idx_dec[j];
+	      Rect blk = boundingRect(contours_dec[cnt_idx_entry[1]]);
+	      if ( intersect(Point(blk.x,blk.y+blk.height), Point(blk.x+blk.width,blk.y+blk.height), Point(tx1,ty1), Point(tx2,ty2)) ) {
+		cnt_idx_dec_online.push_back(cnt_idx_entry);
+	      }
 	    }
 	  }
+	}
+      }
+    }
+    if (cnt_idx_tre_online.size() != 0) {
+      for (int i = 0; i < cnt_idx_tre_online.size(); i++) {
+	vector<float> cnt_idx_entry = cnt_idx_tre_online[i];
+	polylines(img_lines, (vector<vector<Point>>){contours_tre[cnt_idx_entry[1]]}, true, Scalar(0,0,255), LINE_THICKNESS);
+	if (i == 0) {
+	  sprintf(strbuf[0], "y = %d", int(cnt_idx_entry[4]));
+	  putText(img_lines, strbuf[0],
+		  Point(static_cast<int>(FRAME_WIDTH/64),static_cast<int>(5*FRAME_HEIGHT/8)),
+		  FONT_HERSHEY_SIMPLEX, FONT_SCALE, Scalar(0,0,255),
+		  static_cast<int>(LINE_THICKNESS/4), LINE_4);
+	}
+      }
+    }
+    if (cnt_idx_dec_online.size() != 0) {
+      for (int i = 0; i < cnt_idx_dec_online.size(); i++) {
+	vector<float> cnt_idx_entry = cnt_idx_dec_online[i];
+	polylines(img_lines, (vector<vector<Point>>){contours_dec[cnt_idx_entry[1]]}, true, Scalar(255,0,0), LINE_THICKNESS);
+	if (i == 0) {
+	  sprintf(strbuf[1], "y = %d", int(cnt_idx_entry[4]));
+	  putText(img_lines, strbuf[1],
+		  Point(static_cast<int>(FRAME_WIDTH/64),static_cast<int>(6*FRAME_HEIGHT/8)),
+		  FONT_HERSHEY_SIMPLEX, FONT_SCALE, Scalar(255,0,0),
+		  static_cast<int>(LINE_THICKNESS/4), LINE_4);
 	}
       }
     }
       
     /* draw the white area on the original image */
     polylines(img_orig, (vector<vector<Point>>){hull_white_area}, true, Scalar(0,255,0), LINE_THICKNESS);
-    /* print information about the identified contour */
-    /*
-      sprintf(strbuf[0], "cx = %03d, cy = %03d", cx, cy);
-      sprintf(strbuf[1], "area = %6.1f", cnt_idx[0][0]);
-      putText(img_orig_contour, strbuf[0],
-	      Point(static_cast<int>(FRAME_WIDTH/64),static_cast<int>(5*FRAME_HEIGHT/8)),
-	      FONT_HERSHEY_SIMPLEX, FONT_SCALE, Scalar(0,255,0),
-	      static_cast<int>(LINE_THICKNESS/4), LINE_4);
-      putText(img_orig_contour, strbuf[1],
-	      Point(static_cast<int>(FRAME_WIDTH/64),static_cast<int>(6*FRAME_HEIGHT/8)),
-	      FONT_HERSHEY_SIMPLEX, FONT_SCALE, Scalar(0,255,0),
-	      static_cast<int>(LINE_THICKNESS/4), LINE_4);
-    */
 
     /* draw ROI */
     polylines(img_orig, blk_roi, true, Scalar(0,255,255), LINE_THICKNESS);

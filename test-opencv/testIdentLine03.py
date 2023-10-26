@@ -15,7 +15,7 @@ def roundUpToOdd(f) -> int:
 # frame size for Raspberry Pi camera capture
 IN_FRAME_WIDTH  = 1640
 IN_FRAME_HEIGHT = 1232
-SENSOR_MODE = 5
+SENSOR_MODE = 4
 IN_FPS = 40
 
 # frame size for OpenCV
@@ -31,6 +31,14 @@ MAX_LINE_GAP = int(FRAME_HEIGHT/8)
 LINE_THICKNESS = int(FRAME_WIDTH/80)
 AREA_GS_MIN = 120
 AREA_GS_MAX = 255
+
+BLK_FRAME_U_LIMIT = int(FRAME_HEIGHT/6)
+BLK_ROI_U_LIMIT = 0
+BLK_ROI_D_LIMIT = int(7*FRAME_HEIGHT/8)
+BLK_ROI_L_LIMIT = int(FRAME_WIDTH/8)   # at bottom of the image
+BLK_ROI_R_LIMIT = int(7*FRAME_WIDTH/8) # at bottom of the image
+FONT_SCALE = FRAME_WIDTH/640.0
+
 B_MIN_TRE = 0
 G_MIN_TRE = 0
 R_MIN_TRE = 80
@@ -50,6 +58,7 @@ R_MAX_DEC = 30
 OUT_FRAME_WIDTH  = 320
 OUT_FRAME_HEIGHT = 240
 
+blk_roi = []
 
 # callback function for trackbars
 def nothing(x):
@@ -81,7 +90,7 @@ def locateBlocks(contours, hierarchy):
             _,_,width,height = cv2.boundingRect(cnt)
             wh = width / height
             hull = cv2.convexHull(cnt)
-            if area > BLK_AREA_MIN and wh > 0.3 and wh < 3.0 and 2.0*area > cv2.contourArea(hull):
+            if area > BLK_AREA_MIN and wh > 0.3 and wh < 3.0 and 2.0*area > cv2.contourArea(hull) and cv2.pointPolygonTest(blk_roi, (x,y), False) == 1:
                 if hierarchy[0][i][2] == -1: # if the contour has no child
                     cnt_idx.append([area, i, wh, x, y])
                 else:
@@ -126,7 +135,9 @@ if 1 == len(args):
     print("No image file specified. Capture images from camera.")
     # prepare the camera
     picam = PiCamera()
-    picam.resolution = (IN_FRAME_WIDTH, IN_FRAME_HEIGHT)
+    inFrameHeight = 16 * int(np.ceil(IN_FRAME_HEIGHT/16))
+    inFrameWidth  = 32 * int(np.ceil(IN_FRAME_WIDTH /32))
+    picam.resolution = (inFrameWidth, inFrameHeight)
     picam.sensor_mode = SENSOR_MODE
     picam.framerate = IN_FPS
 
@@ -148,6 +159,11 @@ cv2.createTrackbar("B_min", "testTrace1", 0, 255, nothing)
 cv2.createTrackbar("B_max", "testTrace1", 70, 255, nothing)
 cv2.createTrackbar("GS_min", "testTrace1", 10, 255, nothing)
 cv2.createTrackbar("GS_max", "testTrace1", 100, 255, nothing)
+
+roi_dl_limit = int(BLK_ROI_D_LIMIT * BLK_ROI_L_LIMIT / FRAME_HEIGHT)
+roi_dr_limit = FRAME_WIDTH - roi_dl_limit
+roi_init = np.array([[0,BLK_ROI_U_LIMIT],[FRAME_WIDTH,BLK_ROI_U_LIMIT],[roi_dr_limit,BLK_ROI_D_LIMIT],[roi_dl_limit,BLK_ROI_D_LIMIT]])
+blk_roi = roi_init
 
 while True:
     # obtain values from the trackbars
@@ -200,6 +216,8 @@ while True:
     img_gray = cv2.cvtColor(img_orig, cv2.COLOR_BGR2GRAY)
     # generate a binarized image of white area
     img_bin_white_area = cv2.inRange(img_gray, AREA_GS_MIN, AREA_GS_MAX)
+    # cut the top part of image
+    img_bin_white_area[0:BLK_FRAME_U_LIMIT,:] = 0
     # dilate the image
     kernel = np.ones((AREA_DILATE_KERNEL_SIZE,AREA_DILATE_KERNEL_SIZE), np.uint8)
     img_bin_white_area = cv2.dilate(img_bin_white_area, kernel, iterations = 1)
@@ -247,7 +265,7 @@ while True:
         if tlines: # if tlines is NOT empty
             tlines = sorted(tlines, reverse=False, key=lambda x: x[0])
         for i, tline in enumerate(tlines):
-            if i < 2: # select two lines most close to the bottom center 
+            if i < 2: # select two lines closest to the bottom center 
                 _, x_bottom, x_top, x1, y1, x2, y2 = tline
                 # add 1e-5 to avoid division by zero
                 dx = x2-x1 + 1e-5
@@ -294,19 +312,21 @@ while True:
             img_lines = cv2.polylines(img_lines, [contours_tre[idx]], True, (0,0,255), LINE_THICKNESS)
             if i == 0:
                 txt1 = f"y = {int(y)}"
-                cv2.putText(img_lines, txt1, (int(FRAME_WIDTH/64),int(5*FRAME_HEIGHT/8)), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0,0,255), int(LINE_THICKNESS/4), cv2.LINE_4)
-    if cnt_idx_dec_online: # if cnt_idx_tre is NOT empty
+                cv2.putText(img_lines, txt1, (int(FRAME_WIDTH/64),int(5*FRAME_HEIGHT/8)), cv2.FONT_HERSHEY_SIMPLEX, FONT_SCALE, (0,0,255), int(LINE_THICKNESS/4), cv2.LINE_4)
+    if cnt_idx_dec_online: # if cnt_idx_dec is NOT empty
         for i, cnt_idx_entry in enumerate(cnt_idx_dec_online):
             area, idx, wh, x, y = cnt_idx_entry
             img_lines = cv2.polylines(img_lines, [contours_dec[idx]], True, (255,0,0), LINE_THICKNESS)
             if i == 0:
                 txt2 = f"y = {int(y)}"
-                cv2.putText(img_lines, txt2, (int(FRAME_WIDTH/64),int(6*FRAME_HEIGHT/8)), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255,0,0), int(LINE_THICKNESS/4), cv2.LINE_4)
+                cv2.putText(img_lines, txt2, (int(FRAME_WIDTH/64),int(6*FRAME_HEIGHT/8)), cv2.FONT_HERSHEY_SIMPLEX, FONT_SCALE, (255,0,0), int(LINE_THICKNESS/4), cv2.LINE_4)
     # draw the white area on the original image
-    img_orig_contour = cv2.polylines(img_orig, [hull_white_area], True, (0,255,0), LINE_THICKNESS)
+    img_orig = cv2.polylines(img_orig, [hull_white_area], True, (0,255,0), LINE_THICKNESS)
 
+    # draw ROI
+    img_orig = cv2.polylines(img_orig, [blk_roi], True, (0,255,255), LINE_THICKNESS);
     # concatinate the images - original + extracted + binary
-    img_comm = cv2.vconcat([img_orig_contour,img_lines,img_bin_rgb])
+    img_comm = cv2.vconcat([img_orig,img_lines,img_bin_rgb])
     # shrink the image to avoid delay in transmission
     if OUT_FRAME_WIDTH != FRAME_WIDTH or OUT_FRAME_HEIGHT != FRAME_HEIGHT:
         img_comm = cv2.resize(img_comm, (OUT_FRAME_WIDTH,3*OUT_FRAME_HEIGHT))
