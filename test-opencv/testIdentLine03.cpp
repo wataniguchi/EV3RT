@@ -40,6 +40,15 @@ using std::this_thread::sleep_for;
 #define FRAME_HEIGHT 240
 //#define FRAME_WIDTH  128
 //#define FRAME_HEIGHT 96
+#define FRAME_X_CENTER int(FRAME_WIDTH/2)
+#define BLK_FRAME_U_LIMIT int(FRAME_HEIGHT/6)
+#define BLK_ROI_U_LIMIT 0
+#define BLK_ROI_D_LIMIT int(7*FRAME_HEIGHT/8)
+#define BLK_ROI_L_LIMIT int(FRAME_WIDTH/8)   /* at bottom of the image */
+#define BLK_ROI_R_LIMIT int(7*FRAME_WIDTH/8) /* at bottom of the image */
+
+#define AREA_GS_MIN 120
+#define AREA_GS_MAX 255
 
 #define MORPH_KERNEL_SIZE roundUpToOdd(int(FRAME_WIDTH/48))
 #define AREA_DILATE_KERNEL_SIZE roundUpToOdd(int(FRAME_WIDTH/24))
@@ -48,14 +57,9 @@ using std::this_thread::sleep_for;
 #define MIN_LINE_LENGTH int(FRAME_HEIGHT/10)
 #define MAX_LINE_GAP int(FRAME_HEIGHT/8)
 #define LINE_THICKNESS int(FRAME_WIDTH/80)
-#define AREA_GS_MIN 120
-#define AREA_GS_MAX 255
+#define CIRCLE_RADIUS int(FRAME_WIDTH/40)
+#define SCAN_V_POS int(13*FRAME_HEIGHT/16 - LINE_THICKNESS)
 
-#define BLK_FRAME_U_LIMIT int(FRAME_HEIGHT/6)
-#define BLK_ROI_U_LIMIT 0
-#define BLK_ROI_D_LIMIT int(7*FRAME_HEIGHT/8)
-#define BLK_ROI_L_LIMIT int(FRAME_WIDTH/8)   /* at bottom of the image */
-#define BLK_ROI_R_LIMIT int(7*FRAME_WIDTH/8) /* at bottom of the image */
 #define FONT_SCALE double(FRAME_WIDTH)/640.0
 
 /* frame size for X11 painting */
@@ -155,7 +159,7 @@ bool intersect(Point p1, Point p2, Point p3, Point p4) {
 
 int main() {
   char strbuf[2][40];
-  int cx, cy, mx;
+  int mx;
   
   utils::logging::setLogLevel(utils::logging::LOG_LEVEL_WARNING);
   /* set number of threads */
@@ -191,6 +195,8 @@ int main() {
   vector<Point> roi_init {{0,BLK_ROI_U_LIMIT},{FRAME_WIDTH,BLK_ROI_U_LIMIT},
 			      {roi_dr_limit,BLK_ROI_D_LIMIT},{roi_dl_limit,BLK_ROI_D_LIMIT}};
   blk_roi = roi_init;
+  /* initial trace target */
+  mx = (int)(FRAME_WIDTH/2);
 
   while (true) {
     /* obtain values from the trackbars */
@@ -365,6 +371,7 @@ int main() {
 		cnt_idx_dec_online.push_back(cnt_idx_entry);
 	      }
 	    }
+	    mx = x_bottom;
 	  }
 	}
       }
@@ -398,6 +405,8 @@ int main() {
     
     /* draw ROI */
     polylines(img_orig, blk_roi, true, Scalar(0,255,255), LINE_THICKNESS);
+    /* draw the trace target on the image */
+    circle(img_orig, Point(mx, SCAN_V_POS), CIRCLE_RADIUS, Scalar(0,0,255), -1);
     /* concatinate the images - original + extracted + binary */
     Mat img_v;
     vconcat(img_orig, img_lines, img_v);

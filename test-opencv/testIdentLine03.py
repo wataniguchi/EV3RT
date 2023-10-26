@@ -21,6 +21,15 @@ IN_FPS = 40
 # frame size for OpenCV
 FRAME_WIDTH  = 320
 FRAME_HEIGHT = 240
+FRAME_X_CENTER = int(FRAME_WIDTH/2)
+BLK_FRAME_U_LIMIT = int(FRAME_HEIGHT/6)
+BLK_ROI_U_LIMIT = 0
+BLK_ROI_D_LIMIT = int(7*FRAME_HEIGHT/8)
+BLK_ROI_L_LIMIT = int(FRAME_WIDTH/8)   # at bottom of the image
+BLK_ROI_R_LIMIT = int(7*FRAME_WIDTH/8) # at bottom of the image
+
+AREA_GS_MIN = 120
+AREA_GS_MAX = 255
 
 MORPH_KERNEL_SIZE = roundUpToOdd(int(FRAME_WIDTH/48))
 AREA_DILATE_KERNEL_SIZE = roundUpToOdd(int(FRAME_WIDTH/24))
@@ -29,14 +38,9 @@ HOUGH_LINES_THRESH = int(FRAME_HEIGHT/10)
 MIN_LINE_LENGTH = int(FRAME_HEIGHT/10)
 MAX_LINE_GAP = int(FRAME_HEIGHT/8)
 LINE_THICKNESS = int(FRAME_WIDTH/80)
-AREA_GS_MIN = 120
-AREA_GS_MAX = 255
+CIRCLE_RADIUS = int(FRAME_WIDTH/40)
+SCAN_V_POS = int(13*FRAME_HEIGHT/16 - LINE_THICKNESS)
 
-BLK_FRAME_U_LIMIT = int(FRAME_HEIGHT/6)
-BLK_ROI_U_LIMIT = 0
-BLK_ROI_D_LIMIT = int(7*FRAME_HEIGHT/8)
-BLK_ROI_L_LIMIT = int(FRAME_WIDTH/8)   # at bottom of the image
-BLK_ROI_R_LIMIT = int(7*FRAME_WIDTH/8) # at bottom of the image
 FONT_SCALE = FRAME_WIDTH/640.0
 
 B_MIN_TRE = 0
@@ -69,12 +73,15 @@ def findLargestContour(img_bin):
     contours, _ = cv2.findContours(img_bin, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     i_area_max = 0
     area_max = 0
-    for i, cnt in enumerate(contours):
-        area = cv2.contourArea(cnt)
-        if area > area_max:
-            area_max = area
-            i_area_max = i
-    return contours[i_area_max]
+    if contours: # if contours is NOT empty
+        for i, cnt in enumerate(contours):
+            area = cv2.contourArea(cnt)
+            if area > area_max:
+                area_max = area
+                i_area_max = i
+        return contours[i_area_max]
+    else:
+        return np.array([[0,0],[img_bin.shape[1]-1,0],[img_bin.shape[1]-1,img_bin.shape[0]-1],[0,img_bin.shape[0]-1]])
 
 # locate blocks
 def locateBlocks(contours, hierarchy):
@@ -164,6 +171,8 @@ roi_dl_limit = int(BLK_ROI_D_LIMIT * BLK_ROI_L_LIMIT / FRAME_HEIGHT)
 roi_dr_limit = FRAME_WIDTH - roi_dl_limit
 roi_init = np.array([[0,BLK_ROI_U_LIMIT],[FRAME_WIDTH,BLK_ROI_U_LIMIT],[roi_dr_limit,BLK_ROI_D_LIMIT],[roi_dl_limit,BLK_ROI_D_LIMIT]])
 blk_roi = roi_init
+# initial trace target
+mx = int(FRAME_WIDTH/2)
 
 while True:
     # obtain values from the trackbars
@@ -303,7 +312,9 @@ while True:
                         _, idx, _, _, _ = cnt_idx_entry
                         x,y,width,height = cv2.boundingRect(contours_dec[idx])
                         if intersect((x,y+height), (x+width,y+height), (tx1,ty1), (tx2,ty2)):
-                            cnt_idx_dec_online.append(cnt_idx_entry)            
+                            cnt_idx_dec_online.append(cnt_idx_entry)
+                    mx = x_bottom
+                    
             #else: # i >= 2
             #    img_lines = cv2.line(img_lines, (x1,y1), (x2,y2), (0,255,0), LINE_THICKNESS)
 
@@ -325,6 +336,8 @@ while True:
                 
     # draw ROI
     img_orig = cv2.polylines(img_orig, [blk_roi], True, (0,255,255), LINE_THICKNESS);
+    # draw the trace target on the image
+    cv2.circle(img_orig, (mx, SCAN_V_POS), CIRCLE_RADIUS, (0,0,255), -1)
     # concatinate the images - original + extracted + binary
     img_comm = cv2.vconcat([img_orig,img_lines,img_bin_rgb])
     # shrink the image to avoid delay in transmission
