@@ -166,6 +166,7 @@ cv2.createTrackbar("B_min", "testTrace1", 0, 255, nothing)
 cv2.createTrackbar("B_max", "testTrace1", 70, 255, nothing)
 cv2.createTrackbar("GS_min", "testTrace1", 10, 255, nothing)
 cv2.createTrackbar("GS_max", "testTrace1", 100, 255, nothing)
+cv2.createTrackbar("Edge",  "testTrace1", 0, 2, nothing)
 
 roi_dl_limit = int(BLK_ROI_D_LIMIT * BLK_ROI_L_LIMIT / FRAME_HEIGHT)
 roi_dr_limit = FRAME_WIDTH - roi_dl_limit
@@ -184,8 +185,9 @@ while True:
     b_max = cv2.getTrackbarPos("B_max", "testTrace1")
     gs_min = cv2.getTrackbarPos("GS_min", "testTrace1")
     gs_max = cv2.getTrackbarPos("GS_max", "testTrace1")
+    edge  = cv2.getTrackbarPos("Edge",  "testTrace1")
 
-    time.sleep(0.01)
+    #time.sleep(0.01)
 
     if 1 == len(args):
         picam.capture(frame, 'bgr')
@@ -275,48 +277,59 @@ while True:
                 tlines.append([abs(x_bottom - FRAME_WIDTH/2), x_bottom, x_top, x1, y1, x2, y2])
         if tlines: # if tlines is NOT empty
             tlines = sorted(tlines, reverse=False, key=lambda x: x[0])
-        for i, tline in enumerate(tlines):
-            if i < 2: # select two lines closest to the bottom center 
-                _, x_bottom, x_top, x1, y1, x2, y2 = tline
-                # add 1e-5 to avoid division by zero
-                dx = x2-x1 + 1e-5
-                dy = y2-y1 + 1e-5
-                # calculate where the line crosses edges of image
-                if x_bottom >= 0 and x_bottom <= FRAME_WIDTH:
-                    tx1 = x_bottom
-                    ty1 = FRAME_HEIGHT
-                elif x_bottom < 0:
-                    tx1 = 0
-                    ty1 = int(y1 - x1*dy/dx)
-                else: # x_bottom > FRAME_WIDTH
-                    tx1 = FRAME_WIDTH
-                    ty1 = int((FRAME_WIDTH-x1)*dy/dx + y1)
-                if x_top >= 0 and x_top <= FRAME_WIDTH:
-                    tx2 = x_top
-                    ty2 = 0
-                elif x_top < 0:
-                    tx2 = 0
-                    ty2 = int(y1 - x1*dy/dx)
-                else: # x_top > FRAME_WIDTH
-                    tx2 = FRAME_WIDTH
-                    ty2 = int((FRAME_WIDTH-x1)*dy/dx + y1)
-                img_orig = cv2.line(img_orig, (tx1,ty1), (tx2,ty2), (0,255,0), LINE_THICKNESS)
-                # see if blocks are on the closest line
-                if i == 0:
-                    for cnt_idx_entry in cnt_idx_tre:
-                        _, idx, _, _, _ = cnt_idx_entry
-                        x,y,width,height = cv2.boundingRect(contours_tre[idx])
-                        if intersect((x,y+height), (x+width,y+height), (tx1,ty1), (tx2,ty2)):
-                            cnt_idx_tre_online.append(cnt_idx_entry)
-                    for cnt_idx_entry in cnt_idx_dec:
-                        _, idx, _, _, _ = cnt_idx_entry
-                        x,y,width,height = cv2.boundingRect(contours_dec[idx])
-                        if intersect((x,y+height), (x+width,y+height), (tx1,ty1), (tx2,ty2)):
-                            cnt_idx_dec_online.append(cnt_idx_entry)
-                    mx = x_bottom
-                    
-            #else: # i >= 2
-            #    img_lines = cv2.line(img_lines, (x1,y1), (x2,y2), (0,255,0), LINE_THICKNESS)
+            x_bottom_smaller = FRAME_WIDTH
+            x_bottom_larger = 0            
+            for i, tline in enumerate(tlines):
+                if i < 2: # select two lines closest to the bottom center 
+                    _, x_bottom, x_top, x1, y1, x2, y2 = tline
+                    # add 1e-5 to avoid division by zero
+                    dx = x2-x1 + 1e-5
+                    dy = y2-y1 + 1e-5
+                    # calculate where the line crosses edges of image
+                    if x_bottom >= 0 and x_bottom <= FRAME_WIDTH:
+                        tx1 = x_bottom
+                        ty1 = FRAME_HEIGHT
+                    elif x_bottom < 0:
+                        tx1 = 0
+                        ty1 = int(y1 - x1*dy/dx)
+                    else: # x_bottom > FRAME_WIDTH
+                        tx1 = FRAME_WIDTH
+                        ty1 = int((FRAME_WIDTH-x1)*dy/dx + y1)
+                    if x_top >= 0 and x_top <= FRAME_WIDTH:
+                        tx2 = x_top
+                        ty2 = 0
+                    elif x_top < 0:
+                        tx2 = 0
+                        ty2 = int(y1 - x1*dy/dx)
+                    else: # x_top > FRAME_WIDTH
+                        tx2 = FRAME_WIDTH
+                        ty2 = int((FRAME_WIDTH-x1)*dy/dx + y1)
+                    # indicate the virtual line on the original image
+                    img_orig = cv2.line(img_orig, (tx1,ty1), (tx2,ty2), (0,255,0), LINE_THICKNESS)
+                    # prepare for trace target calculation
+                    if x_bottom_smaller > tx1:
+                        x_bottom_smaller = tx1
+                    if x_bottom_larger < tx1:
+                        x_bottom_larger = tx1
+                    # see if blocks are on the closest line
+                    if i == 0:
+                        for cnt_idx_entry in cnt_idx_tre:
+                            _, idx, _, _, _ = cnt_idx_entry
+                            x,y,width,height = cv2.boundingRect(contours_tre[idx])
+                            if intersect((x,y+height), (x+width,y+height), (tx1,ty1), (tx2,ty2)):
+                                cnt_idx_tre_online.append(cnt_idx_entry)
+                        for cnt_idx_entry in cnt_idx_dec:
+                            _, idx, _, _, _ = cnt_idx_entry
+                            x,y,width,height = cv2.boundingRect(contours_dec[idx])
+                            if intersect((x,y+height), (x+width,y+height), (tx1,ty1), (tx2,ty2)):
+                                cnt_idx_dec_online.append(cnt_idx_entry)
+            # calculate the trace target using the edges
+            if edge == 0:
+                mx = x_bottom_smaller
+            elif edge == 1:
+                mx = x_bottom_larger
+            else:
+                mx = int((x_bottom_smaller+x_bottom_larger) / 2)
 
     # draw the blocks
     if cnt_idx_tre_online: # if cnt_idx_tre is NOT empty

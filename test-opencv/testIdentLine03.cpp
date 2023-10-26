@@ -69,7 +69,7 @@ using std::this_thread::sleep_for;
 int b_min_tre=0,g_min_tre=0,r_min_tre=80,b_max_tre=50,g_max_tre=40,r_max_tre=255;
 int b_min_dec=35,g_min_dec=0,r_min_dec=0,b_max_dec=255,g_max_dec=60,r_max_dec=30;
 int b_min=0,g_min=0,r_min=0,b_max=70,g_max=60,r_max=65;
-int gs_min=10,gs_max=100;
+int gs_min=10,gs_max=100,edge=0;
 vector<Point> blk_roi;
 
 int roundUpToOdd(int x) {
@@ -190,6 +190,8 @@ int main() {
   setTrackbarPos("GS_min", "testTrace1", gs_min);
   createTrackbar("GS_max", "testTrace1", nullptr, 255, nullptr);
   setTrackbarPos("GS_max", "testTrace1", gs_max);
+  createTrackbar("Edge",   "testTrace1", nullptr, 2, nullptr);
+  setTrackbarPos("Edge",   "testTrace1", edge);
   int roi_dl_limit = BLK_ROI_D_LIMIT * BLK_ROI_L_LIMIT / FRAME_HEIGHT;
   int roi_dr_limit = FRAME_WIDTH - roi_dl_limit;
   vector<Point> roi_init {{0,BLK_ROI_U_LIMIT},{FRAME_WIDTH,BLK_ROI_U_LIMIT},
@@ -208,6 +210,7 @@ int main() {
     r_max  = getTrackbarPos("R_max", "testTrace1");
     gs_min = getTrackbarPos("GS_min", "testTrace1");
     gs_max = getTrackbarPos("GS_max", "testTrace1");
+    edge   = getTrackbarPos("Edge",   "testTrace1");
     Scalar bgr_min = Scalar(b_min,g_min,r_min);
     Scalar bgr_max = Scalar(b_max,g_max,r_max);
     Scalar bgr_min_tre = Scalar(b_min_tre,g_min_tre,r_min_tre);
@@ -318,88 +321,96 @@ int main() {
 	  tlines.push_back(tline);
 	}
       }
-      if (tlines.size() > 1) {
+      if (tlines.size() >= 1) {
 	sort(tlines.begin(), tlines.end(), [](const vector<int> &alpha, const vector<int> &beta){return alpha[0] < beta[0];});
-      }
-      for (int i = 0; i < tlines.size(); i++) {
-	if (i < 2) { /* select two lines closest to the bottom center */
-	  int x_bottom = tlines[i][1];
-	  int x_top = tlines[i][2];
-	  int x1 = tlines[i][3];
-	  int y1 = tlines[i][4];
-	  int x2 = tlines[i][5];
-	  int y2 = tlines[i][6];
-	  /* add 1e-5 to avoid division by zero */
-	  float dx = x2-x1 + 1e-5;
-	  float dy = y2-y1 + 1e-5;
-	  /* calculate where the line crosses edges of image */
-	  int tx1, ty1, tx2, ty2;
-	  if ((x_bottom >= 0) && (x_bottom <= FRAME_WIDTH)) {
-	    tx1 = x_bottom;
-	    ty1 = FRAME_HEIGHT;
-	  } else if (x_bottom < 0) {
-	    tx1 = 0;
-	    ty1 = static_cast<int>(- static_cast<float>(x1)*dy/dx + y1);
-	  } else { /* x_bottom > FRAME_WIDTH */
-	    tx1 = FRAME_WIDTH;
-	    ty1 = static_cast<int>(static_cast<float>(FRAME_WIDTH-x1)*dy/dx + y1);
-	  }
-	  if ((x_top >= 0) && (x_top <= FRAME_WIDTH)) {
-	    tx2 = x_top;
-	    ty2 = 0;
-	  } else if (x_top < 0) {
-	    tx2 = 0;
-	    ty2 = static_cast<int>(- static_cast<float>(x1)*dy/dx + y1);
-	  } else { /* x_top > FRAME_WIDTH */
-	    tx2 = FRAME_WIDTH;
-	    ty2 = static_cast<int>(static_cast<float>(FRAME_WIDTH-x1)*dy/dx + y1);
-	  }
-	  line(img_orig, Point(tx1,ty1), Point(tx2,ty2), Scalar(0,255,0), LINE_THICKNESS, LINE_4);
-	  /* see if blocks are on the closest line */
-	  if (i == 0) {
-	    for (int j = 0; j < cnt_idx_tre.size(); j++) {
-	      vector<float> cnt_idx_entry = cnt_idx_tre[j];
-	      Rect blk = boundingRect(contours_tre[cnt_idx_entry[1]]);
-	      if ( intersect(Point(blk.x,blk.y+blk.height), Point(blk.x+blk.width,blk.y+blk.height), Point(tx1,ty1), Point(tx2,ty2)) ) {
-		cnt_idx_tre_online.push_back(cnt_idx_entry);
+	int x_bottom_smaller = FRAME_WIDTH, x_bottom_larger = 0;
+	for (int i = 0; i < tlines.size(); i++) {
+	  if (i < 2) { /* select two lines closest to the bottom center */
+	    int x_bottom = tlines[i][1];
+	    int x_top = tlines[i][2];
+	    int x1 = tlines[i][3];
+	    int y1 = tlines[i][4];
+	    int x2 = tlines[i][5];
+	    int y2 = tlines[i][6];
+	    /* add 1e-5 to avoid division by zero */
+	    float dx = x2-x1 + 1e-5;
+	    float dy = y2-y1 + 1e-5;
+	    /* calculate where the line crosses edges of image */
+	    int tx1, ty1, tx2, ty2;
+	    if ((x_bottom >= 0) && (x_bottom <= FRAME_WIDTH)) {
+	      tx1 = x_bottom;
+	      ty1 = FRAME_HEIGHT;
+	    } else if (x_bottom < 0) {
+	      tx1 = 0;
+	      ty1 = static_cast<int>(- static_cast<float>(x1)*dy/dx + y1);
+	    } else { /* x_bottom > FRAME_WIDTH */
+	      tx1 = FRAME_WIDTH;
+	      ty1 = static_cast<int>(static_cast<float>(FRAME_WIDTH-x1)*dy/dx + y1);
+	    }
+	    if ((x_top >= 0) && (x_top <= FRAME_WIDTH)) {
+	      tx2 = x_top;
+	      ty2 = 0;
+	    } else if (x_top < 0) {
+	      tx2 = 0;
+	      ty2 = static_cast<int>(- static_cast<float>(x1)*dy/dx + y1);
+	    } else { /* x_top > FRAME_WIDTH */
+	      tx2 = FRAME_WIDTH;
+	      ty2 = static_cast<int>(static_cast<float>(FRAME_WIDTH-x1)*dy/dx + y1);
+	    }
+	    /* indicate the virtual line on the original image */
+	    line(img_orig, Point(tx1,ty1), Point(tx2,ty2), Scalar(0,255,0), LINE_THICKNESS, LINE_4);
+	    /* prepare for trace target calculation */
+	    if (x_bottom_smaller > tx1) x_bottom_smaller = tx1;
+	    if (x_bottom_larger  < tx1) x_bottom_larger  = tx1;
+	    /* see if blocks are on the closest line */
+	    if (i == 0) {
+	      for (int j = 0; j < cnt_idx_tre.size(); j++) {
+		vector<float> cnt_idx_entry = cnt_idx_tre[j];
+		Rect blk = boundingRect(contours_tre[cnt_idx_entry[1]]);
+		if ( intersect(Point(blk.x,blk.y+blk.height), Point(blk.x+blk.width,blk.y+blk.height), Point(tx1,ty1), Point(tx2,ty2)) ) {
+		  cnt_idx_tre_online.push_back(cnt_idx_entry);
+		}
+	      }
+	      for (int j = 0; j < cnt_idx_dec.size(); j++) {
+		vector<float> cnt_idx_entry = cnt_idx_dec[j];
+		Rect blk = boundingRect(contours_dec[cnt_idx_entry[1]]);
+		if ( intersect(Point(blk.x,blk.y+blk.height), Point(blk.x+blk.width,blk.y+blk.height), Point(tx1,ty1), Point(tx2,ty2)) ) {
+		  cnt_idx_dec_online.push_back(cnt_idx_entry);
+		}
 	      }
 	    }
-	    for (int j = 0; j < cnt_idx_tre.size(); j++) {
-	      vector<float> cnt_idx_entry = cnt_idx_dec[j];
-	      Rect blk = boundingRect(contours_dec[cnt_idx_entry[1]]);
-	      if ( intersect(Point(blk.x,blk.y+blk.height), Point(blk.x+blk.width,blk.y+blk.height), Point(tx1,ty1), Point(tx2,ty2)) ) {
-		cnt_idx_dec_online.push_back(cnt_idx_entry);
-	      }
-	    }
-	    mx = x_bottom;
 	  }
+	}
+	/* calculate the trace target using the edges */
+	if (edge == 0) {
+	  mx = x_bottom_smaller;
+	} else if (edge == 1) {
+	  mx = x_bottom_larger;
+	} else {
+	  mx = int((x_bottom_smaller+x_bottom_larger) / 2);
 	}
       }
     }
-    if (cnt_idx_tre_online.size() != 0) {
-      for (int i = 0; i < cnt_idx_tre_online.size(); i++) {
-	vector<float> cnt_idx_entry = cnt_idx_tre_online[i];
-	polylines(img_orig, (vector<vector<Point>>){contours_tre[cnt_idx_entry[1]]}, true, Scalar(0,0,255), LINE_THICKNESS);
-	if (i == 0) {
-	  sprintf(strbuf[0], "y = %d", int(cnt_idx_entry[4]));
-	  putText(img_lines, strbuf[0],
-		  Point(static_cast<int>(FRAME_WIDTH/64),static_cast<int>(5*FRAME_HEIGHT/8)),
-		  FONT_HERSHEY_SIMPLEX, FONT_SCALE, Scalar(0,0,255),
-		  static_cast<int>(LINE_THICKNESS/4), LINE_4);
-	}
+    for (int i = 0; i < cnt_idx_tre_online.size(); i++) {
+      vector<float> cnt_idx_entry = cnt_idx_tre_online[i];
+      polylines(img_orig, (vector<vector<Point>>){contours_tre[cnt_idx_entry[1]]}, true, Scalar(0,0,255), LINE_THICKNESS);
+      if (i == 0) {
+	sprintf(strbuf[0], "y = %d", int(cnt_idx_entry[4]));
+	putText(img_lines, strbuf[0],
+		Point(static_cast<int>(FRAME_WIDTH/64),static_cast<int>(5*FRAME_HEIGHT/8)),
+		FONT_HERSHEY_SIMPLEX, FONT_SCALE, Scalar(0,0,255),
+		static_cast<int>(LINE_THICKNESS/4), LINE_4);
       }
     }
-    if (cnt_idx_dec_online.size() != 0) {
-      for (int i = 0; i < cnt_idx_dec_online.size(); i++) {
-	vector<float> cnt_idx_entry = cnt_idx_dec_online[i];
-	polylines(img_orig, (vector<vector<Point>>){contours_dec[cnt_idx_entry[1]]}, true, Scalar(255,0,0), LINE_THICKNESS);
-	if (i == 0) {
-	  sprintf(strbuf[1], "y = %d", int(cnt_idx_entry[4]));
-	  putText(img_lines, strbuf[1],
-		  Point(static_cast<int>(FRAME_WIDTH/64),static_cast<int>(6*FRAME_HEIGHT/8)),
-		  FONT_HERSHEY_SIMPLEX, FONT_SCALE, Scalar(255,0,0),
-		  static_cast<int>(LINE_THICKNESS/4), LINE_4);
-	}
+    for (int i = 0; i < cnt_idx_dec_online.size(); i++) {
+      vector<float> cnt_idx_entry = cnt_idx_dec_online[i];
+      polylines(img_orig, (vector<vector<Point>>){contours_dec[cnt_idx_entry[1]]}, true, Scalar(255,0,0), LINE_THICKNESS);
+      if (i == 0) {
+	sprintf(strbuf[1], "y = %d", int(cnt_idx_entry[4]));
+	putText(img_lines, strbuf[1],
+		Point(static_cast<int>(FRAME_WIDTH/64),static_cast<int>(6*FRAME_HEIGHT/8)),
+		FONT_HERSHEY_SIMPLEX, FONT_SCALE, Scalar(255,0,0),
+		static_cast<int>(LINE_THICKNESS/4), LINE_4);
       }
     }
     
