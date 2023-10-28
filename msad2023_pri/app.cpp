@@ -476,16 +476,10 @@ class IsFoundBlock : public BrainTree::Node {
 public:
   IsFoundBlock(int gs_min, int gs_max,
 	       std::vector<double> bgr_min_tre, std::vector<double> bgr_max_tre,
-	       std::vector<double> bgr_min_dec, std::vector<double> bgr_max_dec) : gsMin(gs_min),gsMax(gs_max) {
+	       std::vector<double> bgr_min_dec, std::vector<double> bgr_max_dec) :
+    gsMin(gs_min),gsMax(gs_max),bgrMinTre(bgr_min_tre),bgrMaxTre(bgr_max_tre),
+    bgrMinDec(bgr_min_dec),bgrMaxDec(bgr_max_dec) {
         updated = false;
-	assert(bgr_min_tre.size() == 3);
-	assert(bgr_max_tre.size() == 3);
-	assert(bgr_min_dec.size() == 3);
-	assert(bgr_max_dec.size() == 3);
-	bgrMinTre = Scalar(bgr_min_tre[0], bgr_min_tre[1], bgr_min_tre[2]);
-	bgrMaxTre = Scalar(bgr_max_tre[0], bgr_max_tre[1], bgr_max_tre[2]);
-	bgrMinDec = Scalar(bgr_min_dec[0], bgr_min_dec[1], bgr_min_dec[2]);
-	bgrMaxDec = Scalar(bgr_max_dec[0], bgr_max_dec[1], bgr_max_dec[2]);
 	count = inSightCount = 0;
     }
     ~IsFoundBlock() {}
@@ -493,7 +487,7 @@ public:
         if (!updated) {
 	    video->setTraceTargetType(TT_BLKS);
 	    video->setThresholds(gsMin, gsMax);
-	    video->setMaskThresholds(bgrMinTre, bgrMaxTre, bgrMinDec, bgrMaxDec);
+	    video->setMaskThresholds(bgrMinTre, bgrMaxTre, bgrMinDec, bgrMaxDec, {0,0,0}, {0,0,0});
             updated = true;
         }
 	if (count++ < 10) {
@@ -518,7 +512,7 @@ public:
     }
 protected:
     int gsMin, gsMax, count, inSightCount;
-    Scalar bgrMinTre, bgrMaxTre, bgrMinDec, bgrMaxDec;
+    std::vector<double> bgrMinTre, bgrMaxTre, bgrMinDec, bgrMaxDec;
     bool updated;
 };
 
@@ -535,18 +529,12 @@ class ApproachBlock : public BrainTree::Node {
 public:
   ApproachBlock(int s, std::vector<double> pid, int gs_min, int gs_max,
 		std::vector<double> bgr_min_tre, std::vector<double> bgr_max_tre,
-		std::vector<double> bgr_min_dec, std::vector<double> bgr_max_dec) : speed(s),gsMin(gs_min),gsMax(gs_max) {
+		std::vector<double> bgr_min_dec, std::vector<double> bgr_max_dec) :
+    speed(s),gsMin(gs_min),gsMax(gs_max),bgrMinTre(bgr_min_tre),bgrMaxTre(bgr_max_tre),
+    bgrMinDec(bgr_min_dec),bgrMaxDec(bgr_max_dec) {
         updated = false;
 	assert(pid.size() == 3);
         ltPid = new PIDcalculator(pid[0], pid[1], pid[2], PERIOD_UPD_TSK, -speed, speed);
-	assert(bgr_min_tre.size() == 3);
-	assert(bgr_max_tre.size() == 3);
-	assert(bgr_min_dec.size() == 3);
-	assert(bgr_max_dec.size() == 3);
-	bgrMinTre = Scalar(bgr_min_tre[0], bgr_min_tre[1], bgr_min_tre[2]);
-	bgrMaxTre = Scalar(bgr_max_tre[0], bgr_max_tre[1], bgr_max_tre[2]);
-	bgrMinDec = Scalar(bgr_min_dec[0], bgr_min_dec[1], bgr_min_dec[2]);
-	bgrMaxDec = Scalar(bgr_max_dec[0], bgr_max_dec[1], bgr_max_dec[2]);
 	count = hasCaughtCount = 0;
     }
     ~ApproachBlock() {
@@ -556,7 +544,7 @@ public:
         if (!updated) {
 	    video->setTraceTargetType(TT_BLKS);
 	    video->setThresholds(gsMin, gsMax);
-	    video->setMaskThresholds(bgrMinTre, bgrMaxTre, bgrMinDec, bgrMaxDec);
+	    video->setMaskThresholds(bgrMinTre, bgrMaxTre, bgrMinDec, bgrMaxDec, {0,0,0}, {0,0,0});
             /* The following code chunk is to properly set prevXin in SRLF */
             srlfL->setRate(0.0);
             leftMotor->setPWM(leftMotor->getPWM());
@@ -600,7 +588,7 @@ public:
 protected:
     int speed, gsMin, gsMax, count, hasCaughtCount;
     PIDcalculator* ltPid;
-    Scalar bgrMinTre, bgrMaxTre, bgrMinDec, bgrMaxDec;
+    std::vector<double> bgrMinTre, bgrMaxTre, bgrMinDec, bgrMaxDec;
     bool updated;
 };
 
