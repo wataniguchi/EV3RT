@@ -56,6 +56,7 @@ using std::this_thread::sleep_for;
 #define HOUGH_LINES_THRESH int(FRAME_HEIGHT/10)
 #define MIN_LINE_LENGTH int(FRAME_HEIGHT/10)
 #define MAX_LINE_GAP int(FRAME_HEIGHT/8)
+#define MAX_VLINE_XGAP int(FRAME_WIDTH/10)
 #define LINE_THICKNESS int(FRAME_WIDTH/80)
 #define CIRCLE_RADIUS int(FRAME_WIDTH/40)
 #define SCAN_V_POS int(13*FRAME_HEIGHT/16 - LINE_THICKNESS)
@@ -67,7 +68,7 @@ using std::this_thread::sleep_for;
 #define OUT_FRAME_HEIGHT 240
 
 int b_min_tre=0,g_min_tre=0,r_min_tre=80,b_max_tre=50,g_max_tre=40,r_max_tre=255;
-int b_min_dec=35,g_min_dec=0,r_min_dec=0,b_max_dec=255,g_max_dec=60,r_max_dec=30;
+int b_min_dec=35,g_min_dec=0,r_min_dec=0,b_max_dec=255,g_max_dec=65,r_max_dec=30;
 int b_min=0,g_min=0,r_min=0,b_max=70,g_max=60,r_max=65;
 int gs_min=10,gs_max=100,edge=0;
 vector<Point> blk_roi;
@@ -323,7 +324,7 @@ int main() {
       }
       if (tlines.size() >= 1) {
 	sort(tlines.begin(), tlines.end(), [](const vector<int> &alpha, const vector<int> &beta){return alpha[0] < beta[0];});
-	int x_bottom_smaller = FRAME_WIDTH, x_bottom_larger = 0;
+	int x_bottom_smaller = FRAME_WIDTH, x_bottom_larger = 0, tx1_1st = 0;
 	for (int i = 0; i < tlines.size(); i++) {
 	  if (i < 2) { /* select two lines closest to the bottom center */
 	    int x_bottom = tlines[i][1];
@@ -356,6 +357,12 @@ int main() {
 	    } else { /* x_top > FRAME_WIDTH */
 	      tx2 = FRAME_WIDTH;
 	      ty2 = static_cast<int>(static_cast<float>(FRAME_WIDTH-x1)*dy/dx + y1);
+	    }
+	    /* ignore the second closest line if it is too apart from the first */
+	    if (i == 0) {
+	      tx1_1st = tx1;
+	    } else if (i == 1) {
+	      if (abs(tx1 - tx1_1st) > MAX_VLINE_XGAP) break;
 	    }
 	    /* indicate the virtual line on the original image */
 	    line(img_orig, Point(tx1,ty1), Point(tx2,ty2), Scalar(0,255,0), LINE_THICKNESS, LINE_4);

@@ -37,6 +37,7 @@ BLK_AREA_MIN = (20.0*FRAME_WIDTH/640.0)*(20.0*FRAME_WIDTH/640.0)
 HOUGH_LINES_THRESH = int(FRAME_HEIGHT/10)
 MIN_LINE_LENGTH = int(FRAME_HEIGHT/10)
 MAX_LINE_GAP = int(FRAME_HEIGHT/8)
+MAX_VLINE_XGAP = int(FRAME_WIDTH/10)
 LINE_THICKNESS = int(FRAME_WIDTH/80)
 CIRCLE_RADIUS = int(FRAME_WIDTH/40)
 SCAN_V_POS = int(13*FRAME_HEIGHT/16 - LINE_THICKNESS)
@@ -53,7 +54,7 @@ B_MIN_DEC = 35
 G_MIN_DEC = 0
 R_MIN_DEC = 0
 B_MAX_DEC = 255
-G_MAX_DEC = 60
+G_MAX_DEC = 65
 R_MAX_DEC = 30
 
 # frame size for X11 painting
@@ -279,6 +280,7 @@ while True:
             tlines = sorted(tlines, reverse=False, key=lambda x: x[0])
             x_bottom_smaller = FRAME_WIDTH
             x_bottom_larger = 0            
+            tx1_1st = 0
             for i, tline in enumerate(tlines):
                 if i < 2: # select two lines closest to the bottom center 
                     _, x_bottom, x_top, x1, y1, x2, y2 = tline
@@ -304,6 +306,13 @@ while True:
                     else: # x_top > FRAME_WIDTH
                         tx2 = FRAME_WIDTH
                         ty2 = int((FRAME_WIDTH-x1)*dy/dx + y1)
+                    # ignore the second closest line if it is too apart from the first
+                    if i == 0:
+                        tx1_1st = tx1
+                    elif i == 1:
+                        if abs(tx1 - tx1_1st) > MAX_VLINE_XGAP:
+                            break
+                            #pass
                     # indicate the virtual line on the original image
                     img_orig = cv2.line(img_orig, (tx1,ty1), (tx2,ty2), (0,255,0), LINE_THICKNESS)
                     # prepare for trace target calculation
@@ -323,6 +332,7 @@ while True:
                             x,y,width,height = cv2.boundingRect(contours_dec[idx])
                             if intersect((x,y+height), (x+width,y+height), (tx1,ty1), (tx2,ty2)):
                                 cnt_idx_dec_online.append(cnt_idx_entry)
+                        
             # calculate the trace target using the edges
             if edge == 0:
                 mx = x_bottom_smaller
