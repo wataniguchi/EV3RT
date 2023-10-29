@@ -24,8 +24,8 @@ extern "C" {
 #ifndef STACK_SIZE
 #define STACK_SIZE          (4096)
 #endif /* STACK_SIZE */
-#define MAIN_STACK_SIZE     (16384)
-#define UPD_STACK_SIZE      (4096)
+#define MAIN_STACK_SIZE     (32768)
+#define UPD_STACK_SIZE      (8192)
     
 /* prototypes for configuration */
 #ifndef TOPPERS_MACRO_ONLY

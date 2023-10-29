@@ -327,15 +327,16 @@ bool isColor(Color c, rgb_raw_t cur_rgb) {
     if (cur_rgb.r <= 50 && cur_rgb.g <= 50 && cur_rgb.b <= 50) return true;
     break;
   case CL_BLUE:
-    if (cur_rgb.r <= 50 && cur_rgb.g <= 90 && cur_rgb.b >= 80 &&
-	cur_rgb.b - cur_rgb.r >= 30) return true;
+    if (cur_rgb.r < 80 && cur_rgb.g < 80 && cur_rgb.b >= 80 &&
+	cur_rgb.b - cur_rgb.r >= 20) return true;
     break;
   case CL_RED:
-    if (cur_rgb.r > 100 && cur_rgb.g < 50 && cur_rgb.b < 60 &&
+    if (cur_rgb.r > 100 && cur_rgb.g < 70 && cur_rgb.b < 80 &&
 	cur_rgb.b > 10 && cur_rgb.g > 10 && cur_rgb.r - cur_rgb.g >= 50) return true;
     break;
   case CL_YELLOW:
-    if (cur_rgb.r >= 140 && cur_rgb.g >= 120 && cur_rgb.b <= 120) return true;
+    if (cur_rgb.r >= 140 && cur_rgb.g >= 120 && cur_rgb.b <= 120 &&
+	cur_rgb.r - cur_rgb.g >= 20) return true;
     break;
   case CL_GREEN:
     if (cur_rgb.r <= 70 && cur_rgb.g >= 70 && cur_rgb.b <= 70 &&
@@ -614,9 +615,12 @@ protected:
 
 /*
     usage:
-    ".leaf<TraverseVLine>(speed, pid, gs_min, gs_max, bgr_min_tre, bgr_max_tre, bgr_min_dec, bgr_max_dec, bgr_min_lin, bgr_max_lin)"
+    ".leaf<TraverseVLine>(speed, target, pidSen, pidCam , gs_min, gs_max, bgr_min_tre, bgr_max_tre, bgr_min_dec, bgr_max_dec, bgr_min_lin, bgr_max_lin)"
     is to instruct the robot to trace back and forth the most plausible virtual line at the given speed while recognizing blocks on the line.
-    pid is a vector of three constants for PID control.
+    Note that this class uses both camera and color sensor for trace.
+
+    target is the brightness level for the ideal line for color sensor trace.
+    pidSen / pidCam is a vector of three constants for PID control for line trace using color sensor / camera.
     gs_min, gs_max are grayscale threshold for object recognition binalization.
     bgr_min_tre, bgr_max_tre are bgr vector threshold for identifying RED objects.
     bgr_min_dec, bgr_max_dec are bgr vector threshold for identifying BLUE objects.
@@ -627,23 +631,27 @@ protected:
 */
 class TraverseVLine : public BrainTree::Node {
 public:
-  TraverseVLine(int s, std::vector<double> pid, int gs_min, int gs_max,
+  TraverseVLine(int s, int t, std::vector<double> pidSen, std::vector<double> pidCam, int gs_min, int gs_max,
 		std::vector<double> bgr_min_tre, std::vector<double> bgr_max_tre,
 		std::vector<double> bgr_min_dec, std::vector<double> bgr_max_dec,
 		std::vector<double> bgr_min_lin, std::vector<double> bgr_max_lin,
 		TraceSide trace_side) :
-    speed(s),gsMin(gs_min),gsMax(gs_max),side(trace_side),
+    speed(s),target(t),gsMin(gs_min),gsMax(gs_max),side(trace_side),
     bgrMinTre(bgr_min_tre),bgrMaxTre(bgr_max_tre),
     bgrMinDec(bgr_min_dec),bgrMaxDec(bgr_max_dec),
     bgrMinLin(bgr_min_lin),bgrMaxLin(bgr_max_lin) {
         updated = false;
-	assert(pid.size() == 3);
-        ltPid = new PIDcalculator(pid[0], pid[1], pid[2], PERIOD_UPD_TSK, -speed, speed);
+	assert(pidSen.size() == 3);
+        ltPidSen = new PIDcalculator(pidSen[0], pidSen[1], pidSen[2], PERIOD_UPD_TSK, -speed, speed);
+	assert(pidCam.size() == 3);
+        ltPidCam = new PIDcalculator(pidCam[0], pidCam[1], pidCam[2], PERIOD_UPD_TSK, -speed, speed);
     }
     ~TraverseVLine() {
-        delete ltPid;
+        delete ltPidCam;
+        delete ltPidSen;
     }
     Status update() override {
+        int currentDist = plotter->getDistance();
         if (!updated) {
 	    video->setTraceTargetType(TT_VLINE);
 	    video->setThresholds(gsMin, gsMax);
@@ -668,96 +676,102 @@ public:
             leftMotor->setPWM(leftMotor->getPWM());
             srlfR->setRate(0.0);
             rightMotor->setPWM(rightMotor->getPWM());
-            _log("ODO=%05d, VLine traversal started.", plotter->getDistance());
+            _log("ODO=%05d, VLine traversal started.", currentDist);
 	    st = TVLST_INITIAL;
 	    circleColor = CL_WHITE;
-	    countBlack = 0;
+	    countBlack = countWhite = 0;
 	    row = 0;
             updated = true;
         }
 
-        int8_t forward, turn, pwmL, pwmR;
-	int theta = video->getTheta();
-	_debug(_log("ODO=%05d, theta = %d", plotter->getDistance(), theta),3); /* if _DEBUG_LEVEL >= 3 */
-	
-        /* compute necessary amount of steering by PID control */
-        turn = (-1) * ltPid->compute(theta, 0); /* 0 is the center */
-	_debug(_log("ODO=%05d, turn = %d", plotter->getDistance(), turn),3); /* if _DEBUG_LEVEL >= 3 */
-        forward = speed;
-        /* steer EV3 by setting different speed to the motors */
-        pwmL = forward - turn;
-        pwmR = forward + turn;
-        leftMotor->setPWM(pwmL);
-        rightMotor->setPWM(pwmR);
-
         rgb_raw_t cur_rgb;
-        colorSensor->getRawColor(cur_rgb);	
+
+        colorSensor->getRawColor(cur_rgb);
+	//_log("ODO=%05d, rgb(%03d,%03d,%03d)", currentDist, cur_rgb.r, cur_rgb.g, cur_rgb.b);
+	_debug(_log("ODO=%05d, rgb(%03d,%03d,%03d)", currentDist, cur_rgb.r, cur_rgb.g, cur_rgb.b),3); /* if _DEBUG_LEVEL >= 3 */
+
 	switch(st) {
 	case TVLST_INITIAL:
 	case TVLST_ON_LINE:
-	  _debug(_log("ODO=%05d, rgb(%03d,%03d,%03d)", plotter->getDistance(), cur_rgb.r, cur_rgb.g, cur_rgb.b),3); /* if _DEBUG_LEVEL >= 3 */
 	  if (isColor(CL_BLUE, cur_rgb)) {
 	    row++;
-	    _log("ODO=%05d, circle CL_BLUE detected at Row %d", plotter->getDistance(), row);
+	    circleDist = currentDist;
+	    _log("ODO=%05d, circle CL_BLUE detected at Row %d", circleDist, row);
 	    circleColor = CL_BLUE;
 	    st = TVLST_ON_CIRCLE;
 	  } else if (isColor(CL_RED, cur_rgb)) {
 	    row++;
-	    _log("ODO=%05d, circle CL_RED detected at Row %d", plotter->getDistance(), row);
+	    circleDist = currentDist;
+	    _log("ODO=%05d, circle CL_RED detected at Row %d", circleDist, row);
 	    circleColor = CL_RED;
-	    row++;
 	    st = TVLST_ON_CIRCLE;
 	  } else if (isColor(CL_YELLOW, cur_rgb)) {
 	    row++;
-	    _log("ODO=%05d, circle CL_YELLOW detected at Row %d", plotter->getDistance(), row);
+	    circleDist = currentDist;
+	    _log("ODO=%05d, circle CL_YELLOW detected at Row %d", circleDist, row);
 	    circleColor = CL_YELLOW;
-	    row++;
 	    st = TVLST_ON_CIRCLE;
 	  } else if (isColor(CL_GREEN, cur_rgb)) {
 	    row++;
-	    _log("ODO=%05d, circle CL_GREEN detected at Row %d", plotter->getDistance(), row);
+	    circleDist = currentDist;
+	    _log("ODO=%05d, circle CL_GREEN detected at Row %d", circleDist, row);
 	    circleColor = CL_GREEN;
-	    row++;
 	    st = TVLST_ON_CIRCLE;
+	  } else if (st == TVLST_INITIAL && isColor(CL_BLACK, cur_rgb)) {
+	    if (++countBlack >= 3) { /* when CL_BLACK is consequtively detected */
+	      row++;
+	      _log("ODO=%05d, determined to be ON LINE. no circle detected at Row %d", currentDist, row);
+	      st = TVLST_ON_LINE;
+	    }
+	  } else if (st == TVLST_ON_LINE && isColor(CL_WHITE, cur_rgb)) {
+	    if (++countWhite >= 10) { /* when CL_WHITE is consequtively detected */
+	      _log("ODO=%05d, line lost.", currentDist);
+	      //st = TVLST_UNKNOWN;
+	    }
+	  } else if (st == TVLST_ON_LINE && isColor(CL_BLACK, cur_rgb)) {
+	    countWhite = 0; /* reset white counter */
 	  }
-	  if (row >= 3) st = TVLST_END;
+	  if (row >= 4) st = TVLST_END;
 	  break;
 	case TVLST_ON_CIRCLE:
 	  if (isColor(CL_BLUE, cur_rgb)) {
 	    if (circleColor == CL_BLUE) {
 	      countBlack = 0; /* reset black counter */
 	    } else {
-	      _log("ODO=%05d, unexpected CL_BLUE detected with rgb(%03d,%03d,%03d)", plotter->getDistance(), cur_rgb.r, cur_rgb.g, cur_rgb.b);
+	      _log("ODO=%05d, unexpected CL_BLUE detected with rgb(%03d,%03d,%03d)", currentDist, cur_rgb.r, cur_rgb.g, cur_rgb.b);
 	      st = TVLST_UNKNOWN;
 	    }
 	  } else if (isColor(CL_RED, cur_rgb)) {
 	    if (circleColor == CL_RED) {
 	      countBlack = 0; /* reset black counter */
 	    } else {  
-	      _log("ODO=%05d, unexpected CL_RED detected with rgb(%03d,%03d,%03d)", plotter->getDistance(), cur_rgb.r, cur_rgb.g, cur_rgb.b);
+	      _log("ODO=%05d, unexpected CL_RED detected with rgb(%03d,%03d,%03d)", currentDist, cur_rgb.r, cur_rgb.g, cur_rgb.b);
 	      st = TVLST_UNKNOWN;
 	    }
 	  } else if (isColor(CL_YELLOW, cur_rgb)) {
 	    if (circleColor == CL_YELLOW) {
 	      countBlack = 0; /* reset black counter */
 	    } else {  
-	      _log("ODO=%05d, unexpected CL_YELLOW detected with rgb(%03d,%03d,%03d)", plotter->getDistance(), cur_rgb.r, cur_rgb.g, cur_rgb.b);
+	      _log("ODO=%05d, unexpected CL_YELLOW detected with rgb(%03d,%03d,%03d)", currentDist, cur_rgb.r, cur_rgb.g, cur_rgb.b);
 	      st = TVLST_UNKNOWN;
 	    }
 	  } else if (isColor(CL_GREEN, cur_rgb)) {
 	    if (circleColor == CL_GREEN) {
 	      countBlack = 0; /* reset black counter */
 	    } else {  
-	      _log("ODO=%05d, unexpected CL_GREEN detected with rgb(%03d,%03d,%03d)", plotter->getDistance(), cur_rgb.r, cur_rgb.g, cur_rgb.b);
+	      _log("ODO=%05d, unexpected CL_GREEN detected with rgb(%03d,%03d,%03d)", currentDist, cur_rgb.r, cur_rgb.g, cur_rgb.b);
 	      st = TVLST_UNKNOWN;
 	    }
 	  } else if (isColor(CL_WHITE, cur_rgb)) {
 	    countBlack = 0; /* reset black counter */
 	  } else if (isColor(CL_BLACK, cur_rgb)) {
 	    if (++countBlack >= 3) { /* when CL_BLACK is consequtively detected */
-	    _log("ODO=%05d, determined to be ON LINE.", plotter->getDistance());
+	      _log("ODO=%05d, determined to be ON LINE.", currentDist);
 	      st = TVLST_ON_LINE;
 	    }
+	  } else if (currentDist - circleDist >= 150) {
+	     _log("ODO=%05d, ON LINE is assumed without CL_BLACK detection", currentDist);
+	      st = TVLST_ON_LINE;
 	  }
 	  break;
 	default:
@@ -767,14 +781,41 @@ public:
 	if (st == TVLST_END) {
 	    leftMotor->setPWM(0);
 	    rightMotor->setPWM(0);
-            _log("ODO=%05d, VLine traversal ended.", plotter->getDistance());
+            _log("ODO=%05d, VLine traversal ended.", currentDist);
 	    return Status::Success;
 	} else if (st == TVLST_UNKNOWN) {
 	    leftMotor->setPWM(0);
 	    rightMotor->setPWM(0);
-            _log("ODO=%05d, VLine traversal FAILED with UNKNOWN state.", plotter->getDistance());
+            _log("ODO=%05d, VLine traversal FAILED with UNKNOWN state.", currentDist);
 	    return Status::Failure;
 	} else {
+	  int sensor;
+	  int8_t forward, turn, pwmL, pwmR;
+	
+	  if (row <= 2 || (row > 2 && st != TVLST_ON_LINE)) {
+	    /* trace line using camera until reaching to Row 3 */
+	    int theta = video->getTheta();
+	    _debug(_log("ODO=%05d, theta = %d", currentDist, theta),3); /* if _DEBUG_LEVEL >= 3 */
+	
+	    /* compute necessary amount of steering by PID control */
+	    turn = (-1) * ltPidCam->compute(theta, 0); /* 0 is the center */
+	  } else { /* row > 2 && on line */
+	    /* trace line using color sensor from Row 3 to Row 4 */
+	    sensor = cur_rgb.r;	
+	    /* compute necessary amount of steering by PID control */
+	    if (side == TS_NORMAL) {
+	      turn = (-1) * _COURSE * ltPidSen->compute(sensor, target);
+	    } else { /* side == TS_OPPOSITE */
+	      turn = _COURSE * ltPidSen->compute(sensor, target);
+	    }
+	  }
+	  _debug(_log("ODO=%05d, turn = %d", currentDist, turn),3); /* if _DEBUG_LEVEL >= 3 */
+	  forward = speed;
+	  /* steer EV3 by setting different speed to the motors */
+	  pwmL = forward - turn;
+	  pwmR = forward + turn;
+	  leftMotor->setPWM(pwmL);
+	  rightMotor->setPWM(pwmR);
 	  return Status::Running;
         }
     }
@@ -786,8 +827,8 @@ protected:
       TVLST_UNKNOWN,
       TVLST_END,
     };
-  int speed, gsMin, gsMax, row, countBlack;
-    PIDcalculator* ltPid;
+    int speed, target, gsMin, gsMax, circleDist, row, countBlack, countWhite;
+    PIDcalculator *ltPidSen, *ltPidCam;
     TraceSide side;
     std::vector<double> bgrMinTre, bgrMaxTre, bgrMinDec, bgrMaxDec, bgrMinLin, bgrMaxLin;
     TVLState st;
