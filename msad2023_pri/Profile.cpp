@@ -13,7 +13,7 @@
 Profile::Profile(const std::string& paths) {
   glob_t globbuf;
   glob (paths.c_str(), 0, NULL, &globbuf);
-  for (int i = 0; i < globbuf.gl_pathc; i++) {
+  for (int i = 0; i < (int)globbuf.gl_pathc; i++) {
     std::string path = globbuf.gl_pathv[i];
 
   std::ifstream is(path);
