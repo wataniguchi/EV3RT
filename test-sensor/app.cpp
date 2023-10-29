@@ -104,11 +104,14 @@ void main_task(intptr_t unused)
 	if (cur_rgb.r >= 120 && cur_rgb.g >= 120 && cur_rgb.b >= 120) color |= 32; /* white */
 #else
 	if (cur_rgb.r <= 50 && cur_rgb.g <= 50 && cur_rgb.b <= 50) color |= 1; /* black */
-	if (cur_rgb.r >= 110 && cur_rgb.g <= 70 && cur_rgb.b <= 70) color |= 2; /* red */
-	if (cur_rgb.r <= 70 && cur_rgb.g >= 60 && cur_rgb.b <= 120) color |= 4; /* green */
-	if (cur_rgb.r <= 50 && cur_rgb.g <= 90 && cur_rgb.b >= 100) color |= 8; /* blue */
-	if (cur_rgb.r >= 170 && cur_rgb.g >= 120 && cur_rgb.b <= 120) color |= 16; /* yellow */
-	if (cur_rgb.r >= 170 && cur_rgb.g >= 170 && cur_rgb.b >= 170) color |= 32; /* white */
+	if (cur_rgb.r > 100 && cur_rgb.g < 50 && cur_rgb.b < 60 && cur_rgb.b > 10 &&
+	    cur_rgb.g > 10 && cur_rgb.r - cur_rgb.g >= 50) color |= 2; /* red */
+	if (cur_rgb.r <= 70 && cur_rgb.g >= 70 && cur_rgb.b <= 70 &&
+	    cur_rgb.g - cur_rgb.r >= 25) color |= 4; /* green */
+	if (cur_rgb.r <= 50 && cur_rgb.g <= 90 && cur_rgb.b >= 80 &&
+	    cur_rgb.b - cur_rgb.r >= 30) color |= 8; /* blue */
+	if (cur_rgb.r >= 140 && cur_rgb.g >= 120 && cur_rgb.b <= 120) color |= 16; /* yellow */
+	if (cur_rgb.r >= 150 && cur_rgb.g >= 150 && cur_rgb.b >= 150) color |= 32; /* white */
 #endif /* WITH_FILTER */
         _log("color = %02u, rgb = (%03u, %03u, %03u), hsv = (%03u, %03u, %03u)",
 	     color, cur_rgb.r, cur_rgb.g, cur_rgb.b, cur_hsv.h, cur_hsv.s, cur_hsv.v);

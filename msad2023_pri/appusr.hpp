@@ -87,6 +87,7 @@ enum Color {
     CL_RED,
     CL_YELLOW,
     CL_GREEN,
+    CL_WHITE,
 };
 
 enum State {
