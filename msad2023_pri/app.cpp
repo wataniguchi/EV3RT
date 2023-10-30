@@ -51,7 +51,7 @@ Plotter*        plotter;
 Video*          video;
 int16_t         guideAngle = 0;
 int             guideLocX = 0, guideLocY = 0;
-int             blockAreaRow = 0, blockAreaColumn = 0, decoyMoved = 0;
+int             vLineRow = 0, vLineColumn = 0, decoyMoved = 0;
 int             _COURSE; /* -1 for R course and 1 for L course */
 int             _DEBUG_LEVEL; /* used in _debug macro in appusr.hpp */
 int             upd_process_count = 0; /* used in _intervalLog macro and
@@ -328,8 +328,8 @@ bool isColor(Color c, rgb_raw_t cur_rgb) {
     if (cur_rgb.r <= 50 && cur_rgb.g <= 50 && cur_rgb.b <= 50) return true;
     break;
   case CL_BLUE:
-    if (cur_rgb.r < 80 && cur_rgb.g < 80 && cur_rgb.b >= 80 &&
-	cur_rgb.b - cur_rgb.r >= 20) return true;
+    if (cur_rgb.r < 50 && cur_rgb.g < 70 && cur_rgb.b >= 70 &&
+	cur_rgb.b - cur_rgb.r >= 25) return true;
     break;
   case CL_RED:
     if (cur_rgb.r > 60 && cur_rgb.g < 70 && cur_rgb.b < 70 &&
@@ -337,7 +337,7 @@ bool isColor(Color c, rgb_raw_t cur_rgb) {
     break;
   case CL_YELLOW:
     if (cur_rgb.r >= 140 && cur_rgb.g >= 120 && cur_rgb.b <= 120 &&
-	cur_rgb.r - cur_rgb.g >= 20) return true;
+	cur_rgb.r - cur_rgb.g >= 20 && cur_rgb.g - cur_rgb.b >= 20) return true;
     break;
   case CL_GREEN:
     if (cur_rgb.r <= 70 && cur_rgb.g >= 70 && cur_rgb.b <= 70 &&
@@ -618,6 +618,91 @@ protected:
 
 /*
     usage:
+    ".leaf<RotateEV3>(30, speed, srew_rate)"
+    is to rotate robot 30 degrees (=clockwise in L course and counter-clockwise in R course)
+    at the specified speed.
+    srew_rate = 0.0 indidates NO tropezoidal motion.
+    srew_rate = 0.5 instructs FilteredMotor to change 1 pwm every two executions of update()
+    until the current speed gradually reaches the instructed target speed.
+*/
+class RotateEV3 : public BrainTree::Node {
+public:
+    RotateEV3(int degree, int s, double srew_rate) : deltaDegreeTarget(degree),speed(s),srewRate(srew_rate) {
+        updated = false;
+	assert(degree >= -180 && degree <= 180);
+	deltaDegreeTarget = _COURSE * degree; /* _COURSE = -1 when R course */
+        if (deltaDegreeTarget > 0) {
+	  clockwise = 1; 
+        } else {
+	  clockwise = -1;
+        }
+    }
+    Status update() override {
+        if (!updated) {
+	    originalDegree = plotter->getDegree();
+            srlfL->setRate(0.0);
+            srlfR->setRate(0.0);
+            /* stop the robot at start */
+            leftMotor->setPWM(0);
+            rightMotor->setPWM(0);
+            _log("ODO=%05d, Rotation for %d started. Current angle = %d", plotter->getDistance(), deltaDegreeTarget, originalDegree);
+            updated = true;
+            return Status::Running;
+        }
+
+	int currentDegree = plotter->getDegree();
+	int deltaDegree = (currentDegree - originalDegree);
+	/* when    0 <= deltaDegree <= 180,  -90 <= deltaDegree < 269 */
+	if (deltaDegreeTarget >= 0 && deltaDegree <  -90) deltaDegree += 360;
+	/* when -180 <= deltaDegree <    0, -270 <= deltaDegree <  89 */
+	if (deltaDegreeTarget <  0 && deltaDegree >=  90) deltaDegree -= 360;
+	  
+        if (clockwise * deltaDegree < clockwise * deltaDegreeTarget) {
+            if ((srewRate != 0.0) && (clockwise * deltaDegree >= clockwise * deltaDegreeTarget - 5)) {
+                /* when comes to the half-way, start decreazing the speed by tropezoidal motion */    
+                leftMotor->setPWM(clockwise * 3);
+                rightMotor->setPWM(-clockwise * 3);
+            } else {
+                leftMotor->setPWM(clockwise * speed);
+                rightMotor->setPWM((-clockwise) * speed);
+            }
+            return Status::Running;
+        } else {
+            /* stop the robot at end */
+            leftMotor->setPWM(0);
+            rightMotor->setPWM(0);
+            _log("ODO=%05d, Rotation ended. Current angle = %d", plotter->getDistance(), plotter->getDegree());
+            return Status::Success;
+        }
+    }
+private:
+    int deltaDegreeTarget;
+    int16_t originalDegree;
+    int clockwise, speed;
+    bool updated;
+    double srewRate;
+};
+
+/*
+    usage:
+    ".leaf<SetVLineColumn>(column)"
+    is to set the current column number of Block Challenge area
+    that can be used in TraverseVLine action class.
+*/
+class SetVLineColumn : public BrainTree::Node {
+public:
+    SetVLineColumn(int c) : column(c) {} 
+    Status update() override {
+        vLineColumn = column;
+        _log("ODO=%05d, VLine column set to %d", plotter->getDistance(), vLineColumn);
+        return Status::Success;
+    }
+protected:
+  int column;
+};
+
+/*
+    usage:
     ".leaf<TraverseVLine>(speed, target, pidSen, pidCam , gs_min, gs_max, bgr_min_tre, bgr_max_tre, bgr_min_dec, bgr_max_dec, bgr_min_lin, bgr_max_lin)"
     is to instruct the robot to trace back and forth the most plausible virtual line at the given speed while recognizing blocks on the line.
     Note that this class uses both camera and color sensor for trace.
@@ -683,7 +768,7 @@ public:
 	    st = TVLST_INITIAL;
 	    circleColor = CL_WHITE;
 	    countBlack = countWhite = 0;
-	    blockAreaRow = 0; /* global variable */
+	    vLineRow = 0; /* global variable */
 	    direction = 1; /* direction = 1 is forward while -1 is reverse */
             updated = true;
         }
@@ -699,60 +784,68 @@ public:
 	case TVLST_ON_LINE:
 	  if (isColor(CL_BLUE, cur_rgb)) {
 	    if (circleColor != CL_WHITE && circleColor != CL_BLUE) {
-	      blockAreaRow = (direction == 1) ? 3 : 2;
+	      vLineRow = (direction == 1) ? 3 : 2;
 	    } else {
-	      blockAreaRow += direction;
+	      vLineRow += direction;
 	    }
 	    circleDist = currentDist;
-	    _log("ODO=%05d, circle CL_BLUE detected at Row %d", circleDist, blockAreaRow);
+	    _log("ODO=%05d, circle CL_BLUE detected with rgb(%03d,%03d,%03d) at Row %d", circleDist, cur_rgb.r, cur_rgb.g, cur_rgb.b, vLineRow);
 	    circleColor = CL_BLUE;
 	    st = TVLST_ON_CIRCLE;
 	  } else if (isColor(CL_RED, cur_rgb)) {
 	    if (circleColor != CL_WHITE && circleColor != CL_RED) {
-	      blockAreaRow = (direction == 1) ? 3 : 2;
+	      vLineRow = (direction == 1) ? 3 : 2;
 	    } else {
-	      blockAreaRow += direction;
+	      vLineRow += direction;
 	    }
 	    circleDist = currentDist;
-	    _log("ODO=%05d, circle CL_RED detected at Row %d", circleDist, blockAreaRow);
+	    _log("ODO=%05d, circle CL_RED detected with rgb(%03d,%03d,%03d) at Row %d", circleDist, cur_rgb.r, cur_rgb.g, cur_rgb.b, vLineRow);
 	    circleColor = CL_RED;
 	    st = TVLST_ON_CIRCLE;
 	  } else if (isColor(CL_YELLOW, cur_rgb)) {
 	    if (circleColor != CL_WHITE && circleColor != CL_YELLOW) {
-	      blockAreaRow = (direction == 1) ? 3 : 2;
+	      vLineRow = (direction == 1) ? 3 : 2;
 	    } else {
-	      blockAreaRow += direction;
+	      vLineRow += direction;
 	    }
 	    circleDist = currentDist;
-	    _log("ODO=%05d, circle CL_YELLOW detected at Row %d", circleDist, blockAreaRow);
+	    _log("ODO=%05d, circle CL_YELLOW detected with rgb(%03d,%03d,%03d) at Row %d", circleDist, cur_rgb.r, cur_rgb.g, cur_rgb.b, vLineRow);
 	    circleColor = CL_YELLOW;
 	    st = TVLST_ON_CIRCLE;
 	  } else if (isColor(CL_GREEN, cur_rgb)) {
 	    if (circleColor != CL_WHITE && circleColor != CL_GREEN) {
-	      blockAreaRow = (direction == 1) ? 3 : 2;
+	      vLineRow = (direction == 1) ? 3 : 2;
 	    } else {
-	      blockAreaRow += direction;
+	      vLineRow += direction;
 	    }
 	    circleDist = currentDist;
-	    _log("ODO=%05d, circle CL_GREEN detected at Row %d", circleDist, blockAreaRow);
+	    _log("ODO=%05d, circle CL_GREEN detected with rgb(%03d,%03d,%03d) at Row %d", circleDist, cur_rgb.r, cur_rgb.g, cur_rgb.b, vLineRow);
 	    circleColor = CL_GREEN;
 	    st = TVLST_ON_CIRCLE;
-	  } else if (st == TVLST_INITIAL && isColor(CL_BLACK, cur_rgb)) {
-	    if (++countBlack >= 3) { /* when CL_BLACK is consequtively detected */
-	      blockAreaRow = 1;
-	      _log("ODO=%05d, determined to be ON LINE. no circle detected at Row 1", currentDist);
-	      st = TVLST_ON_LINE;
-	    }
-	  } else if (st == TVLST_ON_LINE && isColor(CL_WHITE, cur_rgb)) {
-	    if (++countWhite >= 10) { /* when CL_WHITE is consequtively detected */
-	      _log("ODO=%05d, line lost.", currentDist);
+	  } else if (isColor(CL_BLACK, cur_rgb)) {
+	    countWhite = 0; /* reset white counter */
+	    if (++countBlack >= 3 && st == TVLST_INITIAL) { /* when CL_BLACK is consequtively detected */
+		vLineRow = 1;
+		_log("ODO=%05d, determined to be ON LINE. no circle detected at Row 1", currentDist);
+		st = TVLST_ON_LINE;
+	    } else if (countBlack == 10) { /* force Plotter degree when tracing is stable */
+	      int origDeg = plotter->getDegree();
+	      int newDeg = 180 + 90 * direction * _COURSE; /* _COURSE = -1 when R course */
+	      plotter->setDegree(newDeg);
+	      _log("ODO=%05d, Plotter degree forcefully changed from %d to %d.", currentDist, origDeg, newDeg);
+ 	    }
+	  } else if (isColor(CL_WHITE, cur_rgb) && st == TVLST_ON_LINE) {
+	    countBlack = 0; /* reset black counter */	    
+	    if (++countWhite >= 30) { /* when CL_WHITE is consequtively detected */
+	      _log("ODO=%05d, line LOST.", currentDist);
 	      //st = TVLST_UNKNOWN;
 	    }
-	  } else if (st == TVLST_ON_LINE && isColor(CL_BLACK, cur_rgb)) {
-	    countWhite = 0; /* reset white counter */
 	  }
-	  if (direction == 1 && blockAreaRow >= 4) st = TVLST_ABOUT_FACE;
-	  if (direction == -1 && blockAreaRow <= 1) st = TVLST_ABOUT_FACE;
+	  if ( (direction ==  1 && vLineRow >= 4) ||
+	       (direction == -1 && vLineRow <= 1) ) {
+	    ndChild = new RotateEV3(180, 56, 0.0); /* To-Do: magic numbers */
+	    st = TVLST_ABOUT_FACE;
+	  }
 	  break;
 	case TVLST_ON_CIRCLE:
 	  if (isColor(CL_BLUE, cur_rgb)) {
@@ -795,10 +888,19 @@ public:
 	      st = TVLST_ON_LINE;
 	  }
 	  break;
+	case TVLST_ABOUT_FACE:
+	  stsChild = ndChild->update();
+	  if (stsChild == Status::Running) return stsChild;
+	  if (stsChild == Status::Success) {
+	    delete ndChild;
+	    direction *= -1;
+	    st = TVLST_ON_CIRCLE;
+	  }
+	  break;
 	default:
 	  break;
 	}
-	  
+
 	if (st == TVLST_END) {
 	    leftMotor->setPWM(0);
 	    rightMotor->setPWM(0);
@@ -809,17 +911,12 @@ public:
 	    rightMotor->setPWM(0);
             _log("ODO=%05d, VLine traversal FAILED with UNKNOWN state.", currentDist);
 	    return Status::Failure;
-	} else if (st == TVLST_ABOUT_FACE) {
-	    leftMotor->setPWM(0);
-	    rightMotor->setPWM(0);
-            _log("ODO=%05d, VLine traversal about face.", currentDist);
-	    return Status::Success;
 	} else {
 	  int sensor;
 	  int8_t forward, turn, pwmL, pwmR;
 	
-	  if ( (direction ==  1 && (blockAreaRow < 3 || (blockAreaRow >= 3 && st != TVLST_ON_LINE))) ||
-	       (direction == -1 && (blockAreaRow > 2 || (blockAreaRow <= 2 && st != TVLST_ON_LINE))) ) {
+	  if ( (direction ==  1 && (vLineRow < 3 || (vLineRow >= 3 && st != TVLST_ON_LINE))) ||
+	       (direction == -1 && (vLineRow > 2 || (vLineRow <= 2 && st != TVLST_ON_LINE))) ) {
 	    /* trace line using camera until reaching to Row 3 in forward
 	       and until reaching to Row 2 in reverse */
 	    int theta = video->getTheta();
@@ -864,6 +961,8 @@ protected:
     std::vector<double> bgrMinTre, bgrMaxTre, bgrMinDec, bgrMaxDec, bgrMinLin, bgrMaxLin;
     TVLState st;
     Color circleColor;
+    Node* ndChild;
+    Status stsChild;
     bool updated;
 };
 
@@ -1067,71 +1166,6 @@ protected:
     double srewRate;
     bool updated;
 };
-
-/*
-    usage:
-    ".leaf<RotateEV3>(30, speed, srew_rate)"
-    is to rotate robot 30 degrees (=clockwise in L course and counter-clockwise in R course)
-    at the specified speed.
-    srew_rate = 0.0 indidates NO tropezoidal motion.
-    srew_rate = 0.5 instructs FilteredMotor to change 1 pwm every two executions of update()
-    until the current speed gradually reaches the instructed target speed.
-*/
-class RotateEV3 : public BrainTree::Node {
-public:
-    RotateEV3(int degree, int s, double srew_rate) : deltaDegreeTarget(degree),speed(s),srewRate(srew_rate) {
-        updated = false;
-	assert(degree > -360 && degree < 360);
-	deltaDegreeTarget = _COURSE * degree; /* _COURSE = -1 when R course */
-        if (deltaDegreeTarget > 0) {
-	  clockwise = 1; 
-        } else {
-	  clockwise = -1;
-        }
-    }
-    Status update() override {
-        if (!updated) {
-	    originalDegree = plotter->getDegree();
-            srlfL->setRate(srewRate);
-            srlfR->setRate(srewRate);
-            /* stop the robot at start */
-            leftMotor->setPWM(0);
-            rightMotor->setPWM(0);
-            _log("ODO=%05d, Rotation for %d started. Current angle = %d", plotter->getDistance(), deltaDegreeTarget, originalDegree);
-            updated = true;
-            return Status::Running;
-        }
-
-	int currentDegree = plotter->getDegree();
-	if ( deltaDegreeTarget > 0 && currentDegree < originalDegree ) currentDegree += 360;
-	if ( deltaDegreeTarget < 0 && currentDegree > originalDegree ) currentDegree -= 360;
-	int deltaDegree = currentDegree - originalDegree;
-        if (clockwise * deltaDegree < clockwise * deltaDegreeTarget) {
-            if ((srewRate != 0.0) && (clockwise * deltaDegree >= clockwise * deltaDegreeTarget - 5)) {
-                /* when comes to the half-way, start decreazing the speed by tropezoidal motion */    
-                leftMotor->setPWM(clockwise * 3);
-                rightMotor->setPWM(-clockwise * 3);
-            } else {
-                leftMotor->setPWM(clockwise * speed);
-                rightMotor->setPWM((-clockwise) * speed);
-            }
-            return Status::Running;
-        } else {
-            /* stop the robot at end */
-            leftMotor->setPWM(0);
-            rightMotor->setPWM(0);
-            _log("ODO=%05d, Rotation ended. Current angle = %d", plotter->getDistance(), plotter->getDegree());
-            return Status::Success;
-        }
-    }
-private:
-    int deltaDegreeTarget;
-    int16_t originalDegree;
-    int clockwise, speed;
-    bool updated;
-    double srewRate;
-};
-
 
 /*
     usage:
