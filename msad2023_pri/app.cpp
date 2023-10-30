@@ -328,8 +328,8 @@ bool isColor(Color c, rgb_raw_t cur_rgb) {
     if (cur_rgb.r <= 50 && cur_rgb.g <= 50 && cur_rgb.b <= 50) return true;
     break;
   case CL_BLUE:
-    if (cur_rgb.r < 50 && cur_rgb.g < 70 && cur_rgb.b >= 70 &&
-	cur_rgb.b - cur_rgb.r >= 25) return true;
+    if (cur_rgb.r < 60 && cur_rgb.g < 100 && cur_rgb.b >= 100 &&
+	cur_rgb.b - cur_rgb.r >= 60 && cur_rgb.g - cur_rgb.r >= 30) return true;
     break;
   case CL_RED:
     if (cur_rgb.r > 60 && cur_rgb.g < 70 && cur_rgb.b < 70 &&
@@ -340,8 +340,8 @@ bool isColor(Color c, rgb_raw_t cur_rgb) {
 	cur_rgb.r - cur_rgb.g >= 20 && cur_rgb.g - cur_rgb.b >= 20) return true;
     break;
   case CL_GREEN:
-    if (cur_rgb.r <= 70 && cur_rgb.g >= 70 && cur_rgb.b <= 70 &&
-	cur_rgb.g - cur_rgb.r >= 25) return true;
+    if (cur_rgb.r <= 60 && cur_rgb.g >= 70 && cur_rgb.b <= 70 &&
+	cur_rgb.g - cur_rgb.r >= 30 && cur_rgb.g - cur_rgb.b >= 15) return true;
     break;
   case CL_WHITE:
     if (cur_rgb.r >= 150 && cur_rgb.g >= 150 && cur_rgb.b >= 150) return true;
@@ -767,57 +767,40 @@ public:
             _log("ODO=%05d, VLine traversal started.", currentDist);
 	    st = TVLST_INITIAL;
 	    circleColor = CL_WHITE;
+	    initDist = currentDist;
 	    countBlack = countWhite = 0;
 	    vLineRow = 0; /* global variable */
 	    direction = 1; /* direction = 1 is forward while -1 is reverse */
             updated = true;
         }
 
-        rgb_raw_t cur_rgb;
-
         colorSensor->getRawColor(cur_rgb);
-	//_log("ODO=%05d, rgb(%03d,%03d,%03d)", currentDist, cur_rgb.r, cur_rgb.g, cur_rgb.b);
+	_intervalLog("ODO=%05d, rgb(%03d,%03d,%03d)", currentDist, cur_rgb.r, cur_rgb.g, cur_rgb.b);
 	_debug(_log("ODO=%05d, rgb(%03d,%03d,%03d)", currentDist, cur_rgb.r, cur_rgb.g, cur_rgb.b),3); /* if _DEBUG_LEVEL >= 3 */
 
 	switch(st) {
 	case TVLST_INITIAL:
 	case TVLST_ON_LINE:
 	  if (isColor(CL_BLUE, cur_rgb)) {
-	    if (circleColor != CL_WHITE && circleColor != CL_BLUE) {
-	      vLineRow = (direction == 1) ? 3 : 2;
-	    } else {
-	      vLineRow += direction;
-	    }
+	    vLineRow += direction;
 	    circleDist = currentDist;
 	    _log("ODO=%05d, circle CL_BLUE detected with rgb(%03d,%03d,%03d) at Row %d", circleDist, cur_rgb.r, cur_rgb.g, cur_rgb.b, vLineRow);
 	    circleColor = CL_BLUE;
 	    st = TVLST_ON_CIRCLE;
 	  } else if (isColor(CL_RED, cur_rgb)) {
-	    if (circleColor != CL_WHITE && circleColor != CL_RED) {
-	      vLineRow = (direction == 1) ? 3 : 2;
-	    } else {
-	      vLineRow += direction;
-	    }
+	    vLineRow += direction;
 	    circleDist = currentDist;
 	    _log("ODO=%05d, circle CL_RED detected with rgb(%03d,%03d,%03d) at Row %d", circleDist, cur_rgb.r, cur_rgb.g, cur_rgb.b, vLineRow);
 	    circleColor = CL_RED;
 	    st = TVLST_ON_CIRCLE;
 	  } else if (isColor(CL_YELLOW, cur_rgb)) {
-	    if (circleColor != CL_WHITE && circleColor != CL_YELLOW) {
-	      vLineRow = (direction == 1) ? 3 : 2;
-	    } else {
-	      vLineRow += direction;
-	    }
+	    vLineRow += direction;
 	    circleDist = currentDist;
 	    _log("ODO=%05d, circle CL_YELLOW detected with rgb(%03d,%03d,%03d) at Row %d", circleDist, cur_rgb.r, cur_rgb.g, cur_rgb.b, vLineRow);
 	    circleColor = CL_YELLOW;
 	    st = TVLST_ON_CIRCLE;
 	  } else if (isColor(CL_GREEN, cur_rgb)) {
-	    if (circleColor != CL_WHITE && circleColor != CL_GREEN) {
-	      vLineRow = (direction == 1) ? 3 : 2;
-	    } else {
-	      vLineRow += direction;
-	    }
+	    vLineRow += direction;
 	    circleDist = currentDist;
 	    _log("ODO=%05d, circle CL_GREEN detected with rgb(%03d,%03d,%03d) at Row %d", circleDist, cur_rgb.r, cur_rgb.g, cur_rgb.b, vLineRow);
 	    circleColor = CL_GREEN;
@@ -826,7 +809,7 @@ public:
 	    countWhite = 0; /* reset white counter */
 	    if (++countBlack >= 3 && st == TVLST_INITIAL) { /* when CL_BLACK is consequtively detected */
 		vLineRow = 1;
-		_log("ODO=%05d, determined to be ON LINE. no circle detected at Row 1", currentDist);
+		_log("ODO=%05d, appear to be ON LINE. no circle detected at Row 1", currentDist);
 		st = TVLST_ON_LINE;
 	    } else if (countBlack == 10) { /* force Plotter degree when tracing is stable */
 	      int origDeg = plotter->getDegree();
@@ -837,9 +820,13 @@ public:
 	  } else if (isColor(CL_WHITE, cur_rgb) && st == TVLST_ON_LINE) {
 	    countBlack = 0; /* reset black counter */	    
 	    if (++countWhite >= 30) { /* when CL_WHITE is consequtively detected */
-	      _log("ODO=%05d, line LOST.", currentDist);
+	      if (countWhite % 30 == 0) _log("ODO=%05d, *** WARNING - line LOST.", currentDist);
 	      //st = TVLST_UNKNOWN;
 	    }
+	  } else if (st == TVLST_INITIAL && (currentDist - initDist) >= 250) {
+	    vLineRow = 1;
+	    _log("ODO=%05d, assumed to be ON LINE. no circle detected at Row 1", currentDist);
+	    st = TVLST_ON_LINE;
 	  }
 	  if ( (direction ==  1 && vLineRow >= 4) ||
 	       (direction == -1 && vLineRow <= 1) ) {
@@ -848,44 +835,44 @@ public:
 	  }
 	  break;
 	case TVLST_ON_CIRCLE:
-	  if (isColor(CL_BLUE, cur_rgb)) {
-	    if (circleColor == CL_BLUE) {
-	      countBlack = 0; /* reset black counter */
-	    } else {
-	      _log("ODO=%05d, unexpected CL_BLUE detected with rgb(%03d,%03d,%03d)", currentDist, cur_rgb.r, cur_rgb.g, cur_rgb.b);
-	      st = TVLST_UNKNOWN;
-	    }
-	  } else if (isColor(CL_RED, cur_rgb)) {
-	    if (circleColor == CL_RED) {
-	      countBlack = 0; /* reset black counter */
-	    } else {  
-	      _log("ODO=%05d, unexpected CL_RED detected with rgb(%03d,%03d,%03d)", currentDist, cur_rgb.r, cur_rgb.g, cur_rgb.b);
-	      st = TVLST_UNKNOWN;
-	    }
-	  } else if (isColor(CL_YELLOW, cur_rgb)) {
-	    if (circleColor == CL_YELLOW) {
-	      countBlack = 0; /* reset black counter */
-	    } else {  
-	      _log("ODO=%05d, unexpected CL_YELLOW detected with rgb(%03d,%03d,%03d)", currentDist, cur_rgb.r, cur_rgb.g, cur_rgb.b);
-	      st = TVLST_UNKNOWN;
-	    }
-	  } else if (isColor(CL_GREEN, cur_rgb)) {
-	    if (circleColor == CL_GREEN) {
-	      countBlack = 0; /* reset black counter */
-	    } else {  
-	      _log("ODO=%05d, unexpected CL_GREEN detected with rgb(%03d,%03d,%03d)", currentDist, cur_rgb.r, cur_rgb.g, cur_rgb.b);
-	      st = TVLST_UNKNOWN;
-	    }
-	  } else if (isColor(CL_WHITE, cur_rgb)) {
-	    countBlack = 0; /* reset black counter */
+	  if (currentDist - circleDist >= 110) {
+	     _log("ODO=%05d, ON LINE is assumed without CL_BLACK detection", currentDist);
+	      st = TVLST_ON_LINE;
 	  } else if (isColor(CL_BLACK, cur_rgb)) {
 	    if (++countBlack >= 3) { /* when CL_BLACK is consequtively detected */
 	      _log("ODO=%05d, determined to be ON LINE.", currentDist);
 	      st = TVLST_ON_LINE;
 	    }
-	  } else if (currentDist - circleDist >= 150) {
-	     _log("ODO=%05d, ON LINE is assumed without CL_BLACK detection", currentDist);
-	      st = TVLST_ON_LINE;
+	  } else if (isColor(CL_WHITE, cur_rgb)) {
+	    countBlack = 0; /* reset black counter */
+	  } else if (isColor(CL_BLUE, cur_rgb)) {
+	    if (circleColor == CL_BLUE) {
+	      countBlack = 0; /* reset black counter */
+	    } else {
+	      _log("ODO=%05d, *** WARNING - unexpected CL_BLUE detected with rgb(%03d,%03d,%03d) at Row %d", currentDist, cur_rgb.r, cur_rgb.g, cur_rgb.b, vLineRow);
+	      //st = TVLST_UNKNOWN;
+	    }
+	  } else if (isColor(CL_RED, cur_rgb)) {
+	    if (circleColor == CL_RED) {
+	      countBlack = 0; /* reset black counter */
+	    } else {  
+	      _log("ODO=%05d, *** WARNING - unexpected CL_RED detected with rgb(%03d,%03d,%03d) at Row %d", currentDist, cur_rgb.r, cur_rgb.g, cur_rgb.b, vLineRow);
+	      //st = TVLST_UNKNOWN;
+	    }
+	  } else if (isColor(CL_YELLOW, cur_rgb)) {
+	    if (circleColor == CL_YELLOW) {
+	      countBlack = 0; /* reset black counter */
+	    } else {  
+	      _log("ODO=%05d, *** WARNING - unexpected CL_YELLOW detected with rgb(%03d,%03d,%03d) at Row %d", currentDist, cur_rgb.r, cur_rgb.g, cur_rgb.b, vLineRow);
+	      //st = TVLST_UNKNOWN;
+	    }
+	  } else if (isColor(CL_GREEN, cur_rgb)) {
+	    if (circleColor == CL_GREEN) {
+	      countBlack = 0; /* reset black counter */
+	    } else {  
+	      _log("ODO=%05d, *** WARNING - unexpected CL_GREEN detected with rgb(%03d,%03d,%03d) at Row %d", currentDist, cur_rgb.r, cur_rgb.g, cur_rgb.b, vLineRow);
+	      //st = TVLST_UNKNOWN;
+	    }
 	  }
 	  break;
 	case TVLST_ABOUT_FACE:
@@ -894,6 +881,8 @@ public:
 	  if (stsChild == Status::Success) {
 	    delete ndChild;
 	    direction *= -1;
+	    circleDist = currentDist;
+	    _log("ODO=%05d, circleDist is set after rotation", currentDist);
 	    st = TVLST_ON_CIRCLE;
 	  }
 	  break;
@@ -913,7 +902,7 @@ public:
 	    return Status::Failure;
 	} else {
 	  int sensor;
-	  int8_t forward, turn, pwmL, pwmR;
+	  int forward, turn, pwmL, pwmR;
 	
 	  if ( (direction ==  1 && (vLineRow < 3 || (vLineRow >= 3 && st != TVLST_ON_LINE))) ||
 	       (direction == -1 && (vLineRow > 2 || (vLineRow <= 2 && st != TVLST_ON_LINE))) ) {
@@ -935,7 +924,9 @@ public:
 	    } else { /* side == TS_OPPOSITE */
 	      turn = _COURSE * ltPidSen->compute(sensor, target);
 	    }
+	    _intervalLog("ODO=%05d, color sensor trace with r = %d, target_r = %d, turn = %d", currentDist, sensor, target, turn);
 	  }
+	  
 	  _debug(_log("ODO=%05d, turn = %d", currentDist, turn),3); /* if _DEBUG_LEVEL >= 3 */
 	  forward = speed;
 	  /* steer EV3 by setting different speed to the motors */
@@ -955,7 +946,7 @@ protected:
       TVLST_ABOUT_FACE,
       TVLST_END,
     };
-    int speed, target, gsMin, gsMax, circleDist, countBlack, countWhite, direction;
+    int speed, target, gsMin, gsMax, initDist, circleDist, countBlack, countWhite, direction;
     PIDcalculator *ltPidSen, *ltPidCam;
     TraceSide side;
     std::vector<double> bgrMinTre, bgrMaxTre, bgrMinDec, bgrMaxDec, bgrMinLin, bgrMaxLin;
@@ -963,6 +954,7 @@ protected:
     Color circleColor;
     Node* ndChild;
     Status stsChild;
+    rgb_raw_t cur_rgb;
     bool updated;
 };
 
