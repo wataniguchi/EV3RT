@@ -811,25 +811,25 @@ public:
 	    circleDist = currentDist;
 	    _log("ODO=%05d, circle CL_BLUE detected with rgb(%03d,%03d,%03d) at Row %d", circleDist, cur_rgb.r, cur_rgb.g, cur_rgb.b, vLineRow);
 	    circleColor = CL_BLUE;
-	    st = TVLST_ON_CIRCLE;
+	    st = TVLST_ENTERING_CIRCLE;
 	  } else if (isColor(CL_RED, cur_rgb)) {
 	    vLineRow += direction;
 	    circleDist = currentDist;
 	    _log("ODO=%05d, circle CL_RED detected with rgb(%03d,%03d,%03d) at Row %d", circleDist, cur_rgb.r, cur_rgb.g, cur_rgb.b, vLineRow);
 	    circleColor = CL_RED;
-	    st = TVLST_ON_CIRCLE;
+	    st = TVLST_ENTERING_CIRCLE;
 	  } else if (isColor(CL_YELLOW, cur_rgb)) {
 	    vLineRow += direction;
 	    circleDist = currentDist;
 	    _log("ODO=%05d, circle CL_YELLOW detected with rgb(%03d,%03d,%03d) at Row %d", circleDist, cur_rgb.r, cur_rgb.g, cur_rgb.b, vLineRow);
 	    circleColor = CL_YELLOW;
-	    st = TVLST_ON_CIRCLE;
+	    st = TVLST_ENTERING_CIRCLE;
 	  } else if (isColor(CL_GREEN, cur_rgb)) {
 	    vLineRow += direction;
 	    circleDist = currentDist;
 	    _log("ODO=%05d, circle CL_GREEN detected with rgb(%03d,%03d,%03d) at Row %d", circleDist, cur_rgb.r, cur_rgb.g, cur_rgb.b, vLineRow);
 	    circleColor = CL_GREEN;
-	    st = TVLST_ON_CIRCLE;
+	    st = TVLST_ENTERING_CIRCLE;
 	  } else if (isColor(CL_BLACK, cur_rgb)) {
 	    countWhite = 0; /* reset white counter */
 	    if (++countBlack >= 3 && st == TVLST_INITIAL) { /* when CL_BLACK is consequtively detected */
@@ -853,13 +853,8 @@ public:
 	    _log("ODO=%05d, assumed to be ON LINE. no circle detected at Row 1", currentDist);
 	    st = TVLST_ON_LINE;
 	  }
-	  if ( (direction ==  1 && vLineRow >= 4) ||
-	       (direction == -1 && vLineRow <= 1) ) {
-	    ndChild = new RotateEV3(180, 56, 0.0); /* To-Do: magic numbers */
-	    st = TVLST_ABOUT_FACE;
-	  }
 	  break;
-	case TVLST_ON_CIRCLE:
+	case TVLST_IN_CIRCLE:
 	  if (currentDist - circleDist >= 110) {
 	     _log("ODO=%05d, ON LINE is assumed without CL_BLACK detection", currentDist);
 	      st = TVLST_ON_LINE;
@@ -900,7 +895,16 @@ public:
 	    }
 	  }
 	  break;
-	case TVLST_ABOUT_FACE:
+	case TVLST_ENTERING_CIRCLE:
+	  if ( (direction ==  1 && vLineRow >= 4) ||
+	       (direction == -1 && vLineRow <= 1) ) {
+	    ndChild = new RotateEV3(180, 56, 0.0); /* To-Do: magic numbers */
+	    st = TVLST_ROTATE_IN_CIRCLE;
+	  } else {
+	    st = TVLST_IN_CIRCLE;
+	  }
+	  break;
+	case TVLST_ROTATE_IN_CIRCLE:
 	  stsChild = ndChild->update();
 	  if (stsChild == Status::Running) return stsChild;
 	  if (stsChild == Status::Success) {
@@ -908,7 +912,7 @@ public:
 	    direction *= -1;
 	    circleDist = currentDist;
 	    _log("ODO=%05d, circleDist is set after rotation", currentDist);
-	    st = TVLST_ON_CIRCLE;
+	    st = TVLST_IN_CIRCLE;
 	  }
 	  break;
 	default:
@@ -965,10 +969,11 @@ public:
 protected:
     enum TVLState {
       TVLST_INITIAL,
-      TVLST_ON_CIRCLE,
+      TVLST_ENTERING_CIRCLE,
+      TVLST_IN_CIRCLE,
       TVLST_ON_LINE,
       TVLST_UNKNOWN,
-      TVLST_ABOUT_FACE,
+      TVLST_ROTATE_IN_CIRCLE,
       TVLST_END,
     };
     int speed, target, gsMin, gsMax, initDist, circleDist, countBlack, countWhite, direction;
