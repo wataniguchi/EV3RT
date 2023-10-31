@@ -670,6 +670,7 @@ public:
             /* stop the robot at start */
             leftMotor->setPWM(0);
             rightMotor->setPWM(0);
+	    count = 0;
             _log("ODO=%05d, Rotation for %d started. Current angle = %d", plotter->getDistance(), deltaDegreeTarget, originalDegree);
             updated = true;
             return Status::Running;
@@ -681,7 +682,12 @@ public:
 	if (deltaDegreeTarget >= 0 && deltaDegree <  -90) deltaDegree += 360;
 	/* when -180 <= deltaDegree <    0, -270 <= deltaDegree <  89 */
 	if (deltaDegreeTarget <  0 && deltaDegree >=  90) deltaDegree -= 360;
-	  
+
+	if (count++ == 10) {
+	  speed = 0.9 * speed;
+	  _log("ODO=%05d, Rotation speed reduced to %d. Current angle = %d", plotter->getDistance(), speed, currentDegree);
+	}
+
         if (clockwise * deltaDegree < clockwise * deltaDegreeTarget) {
             if ((srewRate != 0.0) && (clockwise * deltaDegree >= clockwise * deltaDegreeTarget - 5)) {
                 /* when comes to the half-way, start decreazing the speed by tropezoidal motion */    
@@ -703,7 +709,7 @@ public:
 private:
     int deltaDegreeTarget;
     int16_t originalDegree;
-    int clockwise, speed;
+    int clockwise, speed, count;
     bool updated;
     double srewRate;
 };
@@ -796,10 +802,10 @@ public:
 	    countBlack = countWhite = 0;
 	    vLineRow = 0; /* global variable */
 	    directionOnColumn = 1; /* directionOnColumn = 1 is forward while -1 is reverse */
-	    if (vLineColumn != 1) { /* directionOnRow = 1 is forward while -1 is reverse */
-	      directionOnRow = -1;
-	    } else { /* default - forward */
+	    if (vLineColumn == 1) { /* directionOnRow = 1 is forward while -1 is reverse */
 	      directionOnRow = 1;
+	    } else {
+	      directionOnRow = -1;
 	    }
 	    initColumn = vLineColumn;
 	    assert(initColumn == 1 || initColumn == 4);
@@ -927,11 +933,39 @@ public:
 	case TVLST_ENTERING_CIRCLE:
 	  if ( (move == MV_ON_COLUMN && directionOnColumn ==  1 && vLineRow >= 4) ||
 	       (move == MV_ON_COLUMN && directionOnColumn == -1 && vLineRow <= 1) ) {
-	    ndChild = new RotateEV3(180, 56, 0.0); /* To-Do: magic numbers */
+	    ndChild = new RotateEV3(170, 56, 0.0); /* To-Do: magic numbers */
 	    directionOnColumn *= -1; /* change direction in advance */
-	    st = TVLST_ROTATE_IN_CIRCLE;
+	    st = TVLST_CENTERING_CIRCLE;
+	  } else if (move == MV_ON_COLUMN && vLineRow == 2) {
+	    if (initColumn == 1) {
+	      ndChild = new RotateEV3((-1)*directionOnColumn*80, 56, 0.0); /* To-Do: magic numbers */
+	      directionOnRow = 1;
+	    } else { /* initColumn == 4 */
+	      ndChild = new RotateEV3(directionOnColumn*80, 56, 0.0); /* To-Do: magic numbers */
+	      directionOnRow = -1;
+	    }
+	    move = MV_ON_ROW;
+	    st = TVLST_CENTERING_CIRCLE;
+	  } else if ( (move == MV_ON_ROW && initColumn == 1 && vLineColumn >= 4) ||
+		      (move == MV_ON_ROW && initColumn == 4 && vLineColumn <= 1) ) {
+	    ndChild = new RotateEV3(170, 56, 0.0); /* To-Do: magic numbers */
+	    directionOnRow *= -1; /* change direction in advance */
+	    st = TVLST_CENTERING_CIRCLE;
+	  } else if ( (move == MV_ON_ROW && initColumn == 4 && vLineColumn >= 4) ||
+		      (move == MV_ON_ROW && initColumn == 1 && vLineColumn <= 1) ) {
+	    ndChild = new RotateEV3(directionOnRow*directionOnColumn*90, 56, 0.0); /* To-Do: magic numbers */
+	    move = MV_ON_COLUMN;
+	    st = TVLST_CENTERING_CIRCLE;
 	  } else {
 	    st = TVLST_IN_CIRCLE;
+	  }
+	  break;
+	case TVLST_CENTERING_CIRCLE:
+	  if (currentDist - circleDist >= 60) {
+	    leftMotor->setPWM(0);
+	    rightMotor->setPWM(0);
+            _log("ODO=%05d, centered in circle and stopped.", currentDist);
+	    st = TVLST_ROTATE_IN_CIRCLE;
 	  }
 	  break;
 	case TVLST_ROTATE_IN_CIRCLE:
@@ -958,14 +992,22 @@ public:
 	    rightMotor->setPWM(0);
             _log("ODO=%05d, VLine traversal FAILED with UNKNOWN state.", currentDist);
 	    return Status::Failure;
+	} else if (st == TVLST_CENTERING_CIRCLE) {
+	  leftMotor->setPWM(35); /* magic number */
+	  rightMotor->setPWM(35); /* magic number */
+	  return Status::Running;
+	} else if (st == TVLST_ROTATE_IN_CIRCLE) {
+	  return Status::Running;
 	} else {
 	  int sensor;
 	  int forward, turn, pwmL, pwmR;
 	
-	  if ( (move == MV_ON_COLUMN && directionOnColumn ==  1 && (vLineRow < 3 || (vLineRow >= 3 && st != TVLST_ON_LINE))) ||
-	       (move == MV_ON_COLUMN && directionOnColumn == -1 && (vLineRow > 2 || (vLineRow <= 2 && st != TVLST_ON_LINE))) ) {
-	    /* trace line using camera until reaching to Row 3 in forward
-	       and until reaching to Row 2 in reverse */
+	  if ( (move == MV_ON_COLUMN && directionOnColumn ==  1 && (vLineRow    < 3 || (vLineRow    >= 3 && st != TVLST_ON_LINE))) ||
+	       (move == MV_ON_COLUMN && directionOnColumn == -1 && (vLineRow    > 2 || (vLineRow    <= 2 && st != TVLST_ON_LINE))) ||
+	       (move == MV_ON_ROW    && directionOnRow    ==  1 && (vLineColumn < 3 || (vLineColumn >= 3 && st != TVLST_ON_LINE))) ||
+	       (move == MV_ON_ROW    && directionOnRow    == -1 && (vLineColumn > 2 || (vLineColumn <= 2 && st != TVLST_ON_LINE))) ) {
+	    /* trace line using camera until reaching to Row/Column 3 in forward
+	       and until reaching to Row/Column 2 in reverse */
 	    int theta = video->getTheta();
 	    _debug(_log("ODO=%05d, theta = %d", currentDist, theta),3); /* if _DEBUG_LEVEL >= 3 */
 	
@@ -973,8 +1015,8 @@ public:
 	    turn = (-1) * ltPidCam->compute(theta, 0); /* 0 is the center */
 	  } else { /* row >= 3 && on line in forward
 		      and row <=2 && on line in reverse */
-	    /* trace line using color sensor from Row 3 to Row 4 in foward
-	       and from Row 2 to Row 1 in reverse */
+	    /* trace line using color sensor from Row/Column 3 to 4 in foward
+	       and from Row/Column 2 to 1 in reverse */
 	    sensor = cur_rgb.r;	
 	    /* compute necessary amount of steering by PID control */
 	    if (side == TS_NORMAL) {
@@ -999,6 +1041,7 @@ protected:
     enum TVLState {
       TVLST_INITIAL,
       TVLST_ENTERING_CIRCLE,
+      TVLST_CENTERING_CIRCLE,
       TVLST_IN_CIRCLE,
       TVLST_ON_LINE,
       TVLST_UNKNOWN,
