@@ -323,28 +323,53 @@ protected:
 };
 
 bool isColor(Color c, rgb_raw_t cur_rgb) {
+  //_log("ODO=%05d, color = %d", plotter->getDistance(), colorSensor->getColorNumber());
   switch(c){
   case CL_BLACK:
-    if (cur_rgb.r <= 50 && cur_rgb.g <= 50 && cur_rgb.b <= 50) return true;
+    if (prof->getValueAsNum("USE_SPIKE_API_CL_BLACK")) {
+      if (colorSensor->getColorNumber() == 0) return true;
+    } else {
+      if (cur_rgb.r <= 50 && cur_rgb.g <= 50 && cur_rgb.b <= 50) return true;
+    }
     break;
   case CL_BLUE:
-    if (cur_rgb.r < 60 && cur_rgb.g < 100 && cur_rgb.b >= 100 &&
-	cur_rgb.b - cur_rgb.r >= 60 && cur_rgb.g - cur_rgb.r >= 30) return true;
+    if (prof->getValueAsNum("USE_SPIKE_API_CL_BLUE")) {
+      if (colorSensor->getColorNumber() == 3) return true;
+    } else {
+      if (cur_rgb.r < 60 && cur_rgb.g < 100 && cur_rgb.b >= 100 &&
+	  cur_rgb.b - cur_rgb.r >= 60 && cur_rgb.g - cur_rgb.r >= 30) return true;
+    }
     break;
   case CL_RED:
-    if (cur_rgb.r > 60 && cur_rgb.g < 70 && cur_rgb.b < 70 &&
-	cur_rgb.r - cur_rgb.g >= 30) return true;
+    if (prof->getValueAsNum("USE_SPIKE_API_CL_RED")) {
+      if (colorSensor->getColorNumber() == 9) return true;
+    } else {
+      if (cur_rgb.r > 60 && cur_rgb.g < 70 && cur_rgb.b < 70 &&
+	  cur_rgb.r - cur_rgb.g >= 30) return true;
+    }
     break;
   case CL_YELLOW:
-    if (cur_rgb.r >= 140 && cur_rgb.g >= 120 && cur_rgb.b <= 120 &&
-	cur_rgb.r - cur_rgb.g >= 20 && cur_rgb.g - cur_rgb.b >= 20) return true;
+    if (prof->getValueAsNum("USE_SPIKE_API_CL_YELLOW")) {
+      if (colorSensor->getColorNumber() == 7) return true;
+    } else {
+      if (cur_rgb.r >= 140 && cur_rgb.g >= 120 && cur_rgb.b <= 120 &&
+	  cur_rgb.r - cur_rgb.g >= 20 && cur_rgb.g - cur_rgb.b >= 20) return true;
+    }
     break;
   case CL_GREEN:
-    if (cur_rgb.r <= 60 && cur_rgb.g >= 70 && cur_rgb.b <= 70 &&
-	cur_rgb.g - cur_rgb.r >= 30 && cur_rgb.g - cur_rgb.b >= 15) return true;
+    if (prof->getValueAsNum("USE_SPIKE_API_CL_GREEN")) {
+      if (colorSensor->getColorNumber() == 5) return true;
+    } else {
+      if (cur_rgb.r <= 60 && cur_rgb.g >= 70 && cur_rgb.b <= 70 &&
+	  cur_rgb.g - cur_rgb.r >= 30 && cur_rgb.g - cur_rgb.b >= 15) return true;
+    }
     break;
   case CL_WHITE:
-    if (cur_rgb.r >= 150 && cur_rgb.g >= 150 && cur_rgb.b >= 150) return true;
+    if (prof->getValueAsNum("USE_SPIKE_API_CL_WHITE")) {
+      if (colorSensor->getColorNumber() == 10) return true;
+    } else {
+      if (cur_rgb.r >= 150 && cur_rgb.g >= 150 && cur_rgb.b >= 150) return true;
+    }
     break;
   default:
     break;
