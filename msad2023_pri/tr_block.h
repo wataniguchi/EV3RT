@@ -28,19 +28,20 @@
   /* BLOCK2: traverse the area from Column 0 to push out two Decoy blocks, and then carry Treasure block to Goal */ \
   .composite<BrainTree::MemSequence>() \
     /* section R201: traverse the area */ \
-      .leaf<TraverseVLine>(prof->getValueAsNum("BLOCK_R201_SPEED"), \
-	    prof->getValueAsNum("BLOCK_TARGET_R"), \
-	    prof->getValueAsNumVec("BLOCK_PIDSEN_CONST"), \
-	    prof->getValueAsNumVec("BLOCK_PIDCAM_CONST"), \
-	    prof->getValueAsNum("BLOCK_GS_MIN"), \
-            prof->getValueAsNum("BLOCK_GS_MAX"), \
-            prof->getValueAsNumVec("BLOCK_BGR_MIN_TRE"), \
-	    prof->getValueAsNumVec("BLOCK_BGR_MAX_TRE"), \
-            prof->getValueAsNumVec("BLOCK_BGR_MIN_DEC"), \
-	    prof->getValueAsNumVec("BLOCK_BGR_MAX_DEC"), \
-            prof->getValueAsNumVec("BLOCK_BGR_MIN_LIN"), \
-            prof->getValueAsNumVec("BLOCK_BGR_MAX_LIN"), \
-            (TraceSide)prof->getValueAsIntFromEnum("BLOCK_R201_TS", gEnumPairs)) \
+    .leaf<SetVLineColumn>(1) \
+    .leaf<TraverseVLine>(prof->getValueAsNum("BLOCK_R201_SPEED"), \
+	  prof->getValueAsNum("BLOCK_TARGET_R"), \
+	  prof->getValueAsNumVec("BLOCK_PIDSEN_CONST"), \
+	  prof->getValueAsNumVec("BLOCK_PIDCAM_CONST"), \
+	  prof->getValueAsNum("BLOCK_GS_MIN"), \
+          prof->getValueAsNum("BLOCK_GS_MAX"), \
+          prof->getValueAsNumVec("BLOCK_BGR_MIN_TRE"), \
+	  prof->getValueAsNumVec("BLOCK_BGR_MAX_TRE"), \
+          prof->getValueAsNumVec("BLOCK_BGR_MIN_DEC"), \
+	  prof->getValueAsNumVec("BLOCK_BGR_MAX_DEC"), \
+          prof->getValueAsNumVec("BLOCK_BGR_MIN_LIN"), \
+          prof->getValueAsNumVec("BLOCK_BGR_MAX_LIN"), \
+          (TraceSide)prof->getValueAsIntFromEnum("BLOCK_R201_TS", gEnumPairs)) \
     .leaf<StopNow>() \
   .end()
 

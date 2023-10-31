@@ -292,6 +292,7 @@ Mat Video::calculateTarget(Mat f) {
     HoughLinesP(img_bin_cnt, lines, 1.0, M_PI/360.0, HOUGH_LINES_THRESH, MIN_LINE_LENGTH, MAX_LINE_GAP);
     /* repare empty cnt_idx array for blocks on the lines */
     vector<vector<float>> cnt_idx_tre_online, cnt_idx_dec_online;
+    block_y_largest = 0;
     /* select appropriate lines */
     if (lines.size() > 0) {
       vector<vector<int>> tlines;
@@ -367,6 +368,7 @@ Mat Video::calculateTarget(Mat f) {
 		Rect blk = boundingRect(contours_tre[cnt_idx_entry[1]]);
 		if ( intersect(Point(blk.x,blk.y+blk.height), Point(blk.x+blk.width,blk.y+blk.height), Point(tx1,ty1), Point(tx2,ty2)) ) {
 		  cnt_idx_tre_online.push_back(cnt_idx_entry);
+		  if (blk.y > block_y_largest) block_y_largest = blk.y;
 		}
 	      }
 	      for (int j = 0; j < (int)cnt_idx_dec.size(); j++) {
@@ -374,6 +376,7 @@ Mat Video::calculateTarget(Mat f) {
 		Rect blk = boundingRect(contours_dec[cnt_idx_entry[1]]);
 		if ( intersect(Point(blk.x,blk.y+blk.height), Point(blk.x+blk.width,blk.y+blk.height), Point(tx1,ty1), Point(tx2,ty2)) ) {
 		  cnt_idx_dec_online.push_back(cnt_idx_entry);
+		  if (blk.y > block_y_largest) block_y_largest = blk.y;
 		}
 	      }
 	    }
@@ -387,33 +390,18 @@ Mat Video::calculateTarget(Mat f) {
 	} else {
 	  mx = int((x_bottom_smaller+x_bottom_larger) / 2);
 	}
-      }
-    }
+      } /* if (tlines.size() >= 1) */
+    } /* if (lines.size() > 0) */
+    num_tre = cnt_idx_tre_online.size();
+    num_dec = cnt_idx_dec_online.size();
+    /* draw blocks */
     for (int i = 0; i < (int)cnt_idx_tre_online.size(); i++) {
       vector<float> cnt_idx_entry = cnt_idx_tre_online[i];
       polylines(f, (vector<vector<Point>>){contours_tre[cnt_idx_entry[1]]}, true, Scalar(0,0,255), LINE_THICKNESS);
-      if (i == 0) {
-	/*
-	sprintf(strbuf[0], "y = %d", int(cnt_idx_entry[4]));
-	putText(img_lines, strbuf[0],
-		Point(static_cast<int>(FRAME_WIDTH/64),static_cast<int>(5*FRAME_HEIGHT/8)),
-		FONT_HERSHEY_SIMPLEX, FONT_SCALE, Scalar(0,0,255),
-		static_cast<int>(LINE_THICKNESS/4), LINE_4);
-	*/
-      }
     }
     for (int i = 0; i < (int)cnt_idx_dec_online.size(); i++) {
       vector<float> cnt_idx_entry = cnt_idx_dec_online[i];
       polylines(f, (vector<vector<Point>>){contours_dec[cnt_idx_entry[1]]}, true, Scalar(255,0,0), LINE_THICKNESS);
-      if (i == 0) {
-	/*
-	sprintf(strbuf[1], "y = %d", int(cnt_idx_entry[4]));
-	putText(img_lines, strbuf[1],
-		Point(static_cast<int>(FRAME_WIDTH/64),static_cast<int>(6*FRAME_HEIGHT/8)),
-		FONT_HERSHEY_SIMPLEX, FONT_SCALE, Scalar(255,0,0),
-		static_cast<int>(LINE_THICKNESS/4), LINE_4);
-	*/
-      }
     }    
     /* draw ROI */
     polylines(f, blk_roi, true, Scalar(0,255,255), LINE_THICKNESS);
