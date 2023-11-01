@@ -598,13 +598,13 @@ public:
 	    video->setMaskThresholds(bgrMinTre, bgrMaxTre, bgrMinDec, bgrMaxDec, bgrMinLin, bgrMaxLin);
             updated = true;
         }
-	if (count++ < 10) {
+	if (count++ < 20) {
 	  if (blockType == BT_TREASURE && video->getNumTreBlockOnVLine() >= 1) inSightCount++;
 	  if (blockType == BT_DECOY    && video->getNumDecBlockOnVLine() >= 1) inSightCount++;
 	  return Status::Running;
 	} else {
 	  if (inSightCount >= 5) {
-	    /* when target in sight 5 times out of 10 attempts */
+	    /* when target in sight 5 times out of 20 attempts */
 	    if (blockType == BT_TREASURE) {
 	      _log("ODO=%05d, Treasure block on VLine at x=%d:y=%d:deg=%d",
 		   plotter->getDistance(), plotter->getLocX(), plotter->getLocY(),
@@ -1435,6 +1435,7 @@ public:
 	    circleColor = CL_WHITE;
 	    initDist = currentDist;
 	    countBlack = countWhite = 0;
+	    count = hasCaughtCount++;
 	    vLineRow = 0; /* global variable */
 	    directionOnColumn = 1; /* directionOnColumn = 1 is forward while -1 is reverse */
 	    if (vLineColumn == 1) { /* directionOnRow = 1 is forward while -1 is reverse */
@@ -1451,7 +1452,22 @@ public:
         colorSensor->getRawColor(cur_rgb);
 	//_intervalLog("ODO=%05d, rgb(%03d,%03d,%03d)", currentDist, cur_rgb.r, cur_rgb.g, cur_rgb.b);
 	_debug(_log("ODO=%05d, rgb(%03d,%03d,%03d)", currentDist, cur_rgb.r, cur_rgb.g, cur_rgb.b),3); /* if _DEBUG_LEVEL >= 3 */
-
+	/* block catch can occur in any state */
+	if (count++ < 5) {
+	  if (video->hasCaughtTarget()) hasCaughtCount++;
+	} else {
+	  if (hasCaughtCount > 3) {
+	    /* when target determined has caught more than 3 times out of 4 attempts */
+	    leftMotor->setPWM(0);
+	    rightMotor->setPWM(0);
+	    _log("ODO=%05d, CAUGHT TARGET", currentDist);
+	    count = hasCaughtCount = 0;
+	    st = TVLST_END; // FOR NOW
+	  } else {
+	    count = hasCaughtCount = 0;
+	  }
+        }
+	
 	switch(st) {
 	case TVLST_INITIAL:
 	case TVLST_ON_LINE:
@@ -1645,6 +1661,9 @@ public:
 	  if (stsChild == Status::Success) {
 	    delete ndChild;
 	    ndChild = nullptr;
+	    /* target at the block */
+	    video->setTraceTargetType(TT_BLK_ON_VLINE);
+	    count = hasCaughtCount = 0;
 	    st = TVLST_IN_CIRCLE;
 	  } else if (stsChild == Status::Failure) {
 	    delete ndChild;
@@ -1728,7 +1747,7 @@ protected:
       MV_ON_COLUMN,
       MV_ON_ROW,
     };
-    int speed, target, gsMin, gsMax, initDist, circleDist, countBlack, countWhite;
+    int speed, target, gsMin, gsMax, initDist, circleDist, countBlack, countWhite, count, hasCaughtCount;
     int directionOnColumn, directionOnRow, initColumn;
     PIDcalculator *ltPidSen, *ltPidCam;
     TraceSide side;

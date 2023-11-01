@@ -144,6 +144,7 @@ protected:
   float theta;
   BinarizationAlgorithm algo;
   TargetType traceTargetType;
+  Rect prevTargetBlock;
   bool targetInSight;
 public:
   Video();

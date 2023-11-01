@@ -235,6 +235,23 @@ Mat Video::calculateTarget(Mat f) {
   if (traceTargetType == TT_VLINE || traceTargetType == TT_BLK_ON_VLINE) {
     Mat img_bin_tre, img_bin_dec, img_gray, img_bin_white_area, img_bin_white_area_dil, img_inner_white, img_bin_mor, img_bin_cnt;
     
+    /* prepare for locating the treasure block */
+    binalizeWithColorMask(f, bgr_min_tre, bgr_max_tre, gsmin, gsmax, img_bin_tre);
+    /* locate the treasure block */
+    vector<vector<Point>> contours_tre;
+    vector<Vec4i> hierarchy_tre;
+    findContours(img_bin_tre, contours_tre, hierarchy_tre, RETR_TREE, CHAIN_APPROX_SIMPLE);
+    vector<vector<float>> cnt_idx_tre; /* cnt_idx: area, idx, w/h, x, y */
+    locateBlocks(contours_tre, hierarchy_tre, cnt_idx_tre);
+    /* prepare for locating decoy blocks */
+    binalizeWithColorMask(f, bgr_min_dec, bgr_max_dec, gsmin, gsmax, img_bin_dec);
+    /* locate decoy blocks */
+    vector<vector<Point>> contours_dec;
+    vector<Vec4i> hierarchy_dec;
+    findContours(img_bin_dec, contours_dec, hierarchy_dec, RETR_TREE, CHAIN_APPROX_SIMPLE);
+    vector<vector<float>> cnt_idx_dec; /* cnt_idx: area, idx, w/h, x, y */
+    locateBlocks(contours_dec, hierarchy_dec, cnt_idx_dec);
+
     /* convert the image from BGR to grayscale */
     cvtColor(f, img_gray, COLOR_BGR2GRAY);
     /* generate a binarized image of white area */
@@ -259,25 +276,8 @@ Mat Video::calculateTarget(Mat f) {
     /* modify img_orig to show masked area as blurred on monitor window */
     addWeighted(img_inner_white, 0.5, f, 0.5, 0, f);
 
-    /* prepare for locating the treasure block */
-    binalizeWithColorMask(img_inner_white, bgr_min_tre, bgr_max_tre, gsmin, gsmax, img_bin_tre);
-    /* locate the treasure block */
-    vector<vector<Point>> contours_tre;
-    vector<Vec4i> hierarchy_tre;
-    findContours(img_bin_tre, contours_tre, hierarchy_tre, RETR_TREE, CHAIN_APPROX_SIMPLE);
-    vector<vector<float>> cnt_idx_tre; /* cnt_idx: area, idx, w/h, x, y */
-    locateBlocks(contours_tre, hierarchy_tre, cnt_idx_tre);
-    /* prepare for locating decoy blocks */
-    binalizeWithColorMask(img_inner_white, bgr_min_dec, bgr_max_dec, gsmin, gsmax, img_bin_dec);
-    /* locate decoy blocks */
-    vector<vector<Point>> contours_dec;
-    vector<Vec4i> hierarchy_dec;
-    findContours(img_bin_dec, contours_dec, hierarchy_dec, RETR_TREE, CHAIN_APPROX_SIMPLE);
-    vector<vector<float>> cnt_idx_dec; /* cnt_idx: area, idx, w/h, x, y */
-    locateBlocks(contours_dec, hierarchy_dec, cnt_idx_dec);
-
     /* try to filter only black lines while removing colorful block circles as much as possible */
-    binalizeWithColorMask(img_inner_white, bgr_min_lin, bgr_max_lin, gsmin, gsmax, img_bin_mor);
+    binalizeWithColorMask(f, bgr_min_lin, bgr_max_lin, gsmin, gsmax, img_bin_mor);
     /* find contours */
     vector<vector<Point>> contours;
     vector<Vec4i> hierarchy;
@@ -374,6 +374,7 @@ Mat Video::calculateTarget(Mat f) {
 		    cx = cnt_idx_entry[3];
 		    cy = cnt_idx_entry[4];
 		  }
+		  if (blk.y > prevTargetBlock.y) prevTargetBlock = blk;
 		}
 	      }
 	      for (int j = 0; j < (int)cnt_idx_dec.size(); j++) {
@@ -386,6 +387,7 @@ Mat Video::calculateTarget(Mat f) {
 		    cx = cnt_idx_entry[3];
 		    cy = cnt_idx_entry[4];
 		  }
+		  if (blk.y > prevTargetBlock.y) prevTargetBlock = blk;
 		}
 	      }
 	    }
@@ -401,12 +403,47 @@ Mat Video::calculateTarget(Mat f) {
 	    mx = int((x_bottom_smaller+x_bottom_larger) / 2);
 	  }
 	} else { /* traceTargetType == TT_BLK_ON_VLINE */
-	  /* normalize x of nearest block as the trace target */
-	  mx = FRAME_X_CENTER + (static_cast<int>(cx-FRAME_X_CENTER) * (FRAME_HEIGHT-SCAN_V_POS) / (FRAME_HEIGHT-cy));
-	  line(f, Point(cx, cy), Point(mx, SCAN_V_POS), Scalar(0,255,0), int(LINE_THICKNESS/2));
+	  mx = cx;
 	}
       } /* if (tlines.size() >= 1) */
     } /* if (lines.size() > 0) */
+
+    /* when TT_BLK_ON_VLINE, track the target block assuming its location on image is gradually moving */
+    if (traceTargetType == TT_BLK_ON_VLINE) {
+      if (cnt_idx_tre_online.size() == 0) {
+	/* see if there is a contour whose bounding rectangle overlaps with the previous one */
+	for (int i = 0; i < (int)cnt_idx_tre.size(); i++) {
+	  vector<float> cnt_idx_entry = cnt_idx_tre[i];
+	  Rect blk = boundingRect(contours_tre[cnt_idx_entry[1]]);
+	  Rect intersect = prevTargetBlock & blk;
+	  if (intersect.area() > 0) {
+	    prevTargetBlock = blk;
+	    cnt_idx_tre_online.push_back(cnt_idx_entry);
+	    if (blk.y > cy) {
+	      cx = cnt_idx_entry[3];
+	      cy = cnt_idx_entry[4];
+	    }
+	  }
+	}
+      }
+      if (cnt_idx_dec_online.size() == 0) {
+	/* see if there is a contour whose bounding rectangle overlaps with the previous one */
+	for (int i = 0; i < (int)cnt_idx_dec.size(); i++) {
+	  vector<float> cnt_idx_entry = cnt_idx_dec[i];
+	  Rect blk = boundingRect(contours_dec[cnt_idx_entry[1]]);
+	  Rect intersect = prevTargetBlock & blk;
+	  if (intersect.area() > 0) {
+	    prevTargetBlock = blk;
+	    cnt_idx_dec_online.push_back(cnt_idx_entry);
+	    if (blk.y > cy) {
+	      cx = cnt_idx_entry[3];
+	      cy = cnt_idx_entry[4];
+	    }
+	  }
+	}
+      }
+      mx = cx;
+    }
     num_tre = cnt_idx_tre_online.size();
     num_dec = cnt_idx_dec_online.size();
     /* draw blocks */
@@ -778,9 +815,10 @@ void Video::setTraceTargetType(TargetType tt) {
     blockCropAdj = BLOCK_CROP_ADJ;
     /* initial region of interest is set to crop zone with block offset */
     roi = Rect(CROP_L_LIMIT+blockCropAdj, CROP_U_LIMIT-blockOffset, CROP_WIDTH-2*blockCropAdj, CROP_HEIGHT);
-  } else {
+  } else { /* tt == BLKS || tt == TT_VLINE || tt == TT_BLK_ON_VLINE */
     /* initial ROI for block challenge */
     blk_roi = blk_roi_init;
+    if (tt != TT_BLK_ON_VLINE) prevTargetBlock = Rect(0, 0, FRAME_WIDTH, FRAME_HEIGHT);
   }
   /* initial trace target */
   cx = (int)(FRAME_WIDTH/2);
