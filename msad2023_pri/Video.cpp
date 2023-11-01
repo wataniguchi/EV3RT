@@ -232,7 +232,7 @@ void Video::writeFrame(Mat f) {
 Mat Video::calculateTarget(Mat f) {
   if (f.empty()) return f;
 
-  if (traceTargetType == TT_VLINE) {
+  if (traceTargetType == TT_VLINE || traceTargetType == TT_BLK_ON_VLINE) {
     Mat img_bin_tre, img_bin_dec, img_gray, img_bin_white_area, img_bin_white_area_dil, img_inner_white, img_bin_mor, img_bin_cnt;
     
     /* convert the image from BGR to grayscale */
@@ -292,7 +292,8 @@ Mat Video::calculateTarget(Mat f) {
     HoughLinesP(img_bin_cnt, lines, 1.0, M_PI/360.0, HOUGH_LINES_THRESH, MIN_LINE_LENGTH, MAX_LINE_GAP);
     /* repare empty cnt_idx array for blocks on the lines */
     vector<vector<float>> cnt_idx_tre_online, cnt_idx_dec_online;
-    block_y_largest = 0;
+    cy = 0;
+    cx = FRAME_WIDTH/2;
     /* select appropriate lines */
     if (lines.size() > 0) {
       vector<vector<int>> tlines;
@@ -369,7 +370,10 @@ Mat Video::calculateTarget(Mat f) {
 		line(f, Point(blk.x-1.5*blk.width,blk.y+blk.height), Point(blk.x+2.5*blk.width,blk.y+blk.height), Scalar(0,0,255), 1, LINE_4); /* draw block indicator */
 		if ( intersect(Point(blk.x-1.5*blk.width,blk.y+blk.height), Point(blk.x+2.5*blk.width,blk.y+blk.height), Point(tx1,ty1), Point(tx2,ty2)) ) {
 		  cnt_idx_tre_online.push_back(cnt_idx_entry);
-		  if (blk.y > block_y_largest) block_y_largest = blk.y;
+		  if (blk.y > cy) {
+		    cx = cnt_idx_entry[3];
+		    cy = cnt_idx_entry[4];
+		  }
 		}
 	      }
 	      for (int j = 0; j < (int)cnt_idx_dec.size(); j++) {
@@ -378,19 +382,28 @@ Mat Video::calculateTarget(Mat f) {
 		line(f, Point(blk.x-1.5*blk.width,blk.y+blk.height), Point(blk.x+2.5*blk.width,blk.y+blk.height), Scalar(255,0,0), 1, LINE_4); /* draw block indicator */
 		if ( intersect(Point(blk.x-1.5*blk.width,blk.y+blk.height), Point(blk.x+2.5*blk.width,blk.y+blk.height), Point(tx1,ty1), Point(tx2,ty2)) ) {
 		  cnt_idx_dec_online.push_back(cnt_idx_entry);
-		  if (blk.y > block_y_largest) block_y_largest = blk.y;
+		  if (blk.y > cy) {
+		    cx = cnt_idx_entry[3];
+		    cy = cnt_idx_entry[4];
+		  }
 		}
 	      }
 	    }
 	  }
 	}
-	/* calculate the trace target using the edges */
-	if (side == 0) {
-	  mx = x_bottom_smaller;
-	} else if (side == 1) {
-	  mx = x_bottom_larger;
-	} else {
-	  mx = int((x_bottom_smaller+x_bottom_larger) / 2);
+	if (traceTargetType == TT_VLINE) {
+	  /* calculate the trace target using the edges */
+	  if (side == 0) {
+	    mx = x_bottom_smaller;
+	  } else if (side == 1) {
+	    mx = x_bottom_larger;
+	  } else {
+	    mx = int((x_bottom_smaller+x_bottom_larger) / 2);
+	  }
+	} else { /* traceTargetType == TT_BLK_ON_VLINE */
+	  /* normalize x of nearest block as the trace target */
+	  mx = FRAME_X_CENTER + (static_cast<int>(cx-FRAME_X_CENTER) * (FRAME_HEIGHT-SCAN_V_POS) / (FRAME_HEIGHT-cy));
+	  line(f, Point(cx, cy), Point(mx, SCAN_V_POS), Scalar(0,255,0), int(LINE_THICKNESS/2));
 	}
       } /* if (tlines.size() >= 1) */
     } /* if (lines.size() > 0) */
@@ -780,7 +793,7 @@ bool Video::isTargetInSight() {
 }
 
 bool Video::hasCaughtTarget() {
-  if (traceTargetType == TT_BLKS) {
+  if (traceTargetType == TT_BLKS || traceTargetType == TT_BLK_ON_VLINE) {
     if (cx > 7 * FRAME_WIDTH / 16 && cx < 9 * FRAME_WIDTH &&
 	cy > 3 * FRAME_HEIGHT / 4) {
       return true;

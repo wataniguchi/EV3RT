@@ -110,6 +110,7 @@ enum TargetType {
   TT_LINE_WITH_BLK, /* Line with a block in the arm */
   TT_BLKS, /* Blocks */
   TT_VLINE, /* Virtual line in the block area */
+  TT_BLK_ON_VLINE,
 };
 
 /* prototype of global functions */
@@ -138,7 +139,7 @@ protected:
   char strbuf[5][40];
   int mx, cx, cy, gsmin, gsmax, gs_block, gs_C, side, rangeOfEdges, blockOffset, blockCropAdj;
   int inFrameWidth, inFrameHeight;
-  int num_tre, num_dec, block_y_largest;
+  int num_tre, num_dec;
   Scalar bgr_min_tre, bgr_max_tre, bgr_min_dec, bgr_max_dec, bgr_min_lin, bgr_max_lin;
   float theta;
   BinarizationAlgorithm algo;
@@ -162,7 +163,6 @@ public:
   int getNumBlockOnVLine() { return num_tre + num_dec; }
   int getNumTreBlockOnVLine() { return num_tre; }
   int getNumDecBlockOnVLine() { return num_dec; }
-  int getBlockYLargest() { return block_y_largest; }
   ~Video();
 protected:
   void locateBlocks(vector<vector<Point>>, vector<Vec4i>, vector<vector<float>>&);
