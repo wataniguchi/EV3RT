@@ -515,20 +515,76 @@ protected:
 
 /*
     usage:
-    ".leaf<AreTwoBlocksOnVLine>(gs_min, gs_max, bgr_min_tre, bgr_max_tre, bgr_min_dec, bgr_max_dec, , bgr_min_lin, bgr_max_lin)"
-    is to determine if two blocks are on virtual line in front.
+    ".leaf<TestNumBlocksOnVLine>(num_test, gs_min, gs_max, bgr_min_tre, bgr_max_tre, bgr_min_dec, bgr_max_dec, , bgr_min_lin, bgr_max_lin)"
+    is to determine if number of blocks on virtual line in front is equal to the given number.
     gs_min, gs_max are grayscale threshold for object recognition binalization.
     bgr_min_tre, bgr_max_tre are bgr vector threshold for identifying RED objects.
     bgr_min_dec, bgr_max_dec are bgr vector threshold for identifying BLUE objects.
     bgr_min_lin, bgr_max_lin are bgr vector threshold for identifying BLACK line segments.
 */
-class AreTwoBlocksOnVLine : public BrainTree::Node {
+class TestNumBlocksOnVLine : public BrainTree::Node {
 public:
-  AreTwoBlocksOnVLine(int gs_min, int gs_max,
+  TestNumBlocksOnVLine(int num_test, int gs_min, int gs_max,
 		      std::vector<double> bgr_min_tre, std::vector<double> bgr_max_tre,
 		      std::vector<double> bgr_min_dec, std::vector<double> bgr_max_dec,
 		      std::vector<double> bgr_min_lin, std::vector<double> bgr_max_lin) :
-    gsMin(gs_min),gsMax(gs_max),
+    numTest(num_test),gsMin(gs_min),gsMax(gs_max),
+    bgrMinTre(bgr_min_tre),bgrMaxTre(bgr_max_tre),
+    bgrMinDec(bgr_min_dec),bgrMaxDec(bgr_max_dec),
+    bgrMinLin(bgr_min_lin),bgrMaxLin(bgr_max_lin) {
+	count = inSightCount = 0;
+	numBlocks = 0;
+        updated = false;
+    }
+    Status update() override {
+        if (!updated) {
+	    video->setTraceTargetType(TT_VLINE);
+	    video->setThresholds(gsMin, gsMax);
+	    video->setMaskThresholds(bgrMinTre, bgrMaxTre, bgrMinDec, bgrMaxDec, bgrMinLin, bgrMaxLin);
+            updated = true;
+        }
+	if (count++ < 10) {
+	  if ((numBlocks = video->getNumBlockOnVLine()) == numTest) inSightCount++;
+	  return Status::Running;
+	} else {
+	  if (inSightCount >= 5) {
+	    /* when target in sight 5 times out of 10 attempts */
+	    _log("ODO=%05d, %d blocks VERIFIED on VLine at x=%d:y=%d:deg=%d",
+		 plotter->getDistance(), numTest, plotter->getLocX(), plotter->getLocY(),
+		 plotter->getDegree());
+	    count = inSightCount = 0;
+            return Status::Success;
+	  } else {
+	    _log("ODO=%05d, test for %d blocks FAILED. %d blocks on VLine at x=%d:y=%d:deg=%d",
+		 plotter->getDistance(), numTest, numBlocks, plotter->getLocX(), plotter->getLocY(),
+		 plotter->getDegree());
+	    count = inSightCount = 0;
+            return Status::Failure;
+	  }
+        }
+    }
+protected:
+    int numTest, numBlocks, gsMin, gsMax, count, inSightCount;
+    std::vector<double> bgrMinTre, bgrMaxTre, bgrMinDec, bgrMaxDec, bgrMinLin, bgrMaxLin;
+    bool updated;
+};
+
+/*
+    usage:
+    ".leaf<IsBlockOnVLine>(type, gs_min, gs_max, bgr_min_tre, bgr_max_tre, bgr_min_dec, bgr_max_dec, , bgr_min_lin, bgr_max_lin)"
+    is to determine if any blocks of the specified type on on virtual line in front.
+    gs_min, gs_max are grayscale threshold for object recognition binalization.
+    bgr_min_tre, bgr_max_tre are bgr vector threshold for identifying RED objects.
+    bgr_min_dec, bgr_max_dec are bgr vector threshold for identifying BLUE objects.
+    bgr_min_lin, bgr_max_lin are bgr vector threshold for identifying BLACK line segments.
+*/
+class IsBlockOnVLine : public BrainTree::Node {
+public:
+  IsBlockOnVLine(BlockType block_type, int gs_min, int gs_max,
+		      std::vector<double> bgr_min_tre, std::vector<double> bgr_max_tre,
+		      std::vector<double> bgr_min_dec, std::vector<double> bgr_max_dec,
+		      std::vector<double> bgr_min_lin, std::vector<double> bgr_max_lin) :
+    blockType(block_type),gsMin(gs_min),gsMax(gs_max),
     bgrMinTre(bgr_min_tre),bgrMaxTre(bgr_max_tre),
     bgrMinDec(bgr_min_dec),bgrMaxDec(bgr_max_dec),
     bgrMinLin(bgr_min_lin),bgrMaxLin(bgr_max_lin) {
@@ -543,26 +599,40 @@ public:
             updated = true;
         }
 	if (count++ < 10) {
-	  if (video->getNumBlockOnVLine() == 2) inSightCount++;
+	  if (blockType == BT_TREASURE && video->getNumTreBlockOnVLine() >= 1) inSightCount++;
+	  if (blockType == BT_DECOY    && video->getNumDecBlockOnVLine() >= 1) inSightCount++;
 	  return Status::Running;
 	} else {
 	  if (inSightCount >= 5) {
 	    /* when target in sight 5 times out of 10 attempts */
-	    _log("ODO=%05d, TWO blocks on VLine at x=%d:y=%d:deg=%d",
-		 plotter->getDistance(), plotter->getLocX(), plotter->getLocY(),
-		 plotter->getDegree());
+	    if (blockType == BT_TREASURE) {
+	      _log("ODO=%05d, Treasure block on VLine at x=%d:y=%d:deg=%d",
+		   plotter->getDistance(), plotter->getLocX(), plotter->getLocY(),
+		   plotter->getDegree());
+	    } else {
+	      _log("ODO=%05d, Decoy block on VLine at x=%d:y=%d:deg=%d",
+		   plotter->getDistance(), plotter->getLocX(), plotter->getLocY(),
+		   plotter->getDegree());
+	    }
 	    count = inSightCount = 0;
             return Status::Success;
 	  } else {
-	    _log("ODO=%05d, TWO blocks NOT on VLine at x=%d:y=%d:deg=%d",
-		 plotter->getDistance(), plotter->getLocX(), plotter->getLocY(),
-		 plotter->getDegree());
+	    if (blockType == BT_TREASURE) {
+	      _log("ODO=%05d, NO Treasure block on VLine at x=%d:y=%d:deg=%d",
+		   plotter->getDistance(), plotter->getLocX(), plotter->getLocY(),
+		   plotter->getDegree());
+	    } else {
+	      _log("ODO=%05d, NO Decoy block on VLine at x=%d:y=%d:deg=%d",
+		   plotter->getDistance(), plotter->getLocX(), plotter->getLocY(),
+		   plotter->getDegree());
+	    }
 	    count = inSightCount = 0;
             return Status::Failure;
 	  }
         }
     }
 protected:
+    BlockType blockType;
     int gsMin, gsMax, count, inSightCount;
     std::vector<double> bgrMinTre, bgrMaxTre, bgrMinDec, bgrMaxDec, bgrMinLin, bgrMaxLin;
     bool updated;
@@ -938,7 +1008,7 @@ public:
 	      if (countWhite % 30 == 0) _log("ODO=%05d, *** WARNING - line LOST.", currentDist);
 	      //st = TVLST_UNKNOWN;
 	    }
-	  } else if (st == TVLST_INITIAL && (currentDist - initDist) >= 250) {
+	  } else if (st == TVLST_INITIAL && (currentDist - initDist) >= 350) { /* To-Do: magic number */
 	    vLineRow = 1;
 	    _log("ODO=%05d, assumed to be ON LINE. no circle detected at Column %d, Row 1", currentDist, vLineColumn);
 	    st = TVLST_ON_LINE;
@@ -991,7 +1061,8 @@ public:
 	    ndChild = new RotateEV3(170, 56, 0.0); /* To-Do: magic numbers */
 	    directionOnColumn *= -1; /* change direction in advance */
 	    st = TVLST_CENTERING_CIRCLE;
-	  } else if (move == MV_ON_COLUMN && vLineRow == 2) {
+	  } else if ( (move == MV_ON_COLUMN && vLineRow == 2) ||
+		      (move == MV_ON_COLUMN && vLineRow == 3) ) {
 	    if (initColumn == 1) {
 	      ndChild = new RotateEV3((-1)*directionOnColumn*80, 56, 0.0); /* To-Do: magic numbers */
 	      directionOnRow = 1;
@@ -1020,25 +1091,40 @@ public:
 	    leftMotor->setPWM(0);
 	    rightMotor->setPWM(0);
             _log("ODO=%05d, centered in circle and stopped.", currentDist);
-	    st = TVLST_ROTATE_IN_CIRCLE;
+	    st = TVLST_ROTATING_IN_CIRCLE;
 	  }
 	  break;
-	case TVLST_ROTATE_IN_CIRCLE:
+	case TVLST_ROTATING_IN_CIRCLE:
 	  stsChild = ndChild->update();
 	  if (stsChild == Status::Running) return stsChild;
 	  if (stsChild == Status::Success) {
 	    delete ndChild;
+	    ndChild = nullptr;
 	    circleDist = currentDist;
 	    _log("ODO=%05d, circleDist is set after rotation", currentDist);
-	    /*
-	      This is where determining if block is there when:
-	      move == MV_ON_ROW && initColumn == 1 && vLineColumn <= 1 && directionOnRow == 1 or
-	      move == MV_ON_ROW && initColumn == 4 && vLineColumn <= 4 && directionOnRow == -1
-	      if decoy block is found, push it out
-	      if treasure block is found after two decoy blocks are out, change state to end
-	      if no block is found, rotate again and keep traverse
-	     */
+	    if ( (move == MV_ON_ROW && initColumn == 1 && vLineColumn <= 1 && directionOnRow ==  1) ||
+		 (move == MV_ON_ROW && initColumn == 4 && vLineColumn <= 4 && directionOnRow == -1) ) {
+	      /* determine if block is on VLine in front */
+	      ndChild = new IsBlockOnVLine(BT_DECOY, gsMin, gsMax,
+					   bgrMinTre, bgrMaxTre, bgrMinDec, bgrMaxDec, bgrMinLin, bgrMaxLin);
+	      st = TVLST_IDENTIFYING_BLOCK;
+	    } else {
+	      st = TVLST_IN_CIRCLE;
+	    }
+	  }
+	  break;
+	case TVLST_IDENTIFYING_BLOCK:
+	  stsChild = ndChild->update();
+	  if (stsChild == Status::Running) return stsChild;
+	  if (stsChild == Status::Success) {
+	    delete ndChild;
+	    ndChild = nullptr;
 	    st = TVLST_IN_CIRCLE;
+	  } else if (stsChild == Status::Failure) {
+	    delete ndChild;
+	    ndChild = new RotateEV3(directionOnRow*directionOnColumn*90, 56, 0.0); /* To-Do: magic numbers */
+	    move = MV_ON_COLUMN;
+	    st = TVLST_ROTATING_IN_CIRCLE;
 	  }
 	  break;
 	default:
@@ -1059,7 +1145,7 @@ public:
 	  leftMotor->setPWM(35); /* magic number */
 	  rightMotor->setPWM(35); /* magic number */
 	  return Status::Running;
-	} else if (st == TVLST_ROTATE_IN_CIRCLE) {
+	} else if (st == TVLST_ROTATING_IN_CIRCLE || st == TVLST_IDENTIFYING_BLOCK) {
 	  return Status::Running;
 	} else {
 	  int sensor;
@@ -1108,7 +1194,8 @@ protected:
       TVLST_IN_CIRCLE,
       TVLST_ON_LINE,
       TVLST_UNKNOWN,
-      TVLST_ROTATE_IN_CIRCLE,
+      TVLST_ROTATING_IN_CIRCLE,
+      TVLST_IDENTIFYING_BLOCK,
       TVLST_END,
     };
     enum Movement {

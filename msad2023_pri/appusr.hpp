@@ -123,6 +123,11 @@ enum ArmDirection {
     AD_DOWN = 1,
 };
 
+enum BlockType {
+    BT_TREASURE = 0,
+    BT_DECOY = 1,
+};
+
 #ifndef ENUMPAIR_TYPE_DEFINED
 #define ENUMPAIR_TYPE_DEFINED
 typedef struct { const char *name; int num; } EnumPair;

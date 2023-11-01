@@ -4,22 +4,29 @@
     /* section R101: set guide angle and location */ \
     .leaf<SetGuideAngle>() \
     .leaf<SetGuideLocation>() \
-    /* section R102: face to the block area */ \
-    .leaf<RotateEV3>(prof->getValueAsNum("BLOCK_R102_DEGREE"), \
-		     prof->getValueAsNum("BLOCK_R102_SPEED"), 0.0) \
-    .leaf<ArmUpDownFull>(AD_DOWN) \
-    /* section R103: move closer to the block area */ \
+    /* section R102: position in the center of Red circle */ \
     .composite<BrainTree::ParallelSequence>(1,2) \
-      .leaf<IsDistanceEarned>(prof->getValueAsNum("BLOCK_R103_DIST")) \
-      .leaf<RunPerGuideAngle>(prof->getValueAsNum("BLOCK_R103_OFFSET"), \
-	    prof->getValueAsNum("BLOCK_R103_SPEED"), \
+      .leaf<IsDistanceEarned>(prof->getValueAsNum("BLOCK_R102_DIST")) \
+      .leaf<RunPerGuideAngle>(prof->getValueAsNum("BLOCK_R102_OFFSET"), \
+	    prof->getValueAsNum("BLOCK_R102_SPEED"), \
 	    prof->getValueAsNumVec("BLOCK_ANG_PID_CONST")) \
     .end() \
-    /* section R104: make a complete stop */ \
+    /* section R103: face to the block area */ \
+    .leaf<RotateEV3>(prof->getValueAsNum("BLOCK_R103_DEGREE"), \
+		     prof->getValueAsNum("BLOCK_R103_SPEED"), 0.0) \
+    .leaf<ArmUpDownFull>(AD_DOWN) \
+    /* section R104: move closer to the block area */ \
+    .composite<BrainTree::ParallelSequence>(1,2) \
+      .leaf<IsDistanceEarned>(prof->getValueAsNum("BLOCK_R104_DIST")) \
+      .leaf<RunPerGuideAngle>(prof->getValueAsNum("BLOCK_R104_OFFSET"), \
+	    prof->getValueAsNum("BLOCK_R104_SPEED"), \
+	    prof->getValueAsNumVec("BLOCK_ANG_PID_CONST")) \
+    .end() \
+    /* section R105: make a complete stop */ \
     .leaf<StopNow>() \
-    .leaf<IsTimeEarned>(prof->getValueAsNum("BLOCK_R104_TIME")) \
-    /* section R105: see if two blocks are on VLine Column 1 */ \
-    .leaf<AreTwoBlocksOnVLine>(prof->getValueAsNum("BLOCK_GS_MIN"), \
+    .leaf<IsTimeEarned>(prof->getValueAsNum("BLOCK_R105_TIME")) \
+    /* section R106: see if two blocks are on VLine Column 1 */ \
+    .leaf<TestNumBlocksOnVLine>(2, prof->getValueAsNum("BLOCK_GS_MIN"), \
           prof->getValueAsNum("BLOCK_GS_MAX"), \
           prof->getValueAsNumVec("BLOCK_BGR_MIN_TRE"), \
 	  prof->getValueAsNumVec("BLOCK_BGR_MAX_TRE"), \
