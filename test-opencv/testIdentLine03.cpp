@@ -151,10 +151,10 @@ void binalizeWithColorMask(Mat& img_orig, Scalar& bgr_min, Scalar& bgr_max, int 
 
 /* determina if two line segments are crossed */
 bool intersect(Point p1, Point p2, Point p3, Point p4) {
-  int tc1 = (p1.x - p2.x) * (p3.y - p1.y) + (p1.y - p2.y) * (p1.x - p3.x);
-  int tc2 = (p1.x - p2.x) * (p4.y - p1.y) + (p1.y - p2.y) * (p1.x - p4.x);
-  int td1 = (p3.x - p4.x) * (p1.y - p3.y) + (p3.y - p4.y) * (p3.x - p1.x);
-  int td2 = (p3.x - p4.x) * (p2.y - p3.y) + (p3.y - p4.y) * (p3.x - p2.x);
+  double tc1 = (p1.x - p2.x) * (p3.y - p1.y) + (p1.y - p2.y) * (p1.x - p3.x);
+  double tc2 = (p1.x - p2.x) * (p4.y - p1.y) + (p1.y - p2.y) * (p1.x - p4.x);
+  double td1 = (p3.x - p4.x) * (p1.y - p3.y) + (p3.y - p4.y) * (p3.x - p1.x);
+  double td2 = (p3.x - p4.x) * (p2.y - p3.y) + (p3.y - p4.y) * (p3.x - p2.x);
   return (tc1*tc2 < 0) && (td1*td2 < 0);
 }
 
@@ -275,27 +275,6 @@ int main() {
       img_orig = img_resized;
     }
 
-    /* prepare for locating the treasure block */
-    binalizeWithColorMask(img_orig, bgr_min_tre, bgr_max_tre, gs_min, gs_max, img_bin_tre);
-    /* convert the binary image from grayscale to BGR for later */
-    cvtColor(img_bin_tre, img_bin_tre_rgb, COLOR_GRAY2BGR);
-    /* locate the treasure block */
-    vector<vector<Point>> contours_tre;
-    vector<Vec4i> hierarchy_tre;
-    findContours(img_bin_tre, contours_tre, hierarchy_tre, RETR_TREE, CHAIN_APPROX_SIMPLE);
-    vector<vector<float>> cnt_idx_tre; /* cnt_idx: area, idx, w/h, x, y */
-    locateBlocks(contours_tre, hierarchy_tre, cnt_idx_tre);
-    /* prepare for locating decoy blocks */
-    binalizeWithColorMask(img_orig, bgr_min_dec, bgr_max_dec, gs_min, gs_max, img_bin_dec);
-    /* convert the binary image from grayscale to BGR for later */
-    cvtColor(img_bin_dec, img_bin_dec_rgb, COLOR_GRAY2BGR);
-    /* locate decoy blocks */
-    vector<vector<Point>> contours_dec;
-    vector<Vec4i> hierarchy_dec;
-    findContours(img_bin_dec, contours_dec, hierarchy_dec, RETR_TREE, CHAIN_APPROX_SIMPLE);
-    vector<vector<float>> cnt_idx_dec; /* cnt_idx: area, idx, w/h, x, y */
-    locateBlocks(contours_dec, hierarchy_dec, cnt_idx_dec);
-
     /* convert the image from BGR to grayscale */
     cvtColor(img_orig, img_gray, COLOR_BGR2GRAY);
     /* generate a binarized image of white area */
@@ -319,6 +298,27 @@ int main() {
     bitwise_or(img_orig, mask, img_inner_white);
     /* modify img_orig to show masked area as blurred on monitor window */
     addWeighted(img_inner_white, 0.5, img_orig, 0.5, 0, img_orig);
+
+    /* prepare for locating the treasure block */
+    binalizeWithColorMask(img_inner_white, bgr_min_tre, bgr_max_tre, gs_min, gs_max, img_bin_tre);
+    /* convert the binary image from grayscale to BGR for later */
+    cvtColor(img_bin_tre, img_bin_tre_rgb, COLOR_GRAY2BGR);
+    /* locate the treasure block */
+    vector<vector<Point>> contours_tre;
+    vector<Vec4i> hierarchy_tre;
+    findContours(img_bin_tre, contours_tre, hierarchy_tre, RETR_TREE, CHAIN_APPROX_SIMPLE);
+    vector<vector<float>> cnt_idx_tre; /* cnt_idx: area, idx, w/h, x, y */
+    locateBlocks(contours_tre, hierarchy_tre, cnt_idx_tre);
+    /* prepare for locating decoy blocks */
+    binalizeWithColorMask(img_inner_white, bgr_min_dec, bgr_max_dec, gs_min, gs_max, img_bin_dec);
+    /* convert the binary image from grayscale to BGR for later */
+    cvtColor(img_bin_dec, img_bin_dec_rgb, COLOR_GRAY2BGR);
+    /* locate decoy blocks */
+    vector<vector<Point>> contours_dec;
+    vector<Vec4i> hierarchy_dec;
+    findContours(img_bin_dec, contours_dec, hierarchy_dec, RETR_TREE, CHAIN_APPROX_SIMPLE);
+    vector<vector<float>> cnt_idx_dec; /* cnt_idx: area, idx, w/h, x, y */
+    locateBlocks(contours_dec, hierarchy_dec, cnt_idx_dec);
 
     /* try to filter only black lines while removing colorful block circles as much as possible */
     binalizeWithColorMask(img_inner_white, bgr_min_lin, bgr_max_lin, gs_min, gs_max, img_bin_mor);
@@ -414,16 +414,16 @@ int main() {
 	      for (int j = 0; j < cnt_idx_tre.size(); j++) {
 		vector<float> cnt_idx_entry = cnt_idx_tre[j];
 		Rect blk = boundingRect(contours_tre[cnt_idx_entry[1]]);
-		line(img_orig, Point(blk.x,blk.y+blk.height), Point(blk.x+blk.width,blk.y+blk.height), Scalar(0,0,255), 1, LINE_4); /* draw block indicator */
-		if ( intersect(Point(blk.x,blk.y+blk.height), Point(blk.x+blk.width,blk.y+blk.height), Point(tx1,ty1), Point(tx2,ty2)) ) {
+		line(img_orig, Point(blk.x-1.5*blk.width,blk.y+blk.height), Point(blk.x+2.5*blk.width,blk.y+blk.height), Scalar(0,0,255), 1, LINE_4); /* draw block indicator */
+		if ( intersect(Point(blk.x-1.5*blk.width,blk.y+blk.height), Point(blk.x+2.5*blk.width,blk.y+blk.height), Point(tx1,ty1), Point(tx2,ty2)) ) {
 		  cnt_idx_tre_online.push_back(cnt_idx_entry);
 		}
 	      }
 	      for (int j = 0; j < cnt_idx_dec.size(); j++) {
 		vector<float> cnt_idx_entry = cnt_idx_dec[j];
 		Rect blk = boundingRect(contours_dec[cnt_idx_entry[1]]);
-		line(img_orig, Point(blk.x,blk.y+blk.height), Point(blk.x+blk.width,blk.y+blk.height), Scalar(255,0,0), 1, LINE_4); /* draw block indicator */
-		if ( intersect(Point(blk.x,blk.y+blk.height), Point(blk.x+blk.width,blk.y+blk.height), Point(tx1,ty1), Point(tx2,ty2)) ) {
+		line(img_orig, Point(blk.x-1.5*blk.width,blk.y+blk.height), Point(blk.x+2.5*blk.width,blk.y+blk.height), Scalar(255,0,0), 1, LINE_4); /* draw block indicator */
+		if ( intersect(Point(blk.x-1.5*blk.width,blk.y+blk.height), Point(blk.x+2.5*blk.width,blk.y+blk.height), Point(tx1,ty1), Point(tx2,ty2)) ) {
 		  cnt_idx_dec_online.push_back(cnt_idx_entry);
 		}
 	      }
