@@ -515,6 +515,61 @@ protected:
 
 /*
     usage:
+    ".leaf<AreTwoBlocksOnVLine>(gs_min, gs_max, bgr_min_tre, bgr_max_tre, bgr_min_dec, bgr_max_dec, , bgr_min_lin, bgr_max_lin)"
+    is to determine if two blocks are on virtual line in front.
+    gs_min, gs_max are grayscale threshold for object recognition binalization.
+    bgr_min_tre, bgr_max_tre are bgr vector threshold for identifying RED objects.
+    bgr_min_dec, bgr_max_dec are bgr vector threshold for identifying BLUE objects.
+    bgr_min_lin, bgr_max_lin are bgr vector threshold for identifying BLACK line segments.
+*/
+class AreTwoBlocksOnVLine : public BrainTree::Node {
+public:
+  AreTwoBlocksOnVLine(int gs_min, int gs_max,
+		      std::vector<double> bgr_min_tre, std::vector<double> bgr_max_tre,
+		      std::vector<double> bgr_min_dec, std::vector<double> bgr_max_dec,
+		      std::vector<double> bgr_min_lin, std::vector<double> bgr_max_lin) :
+    gsMin(gs_min),gsMax(gs_max),
+    bgrMinTre(bgr_min_tre),bgrMaxTre(bgr_max_tre),
+    bgrMinDec(bgr_min_dec),bgrMaxDec(bgr_max_dec),
+    bgrMinLin(bgr_min_lin),bgrMaxLin(bgr_max_lin) {
+        updated = false;
+	count = inSightCount = 0;
+    }
+    Status update() override {
+        if (!updated) {
+	    video->setTraceTargetType(TT_VLINE);
+	    video->setThresholds(gsMin, gsMax);
+	    video->setMaskThresholds(bgrMinTre, bgrMaxTre, bgrMinDec, bgrMaxDec, bgrMinLin, bgrMaxLin);
+            updated = true;
+        }
+	if (count++ < 10) {
+	  if (video->getNumBlockOnVLine() == 2) inSightCount++;
+	  return Status::Running;
+	} else {
+	  if (inSightCount >= 5) {
+	    /* when target in sight 5 times out of 10 attempts */
+	    _log("ODO=%05d, TWO blocks on VLine at x=%d:y=%d:deg=%d",
+		 plotter->getDistance(), plotter->getLocX(), plotter->getLocY(),
+		 plotter->getDegree());
+	    count = inSightCount = 0;
+            return Status::Success;
+	  } else {
+	    _log("ODO=%05d, TWO blocks NOT on VLine at x=%d:y=%d:deg=%d",
+		 plotter->getDistance(), plotter->getLocX(), plotter->getLocY(),
+		 plotter->getDegree());
+	    count = inSightCount = 0;
+            return Status::Failure;
+	  }
+        }
+    }
+protected:
+    int gsMin, gsMax, count, inSightCount;
+    std::vector<double> bgrMinTre, bgrMaxTre, bgrMinDec, bgrMaxDec, bgrMinLin, bgrMaxLin;
+    bool updated;
+};
+
+/*
+    usage:
     ".leaf<IsFoundBlock>(gs_min, gs_max, bgr_min_tre, bgr_max_tre, bgr_min_dec, bgr_max_dec)"
     is to determine the RED block in sight.
     gs_min, gs_max are grayscale threshold for object recognition binalization.
@@ -975,6 +1030,14 @@ public:
 	    delete ndChild;
 	    circleDist = currentDist;
 	    _log("ODO=%05d, circleDist is set after rotation", currentDist);
+	    /*
+	      This is where determining if block is there when:
+	      move == MV_ON_ROW && initColumn == 1 && vLineColumn <= 1 && directionOnRow == 1 or
+	      move == MV_ON_ROW && initColumn == 4 && vLineColumn <= 4 && directionOnRow == -1
+	      if decoy block is found, push it out
+	      if treasure block is found after two decoy blocks are out, change state to end
+	      if no block is found, rotate again and keep traverse
+	     */
 	    st = TVLST_IN_CIRCLE;
 	  }
 	  break;

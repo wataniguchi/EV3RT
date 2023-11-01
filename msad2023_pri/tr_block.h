@@ -18,10 +18,15 @@
     /* section R104: make a complete stop */ \
     .leaf<StopNow>() \
     .leaf<IsTimeEarned>(prof->getValueAsNum("BLOCK_R104_TIME")) \
-    /* TEMPORARY - Failer to force state transition to ST_BLOCK2 */ \
-    .decorator<BrainTree::Failer>() \
-      .leaf<IsTimeEarned>(prof->getValueAsNum("BLOCK_R104_TIME")) \
-    .end() \
+    /* section R105: see if two blocks are on VLine Column 1 */ \
+    .leaf<AreTwoBlocksOnVLine>(prof->getValueAsNum("BLOCK_GS_MIN"), \
+          prof->getValueAsNum("BLOCK_GS_MAX"), \
+          prof->getValueAsNumVec("BLOCK_BGR_MIN_TRE"), \
+	  prof->getValueAsNumVec("BLOCK_BGR_MAX_TRE"), \
+          prof->getValueAsNumVec("BLOCK_BGR_MIN_DEC"), \
+	  prof->getValueAsNumVec("BLOCK_BGR_MAX_DEC"), \
+          prof->getValueAsNumVec("BLOCK_BGR_MIN_LIN"), \
+          prof->getValueAsNumVec("BLOCK_BGR_MAX_LIN")) \
   .end()
 
 #define TR_BLOCK2_R \
