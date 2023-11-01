@@ -67,9 +67,9 @@ using std::this_thread::sleep_for;
 #define OUT_FRAME_WIDTH  320
 #define OUT_FRAME_HEIGHT 240
 
-int b_min_tre=0,g_min_tre=0,r_min_tre=80,b_max_tre=50,g_max_tre=40,r_max_tre=255;
-int b_min_dec=35,g_min_dec=0,r_min_dec=0,b_max_dec=255,g_max_dec=65,r_max_dec=30;
-int b_min=0,g_min=0,r_min=0,b_max=70,g_max=60,r_max=65;
+int b_min_tre=0,g_min_tre=0,r_min_tre=45,b_max_tre=50,g_max_tre=40,r_max_tre=255;
+int b_min_dec=35,g_min_dec=0,r_min_dec=0,b_max_dec=255,g_max_dec=65,r_max_dec=40;
+int b_min_lin=0,g_min_lin=0,r_min_lin=0,b_max_lin=60,g_max_lin=60,r_max_lin=60;
 int gs_min=10,gs_max=100,edge=0;
 vector<Point> blk_roi;
 
@@ -175,18 +175,42 @@ int main() {
 
   /* create trackbars */
   namedWindow("testTrace1");
-  createTrackbar("B_min", "testTrace1", nullptr, 255, nullptr);
-  setTrackbarPos("B_min", "testTrace1", b_min);
-  createTrackbar("G_min", "testTrace1", nullptr, 255, nullptr);
-  setTrackbarPos("G_min", "testTrace1", g_min);
-  createTrackbar("R_min", "testTrace1", nullptr, 255, nullptr);
-  setTrackbarPos("R_min", "testTrace1", r_min);
-  createTrackbar("B_max", "testTrace1", nullptr, 255, nullptr);
-  setTrackbarPos("B_max", "testTrace1", b_max);
-  createTrackbar("G_max", "testTrace1", nullptr, 255, nullptr);
-  setTrackbarPos("G_max", "testTrace1", g_max);
-  createTrackbar("R_max", "testTrace1", nullptr, 255, nullptr);
-  setTrackbarPos("R_max", "testTrace1", r_max);
+  createTrackbar("B_min_lin", "testTrace1", nullptr, 255, nullptr);
+  setTrackbarPos("B_min_lin", "testTrace1", b_min_lin);
+  createTrackbar("G_min_lin", "testTrace1", nullptr, 255, nullptr);
+  setTrackbarPos("G_min_lin", "testTrace1", g_min_lin);
+  createTrackbar("R_min_lin", "testTrace1", nullptr, 255, nullptr);
+  setTrackbarPos("R_min_lin", "testTrace1", r_min_lin);
+  createTrackbar("B_max_lin", "testTrace1", nullptr, 255, nullptr);
+  setTrackbarPos("B_max_lin", "testTrace1", b_max_lin);
+  createTrackbar("G_max_lin", "testTrace1", nullptr, 255, nullptr);
+  setTrackbarPos("G_max_lin", "testTrace1", g_max_lin);
+  createTrackbar("R_max_lin", "testTrace1", nullptr, 255, nullptr);
+  setTrackbarPos("R_max_lin", "testTrace1", r_max_lin);
+  createTrackbar("B_min_tre", "testTrace1", nullptr, 255, nullptr);
+  setTrackbarPos("B_min_tre", "testTrace1", b_min_tre);
+  createTrackbar("G_min_tre", "testTrace1", nullptr, 255, nullptr);
+  setTrackbarPos("G_min_tre", "testTrace1", g_min_tre);
+  createTrackbar("R_min_tre", "testTrace1", nullptr, 255, nullptr);
+  setTrackbarPos("R_min_tre", "testTrace1", r_min_tre);
+  createTrackbar("B_max_tre", "testTrace1", nullptr, 255, nullptr);
+  setTrackbarPos("B_max_tre", "testTrace1", b_max_tre);
+  createTrackbar("G_max_tre", "testTrace1", nullptr, 255, nullptr);
+  setTrackbarPos("G_max_tre", "testTrace1", g_max_tre);
+  createTrackbar("R_max_tre", "testTrace1", nullptr, 255, nullptr);
+  setTrackbarPos("R_max_tre", "testTrace1", r_max_tre);
+  createTrackbar("B_min_dec", "testTrace1", nullptr, 255, nullptr);
+  setTrackbarPos("B_min_dec", "testTrace1", b_min_dec);
+  createTrackbar("G_min_dec", "testTrace1", nullptr, 255, nullptr);
+  setTrackbarPos("G_min_dec", "testTrace1", g_min_dec);
+  createTrackbar("R_min_dec", "testTrace1", nullptr, 255, nullptr);
+  setTrackbarPos("R_min_dec", "testTrace1", r_min_dec);
+  createTrackbar("B_max_dec", "testTrace1", nullptr, 255, nullptr);
+  setTrackbarPos("B_max_dec", "testTrace1", b_max_dec);
+  createTrackbar("G_max_dec", "testTrace1", nullptr, 255, nullptr);
+  setTrackbarPos("G_max_dec", "testTrace1", g_max_dec);
+  createTrackbar("R_max_dec", "testTrace1", nullptr, 255, nullptr);
+  setTrackbarPos("R_max_dec", "testTrace1", r_max_dec);
   createTrackbar("GS_min", "testTrace1", nullptr, 255, nullptr);
   setTrackbarPos("GS_min", "testTrace1", gs_min);
   createTrackbar("GS_max", "testTrace1", nullptr, 255, nullptr);
@@ -203,23 +227,35 @@ int main() {
 
   while (true) {
     /* obtain values from the trackbars */
-    b_min  = getTrackbarPos("B_min", "testTrace1");
-    g_min  = getTrackbarPos("G_min", "testTrace1");
-    r_min  = getTrackbarPos("R_min", "testTrace1");
-    b_max  = getTrackbarPos("B_max", "testTrace1");
-    g_max  = getTrackbarPos("G_max", "testTrace1");
-    r_max  = getTrackbarPos("R_max", "testTrace1");
+    b_min_lin  = getTrackbarPos("B_min_lin", "testTrace1");
+    g_min_lin  = getTrackbarPos("G_min_lin", "testTrace1");
+    r_min_lin  = getTrackbarPos("R_min_lin", "testTrace1");
+    b_max_lin  = getTrackbarPos("B_max_lin", "testTrace1");
+    g_max_lin  = getTrackbarPos("G_max_lin", "testTrace1");
+    r_max_lin  = getTrackbarPos("R_max_lin", "testTrace1");
+    b_min_tre  = getTrackbarPos("B_min_tre", "testTrace1");
+    g_min_tre  = getTrackbarPos("G_min_tre", "testTrace1");
+    r_min_tre  = getTrackbarPos("R_min_tre", "testTrace1");
+    b_max_tre  = getTrackbarPos("B_max_tre", "testTrace1");
+    g_max_tre  = getTrackbarPos("G_max_tre", "testTrace1");
+    r_max_tre  = getTrackbarPos("R_max_tre", "testTrace1");
+    b_min_dec  = getTrackbarPos("B_min_dec", "testTrace1");
+    g_min_dec  = getTrackbarPos("G_min_dec", "testTrace1");
+    r_min_dec  = getTrackbarPos("R_min_dec", "testTrace1");
+    b_max_dec  = getTrackbarPos("B_max_dec", "testTrace1");
+    g_max_dec  = getTrackbarPos("G_max_dec", "testTrace1");
+    r_max_dec  = getTrackbarPos("R_max_dec", "testTrace1");
     gs_min = getTrackbarPos("GS_min", "testTrace1");
     gs_max = getTrackbarPos("GS_max", "testTrace1");
     edge   = getTrackbarPos("Edge",   "testTrace1");
-    Scalar bgr_min = Scalar(b_min,g_min,r_min);
-    Scalar bgr_max = Scalar(b_max,g_max,r_max);
+    Scalar bgr_min_lin = Scalar(b_min_lin,g_min_lin,r_min_lin);
+    Scalar bgr_max_lin = Scalar(b_max_lin,g_max_lin,r_max_lin);
     Scalar bgr_min_tre = Scalar(b_min_tre,g_min_tre,r_min_tre);
     Scalar bgr_max_tre = Scalar(b_max_tre,g_max_tre,r_max_tre);
     Scalar bgr_min_dec = Scalar(b_min_dec,g_min_dec,r_min_dec);
     Scalar bgr_max_dec = Scalar(b_max_dec,g_max_dec,r_max_dec);
 
-    Mat frame, img_orig, img_bin_tre, img_bin_dec, img_gray, img_bin_white_area, img_bin_white_area_dil, img_inner_white, img_bin_mor, img_bin_cnt, img_bin_rgb, img_lines, img_comm;
+    Mat frame, img_orig, img_bin_tre, img_bin_dec, img_gray, img_bin_white_area, img_bin_white_area_dil, img_inner_white, img_bin_mor, img_bin_cnt, img_bin_rgb, img_lines, img_bin_tre_rgb, img_bin_dec_rgb, img_comm;
     int c;
 
     sleep_for(chrono::milliseconds(10));
@@ -241,6 +277,8 @@ int main() {
 
     /* prepare for locating the treasure block */
     binalizeWithColorMask(img_orig, bgr_min_tre, bgr_max_tre, gs_min, gs_max, img_bin_tre);
+    /* convert the binary image from grayscale to BGR for later */
+    cvtColor(img_bin_tre, img_bin_tre_rgb, COLOR_GRAY2BGR);
     /* locate the treasure block */
     vector<vector<Point>> contours_tre;
     vector<Vec4i> hierarchy_tre;
@@ -249,6 +287,8 @@ int main() {
     locateBlocks(contours_tre, hierarchy_tre, cnt_idx_tre);
     /* prepare for locating decoy blocks */
     binalizeWithColorMask(img_orig, bgr_min_dec, bgr_max_dec, gs_min, gs_max, img_bin_dec);
+    /* convert the binary image from grayscale to BGR for later */
+    cvtColor(img_bin_dec, img_bin_dec_rgb, COLOR_GRAY2BGR);
     /* locate decoy blocks */
     vector<vector<Point>> contours_dec;
     vector<Vec4i> hierarchy_dec;
@@ -281,7 +321,7 @@ int main() {
     addWeighted(img_inner_white, 0.5, img_orig, 0.5, 0, img_orig);
 
     /* try to filter only black lines while removing colorful block circles as much as possible */
-    binalizeWithColorMask(img_inner_white, bgr_min, bgr_max, gs_min, gs_max, img_bin_mor);
+    binalizeWithColorMask(img_inner_white, bgr_min_lin, bgr_max_lin, gs_min, gs_max, img_bin_mor);
     /* find contours */
     vector<vector<Point>> contours;
     vector<Vec4i> hierarchy;
@@ -374,6 +414,7 @@ int main() {
 	      for (int j = 0; j < cnt_idx_tre.size(); j++) {
 		vector<float> cnt_idx_entry = cnt_idx_tre[j];
 		Rect blk = boundingRect(contours_tre[cnt_idx_entry[1]]);
+		line(img_orig, Point(blk.x,blk.y+blk.height), Point(blk.x+blk.width,blk.y+blk.height), Scalar(0,0,255), 1, LINE_4); /* draw block indicator */
 		if ( intersect(Point(blk.x,blk.y+blk.height), Point(blk.x+blk.width,blk.y+blk.height), Point(tx1,ty1), Point(tx2,ty2)) ) {
 		  cnt_idx_tre_online.push_back(cnt_idx_entry);
 		}
@@ -381,6 +422,7 @@ int main() {
 	      for (int j = 0; j < cnt_idx_dec.size(); j++) {
 		vector<float> cnt_idx_entry = cnt_idx_dec[j];
 		Rect blk = boundingRect(contours_dec[cnt_idx_entry[1]]);
+		line(img_orig, Point(blk.x,blk.y+blk.height), Point(blk.x+blk.width,blk.y+blk.height), Scalar(255,0,0), 1, LINE_4); /* draw block indicator */
 		if ( intersect(Point(blk.x,blk.y+blk.height), Point(blk.x+blk.width,blk.y+blk.height), Point(tx1,ty1), Point(tx2,ty2)) ) {
 		  cnt_idx_dec_online.push_back(cnt_idx_entry);
 		}
@@ -426,9 +468,11 @@ int main() {
     /* draw the trace target on the image */
     circle(img_orig, Point(mx, SCAN_V_POS), CIRCLE_RADIUS, Scalar(0,0,255), -1);
     /* concatinate the images - original + extracted + binary */
-    Mat img_v;
-    vconcat(img_orig, img_lines, img_v);
-    vconcat(img_v, img_bin_rgb, img_comm);
+    Mat img_h1, img_h2;
+    hconcat(img_orig, img_lines, img_h1);
+    hconcat(img_h1, img_bin_rgb, img_h2);
+    hconcat(img_h2, img_bin_tre_rgb, img_h1);
+    hconcat(img_h1, img_bin_dec_rgb, img_comm);
 
     /* shrink the image to avoid delay in transmission */
     if (OUT_FRAME_WIDTH != FRAME_WIDTH || OUT_FRAME_HEIGHT != FRAME_HEIGHT) {
@@ -437,7 +481,7 @@ int main() {
       img_comm = img_resized;
     }
     /* transmit and display the image */
-    imshow("testTrace2", img_comm);
+    imshow("testTrace1", img_comm);
 
     c = waitKey(1);
     if ( c == 'q' || c == 'Q' ) break;
