@@ -755,15 +755,17 @@ void Video::show() {
   sprintf(strbuf[0], "x=%+05d,y=%+05d", plotter->getLocX(), plotter->getLocY());
   sprintf(strbuf[1], "ODO=%05d,T=%+03.1f", plotter->getDistance(), getTheta());
   sprintf(strbuf[2], "deg=%03d,gyro=%+04d", plotter->getDegree(), gyroSensor->getAngle());
-  sprintf(strbuf[3], "pwR=%+04d,pwL=%+04d", rightMotor->getPWM(), leftMotor->getPWM());
-  sprintf(strbuf[4], "mV=%04d,mA=%04d", ev3_battery_voltage_mV(), ev3_battery_current_mA());
+  sprintf(strbuf[3], "cx=%03d,cy=%03d", cx, cy);
+  sprintf(strbuf[4], "pwR=%+04d,pwL=%+04d", rightMotor->getPWM(), leftMotor->getPWM());
+  sprintf(strbuf[5], "mV=%04d,mA=%04d", ev3_battery_voltage_mV(), ev3_battery_current_mA());
 
   XPutImage(disp, win, gc, ximg, 0, 0, 0, 0, OUT_FRAME_WIDTH, 2*OUT_FRAME_HEIGHT);
-  XDrawString(disp, win, gc, DATA_INDENT, OUT_FRAME_HEIGHT+2*DATA_INDENT, strbuf[0], strlen(strbuf[0]));
-  XDrawString(disp, win, gc, DATA_INDENT, OUT_FRAME_HEIGHT+5*DATA_INDENT, strbuf[1], strlen(strbuf[1]));
-  XDrawString(disp, win, gc, DATA_INDENT, OUT_FRAME_HEIGHT+8*DATA_INDENT, strbuf[2], strlen(strbuf[2]));
-  XDrawString(disp, win, gc, DATA_INDENT, OUT_FRAME_HEIGHT+11*DATA_INDENT, strbuf[3], strlen(strbuf[3]));
-  XDrawString(disp, win, gc, DATA_INDENT, OUT_FRAME_HEIGHT+14*DATA_INDENT, strbuf[4], strlen(strbuf[4]));
+  XDrawString(disp, win, gc, DATA_INDENT, OUT_FRAME_HEIGHT+3*DATA_INDENT, strbuf[0], strlen(strbuf[0]));
+  XDrawString(disp, win, gc, DATA_INDENT, OUT_FRAME_HEIGHT+7*DATA_INDENT, strbuf[1], strlen(strbuf[1]));
+  XDrawString(disp, win, gc, DATA_INDENT, OUT_FRAME_HEIGHT+11*DATA_INDENT, strbuf[2], strlen(strbuf[2]));
+  XDrawString(disp, win, gc, DATA_INDENT, OUT_FRAME_HEIGHT+15*DATA_INDENT, strbuf[3], strlen(strbuf[3]));
+  XDrawString(disp, win, gc, DATA_INDENT, OUT_FRAME_HEIGHT+19*DATA_INDENT, strbuf[4], strlen(strbuf[4]));
+  XDrawString(disp, win, gc, DATA_INDENT, OUT_FRAME_HEIGHT+23*DATA_INDENT, strbuf[5], strlen(strbuf[5]));
   XFlush(disp);
 }
 

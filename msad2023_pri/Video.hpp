@@ -81,7 +81,7 @@ static_assert(CROP_U_LIMIT > BLOCK_OFFSET,"CROP_U_LIMIT > BLOCK_OFFSET");
 #define SCAN_V_POS int(13*FRAME_HEIGHT/16 - LINE_THICKNESS)
 static_assert(SCAN_V_POS > CROP_U_LIMIT,"SCAN_V_POS > CROP_U_LIMIT");
 static_assert(SCAN_V_POS < CROP_D_LIMIT,"SCAN_V_POS < CROP_D_LIMIT");
-#define DATA_INDENT int(OUT_FRAME_HEIGHT/16)
+#define DATA_INDENT int(OUT_FRAME_HEIGHT/24)
 
 #define AREA_DILATE_KERNEL_SIZE roundUpToOdd(int(FRAME_WIDTH/24))
 #define AREA_GS_MIN 130
@@ -136,7 +136,7 @@ protected:
   Mat frame_prev;
   Mat kernel, kernel_dil;
   unsigned long* buf;
-  char strbuf[5][40];
+  char strbuf[6][40];
   int mx, cx, cy, gsmin, gsmax, gs_block, gs_C, side, rangeOfEdges, blockOffset, blockCropAdj;
   int inFrameWidth, inFrameHeight;
   int num_tre, num_dec;
