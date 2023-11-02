@@ -159,6 +159,7 @@ public:
   void setTraceSide(int traceSide);
   void setBinarizationAlgorithm(BinarizationAlgorithm ba);
   void setTraceTargetType(TargetType tt);
+  TargetType getTraceTargetType() { return traceTargetType; }
   bool isTargetInSight();
   bool hasCaughtTarget();
   int getNumBlockOnVLine() { return num_tre + num_dec; }

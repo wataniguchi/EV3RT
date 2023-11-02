@@ -1440,8 +1440,8 @@ public:
 	    countBlack = countWhite = 0;
 	    count = hasCaughtCount++;
 	    vLineRow = 0; /* global variable */
-	    directionOnColumn = 1; /* directionOnColumn = 1 is forward while -1 is reverse */
-	    if (vLineColumn == 1) { /* directionOnRow = 1 is forward while -1 is reverse */
+	    directionOnColumn = 1; /* directionOnColumn = 1 is Row1->4 while -1 is reverse */
+	    if (vLineColumn == 1) { /* directionOnRow = 1 is Column1->4 while -1 is reverse */
 	      directionOnRow = 1;
 	    } else {
 	      directionOnRow = -1;
@@ -1458,11 +1458,11 @@ public:
 	
 	/* block catch can occur in any state but TVLST_SWEEPING_OUT */
 	if (st != TVLST_SWEEPING_OUT) {
-	  if (count++ < 5) {
+	  if (count++ < 3) {
 	    if (video->hasCaughtTarget()) hasCaughtCount++;
 	  } else {
-	    if (hasCaughtCount > 3) {
-	      /* when target determined has caught more than 3 times out of 4 attempts */
+	    if (hasCaughtCount > 2) {
+	      /* when target determined has caught more than 2 times out of 3 attempts */
 	      leftMotor->setPWM(0);
 	      rightMotor->setPWM(0);
 	      if (targetBlockType == BT_TREASURE) {
@@ -1559,7 +1559,7 @@ public:
 	      if (move == MV_ON_COLUMN) {
 		newDeg = 180 + 90 * directionOnColumn * _COURSE; /* _COURSE = -1 when R course */
 	      } else { /* MV_ON_ROW */
-		newDeg = 90 + 90 * directionOnRow * _COURSE; /* _COURSE = -1 when R course */
+		newDeg = 90 + 90 * directionOnRow; /* direction on Row is NOT relevant to L/R */
 	      }
 	      plotter->setDegree(newDeg);
 	      _log("ODO=%05d, Plotter degree forcefully changed from %d to %d.", currentDist, origDeg, newDeg);
@@ -1753,7 +1753,8 @@ public:
 	  int sensor;
 	  int forward, turn, pwmL, pwmR;
 	
-	  if ( (move == MV_ON_COLUMN && directionOnColumn ==  1 && (vLineRow    < 3 || (vLineRow    >= 3 && st != TVLST_ON_LINE))) ||
+	  if ( video->getTraceTargetType() == TT_BLK_ON_VLINE || /* do NOT use color sensor during TT_BLK_ON_VLINE */
+	       (move == MV_ON_COLUMN && directionOnColumn ==  1 && (vLineRow    < 3 || (vLineRow    >= 3 && st != TVLST_ON_LINE))) ||
 	       (move == MV_ON_COLUMN && directionOnColumn == -1 && (vLineRow    > 2 || (vLineRow    <= 2 && st != TVLST_ON_LINE))) ||
 	       (move == MV_ON_ROW    && directionOnRow    ==  1 && (vLineColumn < 3 || (vLineColumn >= 3 && st != TVLST_ON_LINE))) ||
 	       (move == MV_ON_ROW    && directionOnRow    == -1 && (vLineColumn > 2 || (vLineColumn <= 2 && st != TVLST_ON_LINE))) ) {
