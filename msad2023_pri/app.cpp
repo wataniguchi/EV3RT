@@ -51,10 +51,7 @@ Plotter*        plotter;
 Video*          video;
 int16_t         guideAngle = 0;
 int             guideLocX = 0, guideLocY = 0;
-int             vLineRow = 0, vLineColumn = 0, vLineRowStartDist = 0, vLineColumnStartDist = 0;
-int             decoyMoved = 0;
-bool            decoyMovedRow[4] = {false, false, false, false}, decoyMovedColumn[4] = {false, false, false, false};
-BlockType       targetBlockType;
+int             vLineRow = 0, vLineColumn = 0;
 int             _COURSE; /* -1 for R course and 1 for L course */
 int             _DEBUG_LEVEL; /* used in _debug macro in appusr.hpp */
 int             upd_process_count = 0; /* used in _intervalLog macro and
@@ -1449,6 +1446,8 @@ public:
 	    initColumn = vLineColumn;
 	    assert(initColumn == 1 || initColumn == 4);
 	    move = MV_ON_COLUMN;
+	    decoyMoved = 0;
+	    rowState[0] = rowState[1] = rowState[2] = rowState[3] = rowState[4] = RS_UNKNOWN;
             updated = true;
         }
 
@@ -1456,27 +1455,28 @@ public:
 	//_intervalLog("ODO=%05d, rgb(%03d,%03d,%03d)", currentDist, cur_rgb.r, cur_rgb.g, cur_rgb.b);
 	_debug(_log("ODO=%05d, rgb(%03d,%03d,%03d)", currentDist, cur_rgb.r, cur_rgb.g, cur_rgb.b),3); /* if _DEBUG_LEVEL >= 3 */
 	
-	/* block catch can occur in any state but TVLST_SWEEPING_OUT */
-	if (st != TVLST_SWEEPING_OUT) {
-	  if (count++ < 4) {
+	/* block catch can occur during TT_BLK_ON_VLINE */
+	if (video->getTraceTargetType() == TT_BLK_ON_VLINE) {
+	  if (count++ < 5) {
 	    if (video->hasCaughtTarget()) hasCaughtCount++;
 	  } else {
-	    if ( hasCaughtCount > 2 || /* when target determined has caught more than 2 times out of 4 attempts */
+	    if ( hasCaughtCount > 3 || /* when target determined has caught more than 3 times out of 5 attempts */
 		 /* or reached to the end of Row/Column - forced BAIL OUT */
-		 (video->getTraceTargetType() == TT_BLK_ON_VLINE && move == MV_ON_COLUMN && (currentDist - vLineColumnStartDist) > 350*3 + 50) ||
-		 (video->getTraceTargetType() == TT_BLK_ON_VLINE && move == MV_ON_ROW && (currentDist - vLineRowStartDist) > 350*3 + 50) ) {
+		 (move == MV_ON_COLUMN && (currentDist - vLineColumnStartDist) > 350*3 + 50) ||
+		 (move == MV_ON_ROW && (currentDist - vLineRowStartDist) > 350*3 + 50) ) {
 	      leftMotor->setPWM(0);
 	      rightMotor->setPWM(0);
 	      if (targetBlockType == BT_TREASURE) {
-		if (hasCaughtCount > 2) {
+		if (hasCaughtCount > 3) {
 		  _log("ODO=%05d, CAUGHT TREASURE block", currentDist);
 		} else {
 		  _log("ODO=%05d, *** WARNING - CAUGHT TREASURE block assumed by distance", currentDist);
 		}
 		count = hasCaughtCount = 0;
+		video->setTraceTargetType(TT_VLINE);
 		st = TVLST_END; // FOR NOW
 	      } else { /* targetBlockType == BT_DECOY */
-		if (hasCaughtCount > 2) {
+		if (hasCaughtCount > 3) {
 		  _log("ODO=%05d, CAUGHT DECOY block", currentDist);
 		} else {
 		  _log("ODO=%05d, *** WARNING - CAUGHT DECOY block assumed by distance", currentDist);
@@ -1506,6 +1506,7 @@ public:
 		nd8->addChild(nd6);
 		nd8->addChild(nd7);
 		ndChild = nd8;
+		video->setTraceTargetType(TT_VLINE);
 		st = TVLST_SWEEPING_OUT;
 	      }
 	    } else {
@@ -1520,8 +1521,12 @@ public:
 	  if (isColor(CL_BLUE, cur_rgb)) {
 	    if (move == MV_ON_COLUMN) {
 	      vLineRow += directionOnColumn;
+	      if (vLineRow < 1) vLineRow = 1;
+	      if (vLineRow > 4) vLineRow = 4;
 	    } else {
 	      vLineColumn += directionOnRow;
+	      if (vLineColumn < 1) vLineColumn = 1;
+	      if (vLineColumn > 4) vLineColumn = 4;
 	    }
 	    circleDist = currentDist;
 	    _log("ODO=%05d, circle CL_BLUE detected with rgb(%03d,%03d,%03d) at Column %d, Row %d", circleDist, cur_rgb.r, cur_rgb.g, cur_rgb.b, vLineColumn, vLineRow);
@@ -1530,8 +1535,12 @@ public:
 	  } else if (isColor(CL_RED, cur_rgb)) {
 	    if (move == MV_ON_COLUMN) {
 	      vLineRow += directionOnColumn;
+	      if (vLineRow < 1) vLineRow = 1;
+	      if (vLineRow > 4) vLineRow = 4;
 	    } else {
 	      vLineColumn += directionOnRow;
+	      if (vLineColumn < 1) vLineColumn = 1;
+	      if (vLineColumn > 4) vLineColumn = 4;
 	    }
 	    circleDist = currentDist;
 	    _log("ODO=%05d, circle CL_RED detected with rgb(%03d,%03d,%03d) at Column %d, Row %d", circleDist, cur_rgb.r, cur_rgb.g, cur_rgb.b, vLineColumn, vLineRow);
@@ -1540,8 +1549,12 @@ public:
 	  } else if (isColor(CL_YELLOW, cur_rgb)) {
 	    if (move == MV_ON_COLUMN) {
 	      vLineRow += directionOnColumn;
+	      if (vLineRow < 1) vLineRow = 1;
+	      if (vLineRow > 4) vLineRow = 4;
 	    } else {
 	      vLineColumn += directionOnRow;
+	      if (vLineColumn < 1) vLineColumn = 1;
+	      if (vLineColumn > 4) vLineColumn = 4;
 	    }
 	    circleDist = currentDist;
 	    _log("ODO=%05d, circle CL_YELLOW detected with rgb(%03d,%03d,%03d) at Column %d, Row %d", circleDist, cur_rgb.r, cur_rgb.g, cur_rgb.b, vLineColumn, vLineRow);
@@ -1550,8 +1563,12 @@ public:
 	  } else if (isColor(CL_GREEN, cur_rgb)) {
 	    if (move == MV_ON_COLUMN) {
 	      vLineRow += directionOnColumn;
+	      if (vLineRow < 1) vLineRow = 1;
+	      if (vLineRow > 4) vLineRow = 4;
 	    } else {
 	      vLineColumn += directionOnRow;
+	      if (vLineColumn < 1) vLineColumn = 1;
+	      if (vLineColumn > 4) vLineColumn = 4;
 	    }
 	    circleDist = currentDist;
 	    _log("ODO=%05d, circle CL_GREEN detected with rgb(%03d,%03d,%03d) at Column %d, Row %d", circleDist, cur_rgb.r, cur_rgb.g, cur_rgb.b, vLineColumn, vLineRow);
@@ -1559,11 +1576,7 @@ public:
 	    st = TVLST_ENTERING_CIRCLE;
 	  } else if (isColor(CL_BLACK, cur_rgb)) {
 	    countWhite = 0; /* reset white counter */
-	    if (++countBlack >= 3 && st == TVLST_INITIAL) { /* when CL_BLACK is consequtively detected */
-		vLineRow = 1;
-		_log("ODO=%05d, appear to be ON LINE. no circle detected at Column %d, Row 1", currentDist, vLineColumn);
-		st = TVLST_ON_LINE;
-	    } else if (countBlack == 10) { /* force Plotter degree when tracing is stable */
+	    if (countBlack == 5) { /* force Plotter degree when tracing is stable */
 	      int origDeg = plotter->getDegree();
 	      int newDeg;
 	      if (move == MV_ON_COLUMN) {
@@ -1580,10 +1593,26 @@ public:
 	      if (countWhite % 30 == 0) _log("ODO=%05d, *** WARNING - line LOST.", currentDist);
 	      //st = TVLST_UNKNOWN;
 	    }
-	  } else if (st == TVLST_INITIAL && (currentDist - initDist) >= 350) { /* To-Do: magic number */
+	  } else if (st == TVLST_INITIAL && initColumn == 1 && (currentDist - initDist) >= 350) { /* To-Do: magic number */
 	    vLineRow = 1;
-	    _log("ODO=%05d, assumed to be ON LINE. no circle detected at Column %d, Row 1", currentDist, vLineColumn);
-	    st = TVLST_ON_LINE;
+	    circleDist = currentDist;
+	    _log("ODO=%05d, assumed to be entering circle without circle detected at Column %d, Row 1", currentDist, vLineColumn);
+	    circleColor = CL_BLUE;
+	    st = TVLST_ENTERING_CIRCLE;
+	  } else if (st == TVLST_INITIAL && initColumn == 4 && (currentDist - initDist) >= 300) { /* To-Do: magic number */
+	    vLineRow = 1;
+	    circleDist = currentDist;
+	    _log("ODO=%05d, assumed to be entering circle without circle detected at Column %d, Row 1", currentDist, vLineColumn);
+	    circleColor = CL_RED;
+	    st = TVLST_ENTERING_CIRCLE;
+	  } else if (st != TVLST_INITIAL && move == MV_ON_COLUMN && vLineRow <=2 && abs(vLineColumnStartX - plotter->getLocX()) >= 700 && directionOnColumn ==  1) {
+	    vLineRow = 3;
+	    _log("ODO=%05d, *** WARNING - column number mismatch to X. forcefully set to Column 3", currentDist);
+	    /* keep the state */
+	  } else if (st != TVLST_INITIAL && move == MV_ON_COLUMN && vLineRow >=3 && abs(vLineColumnStartX - plotter->getLocX()) >= 700 && directionOnColumn == -1) {
+	    vLineRow = 2;
+	    _log("ODO=%05d, *** WARNING - column number mismatch to X. forcefully set to Column 2", currentDist);
+	    /* keep the state */
 	  }
 	  break;
 	case TVLST_IN_CIRCLE:
@@ -1628,36 +1657,46 @@ public:
 	  }
 	  break;
 	case TVLST_ENTERING_CIRCLE:
-	  if ( (move == MV_ON_COLUMN && decoyMovedRow[vLineRow] && directionOnColumn ==  1 && vLineRow >= 4) ||
-	       (move == MV_ON_COLUMN && decoyMovedRow[vLineRow] && directionOnColumn == -1 && vLineRow <= 1) ) {
-	    ndChild = new RotateEV3(170, 56, 0.0); /* To-Do: magic numbers */
-	    directionOnColumn *= -1; /* change direction in advance */
-	    st = TVLST_CENTERING_CIRCLE;
-	  } else if (move == MV_ON_COLUMN && !decoyMovedRow[vLineRow]) {
-	    if (initColumn == 1) {
-	      ndChild = new RotateEV3((-1)*directionOnColumn*80, 56, 0.0); /* To-Do: magic numbers */
-	      directionOnRow = 1;
-	    } else { /* initColumn == 4 */
-	      ndChild = new RotateEV3(directionOnColumn*80, 56, 0.0); /* To-Do: magic numbers */
-	      directionOnRow = -1;
+	  if (move == MV_ON_COLUMN) {
+	    if (rowState[vLineRow] == RS_NONE || (rowState[vLineRow] == RS_TREASURE && decoyMoved < 2)) { /* nothing to see */
+	      if ( (directionOnColumn ==  1 && vLineRow >= 4) ||
+		   (directionOnColumn == -1 && vLineRow <= 1) ) {
+		ndChild = new RotateEV3(170, 56, 0.0); /* To-Do: magic numbers */
+		directionOnColumn *= -1; /* change direction in advance */
+		st = TVLST_CENTERING_CIRCLE;
+	      } else {
+		st = TVLST_IN_CIRCLE;
+	      }
+	    } else { /* something to see */
+	      if (initColumn == 1) {
+		ndChild = new RotateEV3((-1)*directionOnColumn*80, 56, 0.0); /* To-Do: magic numbers */
+		directionOnRow = 1;
+	      } else { /* initColumn == 4 */
+		ndChild = new RotateEV3(directionOnColumn*80, 56, 0.0); /* To-Do: magic numbers */
+		directionOnRow = -1;
+	      }
+	      move = MV_ON_ROW;
+	      st = TVLST_CENTERING_CIRCLE;
 	    }
-	    move = MV_ON_ROW;
-	    st = TVLST_CENTERING_CIRCLE;
-	  } else if ( (move == MV_ON_ROW && initColumn == 1 && directionOnRow ==  1 && vLineColumn >= 4) ||
-		      (move == MV_ON_ROW && initColumn == 4 && directionOnRow == -1 && vLineColumn <= 1) ) {
-	    /* wait for block catch */
-	    st = TVLST_IN_CIRCLE;
-	  } else if ( (move == MV_ON_ROW && initColumn == 4 && directionOnRow ==  1 && vLineColumn >= 4) ||
-		      (move == MV_ON_ROW && initColumn == 1 && directionOnRow == -1 && vLineColumn <= 1) ) {
-	    if ( (vLineRow == 1 && directionOnColumn == -1) ||
-		 (vLineRow == 4 && directionOnColumn ==  1) ) {
-	      directionOnColumn *= -1; /* change direction */
+	  } else { /* move == MV_ON_ROW */
+	    if ( (initColumn == 1 && directionOnRow ==  1 && vLineColumn >= 4) ||
+		 (initColumn == 4 && directionOnRow == -1 && vLineColumn <= 1) ) {
+	      /* wait for block catch */
+	      st = TVLST_IN_CIRCLE;
+	    } else if ( (initColumn == 4 && directionOnRow ==  1 && vLineColumn >= 4) ||
+			(initColumn == 1 && directionOnRow == -1 && vLineColumn <= 1) ) {
+	      if ( (vLineRow == 1 && directionOnColumn == -1) ||
+		   (vLineRow == 2 && directionOnColumn == -1) || /* go other direction to avoid the use of color sensor */
+		   (vLineRow == 3 && directionOnColumn ==  1) || /* go other direction to avoid the use of color sensor */
+		   (vLineRow == 4 && directionOnColumn ==  1) ) {
+		directionOnColumn *= -1; /* change direction */
+	      }
+	      ndChild = new RotateEV3(directionOnRow*directionOnColumn*90, 56, 0.0); /* To-Do: magic numbers */
+	      move = MV_ON_COLUMN;
+	      st = TVLST_CENTERING_CIRCLE;
+	    } else {
+	      st = TVLST_IN_CIRCLE;
 	    }
-	    ndChild = new RotateEV3(directionOnRow*directionOnColumn*90, 56, 0.0); /* To-Do: magic numbers */
-	    move = MV_ON_COLUMN;
-	    st = TVLST_CENTERING_CIRCLE;
-	  } else {
-	    st = TVLST_IN_CIRCLE;
 	  }
 	  break;
 	case TVLST_CENTERING_CIRCLE:
@@ -1678,31 +1717,25 @@ public:
 	    _log("ODO=%05d, circleDist is set after rotation", currentDist);
 	    if ( (move == MV_ON_ROW && initColumn == 1 && vLineColumn <= 1 && directionOnRow ==  1) ||
 		 (move == MV_ON_ROW && initColumn == 4 && vLineColumn <= 4 && directionOnRow == -1) ) {
-	      /* determine if block is on VLine in front */
-	      if (decoyMoved < 2) {
+	      if (decoyMoved >= 2 && rowState[vLineRow] == RS_TREASURE) {
+		/* target at the block */
+		video->setTraceTargetType(TT_BLK_ON_VLINE);
+		count = hasCaughtCount = 0;
+		targetBlockType = BT_TREASURE;
+		vLineRowStartDist = currentDist;
+		st = TVLST_IN_CIRCLE;
+	      } else {
+		identifyingBlockType = BT_DECOY;
+		/* determine if block is on VLine in front */
 		ndChild = new IsBlockOnVLine(BT_DECOY, gsMin, gsMax,
 					     bgrMinTre, bgrMaxTre, bgrMinDec, bgrMaxDec, bgrMinLin, bgrMaxLin);
-		vLineRowStartDist = currentDist;
-		targetBlockType = BT_DECOY;
-	      } else { /* decoyMoved == 2 */
-		ndChild = new IsBlockOnVLine(BT_TREASURE, gsMin, gsMax,
-					     bgrMinTre, bgrMaxTre, bgrMinDec, bgrMaxDec, bgrMinLin, bgrMaxLin);
-		vLineRowStartDist = currentDist;
-		targetBlockType = BT_TREASURE;
+		st = TVLST_IDENTIFYING_BLOCK;
 	      }	
-	      st = TVLST_IDENTIFYING_BLOCK;
-	    } else if ( (move == MV_ON_COLUMN && vLineRow == 3 && directionOnColumn ==  1) ||
-			(move == MV_ON_COLUMN && vLineRow == 2 && directionOnColumn == -1) ) {
-	      /* manually build a behavior tree for executing RunPerGuideAngle */
-	      Node* nd1 = new IsDistanceEarned(350 - 60); /* distance between adjcent circles = 350 */
-	      Node* nd2 = new RunPerGuideAngle(directionOnColumn*90, 35, {2.5, 0.0001, 0.4}); /* To-Do: magic numbers */
-	      BrainTree::Composite* nd3 = new BrainTree::ParallelSequence(1,2);
-	      nd3->addChild(nd1);
-	      nd3->addChild(nd2);
-	      ndChild = nd3;
-	      _log("ODO=%05d, forcing to run per angle as VLine trace is NOT stable after rotation", currentDist);
-	      st = TVLST_RUNNING_PER_ANGLE;
 	    } else {
+	      if ( (move == MV_ON_COLUMN && vLineRow == 1 && directionOnColumn ==  1) ||
+		   (move == MV_ON_COLUMN && vLineRow == 4 && directionOnColumn == -1) ) {
+		vLineColumnStartX = plotter->getLocX();
+	      }
 	      st = TVLST_IN_CIRCLE;
 	    }
 	  }
@@ -1713,15 +1746,43 @@ public:
 	  if (stsChild == Status::Success) {
 	    delete ndChild;
 	    ndChild = nullptr;
-	    /* target at the block */
-	    video->setTraceTargetType(TT_BLK_ON_VLINE);
-	    count = hasCaughtCount = 0;
-	    st = TVLST_IN_CIRCLE;
+	    if (identifyingBlockType == BT_TREASURE) {
+	      if (decoyMoved < 2) {
+		rowState[vLineRow] = RS_TREASURE;
+		_log("ODO=%05d, Row %d marked as RS_TREASURE", currentDist, vLineRow);
+		ndChild = new RotateEV3(directionOnRow*directionOnColumn*90, 56, 0.0); /* To-Do: magic numbers */
+		move = MV_ON_COLUMN;
+		st = TVLST_ROTATING_IN_CIRCLE;
+	      } else { /* decoyMoved == 2 */
+		/* target at the block */
+		video->setTraceTargetType(TT_BLK_ON_VLINE);
+		count = hasCaughtCount = 0;
+		targetBlockType = BT_TREASURE;
+		vLineRowStartDist = currentDist;
+		st = TVLST_IN_CIRCLE;
+	      }
+	    } else { /* identifyingBlockType == BT_DECOY */
+	      /* target at the block */
+	      video->setTraceTargetType(TT_BLK_ON_VLINE);
+	      count = hasCaughtCount = 0;
+	      targetBlockType = BT_DECOY;
+	      vLineRowStartDist = currentDist;
+	      st = TVLST_IN_CIRCLE;
+	    }
 	  } else if (stsChild == Status::Failure) {
 	    delete ndChild;
-	    ndChild = new RotateEV3(directionOnRow*directionOnColumn*90, 56, 0.0); /* To-Do: magic numbers */
-	    move = MV_ON_COLUMN;
-	    st = TVLST_ROTATING_IN_CIRCLE;
+	    if (identifyingBlockType == BT_TREASURE) {
+	      rowState[vLineRow] = RS_NONE;
+	      _log("ODO=%05d, Row %d marked as RS_NONE", currentDist, vLineRow);
+	      ndChild = new RotateEV3(directionOnRow*directionOnColumn*90, 56, 0.0); /* To-Do: magic numbers */
+	      move = MV_ON_COLUMN;
+	      st = TVLST_ROTATING_IN_CIRCLE;
+	    } else { /* identifyingBlockType == BT_DECOY */
+	      identifyingBlockType = BT_TREASURE;
+	      ndChild = new IsBlockOnVLine(BT_TREASURE, gsMin, gsMax,
+					   bgrMinTre, bgrMaxTre, bgrMinDec, bgrMaxDec, bgrMinLin, bgrMaxLin);
+	      /* keep the state */
+	    }
 	  }
 	  break;
 	case TVLST_SWEEPING_OUT:
@@ -1733,33 +1794,23 @@ public:
 	    circleDist = currentDist;
 	    _log("ODO=%05d, circleDist is set after sweeping", currentDist);
 	    if (move == MV_ON_ROW && initColumn == 1) {
-	      decoyMovedRow[vLineRow] = true;
+	      rowState[vLineRow] = RS_NONE;
+	      _log("ODO=%05d, Row %d marked as RS_NONE", currentDist, vLineRow);
 	      directionOnRow = -1;
 	      vLineColumn = 4;
 	    } else if (move == MV_ON_ROW && initColumn == 4) {
-	      decoyMovedRow[vLineRow] = true;
+	      rowState[vLineRow] = RS_NONE;
+	      _log("ODO=%05d, Row %d marked as RS_NONE", currentDist, vLineRow);
 	      directionOnRow = 1;
 	      vLineColumn = 1;
 	    } else { /* move == MV_ON_COLUMN */
-	      decoyMovedColumn[vLineColumn] = true;
 	      directionOnColumn = -1;
 	      vLineRow = 4;
 	    }
 	    decoyMoved += 1;
 	    _log("ODO=%05d, Decoy moved = %d.", currentDist, decoyMoved);
 	  }
-	  video->setTraceTargetType(TT_VLINE);
 	  st = TVLST_IN_CIRCLE;
-	  break;
-	case TVLST_RUNNING_PER_ANGLE:
-	  stsChild = ndChild->update();
-	  if (stsChild == Status::Running) return stsChild;
-	  if (stsChild == Status::Success) {
-	    delete ndChild;
-	    ndChild = nullptr;
-	    _log("ODO=%05d, returning to VLine trace after running per angle", currentDist);
-	  }
-	  st = TVLST_ON_LINE;
 	  break;
 	default:
 	  break;
@@ -1780,7 +1831,7 @@ public:
 	  rightMotor->setPWM(35); /* magic number */
 	  return Status::Running;
 	} else if (st == TVLST_ROTATING_IN_CIRCLE || st == TVLST_IDENTIFYING_BLOCK ||
-		   st == TVLST_SWEEPING_OUT || st == TVLST_RUNNING_PER_ANGLE) {
+		   st == TVLST_SWEEPING_OUT) {
 	  return Status::Running;
 	} else {
 	  int sensor;
@@ -1833,15 +1884,23 @@ protected:
       TVLST_ROTATING_IN_CIRCLE,
       TVLST_IDENTIFYING_BLOCK,
       TVLST_SWEEPING_OUT,
-      TVLST_RUNNING_PER_ANGLE,
       TVLST_END,
     };
     enum Movement {
       MV_ON_COLUMN,
       MV_ON_ROW,
     };
+    enum RowState {
+      RS_NONE,
+      RS_TREASURE,
+      RS_OCCUPIED,
+      RS_UNKNOWN,
+    };
     int speed, target, gsMin, gsMax, initDist, circleDist, countBlack, countWhite, count, hasCaughtCount;
     int directionOnColumn, directionOnRow, initColumn;
+    int vLineRowStartDist, vLineColumnStartDist, vLineColumnStartX;
+    int decoyMoved;
+    RowState rowState[5];
     PIDcalculator *ltPidSen, *ltPidCam;
     TraceSide side;
     std::vector<double> bgrMinTre, bgrMaxTre, bgrMinDec, bgrMaxDec, bgrMinLin, bgrMaxLin;
@@ -1851,6 +1910,7 @@ protected:
     Status stsChild;
     rgb_raw_t cur_rgb;
     Movement move;
+    BlockType targetBlockType, identifyingBlockType;
     bool updated;
 };
 
