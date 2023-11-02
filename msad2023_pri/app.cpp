@@ -606,11 +606,11 @@ public:
 	  if (inSightCount >= 5) {
 	    /* when target in sight 5 times out of 20 attempts */
 	    if (blockType == BT_TREASURE) {
-	      _log("ODO=%05d, Treasure block on VLine at x=%d:y=%d:deg=%d",
+	      _log("ODO=%05d, TREASURE block on VLine at x=%d:y=%d:deg=%d",
 		   plotter->getDistance(), plotter->getLocX(), plotter->getLocY(),
 		   plotter->getDegree());
 	    } else {
-	      _log("ODO=%05d, Decoy block on VLine at x=%d:y=%d:deg=%d",
+	      _log("ODO=%05d, DECOY block on VLine at x=%d:y=%d:deg=%d",
 		   plotter->getDistance(), plotter->getLocX(), plotter->getLocY(),
 		   plotter->getDegree());
 	    }
@@ -618,11 +618,11 @@ public:
             return Status::Success;
 	  } else {
 	    if (blockType == BT_TREASURE) {
-	      _log("ODO=%05d, NO Treasure block on VLine at x=%d:y=%d:deg=%d",
+	      _log("ODO=%05d, NO TREASURE block on VLine at x=%d:y=%d:deg=%d",
 		   plotter->getDistance(), plotter->getLocX(), plotter->getLocY(),
 		   plotter->getDegree());
 	    } else {
-	      _log("ODO=%05d, NO Decoy block on VLine at x=%d:y=%d:deg=%d",
+	      _log("ODO=%05d, NO DECOY block on VLine at x=%d:y=%d:deg=%d",
 		   plotter->getDistance(), plotter->getLocX(), plotter->getLocY(),
 		   plotter->getDegree());
 	    }
@@ -1600,7 +1600,8 @@ public:
 	      plotter->setDegree(correctDeg);
 	      _log("ODO=%05d, Plotter degree forcefully changed from %d to %d.", currentDist, origDeg, correctDeg);	      
 	    }
-	  } else if (move == MV_ON_ROW && video->getTraceTargetType() == TT_BLK_ON_VLINE) {
+	  } else if ( (move == MV_ON_ROW && video->getTraceTargetType() == TT_BLK_ON_VLINE) ||
+		      (move == MV_ON_ROW && video->getTraceTargetType() == TT_VLINE && (currentDist - circleDist) > 500) ) {
 	    int origDeg = plotter->getDegree();
 	    int correctDeg = 90 + 90 * directionOnRow; /* direction on Row is NOT relevant to L/R */
 	    if (origDeg - correctDeg >= 10) {
@@ -1764,6 +1765,10 @@ public:
 	      if (decoyMoved < 2) {
 		rowState[vLineRow] = RS_TREASURE;
 		_log("ODO=%05d, Row %d marked as RS_TREASURE", currentDist, vLineRow);
+		if ( (vLineRow == 2 && directionOnColumn == -1) || /* go other direction to avoid the use of color sensor */
+		     (vLineRow == 3 && directionOnColumn ==  1) ) {  /* go other direction to avoid the use of color sensor */
+		  directionOnColumn *= -1; /* change direction */
+		}
 		ndChild = new RotateEV3(directionOnRow*directionOnColumn*80, 56, 0.0); /* To-Do: magic numbers */
 		move = MV_ON_COLUMN;
 		st = TVLST_ROTATING_IN_CIRCLE;

@@ -46,7 +46,7 @@ void Video::locateBlocks(vector<vector<Point>> contours, vector<Vec4i> hierarchy
       convexHull(cnt, hull);
       if ( area > BLK_AREA_MIN && wh > 0.3 && wh < 3.0 &&
 	   2.0*area > contourArea(hull) && /* the contour and its hull are not much different */
-	   (traceTargetType == TT_VLINE || pointPolygonTest(blk_roi, Point2f(x,y), false) == 1) ) { /* the contour is inside ROI unless TT_VLINE */
+	   (pointPolygonTest(blk_roi, Point2f(x,y), false) == 1) ) { /* the contour is inside ROI */
 	if (hierarchy[i][2] == -1) { /* if the contour has no child */
 	  cnt_idx.push_back({area, float(i), wh, x, y});
 	} else { /* ensure the area is not donut-shaped */
