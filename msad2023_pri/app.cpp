@@ -1593,6 +1593,20 @@ public:
 	      if (countWhite % 30 == 0) _log("ODO=%05d, *** WARNING - line LOST.", currentDist);
 	      //st = TVLST_UNKNOWN;
 	    }
+	  } else if (move == MV_ON_COLUMN && video->getTraceTargetType() == TT_VLINE && (currentDist - circleDist) > 500) {
+	    int origDeg = plotter->getDegree();
+	    int correctDeg = 180 + 90 * directionOnColumn * _COURSE; /* _COURSE = -1 when R course */
+	    if (origDeg - correctDeg >= 10) {
+	      plotter->setDegree(correctDeg);
+	      _log("ODO=%05d, Plotter degree forcefully changed from %d to %d.", currentDist, origDeg, correctDeg);	      
+	    }
+	  } else if (move == MV_ON_ROW && video->getTraceTargetType() == TT_BLK_ON_VLINE) {
+	    int origDeg = plotter->getDegree();
+	    int correctDeg = 90 + 90 * directionOnRow; /* direction on Row is NOT relevant to L/R */
+	    if (origDeg - correctDeg >= 10) {
+	      plotter->setDegree(correctDeg);
+	      _log("ODO=%05d, Plotter degree forcefully changed from %d to %d.", currentDist, origDeg, correctDeg);	      
+	    }
 	  } else if (st == TVLST_INITIAL && initColumn == 1 && (currentDist - initDist) >= 350) { /* To-Do: magic number */
 	    vLineRow = 1;
 	    circleDist = currentDist;
@@ -1691,7 +1705,7 @@ public:
 		   (vLineRow == 4 && directionOnColumn ==  1) ) {
 		directionOnColumn *= -1; /* change direction */
 	      }
-	      ndChild = new RotateEV3(directionOnRow*directionOnColumn*90, 56, 0.0); /* To-Do: magic numbers */
+	      ndChild = new RotateEV3(directionOnRow*directionOnColumn*80, 56, 0.0); /* To-Do: magic numbers */
 	      move = MV_ON_COLUMN;
 	      st = TVLST_CENTERING_CIRCLE;
 	    } else {
@@ -1750,7 +1764,7 @@ public:
 	      if (decoyMoved < 2) {
 		rowState[vLineRow] = RS_TREASURE;
 		_log("ODO=%05d, Row %d marked as RS_TREASURE", currentDist, vLineRow);
-		ndChild = new RotateEV3(directionOnRow*directionOnColumn*90, 56, 0.0); /* To-Do: magic numbers */
+		ndChild = new RotateEV3(directionOnRow*directionOnColumn*80, 56, 0.0); /* To-Do: magic numbers */
 		move = MV_ON_COLUMN;
 		st = TVLST_ROTATING_IN_CIRCLE;
 	      } else { /* decoyMoved == 2 */
@@ -1774,7 +1788,7 @@ public:
 	    if (identifyingBlockType == BT_TREASURE) {
 	      rowState[vLineRow] = RS_NONE;
 	      _log("ODO=%05d, Row %d marked as RS_NONE", currentDist, vLineRow);
-	      ndChild = new RotateEV3(directionOnRow*directionOnColumn*90, 56, 0.0); /* To-Do: magic numbers */
+	      ndChild = new RotateEV3(directionOnRow*directionOnColumn*80, 56, 0.0); /* To-Do: magic numbers */
 	      move = MV_ON_COLUMN;
 	      st = TVLST_ROTATING_IN_CIRCLE;
 	    } else { /* identifyingBlockType == BT_DECOY */
