@@ -1734,11 +1734,11 @@ void update_task(intptr_t unused) {
             switch (status) {
             case BrainTree::Node::Status::Success:
                 state = ST_BLOCK9;
-                _log("State changed: ST_BLOCK2 to ST_BLOCK4");
+                _log("State changed: ST_BLOCK7 to ST_BLOCK9");
                 break;
             case BrainTree::Node::Status::Failure:
                 state = ST_BLOCK8;
-                _log("State changed: ST_BLOCK2 to ST_BLOCK3");
+                _log("State changed: ST_BLOCK7 to ST_BLOCK8");
                 break;
             default:
                 break;
@@ -1751,11 +1751,11 @@ void update_task(intptr_t unused) {
             switch (status) {
             case BrainTree::Node::Status::Success:
                 state = ST_BLOCK9;
-                _log("State changed: ST_BLOCK3 to ST_BLOCK4");
+                _log("State changed: ST_BLOCK8 to ST_BLOCK9");
                 break;
             case BrainTree::Node::Status::Failure:
                 state = ST_ENDING;
-                _log("State changed: ST_BLOCK3 to ST_ENDING");
+                _log("State changed: ST_BLOCK8 to ST_ENDING");
                 break;
             default:
                 break;
@@ -1768,11 +1768,11 @@ void update_task(intptr_t unused) {
             switch (status) {
             case BrainTree::Node::Status::Success:
                 state = ST_BLOCK10;
-                _log("State changed: ST_BLOCK4 to ST_BLOCK5");
+                _log("State changed: ST_BLOCK9 to ST_BLOCK10");
                 break;
             case BrainTree::Node::Status::Failure:
                 state = ST_BLOCK6;
-                _log("State changed: ST_BLOCK4 to ST_BLOCK6");
+                _log("State changed: ST_BLOCK9 to ST_BLOCK6");
                 break;
             default:
                 break;
@@ -1785,11 +1785,11 @@ void update_task(intptr_t unused) {
             switch (status) {
             case BrainTree::Node::Status::Success:
                 state = ST_BLOCK11;
-                _log("State changed: ST_BLOCK5 to ST_BLOCK7");
+                _log("State changed: ST_BLOCK10 to ST_BLOCK11");
                 break;
             case BrainTree::Node::Status::Failure:
                 state = ST_ENDING;
-                _log("State changed: ST_BLOCK5 to ST_ENDING");
+                _log("State changed: ST_BLOCK10 to ST_ENDING");
                 break;
             default:
                 break;
@@ -1802,11 +1802,11 @@ void update_task(intptr_t unused) {
             switch (status) {
             case BrainTree::Node::Status::Success:
                 state = ST_BLOCK13;
-                _log("State changed: ST_BLOCK2 to ST_BLOCK4");
+                _log("State changed: ST_BLOCK11 to ST_BLOCK13");
                 break;
             case BrainTree::Node::Status::Failure:
                 state = ST_BLOCK12;
-                _log("State changed: ST_BLOCK2 to ST_BLOCK3");
+                _log("State changed: ST_BLOCK11 to ST_BLOCK12");
                 break;
             default:
                 break;
@@ -1819,11 +1819,11 @@ void update_task(intptr_t unused) {
             switch (status) {
             case BrainTree::Node::Status::Success:
                 state = ST_BLOCK13;
-                _log("State changed: ST_BLOCK3 to ST_BLOCK4");
+                _log("State changed: ST_BLOCK12 to ST_BLOCK13");
                 break;
             case BrainTree::Node::Status::Failure:
                 state = ST_ENDING;
-                _log("State changed: ST_BLOCK3 to ST_ENDING");
+                _log("State changed: ST_BLOCK12 to ST_ENDING");
                 break;
             default:
                 break;
@@ -1836,11 +1836,11 @@ void update_task(intptr_t unused) {
             switch (status) {
             case BrainTree::Node::Status::Success:
                 state = ST_BLOCK14;
-                _log("State changed: ST_BLOCK4 to ST_BLOCK5");
+                _log("State changed: ST_BLOCK13 to ST_BLOCK14");
                 break;
             case BrainTree::Node::Status::Failure:
                 state = ST_BLOCK6;
-                _log("State changed: ST_BLOCK4 to ST_BLOCK6");
+                _log("State changed: ST_BLOCK13 to ST_BLOCK6");
                 break;
             default:
                 break;
@@ -1853,7 +1853,7 @@ void update_task(intptr_t unused) {
             switch (status) {
             case BrainTree::Node::Status::Success:
                 state = ST_BLOCK6;
-                _log("State changed: ST_BLOCK5 to ST_BLOCK7");
+                _log("State changed: ST_BLOCK14 to ST_BLOCK6");
                 break;
             case BrainTree::Node::Status::Failure:
                 state = ST_ENDING;

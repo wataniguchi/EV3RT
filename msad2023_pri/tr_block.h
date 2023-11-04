@@ -267,15 +267,15 @@
   /* BLOCK5: move away from Goal paralle to the course line */ \
   .composite<BrainTree::MemSequence>() \
     /* section R501: move */ \
-    .composite<BrainTree::ParallelSequence>(1,2) \
+      .composite<BrainTree::ParallelSequence>(1,2) \
       .leaf<IsDistanceEarned>(prof->getValueAsNum("BLOCK_R501_DIST")) \
-      .leaf<IsYdiffFromGuideLocationLower>(prof->getValueAsNum("BLOCK_R501_YDIFF")) \
       .leaf<RunPerGuideAngle>(prof->getValueAsNum("BLOCK_R501_OFFSET"), \
 	    prof->getValueAsNum("BLOCK_R501_SPEED"), \
 	    prof->getValueAsNumVec("BLOCK_ANG_PID_CONST")) \
     .end() \
     .composite<BrainTree::ParallelSequence>(1,2) \
-      .leaf<IsXdiffFromGuideLocationLower>(prof->getValueAsNum("BLOCK_R502_XDIFF")) \
+      .leaf<IsDistanceEarned>(prof->getValueAsNum("BLOCK_R502_DIST")) \
+      .leaf<IsYdiffFromGuideLocationLower>(prof->getValueAsNum("BLOCK_R502_YDIFF")) \
       .leaf<RunPerGuideAngle>(prof->getValueAsNum("BLOCK_R502_OFFSET"), \
 	    prof->getValueAsNum("BLOCK_R502_SPEED"), \
 	    prof->getValueAsNumVec("BLOCK_ANG_PID_CONST")) \
@@ -340,25 +340,25 @@
   /* BLOCK2: place between the red Block Circle and Blue Circle, */\
           /*  then scan the area until finding the Treasure Block  */ \
   .composite<BrainTree::MemSequence>() \
-    /* section L201: move further toward the area */ \
+    /* section L701: move further toward the area */ \
     .composite<BrainTree::ParallelSequence>(1,2) \
-      .leaf<IsDistanceEarned>(prof->getValueAsNum("BLOCK_L201_DIST")) \
-      .leaf<RunPerGuideAngle>(prof->getValueAsNum("BLOCK_L201_OFFSET"), \
-	    prof->getValueAsNum("BLOCK_L201_SPEED"), \
+      .leaf<IsDistanceEarned>(prof->getValueAsNum("BLOCK_L701_DIST")) \
+      .leaf<RunPerGuideAngle>(prof->getValueAsNum("BLOCK_L701_OFFSET"), \
+	    prof->getValueAsNum("BLOCK_L701_SPEED"), \
 	    prof->getValueAsNumVec("BLOCK_ANG_PID_CONST")) \
     .end() \
-    /* section L202: move parallel to the course line */ \
+    /* section L702: move parallel to the course line */ \
     .composite<BrainTree::ParallelSequence>(1,2) \
-      .leaf<IsDistanceEarned>(prof->getValueAsNum("BLOCK_L202_DIST")) \
-      .leaf<RunPerGuideAngle>(prof->getValueAsNum("BLOCK_L202_OFFSET"), \
-	    prof->getValueAsNum("BLOCK_L202_SPEED"), \
+      .leaf<IsDistanceEarned>(prof->getValueAsNum("BLOCK_L702_DIST")) \
+      .leaf<RunPerGuideAngle>(prof->getValueAsNum("BLOCK_L702_OFFSET"), \
+	    prof->getValueAsNum("BLOCK_L702_SPEED"), \
 	    prof->getValueAsNumVec("BLOCK_ANG_PID_CONST")) \
     .end() \
     .leaf<StopNow>() \
-    /* section L203: scan the area until finding the Treasure Block */ \
-    .leaf<ScanBlock>(prof->getValueAsNum("BLOCK_L203_MAX_ROTATE"), \
-            prof->getValueAsNum("BLOCK_L203_DEGREE"), \
-	    prof->getValueAsNum("BLOCK_L203_SPEED"), \
+    /* section L703: scan the area until finding the Treasure Block */ \
+    .leaf<ScanBlock>(prof->getValueAsNum("BLOCK_L703_MAX_ROTATE"), \
+            prof->getValueAsNum("BLOCK_L703_DEGREE"), \
+	    prof->getValueAsNum("BLOCK_L703_SPEED"), \
 	    prof->getValueAsNum("BLOCK_GS_MIN"), \
             prof->getValueAsNum("BLOCK_GS_MAX"), \
             prof->getValueAsNumVec("BLOCK_BGR_MIN_TRE"), \
@@ -420,16 +420,16 @@
   .composite<BrainTree::MemSequence>() \
     /* section R501: move */ \
     .composite<BrainTree::ParallelSequence>(1,2) \
-      .leaf<IsDistanceEarned>(prof->getValueAsNum("BLOCK_R501_DIST")) \
-      .leaf<IsYdiffFromGuideLocationLower>(prof->getValueAsNum("BLOCK_R501_YDIFF")) \
-      .leaf<RunPerGuideAngle>(prof->getValueAsNum("BLOCK_R501_OFFSET"), \
-	    prof->getValueAsNum("BLOCK_R501_SPEED"), \
+      .leaf<IsDistanceEarned>(prof->getValueAsNum("BLOCK_R1001_DIST")) \
+      .leaf<IsYdiffFromGuideLocationLower>(prof->getValueAsNum("BLOCK_R1001_YDIFF")) \
+      .leaf<RunPerGuideAngle>(prof->getValueAsNum("BLOCK_R1001_OFFSET"), \
+	    prof->getValueAsNum("BLOCK_R1001_SPEED"), \
 	    prof->getValueAsNumVec("BLOCK_ANG_PID_CONST")) \
     .end() \
     .composite<BrainTree::ParallelSequence>(1,2) \
-      .leaf<IsXdiffFromGuideLocationLower>(prof->getValueAsNum("BLOCK_R502_XDIFF")) \
-      .leaf<RunPerGuideAngle>(prof->getValueAsNum("BLOCK_R502_OFFSET"), \
-	    prof->getValueAsNum("BLOCK_R502_SPEED"), \
+      .leaf<IsXdiffFromGuideLocationLower>(prof->getValueAsNum("BLOCK_R1002_XDIFF")) \
+      .leaf<RunPerGuideAngle>(prof->getValueAsNum("BLOCK_R1002_OFFSET"), \
+	    prof->getValueAsNum("BLOCK_R1002_SPEED"), \
 	    prof->getValueAsNumVec("BLOCK_ANG_PID_CONST")) \
     .end() \
   .end()
@@ -460,7 +460,7 @@
 	    prof->getValueAsNum("BLOCK_GS_MIN"), \
             prof->getValueAsNum("BLOCK_GS_MAX"), \
             prof->getValueAsNumVec("BLOCKR_BGR_MIN_TRE"), \
-	    prof->getValueAsNumVec("BLOCKR_BGR_MAX_TRE"), \
+	          prof->getValueAsNumVec("BLOCKR_BGR_MAX_TRE"), \
             prof->getValueAsNumVec("BLOCK_BGR_MIN_DEC"), \
             prof->getValueAsNumVec("BLOCK_BGR_MAX_DEC"))	\
     .leaf<StopNow>() \
@@ -487,7 +487,7 @@
 	    prof->getValueAsNum("BLOCK_GS_MIN"), \
             prof->getValueAsNum("BLOCK_GS_MAX"), \
             prof->getValueAsNumVec("BLOCKR_BGR_MIN_TRE"), \
-	    prof->getValueAsNumVec("BLOCKR_BGR_MAX_TRE"), \
+	          prof->getValueAsNumVec("BLOCKR_BGR_MAX_TRE"), \
             prof->getValueAsNumVec("BLOCK_BGR_MIN_DEC"), \
             prof->getValueAsNumVec("BLOCK_BGR_MAX_DEC"))	\
     .leaf<StopNow>() \
@@ -504,7 +504,7 @@
 	    prof->getValueAsNum("BLOCK_GS_MIN"), \
             prof->getValueAsNum("BLOCK_GS_MAX"), \
             prof->getValueAsNumVec("BLOCKR_BGR_MIN_TRE"), \
-	    prof->getValueAsNumVec("BLOCKR_BGR_MAX_TRE"), \
+	          prof->getValueAsNumVec("BLOCKR_BGR_MAX_TRE"), \
             prof->getValueAsNumVec("BLOCK_BGR_MIN_DEC"), \
             prof->getValueAsNumVec("BLOCK_BGR_MAX_DEC"))	\
     .end() \
