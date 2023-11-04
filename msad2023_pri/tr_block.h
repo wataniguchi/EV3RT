@@ -297,27 +297,28 @@
     .end() \
     /* section L604: move along the course line to help TraceLine to find the line */ \
     .composite<BrainTree::ParallelSequence>(1,2) \
-      .leaf<IsColorDetected>(CL_BLUE) \
       .leaf<IsDistanceEarned>(prof->getValueAsNum("BLOCK_L604_DIST")) \
       .leaf<RunPerGuideAngle>(prof->getValueAsNum("BLOCK_L604_OFFSET"), \
 	    prof->getValueAsNum("BLOCK_L604_SPEED"), \
 	    prof->getValueAsNumVec("BLOCK_ANG_PID_CONST")) \
     .end() \
     /* section L606: reach to Goal */ \
-    /*.composite<BrainTree::ParallelSequence>(1,3) */ \
-    /*  .leaf<IsColorDetected>(CL_BLUE) */ \
-    /*  .leaf<IsDistanceEarned>(prof->getValueAsNum("BLOCK_L606_DIST"))  */ \
-    /*  .leaf<TraceLineCamWithBlockInArm>(prof->getValueAsNum("BLOCK_L606_SPEED"), */\
-    /*        prof->getValueAsNumVec("BLOCK_TRACECAM_PID_CONST"),  */ \
-    /*        prof->getValueAsNum("BLOCK_TRACECAM_GS_MIN"),    */ \
-    /*       prof->getValueAsNum("BLOCK_TRACECAM_GS_MAX"), 0.0,  */ \
-    /*        (TraceSide)prof->getValueAsIntFromEnum("BLOCK_L606_TS", gEnumPairs)) */ \
-    /*.end() */\
+    .composite<BrainTree::ParallelSequence>(1,3)  \
+      .leaf<IsDistanceEarned>(prof->getValueAsNum("BLOCK_L606_DIST"))   \
+      .leaf<TraceLineCamWithBlockInArm>(prof->getValueAsNum("BLOCK_L606_SPEED"), \
+            prof->getValueAsNumVec("BLOCK_TRACECAM_PID_CONST"),   \
+            prof->getValueAsNum("BLOCK_TRACECAM_GS_MIN"),     \
+           prof->getValueAsNum("BLOCK_TRACECAM_GS_MAX"), 0.0,   \
+            (TraceSide)prof->getValueAsIntFromEnum("BLOCK_L606_TS", gEnumPairs))  \
+    .end() \
     /* section L607: get into Goal!!! */ \
-    /*.composite<BrainTree::ParallelSequence>(1,2)  */\
-    /*  .leaf<IsDistanceEarned>(prof->getValueAsNum("BLOCK_L607_DIST")) */\
-    /*  .leaf<RunAsInstructed>(prof->getValueAsNum("BLOCK_L607_PWML"), */\
-	  /*  prof->getValueAsNum("BLOCK_L607_PWMR"), 0.0) */\
-    /*.end() */ \
+    .composite<BrainTree::ParallelSequence>(1,2)  \
+      .leaf<IsDistanceEarned>(prof->getValueAsNum("BLOCK_L607_DIST")) \
+      .leaf<IsColorDetected>(CL_BLUE) \
+      .leaf<TraceLine>(prof->getValueAsNum("BLOCK_L607_SPEED"), \
+                       prof->getValueAsNum("BLOCK_Rx_R_TARGET"), \
+                       prof->getValueAsNumVec("RUN_Rx_PID_CONST"), 0.0, \
+                       (TraceSide)prof->getValueAsIntFromEnum("BLOCK_L607_TS", gEnumPairs)) \
+    .end()  \
     .leaf<StopNow>() \
   .end()
