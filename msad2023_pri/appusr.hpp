@@ -79,6 +79,8 @@ using namespace ev3api;
 
 #define SONAR_ALERT_DISTANCE    100     /* in millimeter                           */
 #define ARM_SHIFT_PWM            30
+#define TVL_ROTATE_POWER         58
+#define TVL_SEN_TRACE_POWER      35
 
 enum Color {
     CL_JETBLACK,

@@ -835,7 +835,7 @@ bool Video::isTargetInSight() {
 bool Video::hasCaughtTarget() {
   if (traceTargetType == TT_BLKS || traceTargetType == TT_BLK_ON_VLINE) {
     if (cx > 7 * FRAME_WIDTH / 16 && cx < 9 * FRAME_WIDTH &&
-	cy > 3 * FRAME_HEIGHT / 4) {
+	cy > 5 * FRAME_HEIGHT / 8) {
       return true;
     }
   }
