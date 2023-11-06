@@ -543,12 +543,14 @@ public:
 	    video->setMaskThresholds(bgrMinTre, bgrMaxTre, bgrMinDec, bgrMaxDec, bgrMinLin, bgrMaxLin);
             updated = true;
         }
-	if (count++ < 10) {
+	if (count++ < 20) {
 	  if ((numBlocks = video->getNumBlockOnVLine()) == numTest) inSightCount++;
 	  return Status::Running;
 	} else {
-	  if (inSightCount >= 5) {
-	    /* when target in sight 5 times out of 10 attempts */
+	  if ( (numTest == 2 && inSightCount >=  4) ||
+	       (numTest == 1 && inSightCount >= 10) ||
+	       (numTest == 0 && inSightCount >= 10) ) {
+	    /* when target in sight x times out of 20 attempts */
 	    _log("ODO=%05d, %d blocks VERIFIED on VLine at x=%d:y=%d:deg=%d",
 		 plotter->getDistance(), numTest, plotter->getLocX(), plotter->getLocY(),
 		 plotter->getDegree());
@@ -1435,7 +1437,7 @@ public:
 	    circleColor = CL_WHITE;
 	    initDist = currentDist;
 	    countBlack = countWhite = 0;
-	    count = hasCaughtCount++;
+	    hasCaughtCount = 0;
 	    vLineRow = 0; /* global variable */
 	    directionOnColumn = 1; /* directionOnColumn = 1 is Row1->4 while -1 is reverse */
 	    if (vLineColumn == 1) { /* directionOnRow = 1 is Column1->4 while -1 is reverse */
@@ -1457,10 +1459,10 @@ public:
 	
 	/* block catch can occur during TT_BLK_ON_VLINE */
 	if (video->getTraceTargetType() == TT_BLK_ON_VLINE) {
-	  if (count++ < 5) {
-	    if (video->hasCaughtTarget()) hasCaughtCount++;
-	  } else {
-	    if ( hasCaughtCount > 3 || /* when target determined has caught more than 3 times out of 5 attempts */
+	  if (video->hasCaughtTarget()) {
+	    hasCaughtCount++;
+	    _log("ODO=%05d, hasCaughtTarget() returns true!", currentDist); /* DEBUG */
+	    if ( hasCaughtCount >= 3 || /* when target determined has caught more than 3 times in a row */
 		 /* or reached to the end of Row/Column - forced BAIL OUT */
 		 (move == MV_ON_COLUMN && (currentDist - vLineColumnStartDist) > 350*3 + 50) ||
 		 (move == MV_ON_ROW && (currentDist - vLineRowStartDist) > 350*3 + 50) ) {
@@ -1472,7 +1474,7 @@ public:
 		} else {
 		  _log("ODO=%05d, *** WARNING - CAUGHT TREASURE block assumed by distance", currentDist);
 		}
-		count = hasCaughtCount = 0;
+		hasCaughtCount = 0;
 		video->setTraceTargetType(TT_VLINE);
 		st = TVLST_END; // FOR NOW
 	      } else { /* targetBlockType == BT_DECOY */
@@ -1481,7 +1483,7 @@ public:
 		} else {
 		  _log("ODO=%05d, *** WARNING - CAUGHT DECOY block assumed by distance", currentDist);
 		}
-		count = hasCaughtCount = 0;
+		hasCaughtCount = 0;
 		/* distance between adjcent circles = 350 */
 		int distSweep;
 		if (move == MV_ON_ROW) {
@@ -1509,10 +1511,11 @@ public:
 		video->setTraceTargetType(TT_VLINE);
 		st = TVLST_SWEEPING_OUT;
 	      }
-	    } else {
-	      count = hasCaughtCount = 0;
-	    }
-	  }
+	    } /* hasCaughtCount >= 3 */
+	  } else {
+	    hasCaughtCount = 0;
+	    _log("ODO=%05d, hasCaughtCount reset!", currentDist); /* DEBUG */
+	  } /* video->hasCaughtTarget() */
 	} /* st != TVLST_SWEEPING_OUT */
 	
 	switch(st) {
@@ -1614,7 +1617,7 @@ public:
 	    _log("ODO=%05d, assumed to be entering circle without circle detected at Column %d, Row 1", currentDist, vLineColumn);
 	    circleColor = CL_BLUE;
 	    st = TVLST_ENTERING_CIRCLE;
-	  } else if (st == TVLST_INITIAL && initColumn == 4 && (currentDist - initDist) >= 300) { /* To-Do: magic number */
+	  } else if (st == TVLST_INITIAL && initColumn == 4 && (currentDist - initDist) >= 200) { /* To-Do: magic number */
 	    vLineRow = 1;
 	    circleDist = currentDist;
 	    _log("ODO=%05d, assumed to be entering circle without circle detected at Column %d, Row 1", currentDist, vLineColumn);
@@ -1755,7 +1758,7 @@ public:
 	      if (decoyMoved >= 2 && rowState[vLineRow] == RS_TREASURE) {
 		/* target at the block */
 		video->setTraceTargetType(TT_BLK_ON_VLINE);
-		count = hasCaughtCount = 0;
+		hasCaughtCount = 0;
 		targetBlockType = BT_TREASURE;
 		vLineRowStartDist = currentDist;
 		st = TVLST_IN_CIRCLE;
@@ -1802,7 +1805,7 @@ public:
 	      } else { /* decoyMoved == 2 */
 		/* target at the block */
 		video->setTraceTargetType(TT_BLK_ON_VLINE);
-		count = hasCaughtCount = 0;
+		hasCaughtCount = 0;
 		targetBlockType = BT_TREASURE;
 		vLineRowStartDist = currentDist;
 		st = TVLST_IN_CIRCLE;
@@ -1810,7 +1813,7 @@ public:
 	    } else { /* identifyingBlockType == BT_DECOY */
 	      /* target at the block */
 	      video->setTraceTargetType(TT_BLK_ON_VLINE);
-	      count = hasCaughtCount = 0;
+	      hasCaughtCount = 0;
 	      targetBlockType = BT_DECOY;
 	      vLineRowStartDist = currentDist;
 	      st = TVLST_IN_CIRCLE;
@@ -1942,7 +1945,7 @@ protected:
       RS_OCCUPIED,
       RS_UNKNOWN,
     };
-    int speed, target, gsMin, gsMax, initDist, circleDist, countBlack, countWhite, count, hasCaughtCount;
+    int speed, target, gsMin, gsMax, initDist, circleDist, countBlack, countWhite, hasCaughtCount;
     int directionOnColumn, directionOnRow, initColumn;
     int vLineRowStartDist, vLineColumnStartDist, vLineColumnStartX;
     int decoyMoved;
@@ -2323,12 +2326,12 @@ void update_task(intptr_t unused) {
             status = tr_block1->update();
             switch (status) {
             case BrainTree::Node::Status::Success:
-                state = ST_BLOCK4;
-                _log("State changed: ST_BLOCK1 to ST_BLOCK4");
-                break;
-            case BrainTree::Node::Status::Failure:
                 state = ST_BLOCK2;
                 _log("State changed: ST_BLOCK1 to ST_BLOCK2");
+                break;
+            case BrainTree::Node::Status::Failure:
+                state = ST_BLOCK3;
+                _log("State changed: ST_BLOCK1 to ST_BLOCK3");
                 break;
             default:
                 break;
@@ -2340,12 +2343,12 @@ void update_task(intptr_t unused) {
             status = tr_block2->update();
             switch (status) {
             case BrainTree::Node::Status::Success:
-                state = ST_BLOCK4;
-                _log("State changed: ST_BLOCK2 to ST_BLOCK4");
+                state = ST_BLOCK6;
+                _log("State changed: ST_BLOCK2 to ST_BLOCK6");
                 break;
             case BrainTree::Node::Status::Failure:
-                state = ST_BLOCK3;
-                _log("State changed: ST_BLOCK2 to ST_BLOCK3");
+                state = ST_ENDING;
+                _log("State changed: ST_BLOCK2 to ST_ENDING");
                 break;
             default:
                 break;
@@ -2361,8 +2364,8 @@ void update_task(intptr_t unused) {
                 _log("State changed: ST_BLOCK3 to ST_BLOCK4");
                 break;
             case BrainTree::Node::Status::Failure:
-                state = ST_ENDING;
-                _log("State changed: ST_BLOCK3 to ST_ENDING");
+                state = ST_BLOCK5;
+                _log("State changed: ST_BLOCK3 to ST_BLOCK5");
                 break;
             default:
                 break;
@@ -2374,12 +2377,12 @@ void update_task(intptr_t unused) {
             status = tr_block4->update();
             switch (status) {
             case BrainTree::Node::Status::Success:
-                state = ST_BLOCK5;
-                _log("State changed: ST_BLOCK4 to ST_BLOCK5");
-                break;
-            case BrainTree::Node::Status::Failure:
                 state = ST_BLOCK6;
                 _log("State changed: ST_BLOCK4 to ST_BLOCK6");
+                break;
+            case BrainTree::Node::Status::Failure:
+                state = ST_ENDING;
+                _log("State changed: ST_BLOCK4 to ST_ENDING");
                 break;
             default:
                 break;

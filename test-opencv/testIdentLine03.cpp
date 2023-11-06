@@ -68,7 +68,7 @@ using std::this_thread::sleep_for;
 #define OUT_FRAME_HEIGHT 240
 
 int b_min_tre=0,g_min_tre=0,r_min_tre=45,b_max_tre=40,g_max_tre=40,r_max_tre=255;
-int b_min_dec=35,g_min_dec=0,r_min_dec=0,b_max_dec=255,g_max_dec=55,r_max_dec=40;
+int b_min_dec=25,g_min_dec=0,r_min_dec=0,b_max_dec=255,g_max_dec=55,r_max_dec=40;
 int b_min_lin=0,g_min_lin=0,r_min_lin=0,b_max_lin=60,g_max_lin=60,r_max_lin=60;
 int gs_min=10,gs_max=100,edge=0;
 vector<Point> blk_roi;
@@ -300,7 +300,13 @@ int main() {
     addWeighted(img_inner_white, 0.5, img_orig, 0.5, 0, img_orig);
 
     /* prepare for locating the treasure block */
-    binalizeWithColorMask(img_inner_white, bgr_min_tre, bgr_max_tre, gs_min, gs_max, img_bin_tre);
+    binalizeWithColorMask(img_orig, bgr_min_tre, bgr_max_tre, gs_min, gs_max, img_bin_tre);
+    /* ignore the top part */
+    for (int i = 0; i < int(FRAME_HEIGHT/6); i++) {
+      for (int j = 0; j < FRAME_WIDTH; j++) {
+	img_bin_tre.at<uchar>(i,j) = 0; /* type = CV_8U */
+      }
+    }
     /* convert the binary image from grayscale to BGR for later */
     cvtColor(img_bin_tre, img_bin_tre_rgb, COLOR_GRAY2BGR);
     /* locate the treasure block */
@@ -310,7 +316,13 @@ int main() {
     vector<vector<float>> cnt_idx_tre; /* cnt_idx: area, idx, w/h, x, y */
     locateBlocks(contours_tre, hierarchy_tre, cnt_idx_tre);
     /* prepare for locating decoy blocks */
-    binalizeWithColorMask(img_inner_white, bgr_min_dec, bgr_max_dec, gs_min, gs_max, img_bin_dec);
+    binalizeWithColorMask(img_orig, bgr_min_dec, bgr_max_dec, gs_min, gs_max, img_bin_dec);
+    /* ignore the top part */
+    for (int i = 0; i < int(FRAME_HEIGHT/6); i++) {
+      for (int j = 0; j < FRAME_WIDTH; j++) {
+	img_bin_dec.at<uchar>(i,j) = 0; /* type = CV_8U */
+      }
+    }
     /* convert the binary image from grayscale to BGR for later */
     cvtColor(img_bin_dec, img_bin_dec_rgb, COLOR_GRAY2BGR);
     /* locate decoy blocks */

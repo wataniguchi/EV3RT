@@ -237,6 +237,12 @@ Mat Video::calculateTarget(Mat f) {
     
     /* prepare for locating the treasure block */
     binalizeWithColorMask(f, bgr_min_tre, bgr_max_tre, gsmin, gsmax, img_bin_tre);
+    /* ignore the top part */
+    for (int i = 0; i < int(FRAME_HEIGHT/6); i++) {
+      for (int j = 0; j < FRAME_WIDTH; j++) {
+	img_bin_tre.at<uchar>(i,j) = 0; /* type = CV_8U */
+      }
+    }
     /* locate the treasure block */
     vector<vector<Point>> contours_tre;
     vector<Vec4i> hierarchy_tre;
@@ -245,6 +251,12 @@ Mat Video::calculateTarget(Mat f) {
     locateBlocks(contours_tre, hierarchy_tre, cnt_idx_tre);
     /* prepare for locating decoy blocks */
     binalizeWithColorMask(f, bgr_min_dec, bgr_max_dec, gsmin, gsmax, img_bin_dec);
+    /* ignore the top part */
+    for (int i = 0; i < int(FRAME_HEIGHT/6); i++) {
+      for (int j = 0; j < FRAME_WIDTH; j++) {
+	img_bin_dec.at<uchar>(i,j) = 0; /* type = CV_8U */
+      }
+    }
     /* locate decoy blocks */
     vector<vector<Point>> contours_dec;
     vector<Vec4i> hierarchy_dec;
@@ -835,7 +847,7 @@ bool Video::isTargetInSight() {
 bool Video::hasCaughtTarget() {
   if (traceTargetType == TT_BLKS || traceTargetType == TT_BLK_ON_VLINE) {
     if (cx > 7 * FRAME_WIDTH / 16 && cx < 9 * FRAME_WIDTH &&
-	cy > 5 * FRAME_HEIGHT / 8) {
+	cy > 3 * FRAME_HEIGHT / 4) {
       return true;
     }
   }
