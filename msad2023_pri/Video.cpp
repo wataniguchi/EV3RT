@@ -44,10 +44,12 @@ void Video::locateBlocks(vector<vector<Point>> contours, vector<Vec4i> hierarchy
       float wh = static_cast<float>(bbcnt.width) / bbcnt.height; /* width / height */
       vector<Point> hull;
       convexHull(cnt, hull);
-      if ( area > BLK_AREA_MIN && wh > 0.4 && wh < 2.5 &&
+      double deltaLen = BLK_LEN_MIN_Y150 - BLK_LEN_MIN_Y50;
+      double deltaY = 150.0 - 50.0;
+      double blkLenMin = deltaLen*y/deltaY - deltaLen*150.0/deltaY + BLK_LEN_MIN_Y150;
+      double blkAreaMin = blkLenMin*blkLenMin;
+      if ( area > blkAreaMin && area < 3.0*blkAreaMin && wh > 0.4 && wh < 2.5 &&
 	   2.0*area > contourArea(hull) && /* the contour and its hull are not much different */
-	   //( traceTargetType == TT_TRE_ON_VLINE || traceTargetType == TT_DEC_ON_VLINE ||
-	   //  pointPolygonTest(blk_roi, Point2f(x,y), false) == 1 ) ) { /* the contour is inside ROI unless TT_TRE_ON_VLINE or TT_DEC_ON_VLINE */
 	   pointPolygonTest(blk_roi, Point2f(x,y), false) == 1 ) { /* the contour is inside ROI */
 	if (hierarchy[i][2] == -1) { /* if the contour has no child */
 	  cnt_idx.push_back({area, float(i), wh, x, y});

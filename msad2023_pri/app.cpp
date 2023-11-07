@@ -601,12 +601,12 @@ public:
 	    video->setMaskThresholds(bgrMinTre, bgrMaxTre, bgrMinDec, bgrMaxDec, bgrMinLin, bgrMaxLin);
             updated = true;
         }
-	if (count++ < 20) {
+	if (count++ < 10) {
 	  if (blockType == BT_TREASURE && video->getNumTreBlockOnVLine() >= 1) inSightCount++;
 	  if (blockType == BT_DECOY    && video->getNumDecBlockOnVLine() >= 1) inSightCount++;
 	  return Status::Running;
 	} else {
-	  if (inSightCount >= 5) {
+	  if (inSightCount >= 3) {
 	    /* when target in sight 5 times out of 20 attempts */
 	    if (blockType == BT_TREASURE) {
 	      _log("ODO=%05d, TREASURE block on VLine at x=%d:y=%d:deg=%d",
@@ -806,9 +806,9 @@ public:
 
 	int currentDegree = plotter->getDegree();
 	int deltaDegree = (currentDegree - originalDegree);
-        if (deltaDegree > 180) {
+        if (clockwise == -1 && deltaDegree > 0) {
             deltaDegree -= 360;
-        } else if (deltaDegree < -180) {
+        } else if (clockwise == 1 && deltaDegree < 0) {
             deltaDegree += 360;
         }
 
@@ -817,7 +817,7 @@ public:
 	  _log("ODO=%05d, Rotation speed reduced to %d. Current angle = %d", plotter->getDistance(), speed, currentDegree);
 	}
 
-        if (clockwise * deltaDegree < clockwise * deltaDegreeTarget) {
+        if ( count <= 3 || (clockwise * deltaDegree < clockwise * deltaDegreeTarget) ) { /* rotate at least for three ticks */
             if ((srewRate != 0.0) && (clockwise * deltaDegree >= clockwise * deltaDegreeTarget - 5)) {
                 /* when comes to the half-way, start decreazing the speed by tropezoidal motion */    
                 leftMotor->setPWM(clockwise * 3);

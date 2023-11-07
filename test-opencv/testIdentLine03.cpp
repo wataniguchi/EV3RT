@@ -52,7 +52,8 @@ using std::this_thread::sleep_for;
 
 #define MORPH_KERNEL_SIZE roundUpToOdd(int(FRAME_WIDTH/48))
 #define AREA_DILATE_KERNEL_SIZE roundUpToOdd(int(FRAME_WIDTH/24))
-#define BLK_AREA_MIN (20.0*FRAME_WIDTH/640.0)*(20.0*FRAME_WIDTH/640.0)
+#define BLK_LEN_MIN_Y50  (20.0*FRAME_WIDTH/640.0)
+#define BLK_LEN_MIN_Y150 (80.0*FRAME_WIDTH/640.0)
 #define HOUGH_LINES_THRESH int(FRAME_HEIGHT/10)
 #define MIN_LINE_LENGTH int(FRAME_HEIGHT/10)
 #define MAX_LINE_GAP int(FRAME_HEIGHT/8)
@@ -112,7 +113,11 @@ void locateBlocks(vector<vector<Point>>& contours, vector<Vec4i>& hierarchy,
       float wh = static_cast<float>(bbcnt.width) / bbcnt.height; /* width / height */
       vector<Point> hull;
       convexHull(cnt, hull);
-      if (area > BLK_AREA_MIN && wh > 0.4 && wh < 2.5 &&
+      double deltaLen = BLK_LEN_MIN_Y150 - BLK_LEN_MIN_Y50;
+      double deltaY = 150.0 - 50.0;
+      double blkLenMin = deltaLen*y/deltaY - deltaLen*150.0/deltaY + BLK_LEN_MIN_Y150;
+      double blkAreaMin = blkLenMin*blkLenMin;
+      if (area > blkAreaMin && area < 3.0*blkAreaMin && wh > 0.4 && wh < 2.5 &&
 	  2.0*area > contourArea(hull) && /* the contour and its hull are not much different */
 	  pointPolygonTest(blk_roi, Point2f(x,y), false) == 1) { /* the contour is inside ROI */
 	  //2.0*area > contourArea(hull) ) { /* the contour and its hull are not much different */
@@ -467,22 +472,34 @@ int main() {
       vector<float> cnt_idx_entry = cnt_idx_tre_online[i];
       polylines(img_orig, (vector<vector<Point>>){contours_tre[cnt_idx_entry[1]]}, true, Scalar(0,0,255), LINE_THICKNESS);
       if (i == 0) {
-	sprintf(strbuf[0], "y = %d", int(cnt_idx_entry[4]));
+	double y = cnt_idx_entry[4];
+	double deltaLen = BLK_LEN_MIN_Y150 - BLK_LEN_MIN_Y50;
+	double deltaY = 150.0 - 50.0;
+	double blkLenMin = deltaLen*y/deltaY - deltaLen*150.0/deltaY + BLK_LEN_MIN_Y150;
+	double blkAreaMin = blkLenMin*blkLenMin;
+	sprintf(strbuf[0], "y = %d    area = %d, min = %d", int(y), int(cnt_idx_entry[0]), int(blkAreaMin));
 	putText(img_lines, strbuf[0],
 		Point(static_cast<int>(FRAME_WIDTH/64),static_cast<int>(5*FRAME_HEIGHT/8)),
 		FONT_HERSHEY_SIMPLEX, FONT_SCALE, Scalar(0,0,255),
 		static_cast<int>(LINE_THICKNESS/4), LINE_4);
+	cout << "tre[0]: " << strbuf[0] << endl;
       }
     }
     for (int i = 0; i < cnt_idx_dec_online.size(); i++) {
       vector<float> cnt_idx_entry = cnt_idx_dec_online[i];
       polylines(img_orig, (vector<vector<Point>>){contours_dec[cnt_idx_entry[1]]}, true, Scalar(255,0,0), LINE_THICKNESS);
-      if (i == 0) {
-	sprintf(strbuf[1], "y = %d", int(cnt_idx_entry[4]));
+      if (i <= 1) {
+	double y = cnt_idx_entry[4];
+	double deltaLen = BLK_LEN_MIN_Y150 - BLK_LEN_MIN_Y50;
+	double deltaY = 150.0 - 50.0;
+	double blkLenMin = deltaLen*y/deltaY - deltaLen*150.0/deltaY + BLK_LEN_MIN_Y150;
+	double blkAreaMin = blkLenMin*blkLenMin;
+	sprintf(strbuf[1], "y = %d    area = %d, min = %d", int(y), int(cnt_idx_entry[0]), int(blkAreaMin));
 	putText(img_lines, strbuf[1],
-		Point(static_cast<int>(FRAME_WIDTH/64),static_cast<int>(6*FRAME_HEIGHT/8)),
+		Point(static_cast<int>(FRAME_WIDTH/64),static_cast<int>((6+i)*FRAME_HEIGHT/8)),
 		FONT_HERSHEY_SIMPLEX, FONT_SCALE, Scalar(255,0,0),
 		static_cast<int>(LINE_THICKNESS/4), LINE_4);
+	cout << "dec[" << i << "]: " << strbuf[1] << endl;
       }
     }
     
