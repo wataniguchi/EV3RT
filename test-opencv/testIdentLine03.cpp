@@ -67,8 +67,8 @@ using std::this_thread::sleep_for;
 #define OUT_FRAME_WIDTH  320
 #define OUT_FRAME_HEIGHT 240
 
-int b_min_tre=0,g_min_tre=0,r_min_tre=45,b_max_tre=40,g_max_tre=40,r_max_tre=255;
-int b_min_dec=25,g_min_dec=0,r_min_dec=0,b_max_dec=255,g_max_dec=55,r_max_dec=40;
+int b_min_tre=0,g_min_tre=0,r_min_tre=45,b_max_tre=40,g_max_tre=20,r_max_tre=255;
+int b_min_dec=25,g_min_dec=0,r_min_dec=0,b_max_dec=255,g_max_dec=55,r_max_dec=25;
 int b_min_lin=0,g_min_lin=0,r_min_lin=0,b_max_lin=60,g_max_lin=60,r_max_lin=60;
 int gs_min=10,gs_max=100,edge=0;
 vector<Point> blk_roi;
@@ -113,8 +113,9 @@ void locateBlocks(vector<vector<Point>>& contours, vector<Vec4i>& hierarchy,
       vector<Point> hull;
       convexHull(cnt, hull);
       if (area > BLK_AREA_MIN && wh > 0.3 && wh < 3.0 &&
-	  2.0*area > contourArea(hull) && /* the contour and its hull are not much different */
-	  pointPolygonTest(blk_roi, Point2f(x,y), false) == 1) { /* the contour is inside ROI */
+	  //2.0*area > contourArea(hull) && /* the contour and its hull are not much different */
+	  //pointPolygonTest(blk_roi, Point2f(x,y), false) == 1) { /* the contour is inside ROI */
+	  2.0*area > contourArea(hull) ) { /* the contour and its hull are not much different */
 	if (hierarchy[i][2] == -1) { /* if the contour has no child */
 	  cnt_idx.push_back({area, float(i), wh, x, y});
 	} else { /* ensure the contour is not donut-shaped */
@@ -302,7 +303,7 @@ int main() {
     /* prepare for locating the treasure block */
     binalizeWithColorMask(img_orig, bgr_min_tre, bgr_max_tre, gs_min, gs_max, img_bin_tre);
     /* ignore the top part */
-    for (int i = 0; i < int(FRAME_HEIGHT/6); i++) {
+    for (int i = 0; i < int(FRAME_HEIGHT/8); i++) {
       for (int j = 0; j < FRAME_WIDTH; j++) {
 	img_bin_tre.at<uchar>(i,j) = 0; /* type = CV_8U */
       }
@@ -318,7 +319,7 @@ int main() {
     /* prepare for locating decoy blocks */
     binalizeWithColorMask(img_orig, bgr_min_dec, bgr_max_dec, gs_min, gs_max, img_bin_dec);
     /* ignore the top part */
-    for (int i = 0; i < int(FRAME_HEIGHT/6); i++) {
+    for (int i = 0; i < int(FRAME_HEIGHT/8); i++) {
       for (int j = 0; j < FRAME_WIDTH; j++) {
 	img_bin_dec.at<uchar>(i,j) = 0; /* type = CV_8U */
       }
@@ -426,16 +427,24 @@ int main() {
 	      for (int j = 0; j < cnt_idx_tre.size(); j++) {
 		vector<float> cnt_idx_entry = cnt_idx_tre[j];
 		Rect blk = boundingRect(contours_tre[cnt_idx_entry[1]]);
-		line(img_orig, Point(blk.x-1.5*blk.width,blk.y+blk.height), Point(blk.x+2.5*blk.width,blk.y+blk.height), Scalar(0,0,255), 1, LINE_4); /* draw block indicator */
-		if ( intersect(Point(blk.x-1.5*blk.width,blk.y+blk.height), Point(blk.x+2.5*blk.width,blk.y+blk.height), Point(tx1,ty1), Point(tx2,ty2)) ) {
+		/* ensure y-cordinate of the block indicator remains within FRAME_HEIGHT */
+		int y_blk = blk.y+blk.height;
+		if (y_blk >= FRAME_HEIGHT) y_blk = FRAME_HEIGHT - 1;
+		/* draw block indicator */
+		line(img_orig, Point(blk.x-1.5*blk.width,y_blk), Point(blk.x+2.5*blk.width,y_blk), Scalar(0,0,255), 1, LINE_4);
+		if ( intersect(Point(blk.x-1.5*blk.width,y_blk), Point(blk.x+2.5*blk.width,y_blk), Point(tx1,ty1), Point(tx2,ty2)) ) {
 		  cnt_idx_tre_online.push_back(cnt_idx_entry);
 		}
 	      }
 	      for (int j = 0; j < cnt_idx_dec.size(); j++) {
 		vector<float> cnt_idx_entry = cnt_idx_dec[j];
 		Rect blk = boundingRect(contours_dec[cnt_idx_entry[1]]);
-		line(img_orig, Point(blk.x-1.5*blk.width,blk.y+blk.height), Point(blk.x+2.5*blk.width,blk.y+blk.height), Scalar(255,0,0), 1, LINE_4); /* draw block indicator */
-		if ( intersect(Point(blk.x-1.5*blk.width,blk.y+blk.height), Point(blk.x+2.5*blk.width,blk.y+blk.height), Point(tx1,ty1), Point(tx2,ty2)) ) {
+		/* ensure y-cordinate of the block indicator remains within FRAME_HEIGHT */
+		int y_blk = blk.y+blk.height;
+		if (y_blk >= FRAME_HEIGHT) y_blk = FRAME_HEIGHT - 1;
+		/* draw block indicator */
+		line(img_orig, Point(blk.x-1.5*blk.width,y_blk), Point(blk.x+2.5*blk.width,y_blk), Scalar(255,0,0), 1, LINE_4);
+		if ( intersect(Point(blk.x-1.5*blk.width,y_blk), Point(blk.x+2.5*blk.width,y_blk), Point(tx1,ty1), Point(tx2,ty2)) ) {
 		  cnt_idx_dec_online.push_back(cnt_idx_entry);
 		}
 	      }

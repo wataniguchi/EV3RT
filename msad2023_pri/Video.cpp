@@ -46,7 +46,8 @@ void Video::locateBlocks(vector<vector<Point>> contours, vector<Vec4i> hierarchy
       convexHull(cnt, hull);
       if ( area > BLK_AREA_MIN && wh > 0.3 && wh < 3.0 &&
 	   2.0*area > contourArea(hull) && /* the contour and its hull are not much different */
-	   (pointPolygonTest(blk_roi, Point2f(x,y), false) == 1) ) { /* the contour is inside ROI */
+	   ( traceTargetType == TT_BLK_ON_VLINE ||
+	     pointPolygonTest(blk_roi, Point2f(x,y), false) == 1 ) ) { /* the contour is inside ROI unless TT_BLK_ON_VLINE */
 	if (hierarchy[i][2] == -1) { /* if the contour has no child */
 	  cnt_idx.push_back({area, float(i), wh, x, y});
 	} else { /* ensure the area is not donut-shaped */
@@ -238,7 +239,7 @@ Mat Video::calculateTarget(Mat f) {
     /* prepare for locating the treasure block */
     binalizeWithColorMask(f, bgr_min_tre, bgr_max_tre, gsmin, gsmax, img_bin_tre);
     /* ignore the top part */
-    for (int i = 0; i < int(FRAME_HEIGHT/6); i++) {
+    for (int i = 0; i < int(FRAME_HEIGHT/8); i++) {
       for (int j = 0; j < FRAME_WIDTH; j++) {
 	img_bin_tre.at<uchar>(i,j) = 0; /* type = CV_8U */
       }
@@ -252,7 +253,7 @@ Mat Video::calculateTarget(Mat f) {
     /* prepare for locating decoy blocks */
     binalizeWithColorMask(f, bgr_min_dec, bgr_max_dec, gsmin, gsmax, img_bin_dec);
     /* ignore the top part */
-    for (int i = 0; i < int(FRAME_HEIGHT/6); i++) {
+    for (int i = 0; i < int(FRAME_HEIGHT/8); i++) {
       for (int j = 0; j < FRAME_WIDTH; j++) {
 	img_bin_dec.at<uchar>(i,j) = 0; /* type = CV_8U */
       }
@@ -379,8 +380,12 @@ Mat Video::calculateTarget(Mat f) {
 	      for (int j = 0; j < (int)cnt_idx_tre.size(); j++) {
 		vector<float> cnt_idx_entry = cnt_idx_tre[j];
 		Rect blk = boundingRect(contours_tre[cnt_idx_entry[1]]);
-		line(f, Point(blk.x-1.5*blk.width,blk.y+blk.height), Point(blk.x+2.5*blk.width,blk.y+blk.height), Scalar(0,0,255), 1, LINE_4); /* draw block indicator */
-		if ( intersect(Point(blk.x-1.5*blk.width,blk.y+blk.height), Point(blk.x+2.5*blk.width,blk.y+blk.height), Point(tx1,ty1), Point(tx2,ty2)) ) {
+		/* ensure y-cordinate of the block indicator remains within FRAME_HEIGHT */
+		int y_blk = blk.y+blk.height;
+		if (y_blk >= FRAME_HEIGHT) y_blk = FRAME_HEIGHT - 1;
+		/* draw block indicator */
+		line(f, Point(blk.x-1.5*blk.width,y_blk), Point(blk.x+2.5*blk.width,y_blk), Scalar(0,0,255), 1, LINE_4);
+		if ( intersect(Point(blk.x-1.5*blk.width,y_blk), Point(blk.x+2.5*blk.width,y_blk), Point(tx1,ty1), Point(tx2,ty2)) ) {
 		  cnt_idx_tre_online.push_back(cnt_idx_entry);
 		  if (blk.y > cy) {
 		    cx = cnt_idx_entry[3];
@@ -392,8 +397,12 @@ Mat Video::calculateTarget(Mat f) {
 	      for (int j = 0; j < (int)cnt_idx_dec.size(); j++) {
 		vector<float> cnt_idx_entry = cnt_idx_dec[j];
 		Rect blk = boundingRect(contours_dec[cnt_idx_entry[1]]);
-		line(f, Point(blk.x-1.5*blk.width,blk.y+blk.height), Point(blk.x+2.5*blk.width,blk.y+blk.height), Scalar(255,0,0), 1, LINE_4); /* draw block indicator */
-		if ( intersect(Point(blk.x-1.5*blk.width,blk.y+blk.height), Point(blk.x+2.5*blk.width,blk.y+blk.height), Point(tx1,ty1), Point(tx2,ty2)) ) {
+		/* ensure y-cordinate of the block indicator remains within FRAME_HEIGHT */
+		int y_blk = blk.y+blk.height;
+		if (y_blk >= FRAME_HEIGHT) y_blk = FRAME_HEIGHT - 1;
+		/* draw block indicator */
+		line(f, Point(blk.x-1.5*blk.width,y_blk), Point(blk.x+2.5*blk.width,y_blk), Scalar(255,0,0), 1, LINE_4);
+		if ( intersect(Point(blk.x-1.5*blk.width,y_blk), Point(blk.x+2.5*blk.width,y_blk), Point(tx1,ty1), Point(tx2,ty2)) ) {
 		  cnt_idx_dec_online.push_back(cnt_idx_entry);
 		  if (blk.y > cy) {
 		    cx = cnt_idx_entry[3];
