@@ -113,9 +113,9 @@ void locateBlocks(vector<vector<Point>>& contours, vector<Vec4i>& hierarchy,
       vector<Point> hull;
       convexHull(cnt, hull);
       if (area > BLK_AREA_MIN && wh > 0.3 && wh < 3.0 &&
-	  //2.0*area > contourArea(hull) && /* the contour and its hull are not much different */
-	  //pointPolygonTest(blk_roi, Point2f(x,y), false) == 1) { /* the contour is inside ROI */
-	  2.0*area > contourArea(hull) ) { /* the contour and its hull are not much different */
+	  2.0*area > contourArea(hull) && /* the contour and its hull are not much different */
+	  pointPolygonTest(blk_roi, Point2f(x,y), false) == 1) { /* the contour is inside ROI */
+	  //2.0*area > contourArea(hull) ) { /* the contour and its hull are not much different */
 	if (hierarchy[i][2] == -1) { /* if the contour has no child */
 	  cnt_idx.push_back({area, float(i), wh, x, y});
 	} else { /* ensure the contour is not donut-shaped */

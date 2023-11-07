@@ -110,7 +110,8 @@ enum TargetType {
   TT_LINE_WITH_BLK, /* Line with a block in the arm */
   TT_BLKS, /* Blocks */
   TT_VLINE, /* Virtual line in the block area */
-  TT_BLK_ON_VLINE,
+  TT_TRE_ON_VLINE,
+  TT_DEC_ON_VLINE,
 };
 
 /* prototype of global functions */
