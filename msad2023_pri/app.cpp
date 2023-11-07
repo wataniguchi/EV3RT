@@ -1164,9 +1164,9 @@ public:
     Status update() override {
         if (!updated) {
   	    targetAngle = _COURSE * offset + guideAngle; /* _COURSE = -1 when R course */
-            if (targetAngle > 180) {
+            if (targetAngle >= 360) {
                 targetAngle -= 360;
-            } else if (targetAngle < -180) {
+            } else if (targetAngle < 0) {
                 targetAngle += 360;
             }
             /* The following code chunk is to properly set prevXin in SRLF */
@@ -1174,7 +1174,7 @@ public:
             leftMotor->setPWM(leftMotor->getPWM());
             srlfR->setRate(0.0);
             rightMotor->setPWM(rightMotor->getPWM());
-            _log("ODO=%05d, MovePerGuideAngle started. Target angle = %d, Current angle = %d", plotter->getDistance(), targetAngle, plotter->getDegree());
+            _log("ODO=%05d, RunPerGuideAngle started. Offset = %d, Target angle = %d, Current angle = %d", plotter->getDistance(), offset, targetAngle, plotter->getDegree());
             updated = true;
             return Status::Running;
         }
@@ -1457,8 +1457,9 @@ public:
         colorSensor->getRawColor(cur_rgb);
 	_debug(_log("ODO=%05d, rgb(%03d,%03d,%03d)", currentDist, cur_rgb.r, cur_rgb.g, cur_rgb.b),3); /* if _DEBUG_LEVEL >= 3 */
 	
-	/* block catch can occur during TT_BLK_ON_VLINE */
-	if (video->getTraceTargetType() == TT_BLK_ON_VLINE) {
+	/* block catch can occur during TT_TRE_ON_VLINE or TT_DEC_ON_VLINE */
+	if (video->getTraceTargetType() == TT_TRE_ON_VLINE ||
+	    video->getTraceTargetType() == TT_DEC_ON_VLINE) {
 	  if (count++ < 5) {
 	    if (video->hasCaughtTarget()) hasCaughtCount++;
 	  } else {
@@ -1602,7 +1603,8 @@ public:
 	      plotter->setDegree(correctDeg);
 	      _log("ODO=%05d, Plotter degree forcefully changed from %d to %d.", currentDist, origDeg, correctDeg);	      
 	    }
-	  } else if ( (move == MV_ON_ROW && video->getTraceTargetType() == TT_BLK_ON_VLINE) ||
+	  } else if ( (move == MV_ON_ROW && video->getTraceTargetType() == TT_TRE_ON_VLINE) ||
+		      (move == MV_ON_ROW && video->getTraceTargetType() == TT_DEC_ON_VLINE) ||
 		      (move == MV_ON_ROW && video->getTraceTargetType() == TT_VLINE && (currentDist - circleDist) > 500) ) {
 	    int origDeg = plotter->getDegree();
 	    int correctDeg = 90 + 90 * directionOnRow; /* direction on Row is NOT relevant to L/R */
@@ -1753,7 +1755,7 @@ public:
 		 (move == MV_ON_ROW && initColumn == 4 && vLineColumn == 4 && directionOnRow == -1) ) {
 	      if (decoyMoved >= 2 && rowState[vLineRow] == RS_TREASURE) {
 		/* target at the block */
-		video->setTraceTargetType(TT_BLK_ON_VLINE);
+		video->setTraceTargetType(TT_TRE_ON_VLINE);
 		count = hasCaughtCount = 0;
 		targetBlockType = BT_TREASURE;
 		vLineRowStartDist = currentDist;
@@ -1799,7 +1801,7 @@ public:
 		st = TVLST_ROTATING_IN_CIRCLE;
 	      } else { /* decoyMoved == 2 */
 		/* target at the block */
-		video->setTraceTargetType(TT_BLK_ON_VLINE);
+		video->setTraceTargetType(TT_TRE_ON_VLINE);
 		count = hasCaughtCount = 0;
 		targetBlockType = BT_TREASURE;
 		vLineRowStartDist = currentDist;
@@ -1808,7 +1810,7 @@ public:
 	      }
 	    } else { /* identifyingBlockType == BT_DECOY */
 	      /* target at the block */
-	      video->setTraceTargetType(TT_BLK_ON_VLINE);
+	      video->setTraceTargetType(TT_DEC_ON_VLINE);
 	      count = hasCaughtCount = 0;
 	      targetBlockType = BT_DECOY;
 	      vLineRowStartDist = currentDist;
@@ -1883,7 +1885,8 @@ public:
 	  int sensor;
 	  int forward, turn, pwmL, pwmR;
 	
-	  if ( video->getTraceTargetType() == TT_BLK_ON_VLINE || /* do NOT use color sensor during TT_BLK_ON_VLINE */
+	  if ( video->getTraceTargetType() == TT_TRE_ON_VLINE || /* do NOT use color sensor during TT_TRE_ON_VLINE */
+	       video->getTraceTargetType() == TT_DEC_ON_VLINE || /* nor TT_DEC_ON_VLINE */
 	       (move == MV_ON_COLUMN && directionOnColumn ==  1 && (vLineRow    < 3 || (vLineRow    >= 3 && st != TVLST_ON_LINE))) ||
 	       (move == MV_ON_COLUMN && directionOnColumn == -1 && (vLineRow    > 2 || (vLineRow    <= 2 && st != TVLST_ON_LINE))) ||
 	       (move == MV_ON_ROW    && directionOnRow    ==  1 && (vLineColumn < 3 || (vLineColumn >= 3 && st != TVLST_ON_LINE))) ||

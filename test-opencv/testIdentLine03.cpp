@@ -113,9 +113,9 @@ void locateBlocks(vector<vector<Point>>& contours, vector<Vec4i>& hierarchy,
       vector<Point> hull;
       convexHull(cnt, hull);
       if (area > BLK_AREA_MIN && wh > 0.3 && wh < 3.0 &&
-	  //2.0*area > contourArea(hull) && /* the contour and its hull are not much different */
-	  //pointPolygonTest(blk_roi, Point2f(x,y), false) == 1) { /* the contour is inside ROI */
-	  2.0*area > contourArea(hull) ) { /* the contour and its hull are not much different */
+	  2.0*area > contourArea(hull) && /* the contour and its hull are not much different */
+	  pointPolygonTest(blk_roi, Point2f(x,y), false) == 1) { /* the contour is inside ROI */
+	  //2.0*area > contourArea(hull) ) { /* the contour and its hull are not much different */
 	if (hierarchy[i][2] == -1) { /* if the contour has no child */
 	  cnt_idx.push_back({area, float(i), wh, x, y});
 	} else { /* ensure the contour is not donut-shaped */
@@ -431,8 +431,9 @@ int main() {
 		int y_blk = blk.y+blk.height;
 		if (y_blk >= FRAME_HEIGHT) y_blk = FRAME_HEIGHT - 1;
 		/* draw block indicator */
-		line(img_orig, Point(blk.x-1.5*blk.width,y_blk), Point(blk.x+2.5*blk.width,y_blk), Scalar(0,0,255), 1, LINE_4);
-		if ( intersect(Point(blk.x-1.5*blk.width,y_blk), Point(blk.x+2.5*blk.width,y_blk), Point(tx1,ty1), Point(tx2,ty2)) ) {
+		int x_blk_adj = 3 * (FRAME_HEIGHT - y_blk) / FRAME_HEIGHT;
+		line(img_orig, Point(blk.x-x_blk_adj*blk.width,y_blk), Point(blk.x+(1+x_blk_adj)*blk.width,y_blk), Scalar(0,0,255), 1, LINE_4);
+		if ( intersect(Point(blk.x-x_blk_adj*blk.width,y_blk), Point(blk.x+(1+x_blk_adj)*blk.width,y_blk), Point(tx1,ty1), Point(tx2,ty2)) ) {
 		  cnt_idx_tre_online.push_back(cnt_idx_entry);
 		}
 	      }
@@ -443,8 +444,9 @@ int main() {
 		int y_blk = blk.y+blk.height;
 		if (y_blk >= FRAME_HEIGHT) y_blk = FRAME_HEIGHT - 1;
 		/* draw block indicator */
-		line(img_orig, Point(blk.x-1.5*blk.width,y_blk), Point(blk.x+2.5*blk.width,y_blk), Scalar(255,0,0), 1, LINE_4);
-		if ( intersect(Point(blk.x-1.5*blk.width,y_blk), Point(blk.x+2.5*blk.width,y_blk), Point(tx1,ty1), Point(tx2,ty2)) ) {
+		int x_blk_adj = 3 * (FRAME_HEIGHT - y_blk) / FRAME_HEIGHT;
+		line(img_orig, Point(blk.x-x_blk_adj*blk.width,y_blk), Point(blk.x+(1+x_blk_adj)*blk.width,y_blk), Scalar(255,0,0), 1, LINE_4);
+		if ( intersect(Point(blk.x-x_blk_adj*blk.width,y_blk), Point(blk.x+(1+x_blk_adj)*blk.width,y_blk), Point(tx1,ty1), Point(tx2,ty2)) ) {
 		  cnt_idx_dec_online.push_back(cnt_idx_entry);
 		}
 	      }
