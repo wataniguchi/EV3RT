@@ -185,6 +185,12 @@
         (prof->getValueAsNum("RUN_LB3_PWR")), \
         (prof->getValueAsNum("RUN_LB3_SR"))) \
       .end() \
+      .composite<BrainTree::ParallelSequence>(1,2) \
+        .leaf<IsDistanceEarned>(prof->getValueAsNum("RUN_LB4_DIST")) \
+        .leaf<RunAsInstructed>((prof->getValueAsNum("RUN_LB4_PWL")), \
+        (prof->getValueAsNum("RUN_LB4_PWR")), \
+        (prof->getValueAsNum("RUN_LB4_SR"))) \
+      .end() \
       /* section L1: to the first join */ \
       .composite<BrainTree::ParallelSequence>(1,2) \
         .composite<BrainTree::MemSequence>() \
@@ -215,6 +221,12 @@
         .leaf<RunAsInstructed>((prof->getValueAsNum("RUN_L23_PWL")), \
         (prof->getValueAsNum("RUN_L23_PWR")), \
         (prof->getValueAsNum("RUN_L23_SR"))) \
+      .end() \
+          .composite<BrainTree::ParallelSequence>(1,2) \
+        .leaf<IsDistanceEarned>(prof->getValueAsNum("RUN_L24_DIST")) \
+        .leaf<RunAsInstructed>((prof->getValueAsNum("RUN_L24_PWL")), \
+        (prof->getValueAsNum("RUN_L24_PWR")), \
+        (prof->getValueAsNum("RUN_L24_SR"))) \
       .end() \
       /* section L3: while passing the fork beyond LAP Gate */ \
       .composite<BrainTree::ParallelSequence>(1,2) \
