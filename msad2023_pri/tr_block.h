@@ -40,7 +40,7 @@
   /* BLOCK2: traverse the area from Column 1 to push out two Decoy blocks, and then carry Treasure block to Goal */ \
   .composite<BrainTree::MemSequence>() \
     /* section R201: traverse the area */ \
-    .leaf<SetVLineColumn>(1) \
+    .leaf<SetVLineColumn>(1, false) \
     .leaf<TraverseVLine>(prof->getValueAsNum("BLOCK_R201_SPEED"), \
 	  prof->getValueAsNum("BLOCK_TARGET_R"), \
 	  prof->getValueAsNumVec("BLOCK_PIDSEN_CONST"), \
@@ -69,10 +69,16 @@
 	  prof->getValueAsNumVec("BLOCK_BGR_MAX_DEC"), \
           prof->getValueAsNumVec("BLOCK_BGR_MIN_LIN"), \
           prof->getValueAsNumVec("BLOCK_BGR_MAX_LIN")) \
+    .leaf<StopNow>() \
   .end()
 
 #define TR_BLOCK4_R \
-  .leaf<StopNow>()
+  /* BLOCK4: traverse the area from Column 1 while taking care of the block on the column */ \
+  .composite<BrainTree::MemSequence>() \
+    /* section R401: traverse the area */ \
+    .leaf<SetVLineColumn>(1, true) \
+    .leaf<StopNow>() \
+  .end()
 
 #define TR_BLOCK5_R \
   /* BLOCK5: move to VLine Column 4 and traverse the area from Column 4 */ \
@@ -95,7 +101,7 @@
     .leaf<RotateEV3>(prof->getValueAsNum("BLOCK_R503_DEGREE"), \
 		     prof->getValueAsNum("BLOCK_R503_SPEED"), 0.0) \
     /* section R504: traverse the area */ \
-    .leaf<SetVLineColumn>(4) \
+    .leaf<SetVLineColumn>(4, false) \
     .leaf<TraverseVLine>(prof->getValueAsNum("BLOCK_R504_SPEED"), \
 	  prof->getValueAsNum("BLOCK_TARGET_R"), \
 	  prof->getValueAsNumVec("BLOCK_PIDSEN_CONST"), \

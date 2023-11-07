@@ -52,6 +52,7 @@ Video*          video;
 int16_t         guideAngle = 0;
 int             guideLocX = 0, guideLocY = 0;
 int             vLineRow = 0, vLineColumn = 0;
+bool            blockOnInitColumn = false;
 int             _COURSE; /* -1 for R course and 1 for L course */
 int             _DEBUG_LEVEL; /* used in _debug macro in appusr.hpp */
 int             upd_process_count = 0; /* used in _intervalLog macro and
@@ -805,10 +806,11 @@ public:
 
 	int currentDegree = plotter->getDegree();
 	int deltaDegree = (currentDegree - originalDegree);
-	/* when    0 <= deltaDegree <= 180,  -90 <= deltaDegree < 269 */
-	if (deltaDegreeTarget >= 0 && deltaDegree <  -90) deltaDegree += 360;
-	/* when -180 <= deltaDegree <    0, -270 <= deltaDegree <  89 */
-	if (deltaDegreeTarget <  0 && deltaDegree >=  90) deltaDegree -= 360;
+        if (deltaDegree > 180) {
+            deltaDegree -= 360;
+        } else if (deltaDegree < -180) {
+            deltaDegree += 360;
+        }
 
 	if (count++ == 10) {
 	  speed = 0.9 * speed;
@@ -1353,16 +1355,23 @@ protected:
 
 /*
     usage:
-    ".leaf<SetVLineColumn>(column)"
+    ".leaf<SetVLineColumn>(column, block_on_init_column)"
     is to set the current column number of Block Challenge area
     that can be used in TraverseVLine action class.
+    block_on_init_column indicates if the initial column is known to have a block to be taken care of.
 */
 class SetVLineColumn : public BrainTree::Node {
 public:
-    SetVLineColumn(int c) : column(c) {} 
+    SetVLineColumn(int c, bool b) : column(c) {
+      blockOnInitColumn = b;
+    } 
     Status update() override {
         vLineColumn = column;
-        _log("ODO=%05d, VLine column set to %d", plotter->getDistance(), vLineColumn);
+	if (blockOnInitColumn) {
+	  _log("ODO=%05d, VLine column set to %d WITH a block on it to be taken care of", plotter->getDistance(), vLineColumn);
+	} else {
+	  _log("ODO=%05d, VLine column set to %d", plotter->getDistance(), vLineColumn);
+	}
         return Status::Success;
     }
 protected:
