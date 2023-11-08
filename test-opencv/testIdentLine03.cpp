@@ -117,7 +117,7 @@ void locateBlocks(vector<vector<Point>>& contours, vector<Vec4i>& hierarchy,
       double deltaY = 150.0 - 50.0;
       double blkLenMin = deltaLen*y/deltaY - deltaLen*150.0/deltaY + BLK_LEN_MIN_Y150;
       double blkAreaMin = blkLenMin*blkLenMin;
-      if (area > blkAreaMin && area < 3.0*blkAreaMin && wh > 0.4 && wh < 2.5 &&
+      if (area > blkAreaMin && area < 5.0*blkAreaMin && wh > 0.4 && wh < 2.5 &&
 	  2.0*area > contourArea(hull) && /* the contour and its hull are not much different */
 	  pointPolygonTest(blk_roi, Point2f(x,y), false) == 1) { /* the contour is inside ROI */
 	  //2.0*area > contourArea(hull) ) { /* the contour and its hull are not much different */

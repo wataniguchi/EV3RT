@@ -69,7 +69,6 @@
 	  prof->getValueAsNumVec("BLOCK_BGR_MAX_DEC"), \
           prof->getValueAsNumVec("BLOCK_BGR_MIN_LIN"), \
           prof->getValueAsNumVec("BLOCK_BGR_MAX_LIN")) \
-    .leaf<StopNow>() \
   .end()
 
 #define TR_BLOCK4_R \
@@ -77,6 +76,19 @@
   .composite<BrainTree::MemSequence>() \
     /* section R401: traverse the area */ \
     .leaf<SetVLineColumn>(1, true) \
+    .leaf<TraverseVLine>(prof->getValueAsNum("BLOCK_R401_SPEED"), \
+	  prof->getValueAsNum("BLOCK_TARGET_R"), \
+	  prof->getValueAsNumVec("BLOCK_PIDSEN_CONST"), \
+	  prof->getValueAsNumVec("BLOCK_PIDCAM_CONST"), \
+	  prof->getValueAsNum("BLOCK_GS_MIN"), \
+          prof->getValueAsNum("BLOCK_GS_MAX"), \
+          prof->getValueAsNumVec("BLOCK_BGR_MIN_TRE"), \
+	  prof->getValueAsNumVec("BLOCK_BGR_MAX_TRE"), \
+          prof->getValueAsNumVec("BLOCK_BGR_MIN_DEC"), \
+	  prof->getValueAsNumVec("BLOCK_BGR_MAX_DEC"), \
+          prof->getValueAsNumVec("BLOCK_BGR_MIN_LIN"), \
+          prof->getValueAsNumVec("BLOCK_BGR_MAX_LIN"), \
+          (TraceSide)prof->getValueAsIntFromEnum("BLOCK_R401_TS", gEnumPairs)) \
     .leaf<StopNow>() \
   .end()
 

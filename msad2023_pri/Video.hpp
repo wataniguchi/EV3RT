@@ -167,6 +167,7 @@ public:
   int getNumBlockOnVLine() { return num_tre + num_dec; }
   int getNumTreBlockOnVLine() { return num_tre; }
   int getNumDecBlockOnVLine() { return num_dec; }
+  int getCY() { return cy; }
   ~Video();
 protected:
   void locateBlocks(vector<vector<Point>>, vector<Vec4i>, vector<vector<float>>&);
