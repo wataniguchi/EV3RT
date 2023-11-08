@@ -1763,8 +1763,14 @@ public:
 	      if ( (vLineRow == 1 && directionOnColumn == -1) ||
 		   (vLineRow == 4 && directionOnColumn ==  1) ) {
 		directionOnColumn *= -1; /* change direction */
+	      } else if ( (vLineRow == 2 && directionOnColumn == -1 && rowState[1] != VS_TREASURE &&
+			   decoyMoved == 2 && treasureFound == 1) || /* go other direction to save time */
+			  (vLineRow == 3 && directionOnColumn ==  1 && rowState[4] != VS_TREASURE &&
+			   decoyMoved == 2 && treasureFound == 1) ) {
+		_log("ODO=%05d, no need to visit empty Row", currentDist);
+		directionOnColumn *= -1; /* change direction */		
 	      } else if ( (vLineRow == 2 && directionOnColumn == -1) || /* go other direction to avoid the use of color sensor */
-		   (vLineRow == 3 && directionOnColumn ==  1) ) {
+			  (vLineRow == 3 && directionOnColumn ==  1) ) {
 		detour = true;
 		_log("ODO=%05d, detour starting to avoid use of color sensor...", currentDist);
 		directionOnColumn *= -1; /* change direction */
