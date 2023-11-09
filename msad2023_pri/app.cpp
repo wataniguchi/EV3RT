@@ -1493,37 +1493,49 @@ public:
 		video->setTraceTargetType(TT_VLINE);
 		if (decoyMoved == 2) {
 		  _log("ODO=%05d, MOVING Treasure to goal...", currentDist);
-		  int distX = (4 - vLineRow) * 350 + 50;
-		  if (vLineColumn == 1) {
-		    /* manually build a behavior tree for moving Trasure block */
+		  int distX, distY;
+		  if (move == MV_ON_ROW) {
+		    distX = (4 - vLineRow) * 350 + 50;
+		    if (directionOnRow == 1) {
+		      distY = currentDist - vLineRowStartDist;
+		    } else { /* directionOnRow == -1 */
+		      distY = 3 * 350 - (currentDist - vLineRowStartDist);
+		    }
 		    Node* nd1 = new IsDistanceEarned(distX);
-		    Node* nd2 = new RunPerGuideAngle(90, speed, {2.5, 0.0001, 0.4}); /* To-Do: magic numbers */
-		    BrainTree::Composite* nd3 = new BrainTree::ParallelSequence(1,2);
-		    nd3->addChild(nd1);
-		    nd3->addChild(nd2);
-		    ndChild = nd3;
-		  } else {
-		    int distY = (vLineColumn - 1) * 350;
-		    Node* nd1 = new IsDistanceEarned(distX);
-		    Node* nd2 = new RunPerGuideAngle(90, speed, {2.5, 0.0001, 0.4}); /* To-Do: magic numbers */
+		    Node* nd2 = new RunPerGuideAngle(90, TVL_HIGH_SPEED, {2.5, 0.0001, 0.4}); /* To-Do: magic numbers */
 		    BrainTree::Composite* nd3 = new BrainTree::ParallelSequence(1,2);
 		    nd3->addChild(nd1);
 		    nd3->addChild(nd2);
 		    Node* nd4 = new IsDistanceEarned(distY);
-		    Node* nd5 = new RunPerGuideAngle(180, speed, {2.5, 0.0001, 0.4}); /* To-Do: magic numbers */
+		    Node* nd5 = new RunPerGuideAngle(180, TVL_HIGH_SPEED, {2.5, 0.0001, 0.4}); /* To-Do: magic numbers */
 		    BrainTree::Composite* nd6 = new BrainTree::ParallelSequence(1,2);
 		    nd6->addChild(nd4);
 		    nd6->addChild(nd5);
-		    BrainTree::Composite* nd7 = new BrainTree::MemSequence();
-		    nd7->addChild(nd3);
-		    nd7->addChild(nd6);
-		    ndChild = nd7;
+		    Node* nd7 = new IsDistanceEarned(50);
+		    Node* nd8 = new RunPerGuideAngle(90, speed, {2.5, 0.0001, 0.4}); /* To-Do: magic numbers */
+		    BrainTree::Composite* nd9 = new BrainTree::ParallelSequence(1,2);
+		    nd9->addChild(nd7);
+		    nd9->addChild(nd8);
+		    BrainTree::Composite* nd10 = new BrainTree::MemSequence();
+		    nd10->addChild(nd3);
+		    nd10->addChild(nd6);
+		    nd10->addChild(nd9);
+		    ndChild = nd10;		    
+		  } else { /* mv == MV_ON_COLUMN */
+		    distX = 3 * 350 + 100 - vLineColumnStartDist;
+		    /* manually build a behavior tree for moving Trasure block */
+		    Node* nd1 = new IsDistanceEarned(distX);
+		    Node* nd2 = new RunPerGuideAngle(90, TVL_HIGH_SPEED, {2.5, 0.0001, 0.4}); /* To-Do: magic numbers */
+		    BrainTree::Composite* nd3 = new BrainTree::ParallelSequence(1,2);
+		    nd3->addChild(nd1);
+		    nd3->addChild(nd2);
+		    ndChild = nd3;
 		  }
 		  video->setTraceTargetType(TT_VLINE);
 		  st = TVLST_EXIT;
 		} else {
 		  /* recover the false vLineColumnStartDist */
-		  vLineColumnStartDist = currentDist - 350;		  
+		  vLineColumnStartDist = currentDist - 350; /* this happens only when Treasure Block is on C1R2 */ 
 		  _log("ODO=%05d, vLineRowStartDist set to %d", currentDist, vLineRowStartDist);
 		  /* distance between adjcent circles = 350 */
 		  int distSweep = 700; /* TODO: magic number */
@@ -1545,7 +1557,7 @@ public:
 		  nd8->addChild(nd7);
 		  ndChild = nd8;
 		  video->setTraceTargetType(TT_VLINE);
-		  st = TVLST_SWEEPING_OUT;
+		  st = TVLST_SWEEPING_OUT; /* intention is to move Treasure Block to C1R4 */
 		}
 	      } else { /* targetBlockType == BT_DECOY */
 		if (hasCaughtCount >= 3) {
@@ -2121,7 +2133,11 @@ public:
 	  }
 	  
 	  _debug(_log("ODO=%05d, turn = %d", currentDist, turn),3); /* if _DEBUG_LEVEL >= 3 */
-	  forward = speed;
+	  if (video->getTraceTargetType() == TT_DEC_ON_VLINE) {
+	    forward = TVL_HIGH_SPEED; /* high speed for sweeping out Decoy block */
+	  } else {
+	    forward = speed;
+	  }
 	  /* steer EV3 by setting different speed to the motors */
 	  pwmL = forward - turn;
 	  pwmR = forward + turn;
