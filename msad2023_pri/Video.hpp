@@ -72,7 +72,7 @@ extern FilteredMotor*       rightMotor;
 #define BLOCK_CROP_ADJ int(2*FRAME_WIDTH/16) 
 static_assert(CROP_U_LIMIT > BLOCK_OFFSET,"CROP_U_LIMIT > BLOCK_OFFSET");
 
-#define MORPH_KERNEL_SIZE roundUpToOdd(int(FRAME_WIDTH/40))
+#define MORPH_KERNEL_SIZE roundUpToOdd(int(FRAME_WIDTH/48))
 #define BLK_LEN_MIN_Y50  (20.0*FRAME_WIDTH/640.0)
 #define BLK_LEN_MIN_Y150 (80.0*FRAME_WIDTH/640.0)
 #define MAX_VLINE_XGAP int(FRAME_WIDTH/10)

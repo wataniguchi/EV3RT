@@ -48,9 +48,13 @@ void Video::locateBlocks(vector<vector<Point>> contours, vector<Vec4i> hierarchy
       double deltaY = 150.0 - 50.0;
       double blkLenMin = deltaLen*y/deltaY - deltaLen*150.0/deltaY + BLK_LEN_MIN_Y150;
       double blkAreaMin = blkLenMin*blkLenMin;
-      if ( area > blkAreaMin && area < 5.0*blkAreaMin && wh > 0.4 && wh < 2.5 &&
-	   2.0*area > contourArea(hull) && /* the contour and its hull are not much different */
-	   pointPolygonTest(blk_roi, Point2f(x,y), false) == 1 ) { /* the contour is inside ROI */
+      if ( (area > blkAreaMin && area < 9.0*blkAreaMin && wh > 0.4 && wh < 2.5 &&
+	    2.0*area > contourArea(hull) && /* the contour and its hull are not much different */
+	    pointPolygonTest(blk_roi, Point2f(x,y), false) == 1) || /* the contour is inside ROI */
+	   (x > static_cast<float>(FRAME_WIDTH)/3.0 && x < 2.0*FRAME_WIDTH/3.0 &&
+	    y > 2.0*FRAME_HEIGHT/3.0 && /* when the contour is positioned close to the bottom center, */
+	    area > blkAreaMin && area < 9.0*blkAreaMin && wh > 0.4 && wh < 2.5 &&
+	    2.0*area > contourArea(hull) ) ) { /* ignore ROI */
 	if (hierarchy[i][2] == -1) { /* if the contour has no child */
 	  cnt_idx.push_back({area, float(i), wh, x, y});
 	} else { /* ensure the area is not donut-shaped */
@@ -237,7 +241,7 @@ Mat Video::calculateTarget(Mat f) {
   if (f.empty()) return f;
 
   if (traceTargetType == TT_VLINE || traceTargetType == TT_TRE_ON_VLINE || traceTargetType == TT_DEC_ON_VLINE) {
-    Mat img_bin_tre, img_bin_dec, img_gray, img_bin_white_area, img_bin_white_area_dil, img_inner_white, img_bin_mor, img_bin_cnt;
+    Mat img_bin_tre, img_bin_tre_dil, img_bin_dec, img_bin_dec_dil, img_gray, img_bin_white_area, img_bin_white_area_dil, img_inner_white, img_bin_mor, img_bin_cnt;
 
     if (traceTargetType != TT_DEC_ON_VLINE) {
       /* prepare for locating the treasure block */
@@ -251,10 +255,12 @@ Mat Video::calculateTarget(Mat f) {
     } else { /* blank when TT_DEC_ON_VLINE to ignore RED image */
       img_bin_tre = Mat::zeros(Size(FRAME_WIDTH,FRAME_HEIGHT), CV_8UC1);
     }
+    /* dilate the image */
+    dilate(img_bin_tre, img_bin_tre_dil, kernel, Point(-1,-1), 1);
     /* locate the treasure block */
     vector<vector<Point>> contours_tre;
     vector<Vec4i> hierarchy_tre;
-    findContours(img_bin_tre, contours_tre, hierarchy_tre, RETR_TREE, CHAIN_APPROX_SIMPLE);
+    findContours(img_bin_tre_dil, contours_tre, hierarchy_tre, RETR_TREE, CHAIN_APPROX_SIMPLE);
     vector<vector<float>> cnt_idx_tre; /* cnt_idx: area, idx, w/h, x, y */
     locateBlocks(contours_tre, hierarchy_tre, cnt_idx_tre);
 
@@ -270,10 +276,12 @@ Mat Video::calculateTarget(Mat f) {
     } else { /* blank when TT_TRE_ON_VLINE to ignore BLUE image */
       img_bin_dec = Mat::zeros(Size(FRAME_WIDTH,FRAME_HEIGHT), CV_8UC1);
     }
+    /* dilate the image */
+    dilate(img_bin_dec, img_bin_dec_dil, kernel, Point(-1,-1), 1);
     /* locate decoy blocks */
     vector<vector<Point>> contours_dec;
     vector<Vec4i> hierarchy_dec;
-    findContours(img_bin_dec, contours_dec, hierarchy_dec, RETR_TREE, CHAIN_APPROX_SIMPLE);
+    findContours(img_bin_dec_dil, contours_dec, hierarchy_dec, RETR_TREE, CHAIN_APPROX_SIMPLE);
     vector<vector<float>> cnt_idx_dec; /* cnt_idx: area, idx, w/h, x, y */
     locateBlocks(contours_dec, hierarchy_dec, cnt_idx_dec);
 

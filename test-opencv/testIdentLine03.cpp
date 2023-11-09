@@ -68,8 +68,8 @@ using std::this_thread::sleep_for;
 #define OUT_FRAME_WIDTH  320
 #define OUT_FRAME_HEIGHT 240
 
-int b_min_tre=0,g_min_tre=0,r_min_tre=45,b_max_tre=40,g_max_tre=20,r_max_tre=255;
-int b_min_dec=25,g_min_dec=0,r_min_dec=0,b_max_dec=255,g_max_dec=55,r_max_dec=25;
+int b_min_tre=0,g_min_tre=0,r_min_tre=45,b_max_tre=40,g_max_tre=25,r_max_tre=255;
+int b_min_dec=35,g_min_dec=0,r_min_dec=0,b_max_dec=255,g_max_dec=60,r_max_dec=30;
 int b_min_lin=0,g_min_lin=0,r_min_lin=0,b_max_lin=60,g_max_lin=60,r_max_lin=60;
 int gs_min=10,gs_max=100,edge=0;
 vector<Point> blk_roi;
@@ -117,10 +117,13 @@ void locateBlocks(vector<vector<Point>>& contours, vector<Vec4i>& hierarchy,
       double deltaY = 150.0 - 50.0;
       double blkLenMin = deltaLen*y/deltaY - deltaLen*150.0/deltaY + BLK_LEN_MIN_Y150;
       double blkAreaMin = blkLenMin*blkLenMin;
-      if (area > blkAreaMin && area < 5.0*blkAreaMin && wh > 0.4 && wh < 2.5 &&
-	  2.0*area > contourArea(hull) && /* the contour and its hull are not much different */
-	  pointPolygonTest(blk_roi, Point2f(x,y), false) == 1) { /* the contour is inside ROI */
-	  //2.0*area > contourArea(hull) ) { /* the contour and its hull are not much different */
+      if ( (area > blkAreaMin && area < 9.0*blkAreaMin && wh > 0.4 && wh < 2.5 &&
+	    2.0*area > contourArea(hull) && /* the contour and its hull are not much different */
+	    pointPolygonTest(blk_roi, Point2f(x,y), false) == 1) || /* the contour is inside ROI */
+	   (x > static_cast<float>(FRAME_WIDTH)/3.0 && x < 2.0*FRAME_WIDTH/3.0 &&
+	    y > 2.0*FRAME_HEIGHT/3.0 && /* when the contour is positioned close to the bottom center, */
+	    area > blkAreaMin && area < 9.0*blkAreaMin && wh > 0.4 && wh < 2.5 &&
+	    2.0*area > contourArea(hull) ) ) { /* ignore ROI */
 	if (hierarchy[i][2] == -1) { /* if the contour has no child */
 	  cnt_idx.push_back({area, float(i), wh, x, y});
 	} else { /* ensure the contour is not donut-shaped */
@@ -261,7 +264,7 @@ int main() {
     Scalar bgr_min_dec = Scalar(b_min_dec,g_min_dec,r_min_dec);
     Scalar bgr_max_dec = Scalar(b_max_dec,g_max_dec,r_max_dec);
 
-    Mat frame, img_orig, img_bin_tre, img_bin_dec, img_gray, img_bin_white_area, img_bin_white_area_dil, img_inner_white, img_bin_mor, img_bin_cnt, img_bin_rgb, img_lines, img_bin_tre_rgb, img_bin_dec_rgb, img_comm;
+    Mat frame, img_orig, img_bin_tre, img_bin_tre_dil, img_bin_dec, img_bin_dec_dil, img_gray, img_bin_white_area, img_bin_white_area_dil, img_inner_white, img_bin_mor, img_bin_cnt, img_bin_rgb, img_lines, img_bin_tre_rgb, img_bin_dec_rgb, img_comm;
     int c;
 
     sleep_for(chrono::milliseconds(10));
@@ -313,12 +316,15 @@ int main() {
 	img_bin_tre.at<uchar>(i,j) = 0; /* type = CV_8U */
       }
     }
+    /* dilate the image */
+    kernel = Mat::ones(Size(MORPH_KERNEL_SIZE,MORPH_KERNEL_SIZE), CV_8UC1);
+    dilate(img_bin_tre, img_bin_tre_dil, kernel, Point(-1,-1), 1);
     /* convert the binary image from grayscale to BGR for later */
-    cvtColor(img_bin_tre, img_bin_tre_rgb, COLOR_GRAY2BGR);
+    cvtColor(img_bin_tre_dil, img_bin_tre_rgb, COLOR_GRAY2BGR);
     /* locate the treasure block */
     vector<vector<Point>> contours_tre;
     vector<Vec4i> hierarchy_tre;
-    findContours(img_bin_tre, contours_tre, hierarchy_tre, RETR_TREE, CHAIN_APPROX_SIMPLE);
+    findContours(img_bin_tre_dil, contours_tre, hierarchy_tre, RETR_TREE, CHAIN_APPROX_SIMPLE);
     vector<vector<float>> cnt_idx_tre; /* cnt_idx: area, idx, w/h, x, y */
     locateBlocks(contours_tre, hierarchy_tre, cnt_idx_tre);
     /* prepare for locating decoy blocks */
@@ -329,12 +335,15 @@ int main() {
 	img_bin_dec.at<uchar>(i,j) = 0; /* type = CV_8U */
       }
     }
+    /* dilate the image */
+    kernel = Mat::ones(Size(MORPH_KERNEL_SIZE,MORPH_KERNEL_SIZE), CV_8UC1);
+    dilate(img_bin_dec, img_bin_dec_dil, kernel, Point(-1,-1), 1);
     /* convert the binary image from grayscale to BGR for later */
-    cvtColor(img_bin_dec, img_bin_dec_rgb, COLOR_GRAY2BGR);
+    cvtColor(img_bin_dec_dil, img_bin_dec_rgb, COLOR_GRAY2BGR);
     /* locate decoy blocks */
     vector<vector<Point>> contours_dec;
     vector<Vec4i> hierarchy_dec;
-    findContours(img_bin_dec, contours_dec, hierarchy_dec, RETR_TREE, CHAIN_APPROX_SIMPLE);
+    findContours(img_bin_dec_dil, contours_dec, hierarchy_dec, RETR_TREE, CHAIN_APPROX_SIMPLE);
     vector<vector<float>> cnt_idx_dec; /* cnt_idx: area, idx, w/h, x, y */
     locateBlocks(contours_dec, hierarchy_dec, cnt_idx_dec);
 
