@@ -1493,7 +1493,34 @@ public:
 		video->setTraceTargetType(TT_VLINE);
 		if (decoyMoved == 2) {
 		  _log("ODO=%05d, MOVING Treasure to goal...", currentDist);
-		  st = TVLST_END; // FOR NOW
+		  int distX = (4 - vLineRow) * 350 + 50;
+		  if (vLineColumn == 1) {
+		    /* manually build a behavior tree for moving Trasure block */
+		    Node* nd1 = new IsDistanceEarned(distX);
+		    Node* nd2 = new RunPerGuideAngle(90, speed, {2.5, 0.0001, 0.4}); /* To-Do: magic numbers */
+		    BrainTree::Composite* nd3 = new BrainTree::ParallelSequence(1,2);
+		    nd3->addChild(nd1);
+		    nd3->addChild(nd2);
+		    ndChild = nd3;
+		  } else {
+		    int distY = (vLineColumn - 1) * 350;
+		    Node* nd1 = new IsDistanceEarned(distX);
+		    Node* nd2 = new RunPerGuideAngle(90, speed, {2.5, 0.0001, 0.4}); /* To-Do: magic numbers */
+		    BrainTree::Composite* nd3 = new BrainTree::ParallelSequence(1,2);
+		    nd3->addChild(nd1);
+		    nd3->addChild(nd2);
+		    Node* nd4 = new IsDistanceEarned(distY);
+		    Node* nd5 = new RunPerGuideAngle(180, speed, {2.5, 0.0001, 0.4}); /* To-Do: magic numbers */
+		    BrainTree::Composite* nd6 = new BrainTree::ParallelSequence(1,2);
+		    nd6->addChild(nd4);
+		    nd6->addChild(nd5);
+		    BrainTree::Composite* nd7 = new BrainTree::MemSequence();
+		    nd7->addChild(nd3);
+		    nd7->addChild(nd6);
+		    ndChild = nd7;
+		  }
+		  video->setTraceTargetType(TT_VLINE);
+		  st = TVLST_EXIT;
 		} else {
 		  /* recover the false vLineColumnStartDist */
 		  vLineColumnStartDist = currentDist - 350;		  
@@ -1563,12 +1590,76 @@ public:
             } /* hasCaughtCount >= 3 */
 	  } /* count++ < 5 */
 	} /* st != TVLST_SWEEPING_OUT */
-	
+
 	switch(st) {
 	case TVLST_INITIAL:
-	case TVLST_ON_LINE:
 	  /* set columnState[1] and columnState[4] when it is known */
-	  if (st == TVLST_INITIAL && !blockOnInitColumn && columnState[vLineColumn] == VS_UNKNOWN) columnState[vLineColumn] = VS_NONE;
+	  if (!blockOnInitColumn && columnState[vLineColumn] == VS_UNKNOWN) columnState[vLineColumn] = VS_NONE;
+	  if (initColumn == 1) {
+	    if (isColor(CL_BLUE, cur_rgb)) {
+	      vLineRow = 1;
+	      circleDist = currentDist;
+	      _log("ODO=%05d, circle CL_BLUE detected with rgb(%03d,%03d,%03d) at Column %d, Row %d", circleDist, cur_rgb.r, cur_rgb.g, cur_rgb.b, vLineColumn, vLineRow);
+	      circleColor = CL_BLUE;
+	      st = TVLST_ENTERING_CIRCLE;
+	    } else if ((currentDist - initDist) >= 350) { /* To-Do: magic number */
+	      vLineRow = 1;
+	      circleDist = currentDist;
+	      _log("ODO=%05d, assumed to be entering circle without circle detected at Column %d, Row %d", currentDist, vLineColumn, vLineRow);
+	      circleColor = CL_BLUE;
+	      st = TVLST_ENTERING_CIRCLE;
+	    }
+	  } else { /* initColumn == 4 */
+	    if (isColor(CL_RED, cur_rgb)) {
+	      vLineRow = 1;
+	      circleDist = currentDist;
+	      _log("ODO=%05d, circle CL_RED detected with rgb(%03d,%03d,%03d) at Column %d, Row %d", circleDist, cur_rgb.r, cur_rgb.g, cur_rgb.b, vLineColumn, vLineRow);
+	      circleColor = CL_RED;
+	      st = TVLST_ENTERING_CIRCLE;
+	    } else if ((currentDist - initDist) >= 200) { /* To-Do: magic number */
+	      vLineRow = 1;
+	      circleDist = currentDist;
+	      _log("ODO=%05d, assumed to be entering circle without circle detected at Column %d, Row %d", currentDist, vLineColumn, vLineRow);
+	      circleColor = CL_RED;
+	      st = TVLST_ENTERING_CIRCLE;
+	    }
+	  }
+	  break;
+	case TVLST_ON_LINE:
+	  /* adjust Plotter degree where necessary */
+	  if (move == MV_ON_COLUMN) {
+	    if (video->getTraceTargetType() == TT_TRE_ON_VLINE || video->getTraceTargetType() == TT_DEC_ON_VLINE ||
+		(video->getTraceTargetType() == TT_VLINE && (currentDist - circleDist) > 150) ) {
+	      int origDeg = plotter->getDegree();
+	      int correctDeg = 180 + 90 * directionOnColumn * _COURSE; /* _COURSE = -1 when R course */
+	      if (origDeg - correctDeg >= 3) {
+		plotter->setDegree(correctDeg);
+		_log("ODO=%05d, Plotter degree forcefully changed from %d to %d.", currentDist, origDeg, correctDeg);	      
+	      }
+	    }
+	    /* keep the state */
+	  } else { /* move == MV_ON_COLUMN */
+	    if (video->getTraceTargetType() == TT_TRE_ON_VLINE || video->getTraceTargetType() == TT_DEC_ON_VLINE ||
+		(video->getTraceTargetType() == TT_VLINE && (currentDist - circleDist) > 150) ) {
+	      int origDeg = plotter->getDegree();
+	      int correctDeg = 90 + 90 * directionOnRow; /* direction on Row is NOT relevant to L/R */
+	      if (origDeg - correctDeg >= 3) {
+		plotter->setDegree(correctDeg);
+		_log("ODO=%05d, Plotter degree forcefully changed from %d to %d.", currentDist, origDeg, correctDeg);	      
+	      }
+	    }
+	    /* keep the state */
+	  }
+	  /* monitor if robot is on line */
+	  if (isColor(CL_BLACK, cur_rgb)) {
+	    countWhite = 0; /* reset white counter */
+	  } else if (isColor(CL_WHITE, cur_rgb) && st == TVLST_ON_LINE) {
+	    countBlack = 0; /* reset black counter */	    
+	    if (++countWhite >= 30) { /* when CL_WHITE is consequtively detected */
+	      if (countWhite % 30 == 0) _log("ODO=%05d, *** WARNING - line LOST.", currentDist);
+	    }
+	  }
+	  /* try to detect circle by color sensor */
 	  if (isColor(CL_BLUE, cur_rgb)) {
 	    if (move == MV_ON_COLUMN) {
 	      vLineRow += directionOnColumn;
@@ -1625,65 +1716,7 @@ public:
 	    _log("ODO=%05d, circle CL_GREEN detected with rgb(%03d,%03d,%03d) at Column %d, Row %d", circleDist, cur_rgb.r, cur_rgb.g, cur_rgb.b, vLineColumn, vLineRow);
 	    circleColor = CL_GREEN;
 	    st = TVLST_ENTERING_CIRCLE;
-	  } else if (isColor(CL_BLACK, cur_rgb)) {
-	    countWhite = 0; /* reset white counter */
-	    if (countBlack == 5) { /* force Plotter degree when tracing is stable */
-	      int origDeg = plotter->getDegree();
-	      int newDeg;
-	      if (move == MV_ON_COLUMN) {
-		newDeg = 180 + 90 * directionOnColumn * _COURSE; /* _COURSE = -1 when R course */
-	      } else { /* MV_ON_ROW */
-		newDeg = 90 + 90 * directionOnRow; /* direction on Row is NOT relevant to L/R */
-	      }
-	      plotter->setDegree(newDeg);
-	      _log("ODO=%05d, Plotter degree forcefully changed from %d to %d.", currentDist, origDeg, newDeg);
- 	    }
-	  } else if (isColor(CL_WHITE, cur_rgb) && st == TVLST_ON_LINE) {
-	    countBlack = 0; /* reset black counter */	    
-	    if (++countWhite >= 30) { /* when CL_WHITE is consequtively detected */
-	      if (countWhite % 30 == 0) _log("ODO=%05d, *** WARNING - line LOST.", currentDist);
-	      //st = TVLST_UNKNOWN;
-	    }
-	  } else if ( (move == MV_ON_COLUMN && video->getTraceTargetType() == TT_TRE_ON_VLINE) ||
-		      (move == MV_ON_COLUMN && video->getTraceTargetType() == TT_DEC_ON_VLINE) ||
-		      (move == MV_ON_COLUMN && video->getTraceTargetType() == TT_VLINE &&
-		       st != TVLST_INITIAL && (currentDist - circleDist) > 150) ) {
-	    int origDeg = plotter->getDegree();
-	    int correctDeg = 180 + 90 * directionOnColumn * _COURSE; /* _COURSE = -1 when R course */
-	    if (origDeg - correctDeg >= 3) {
-	      plotter->setDegree(correctDeg);
-	      _log("ODO=%05d, Plotter degree forcefully changed from %d to %d.", currentDist, origDeg, correctDeg);	      
-	    }
-	  } else if ( (move == MV_ON_ROW && video->getTraceTargetType() == TT_TRE_ON_VLINE) ||
-		      (move == MV_ON_ROW && video->getTraceTargetType() == TT_DEC_ON_VLINE) ||
-		      (move == MV_ON_ROW && video->getTraceTargetType() == TT_VLINE && (currentDist - circleDist) > 150) ) {
-	    int origDeg = plotter->getDegree();
-	    int correctDeg = 90 + 90 * directionOnRow; /* direction on Row is NOT relevant to L/R */
-	    if (origDeg - correctDeg >= 3) {
-	      plotter->setDegree(correctDeg);
-	      _log("ODO=%05d, Plotter degree forcefully changed from %d to %d.", currentDist, origDeg, correctDeg);	      
-	    }
-	  } else if (st == TVLST_INITIAL && initColumn == 1 && (currentDist - initDist) >= 350) { /* To-Do: magic number */
-	    vLineRow = 1;
-	    circleDist = currentDist;
-	    _log("ODO=%05d, assumed to be entering circle without circle detected at Column %d, Row 1", currentDist, vLineColumn);
-	    circleColor = CL_BLUE;
-	    st = TVLST_ENTERING_CIRCLE;
-	  } else if (st == TVLST_INITIAL && initColumn == 4 && (currentDist - initDist) >= 200) { /* To-Do: magic number */
-	    vLineRow = 1;
-	    circleDist = currentDist;
-	    _log("ODO=%05d, assumed to be entering circle without circle detected at Column %d, Row 1", currentDist, vLineColumn);
-	    circleColor = CL_RED;
-	    st = TVLST_ENTERING_CIRCLE;
-	  } else if (st != TVLST_INITIAL && move == MV_ON_COLUMN && vLineRow <= 2 && abs(vLineColumnStartX - plotter->getLocX()) >= 700 && directionOnColumn ==  1) {
-	    vLineRow = 3;
-	    _log("ODO=%05d, *** WARNING - Row number mismatch: X=%d, vLineColumnStartX=%d. forcefully set to Row 3", currentDist, plotter->getLocX(), vLineColumnStartX);
-	    /* keep the state */
-	  } else if (st != TVLST_INITIAL && move == MV_ON_COLUMN && vLineRow >= 3 && abs(vLineColumnStartX - plotter->getLocX()) >= 700 && directionOnColumn == -1) {
-	    vLineRow = 2;
-	    _log("ODO=%05d, *** WARNING - Row number mismatch: X=%d, vLineColumnStartX=%d. forcefully set to Row 2", currentDist, plotter->getLocX(), vLineColumnStartX);
-	    /* keep the state */
-	  } else if (st != TVLST_INITIAL && currentDist - circleDist > 350) { /* TODO: magic number */
+	  } else if (currentDist - circleDist > 370) { /* TODO: magic number */
 	    if (move == MV_ON_COLUMN) {
 	      vLineRow += directionOnColumn;
 	      if (vLineRow < 1) vLineRow = 1;
@@ -1700,6 +1733,16 @@ public:
 	    if ((vLineRow == 3 || vLineRow == 4) && (vLineColumn == 1 || vLineColumn == 2)) circleColor = CL_GREEN;
 	    if ((vLineRow == 3 || vLineRow == 4) && (vLineColumn == 3 || vLineColumn == 4)) circleColor = CL_YELLOW;
 	    st = TVLST_ENTERING_CIRCLE;
+	  }
+	  /* correst row number by distance */  
+	  if (move == MV_ON_COLUMN && vLineRow <= 2 && abs(vLineColumnStartX - plotter->getLocX()) >= 800 && directionOnColumn ==  1) {
+	    vLineRow++;
+	    _log("ODO=%05d, *** WARNING - Row number mismatch: X=%d, vLineColumnStartX=%d. forcefully set to Row %d", currentDist, plotter->getLocX(), vLineColumnStartX, vLineRow);
+	    /* keep the state */
+	  } else if (move == MV_ON_COLUMN && vLineRow >= 3 && abs(vLineColumnStartX - plotter->getLocX()) >= 800 && directionOnColumn == -1) {
+	    vLineRow--;
+	    _log("ODO=%05d, *** WARNING - Row number mismatch: X=%d, vLineColumnStartX=%d. forcefully set to Row %d", currentDist, plotter->getLocX(), vLineColumnStartX, vLineRow);
+	    /* keep the state */
 	  }
 	  break;
 	case TVLST_IN_CIRCLE:
@@ -2010,6 +2053,16 @@ public:
 	  }
 	  st = TVLST_IN_CIRCLE;
 	  break;
+	case TVLST_EXIT:
+	  stsChild = ndChild->update();
+	  if (stsChild == Status::Running) return stsChild;
+	  if (stsChild == Status::Success) {
+	    delete ndChild;
+	    ndChild = nullptr;
+	    _log("ODO=%05d, TraverseVLine ending...", currentDist);
+	  }
+	  st = TVLST_END;
+	  break;
 	default:
 	  break;
 	}
@@ -2068,7 +2121,7 @@ public:
 	  }
 	  
 	  _debug(_log("ODO=%05d, turn = %d", currentDist, turn),3); /* if _DEBUG_LEVEL >= 3 */
-	  forward = TVL_SEN_TRACE_POWER;
+	  forward = speed;
 	  /* steer EV3 by setting different speed to the motors */
 	  pwmL = forward - turn;
 	  pwmR = forward + turn;
@@ -2088,6 +2141,7 @@ protected:
       TVLST_ROTATING_IN_CIRCLE,
       TVLST_IDENTIFYING_BLOCK,
       TVLST_SWEEPING_OUT,
+      TVLST_EXIT,
       TVLST_END,
     };
     enum Movement {
