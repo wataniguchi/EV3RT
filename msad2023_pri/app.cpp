@@ -1511,7 +1511,7 @@ public:
 		    BrainTree::Composite* nd6 = new BrainTree::ParallelSequence(1,2);
 		    nd6->addChild(nd4);
 		    nd6->addChild(nd5);
-		    Node* nd7 = new IsDistanceEarned(50);
+		    Node* nd7 = new IsDistanceEarned(100);
 		    Node* nd8 = new RunPerGuideAngle(90, speed, {2.5, 0.0001, 0.4}); /* To-Do: magic numbers */
 		    BrainTree::Composite* nd9 = new BrainTree::ParallelSequence(1,2);
 		    nd9->addChild(nd7);
@@ -1522,7 +1522,7 @@ public:
 		    nd10->addChild(nd9);
 		    ndChild = nd10;		    
 		  } else { /* mv == MV_ON_COLUMN */
-		    distX = 3 * 350 + 100 - vLineColumnStartDist;
+		    distX = 3 * 350 + 150 - vLineColumnStartDist;
 		    /* manually build a behavior tree for moving Trasure block */
 		    Node* nd1 = new IsDistanceEarned(distX);
 		    Node* nd2 = new RunPerGuideAngle(90, TVL_HIGH_SPEED, {2.5, 0.0001, 0.4}); /* To-Do: magic numbers */
@@ -1773,28 +1773,24 @@ public:
 	      countBlack = 0; /* reset black counter */
 	    } else {
 	      _log("ODO=%05d, *** WARNING - unexpected CL_BLUE detected with rgb(%03d,%03d,%03d) at Column %d, Row %d", currentDist, cur_rgb.r, cur_rgb.g, cur_rgb.b, vLineColumn, vLineRow);
-	      //st = TVLST_UNKNOWN;
 	    }
 	  } else if (isColor(CL_RED, cur_rgb)) {
 	    if (circleColor == CL_RED) {
 	      countBlack = 0; /* reset black counter */
 	    } else {  
 	      _log("ODO=%05d, *** WARNING - unexpected CL_RED detected with rgb(%03d,%03d,%03d) at Column %d, Row %d", currentDist, cur_rgb.r, cur_rgb.g, cur_rgb.b, vLineColumn, vLineRow);
-	      //st = TVLST_UNKNOWN;
 	    }
 	  } else if (isColor(CL_YELLOW, cur_rgb)) {
 	    if (circleColor == CL_YELLOW) {
 	      countBlack = 0; /* reset black counter */
 	    } else {  
 	      _log("ODO=%05d, *** WARNING - unexpected CL_YELLOW detected with rgb(%03d,%03d,%03d) at Column %d, Row %d", currentDist, cur_rgb.r, cur_rgb.g, cur_rgb.b, vLineColumn, vLineRow);
-	      //st = TVLST_UNKNOWN;
 	    }
 	  } else if (isColor(CL_GREEN, cur_rgb)) {
 	    if (circleColor == CL_GREEN) {
 	      countBlack = 0; /* reset black counter */
 	    } else {  
 	      _log("ODO=%05d, *** WARNING - unexpected CL_GREEN detected with rgb(%03d,%03d,%03d) at Column %d, Row %d", currentDist, cur_rgb.r, cur_rgb.g, cur_rgb.b, vLineColumn, vLineRow);
-	      //st = TVLST_UNKNOWN;
 	    }
 	  }
 	  break;
@@ -1860,9 +1856,10 @@ public:
 		directionOnColumn *= -1; /* change direction */		
 	      } else if ( (vLineRow == 2 && directionOnColumn == -1) || /* go other direction to avoid the use of color sensor */
 			  (vLineRow == 3 && directionOnColumn ==  1) ) {
-		detour = true;
-		_log("ODO=%05d, detour starting to avoid use of color sensor...", currentDist);
-		directionOnColumn *= -1; /* change direction */
+		//detour = true;
+		//_log("ODO=%05d, detour starting to avoid use of color sensor...", currentDist);
+		//directionOnColumn *= -1; /* change direction */
+		_log("ODO=%05d, detour SKIPPED", currentDist);
 	      }
 	      ndChild = new RotateEV3(directionOnRow*directionOnColumn*80, TVL_ROTATE_POWER, 0.0); /* To-Do: magic numbers */
 	      move = MV_ON_COLUMN;
@@ -1954,9 +1951,10 @@ public:
 		  _log("ODO=%05d, Row %d marked as VS_TREASURE", currentDist, vLineRow);
 		  if ( (vLineRow == 2 && directionOnColumn == -1) || /* go other direction to avoid the use of color sensor */
 		       (vLineRow == 3 && directionOnColumn ==  1) ) {  /* go other direction to avoid the use of color sensor */
-		    detour = true;
-		    _log("ODO=%05d, detour starting to avoid use of color sensor...", currentDist);
-		    directionOnColumn *= -1; /* change direction */
+		    //detour = true;
+		    //_log("ODO=%05d, detour starting to avoid use of color sensor...", currentDist);
+		    //directionOnColumn *= -1; /* change direction */
+		    _log("ODO=%05d, detour SKIPPED", currentDist);
 		  }
 		  ndChild = new RotateEV3(directionOnRow*directionOnColumn*80, TVL_ROTATE_POWER, 0.0); /* To-Do: magic numbers */
 		  move = MV_ON_COLUMN;
@@ -2012,6 +2010,12 @@ public:
 		if ( (directionOnColumn ==  1 && vLineRow == 4) ||
 		     (directionOnColumn == -1 && vLineRow == 1) ) {
 		  directionOnColumn *= -1; /* change direction in advance */
+		} else if ( (vLineRow == 2 && directionOnColumn == -1) || /* go other direction to avoid the use of color sensor */
+			    (vLineRow == 3 && directionOnColumn ==  1) ) {  /* go other direction to avoid the use of color sensor */
+		  //detour = true;
+		  //_log("ODO=%05d, detour starting to avoid use of color sensor...", currentDist);
+		  //directionOnColumn *= -1; /* change direction */
+		  _log("ODO=%05d, detour SKIPPED", currentDist);
 		}
 		ndChild = new RotateEV3(directionOnRow*directionOnColumn*80, TVL_ROTATE_POWER, 0.0); /* To-Do: magic numbers */
 		move = MV_ON_COLUMN;

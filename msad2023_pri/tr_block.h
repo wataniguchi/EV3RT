@@ -54,7 +54,6 @@
           prof->getValueAsNumVec("BLOCK_BGR_MIN_LIN"), \
           prof->getValueAsNumVec("BLOCK_BGR_MAX_LIN"), \
           (TraceSide)prof->getValueAsIntFromEnum("BLOCK_R201_TS", gEnumPairs)) \
-    .leaf<StopNow>() \
   .end()
 
 #define TR_BLOCK3_R \
@@ -89,7 +88,6 @@
           prof->getValueAsNumVec("BLOCK_BGR_MIN_LIN"), \
           prof->getValueAsNumVec("BLOCK_BGR_MAX_LIN"), \
           (TraceSide)prof->getValueAsIntFromEnum("BLOCK_R401_TS", gEnumPairs)) \
-    .leaf<StopNow>() \
   .end()
 
 #define TR_BLOCK5_R \
@@ -127,11 +125,29 @@
           prof->getValueAsNumVec("BLOCK_BGR_MIN_LIN"), \
           prof->getValueAsNumVec("BLOCK_BGR_MAX_LIN"), \
           (TraceSide)prof->getValueAsIntFromEnum("BLOCK_R504_TS", gEnumPairs)) \
-    .leaf<StopNow>() \
   .end()
 
 #define TR_BLOCK6_R \
-  .leaf<StopNow>()
+  /* BLOCK6: carry Treasure block to Goal */ \
+  .composite<BrainTree::MemSequence>() \
+    /* section R601: move closer to the line to Goal */ \
+    .composite<BrainTree::ParallelSequence>(1,2) \
+      .leaf<IsDistanceEarned>(prof->getValueAsNum("BLOCK_R601_DIST")) \
+      .leaf<RunAsInstructed>(prof->getValueAsNum("BLOCK_R601_PWML"), \
+            prof->getValueAsNum("BLOCK_R601_PWMR"), 0.0) \
+    .end() \
+    /* section R602: start tracing the line to Goal */ \
+    .composite<BrainTree::ParallelSequence>(1,3) \
+      .leaf<IsDistanceEarned>(prof->getValueAsNum("BLOCK_R602_DIST")) \
+      .leaf<IsColorDetected>(CL_BLUE) \
+      .leaf<TraceLineCamWithBlockInArm>(prof->getValueAsNum("BLOCK_R602_SPEED"), \
+	    prof->getValueAsNumVec("BLOCK_PIDCAM_CONST"), \
+	    prof->getValueAsNum("BLOCK_GS_MIN"),    \
+	    prof->getValueAsNum("BLOCK_GS_MAX"), 0.0, \
+            (TraceSide)prof->getValueAsIntFromEnum("BLOCK_R602_TS", gEnumPairs)) \
+    .end() \
+    .leaf<StopNow>() \
+  .end()
 
 #define TR_BLOCK1_L \
   .leaf<StopNow>()
