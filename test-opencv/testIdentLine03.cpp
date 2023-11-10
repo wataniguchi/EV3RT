@@ -475,9 +475,11 @@ int main() {
 	} else {
 	  mx = int((x_bottom_smaller+x_bottom_larger) / 2);
 	}
-      } else { /* tlines.size() == 0 */
-	cout << "no lines detected. LOS must be blocked" << endl;
+      } else { /* tlines.size() = 0 */
+	cout << "no VIRTICAL lines detected. LOS must be blocked" << endl;
       }
+    } else { /* lines.size() = 0 */
+      cout << "no lines AT ALL detected. LOS must be blocked" << endl;
     }
     for (int i = 0; i < cnt_idx_tre_online.size(); i++) {
       vector<float> cnt_idx_entry = cnt_idx_tre_online[i];

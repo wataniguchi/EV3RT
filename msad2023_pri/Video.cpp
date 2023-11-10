@@ -454,8 +454,12 @@ Mat Video::calculateTarget(Mat f) {
 	num_tre = 1;
 	num_dec = 1;
       }
-    } /* if (lines.size() > 0) */
-
+    } else { /* if (lines.size() > 0) */
+      /* LOS must be blocked - this happens when two blocks are on the line
+	 1 tre and 1 dec are assumed. could be 2 decs in reality. who cares? */
+      num_tre = 1;
+      num_dec = 1;
+    }
     /* when TT_TRE_ON_VLINE or TT_DEC_ON_VLINE, track the target block assuming its location on image is gradually moving */
     if (traceTargetType == TT_TRE_ON_VLINE) {
       if (cnt_idx_tre_online.size() == 0) {
@@ -475,6 +479,8 @@ Mat Video::calculateTarget(Mat f) {
 	}
       }
       mx = cx;
+      num_tre = cnt_idx_tre_online.size();
+      num_dec = cnt_idx_dec_online.size();
     }
     if (traceTargetType == TT_DEC_ON_VLINE) {
       if (cnt_idx_dec_online.size() == 0) {
@@ -494,9 +500,9 @@ Mat Video::calculateTarget(Mat f) {
 	}
       }
       mx = cx;
+      num_tre = cnt_idx_tre_online.size();
+      num_dec = cnt_idx_dec_online.size();
     }
-    num_tre = cnt_idx_tre_online.size();
-    num_dec = cnt_idx_dec_online.size();
     /* draw blocks */
     for (int i = 0; i < (int)cnt_idx_tre_online.size(); i++) {
       vector<float> cnt_idx_entry = cnt_idx_tre_online[i];
