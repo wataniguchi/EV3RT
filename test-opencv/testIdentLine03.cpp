@@ -445,7 +445,7 @@ int main() {
 		int y_blk = blk.y+blk.height;
 		if (y_blk >= FRAME_HEIGHT) y_blk = FRAME_HEIGHT - 1;
 		/* draw block indicator */
-		int x_blk_adj = 3 * (FRAME_HEIGHT - y_blk) / FRAME_HEIGHT;
+		int x_blk_adj = 2 * (FRAME_HEIGHT - y_blk) / FRAME_HEIGHT;
 		line(img_orig, Point(blk.x-x_blk_adj*blk.width,y_blk), Point(blk.x+(1+x_blk_adj)*blk.width,y_blk), Scalar(0,0,255), 1, LINE_4);
 		if ( intersect(Point(blk.x-x_blk_adj*blk.width,y_blk), Point(blk.x+(1+x_blk_adj)*blk.width,y_blk), Point(tx1,ty1), Point(tx2,ty2)) ) {
 		  cnt_idx_tre_online.push_back(cnt_idx_entry);
@@ -458,7 +458,7 @@ int main() {
 		int y_blk = blk.y+blk.height;
 		if (y_blk >= FRAME_HEIGHT) y_blk = FRAME_HEIGHT - 1;
 		/* draw block indicator */
-		int x_blk_adj = 3 * (FRAME_HEIGHT - y_blk) / FRAME_HEIGHT;
+		int x_blk_adj = 2 * (FRAME_HEIGHT - y_blk) / FRAME_HEIGHT;
 		line(img_orig, Point(blk.x-x_blk_adj*blk.width,y_blk), Point(blk.x+(1+x_blk_adj)*blk.width,y_blk), Scalar(255,0,0), 1, LINE_4);
 		if ( intersect(Point(blk.x-x_blk_adj*blk.width,y_blk), Point(blk.x+(1+x_blk_adj)*blk.width,y_blk), Point(tx1,ty1), Point(tx2,ty2)) ) {
 		  cnt_idx_dec_online.push_back(cnt_idx_entry);

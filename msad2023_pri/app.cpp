@@ -533,8 +533,6 @@ public:
     bgrMinTre(bgr_min_tre),bgrMaxTre(bgr_max_tre),
     bgrMinDec(bgr_min_dec),bgrMaxDec(bgr_max_dec),
     bgrMinLin(bgr_min_lin),bgrMaxLin(bgr_max_lin) {
-	count = inSightCount = 0;
-	numBlocks = 0;
         updated = false;
     }
     Status update() override {
@@ -542,32 +540,35 @@ public:
 	    video->setTraceTargetType(TT_VLINE);
 	    video->setThresholds(gsMin, gsMax);
 	    video->setMaskThresholds(bgrMinTre, bgrMaxTre, bgrMinDec, bgrMaxDec, bgrMinLin, bgrMaxLin);
+	    numStat[0] = numStat[1] = numStat[2] = 0;
+	    count = 0;
             updated = true;
         }
 	if (count++ < 20) {
-	  if ((numBlocks = video->getNumBlockOnVLine()) == numTest) inSightCount++;
+	  int numBlocks = video->getNumBlockOnVLine();
+	  if (0 <= numBlocks && numBlocks <=2) numStat[numBlocks]++;
 	  return Status::Running;
 	} else {
-	  if ( (numTest == 2 && inSightCount >=  4) ||
-	       (numTest == 1 && inSightCount >= 10) ||
-	       (numTest == 0 && inSightCount >= 10) ) {
+	  if ( (numTest == 2 && numStat[2] >= numStat[1] && numStat[2] >= numStat[0]) ||
+	       (numTest == 1 && numStat[1] >= numStat[0] && numStat[1] >= numStat[2]) ||
+	       (numTest == 0 && numStat[0] >= numStat[2] && numStat[0] >= numStat[1]) ) {
 	    /* when target in sight x times out of 20 attempts */
-	    _log("ODO=%05d, %d blocks VERIFIED on VLine at x=%d:y=%d:deg=%d",
-		 plotter->getDistance(), numTest, plotter->getLocX(), plotter->getLocY(),
+	    _log("ODO=%05d, %d blocks VERIFIED on VLine with %d out of 20 at x=%d:y=%d:deg=%d",
+		 plotter->getDistance(), numTest, numStat[numTest], plotter->getLocX(), plotter->getLocY(),
 		 plotter->getDegree());
-	    count = inSightCount = 0;
+	    count = 0;
             return Status::Success;
 	  } else {
-	    _log("ODO=%05d, test for %d blocks FAILED. %d blocks on VLine at x=%d:y=%d:deg=%d",
-		 plotter->getDistance(), numTest, numBlocks, plotter->getLocX(), plotter->getLocY(),
+	    _log("ODO=%05d, test for %d blocks FAILED with %d out of 20 at x=%d:y=%d:deg=%d",
+		 plotter->getDistance(), numTest, numStat[numTest], plotter->getLocX(), plotter->getLocY(),
 		 plotter->getDegree());
-	    count = inSightCount = 0;
+	    count = 0;
             return Status::Failure;
 	  }
         }
     }
 protected:
-    int numTest, numBlocks, gsMin, gsMax, count, inSightCount;
+    int numTest, gsMin, gsMax, count, numStat[3];
     std::vector<double> bgrMinTre, bgrMaxTre, bgrMinDec, bgrMaxDec, bgrMinLin, bgrMaxLin;
     bool updated;
 };
@@ -1470,6 +1471,26 @@ public:
 	/* block catch can occur during TT_TRE_ON_VLINE or TT_DEC_ON_VLINE */
 	if (video->getTraceTargetType() == TT_TRE_ON_VLINE ||
 	    video->getTraceTargetType() == TT_DEC_ON_VLINE) {
+	  /* adjust Plotter degree where necessary */
+	  if (move == MV_ON_COLUMN) {
+	    if (currentDist - vLineColumnStartDist > 400) {
+	      int origDeg = plotter->getDegree();
+	      int correctDeg = 180 + 90 * directionOnColumn * _COURSE; /* _COURSE = -1 when R course */
+	      if (origDeg - correctDeg >= 3) {
+		plotter->setDegree(correctDeg);
+		_log("ODO=%05d, Plotter degree forcefully changed from %d to %d.", currentDist, origDeg, correctDeg);	      
+	      }
+	    }
+	  } else { /* move = MV_ON_ROW */
+	    if (currentDist - vLineRowStartDist > 400) {
+	      int origDeg = plotter->getDegree();
+	      int correctDeg = 90 + 90 * directionOnRow; /* direction on Row is NOT relevant to L/R */
+	      if (origDeg - correctDeg >= 3) {
+		plotter->setDegree(correctDeg);
+		_log("ODO=%05d, Plotter degree forcefully changed from %d to %d.", currentDist, origDeg, correctDeg);	      
+	      }
+	    }
+	  }
 	  /* determine if block gets caught */
 	  if (count++ < 5) {
 	    if (video->hasCaughtTarget()) hasCaughtCount++;
@@ -1506,7 +1527,7 @@ public:
 		      distY = 2 * 350 - (currentDist - vLineRowStartDist);
 		    }
 		    Node* nd1 = new IsDistanceEarned(distX);
-		    Node* nd2 = new RunPerGuideAngle(80, speed, {2.5, 0.0001, 0.4}); /* To-Do: magic numbers */
+		    Node* nd2 = new RunPerGuideAngle(105, speed, {2.5, 0.0001, 0.4}); /* To-Do: magic numbers */
 		    BrainTree::Composite* nd3 = new BrainTree::ParallelSequence(1,2);
 		    nd3->addChild(nd1);
 		    nd3->addChild(nd2);
@@ -1516,7 +1537,7 @@ public:
 		    nd6->addChild(nd4);
 		    nd6->addChild(nd5);
 		    Node* nd7 = new IsDistanceEarned(100);
-		    Node* nd8 = new RunPerGuideAngle(100, speed, {2.5, 0.0001, 0.4}); /* To-Do: magic numbers */
+		    Node* nd8 = new RunPerGuideAngle(90, speed, {2.5, 0.0001, 0.4}); /* To-Do: magic numbers */
 		    BrainTree::Composite* nd9 = new BrainTree::ParallelSequence(1,2);
 		    nd9->addChild(nd7);
 		    nd9->addChild(nd8);
@@ -1542,10 +1563,10 @@ public:
 		  vLineColumnStartDist = currentDist - 350; /* this happens only when Treasure Block is on C1R2 */ 
 		  _log("ODO=%05d, vLineColumnStartDist recovered to %d", currentDist, vLineColumnStartDist);
 		  /* distance between adjcent circles = 350 */
-		  int distSweep = 700; /* TODO: magic number */
+		  int distSweep = 800; /* TODO: magic number */
 		  /* manually build a behavior tree for pushing off Decoy block */
 		  Node* nd1 = new IsDistanceEarned(distSweep);
-		  Node* nd2 = new RunPerGuideAngle((move == MV_ON_ROW ? 90-directionOnRow*90 : 90), speed, {2.5, 0.0001, 0.4}); /* To-Do: magic numbers */
+		  Node* nd2 = new RunPerGuideAngle(90), speed, {2.5, 0.0001, 0.4}); /* To-Do: magic numbers */
 		  BrainTree::Composite* nd3 = new BrainTree::ParallelSequence(1,2);
 		  nd3->addChild(nd1);
 		  nd3->addChild(nd2);
@@ -1577,9 +1598,9 @@ public:
 		/* distance between adjcent circles = 350 */
 		int distSweep;
 		if (move == MV_ON_ROW) {
-		  distSweep = 100 + 350 * 3 - (currentDist - vLineRowStartDist);
+		  distSweep = 150 + 350 * 3 - (currentDist - vLineRowStartDist);
 		} else { /* move == MV_ON_COLUMN */
-		  distSweep = 100 + 350 * 3 - (currentDist - vLineColumnStartDist);
+		  distSweep = 150 + 350 * 3 - (currentDist - vLineColumnStartDist);
 		}
 		/* manually build a behavior tree for pushing off Decoy block */
 		Node* nd1 = new IsDistanceEarned(distSweep);
@@ -1986,7 +2007,7 @@ public:
 		  video->setTraceTargetType(TT_TRE_ON_VLINE);
 		  count = hasCaughtCount = 0;
 		  targetBlockType = BT_TREASURE;
-		  vLineColumnStartDist = currentDist - (350*2 + 150);
+		  vLineColumnStartDist = currentDist - (350*2);
 		  _log("ODO=%05d, vLineColumnStartDist FORCEFULLY set to %d", currentDist, vLineColumnStartDist);		
 		  st = TVLST_IN_CIRCLE;
 		} else { /* Treasure block is already on Row 4 */
@@ -2090,15 +2111,29 @@ public:
 	      _log("ODO=%05d, Decoy moved = %d.", currentDist, decoyMoved);
 	      st = TVLST_IN_CIRCLE;
 	    } else { /* move == MV_ON_COLUMN */
-	      circleDist = currentDist - 150;
-	      _log("ODO=%05d, circleDist is set with adjustment after sweeping as %d", currentDist, circleDist);
-	      columnState[vLineColumn] = VS_TREASURE;
-	      _log("ODO=%05d, Column %d marked as VS_TREASURE", currentDist, vLineColumn);
-	      vLineColumnStartX = plotter->getLocX() - 150;
-	      _log("ODO=%05d, vLineColumnStartX set to %d", currentDist, vLineColumnStartX);
-	      directionOnColumn = -1;
-	      vLineRow = 4;
-	      st = TVLST_ON_LINE;
+	      if (targetBlockType == BT_TREASURE) {
+		circleDist = currentDist - 150;
+		_log("ODO=%05d, circleDist is set with adjustment after sweeping as %d", currentDist, circleDist);
+		columnState[vLineColumn] = VS_TREASURE;
+		_log("ODO=%05d, Column %d marked as VS_TREASURE", currentDist, vLineColumn);
+		vLineColumnStartX = plotter->getLocX() - 150;
+		_log("ODO=%05d, vLineColumnStartX set to %d", currentDist, vLineColumnStartX);
+		directionOnColumn = -1;
+		vLineRow = 4;
+		st = TVLST_ON_LINE;
+	      } else { /* targetBlockType = BT_DECOY */
+		circleDist = currentDist;
+		_log("ODO=%05d, circleDist is set after sweeping", currentDist);
+		columnState[vLineColumn] = VS_NONE;
+		_log("ODO=%05d, Column %d marked as VS_NONE", currentDist, vLineColumn);
+		vLineColumnStartX = plotter->getLocX();
+		_log("ODO=%05d, vLineColumnStartX set to %d", currentDist, vLineColumnStartX);
+		directionOnColumn = -1;
+		vLineRow = 4;
+		decoyMoved += 1;
+		_log("ODO=%05d, Decoy moved = %d.", currentDist, decoyMoved);
+		st = TVLST_IN_CIRCLE;
+	      }
 	    }
 	  }
 	  break;
