@@ -1566,7 +1566,7 @@ public:
 		  int distSweep = 800; /* TODO: magic number */
 		  /* manually build a behavior tree for pushing off Decoy block */
 		  Node* nd1 = new IsDistanceEarned(distSweep);
-		  Node* nd2 = new RunPerGuideAngle(90), speed, {2.5, 0.0001, 0.4}); /* To-Do: magic numbers */
+		  Node* nd2 = new RunPerGuideAngle(90, speed, {2.5, 0.0001, 0.4}); /* To-Do: magic numbers */
 		  BrainTree::Composite* nd3 = new BrainTree::ParallelSequence(1,2);
 		  nd3->addChild(nd1);
 		  nd3->addChild(nd2);
