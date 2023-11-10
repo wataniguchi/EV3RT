@@ -69,8 +69,8 @@ using std::this_thread::sleep_for;
 #define OUT_FRAME_HEIGHT 240
 
 int b_min_tre=0,g_min_tre=0,r_min_tre=45,b_max_tre=40,g_max_tre=25,r_max_tre=255;
-int b_min_dec=35,g_min_dec=0,r_min_dec=0,b_max_dec=255,g_max_dec=60,r_max_dec=30;
-int b_min_lin=0,g_min_lin=0,r_min_lin=0,b_max_lin=60,g_max_lin=60,r_max_lin=60;
+int b_min_dec=35,g_min_dec=0,r_min_dec=0,b_max_dec=255,g_max_dec=60,r_max_dec=35;
+int b_min_lin=0,g_min_lin=0,r_min_lin=0,b_max_lin=40,g_max_lin=60,r_max_lin=60;
 int gs_min=10,gs_max=100,edge=0;
 vector<Point> blk_roi;
 
@@ -475,6 +475,8 @@ int main() {
 	} else {
 	  mx = int((x_bottom_smaller+x_bottom_larger) / 2);
 	}
+      } else { /* tlines.size() == 0 */
+	cout << "no lines detected. LOS must be blocked" << endl;
       }
     }
     for (int i = 0; i < cnt_idx_tre_online.size(); i++) {

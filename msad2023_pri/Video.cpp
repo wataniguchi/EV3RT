@@ -448,7 +448,12 @@ Mat Video::calculateTarget(Mat f) {
 	} else { /* traceTargetType == TT_TRE_ON_VLINE or TT_DEC_ON_VLINE */
 	  mx = cx;
 	}
-      } /* if (tlines.size() >= 1) */
+      } else { /* if (tlines.size() >= 1) */
+	/* LOS must be blocked - this happens when two blocks are on the line
+	   1 tre and 1 dec are assumed. could be 2 decs in reality. who cares? */
+	num_tre = 1;
+	num_dec = 1;
+      }
     } /* if (lines.size() > 0) */
 
     /* when TT_TRE_ON_VLINE or TT_DEC_ON_VLINE, track the target block assuming its location on image is gradually moving */
