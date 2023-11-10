@@ -222,7 +222,7 @@
         (prof->getValueAsNum("RUN_L23_PWR")), \
         (prof->getValueAsNum("RUN_L23_SR"))) \
       .end() \
-          .composite<BrainTree::ParallelSequence>(1,2) \
+      .composite<BrainTree::ParallelSequence>(1,2) \
         .leaf<IsDistanceEarned>(prof->getValueAsNum("RUN_L24_DIST")) \
         .leaf<RunAsInstructed>((prof->getValueAsNum("RUN_L24_PWL")), \
         (prof->getValueAsNum("RUN_L24_PWR")), \
