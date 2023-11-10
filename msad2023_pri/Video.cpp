@@ -448,6 +448,8 @@ Mat Video::calculateTarget(Mat f) {
 	} else { /* traceTargetType == TT_TRE_ON_VLINE or TT_DEC_ON_VLINE */
 	  mx = cx;
 	}
+	num_tre = cnt_idx_tre_online.size();
+	num_dec = cnt_idx_dec_online.size();
       } else { /* if (tlines.size() >= 1) */
 	/* LOS must be blocked - this happens when two blocks are on the line
 	   1 tre and 1 dec are assumed. could be 2 decs in reality. who cares? */
@@ -480,7 +482,6 @@ Mat Video::calculateTarget(Mat f) {
       }
       mx = cx;
       num_tre = cnt_idx_tre_online.size();
-      num_dec = cnt_idx_dec_online.size();
     }
     if (traceTargetType == TT_DEC_ON_VLINE) {
       if (cnt_idx_dec_online.size() == 0) {
@@ -500,7 +501,6 @@ Mat Video::calculateTarget(Mat f) {
 	}
       }
       mx = cx;
-      num_tre = cnt_idx_tre_online.size();
       num_dec = cnt_idx_dec_online.size();
     }
     /* draw blocks */

@@ -1476,8 +1476,8 @@ public:
 	  } else {
 	    if ( hasCaughtCount >= 3 || /* when target determined has caught more than 3 times out of 5 attempts */
 		 /* or reached to the end of Row/Column - forced BAIL OUT */
-		 (move == MV_ON_COLUMN && (currentDist - vLineColumnStartDist) > 350*3 + 50) ||
-		 (move == MV_ON_ROW && (currentDist - vLineRowStartDist) > 350*3 + 50) ) {
+		 (move == MV_ON_COLUMN && (currentDist - vLineColumnStartDist) > 350*3 - 50) || /* early detection */
+		 (move == MV_ON_ROW && (currentDist - vLineRowStartDist) > 350*3 - 50) ) {
 	      leftMotor->setPWM(0);
 	      rightMotor->setPWM(0);
 	      if (targetBlockType == BT_TREASURE) {
@@ -1587,7 +1587,7 @@ public:
 		BrainTree::Composite* nd3 = new BrainTree::ParallelSequence(1,2);
 		nd3->addChild(nd1);
 		nd3->addChild(nd2);
-		Node* nd4 = new IsDistanceEarned(100); /* To-Do: magic numbers */
+		Node* nd4 = new IsDistanceEarned(150); /* To-Do: magic numbers */
 		Node* nd5 = new RunAsInstructed(-speed, -speed, 0.0);
 		BrainTree::Composite* nd6 = new BrainTree::ParallelSequence(1,2);
 		nd6->addChild(nd4);
@@ -1618,7 +1618,7 @@ public:
 	      _log("ODO=%05d, circle CL_BLUE detected with rgb(%03d,%03d,%03d) at Column %d, Row %d", circleDist, cur_rgb.r, cur_rgb.g, cur_rgb.b, vLineColumn, vLineRow);
 	      circleColor = CL_BLUE;
 	      st = TVLST_ENTERING_CIRCLE;
-	    } else if ((currentDist - initDist) >= 350) { /* To-Do: magic number */
+	    } else if ((currentDist - initDist) >= 300) { /* To-Do: magic number */
 	      vLineRow = 1;
 	      circleDist = currentDist;
 	      _log("ODO=%05d, assumed to be entering circle without circle detected at Column %d, Row %d", currentDist, vLineColumn, vLineRow);
@@ -1632,7 +1632,7 @@ public:
 	      _log("ODO=%05d, circle CL_RED detected with rgb(%03d,%03d,%03d) at Column %d, Row %d", circleDist, cur_rgb.r, cur_rgb.g, cur_rgb.b, vLineColumn, vLineRow);
 	      circleColor = CL_RED;
 	      st = TVLST_ENTERING_CIRCLE;
-	    } else if ((currentDist - initDist) >= 200) { /* To-Do: magic number */
+	    } else if ((currentDist - initDist) >= 150) { /* To-Do: magic number */
 	      vLineRow = 1;
 	      circleDist = currentDist;
 	      _log("ODO=%05d, assumed to be entering circle without circle detected at Column %d, Row %d", currentDist, vLineColumn, vLineRow);
