@@ -345,8 +345,8 @@ bool isColor(Color c, rgb_raw_t cur_rgb) {
     if (prof->getValueAsNum("USE_SPIKE_API_CL_RED")) {
       if (colorSensor->getColorNumber() == 9) return true;
     } else {
-      if (cur_rgb.r > 60 && cur_rgb.g < 70 && cur_rgb.b < 70 &&
-	  cur_rgb.r - cur_rgb.g >= 30) return true;
+	    if (cur_rgb.r > 100 && cur_rgb.g < 50 && cur_rgb.b < 60 && cur_rgb.b > 10 && cur_rgb.g > 10 &&
+		    cur_rgb.r - cur_rgb.g >= 50) return true;
     }
     break;
   case CL_YELLOW:
@@ -1753,7 +1753,7 @@ public:
 	    _log("ODO=%05d, circle CL_GREEN detected with rgb(%03d,%03d,%03d) at Column %d, Row %d", circleDist, cur_rgb.r, cur_rgb.g, cur_rgb.b, vLineColumn, vLineRow);
 	    circleColor = CL_GREEN;
 	    st = TVLST_ENTERING_CIRCLE;
-	  } else if (currentDist - circleDist > 370) { /* TODO: magic number */
+	  } else if (currentDist - circleDist > 350) { /* TODO: magic number */
 	    if (move == MV_ON_COLUMN) {
 	      vLineRow += directionOnColumn;
 	      if (vLineRow < 1) vLineRow = 1;
