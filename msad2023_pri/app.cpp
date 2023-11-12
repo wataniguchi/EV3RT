@@ -13,6 +13,7 @@
 #include "app.h"
 #include "appusr.hpp"
 #include <iostream>
+#include <sstream>
 #include <thread>
 #include <mutex>
 #include <vector>
@@ -84,6 +85,9 @@ std::chrono::system_clock::time_point te_cap;
 std::mutex mut2;
 Mat frame_out;
 std::chrono::system_clock::time_point te_cap_copy, te_cal;
+/* flag to indicate vcal_thd to store image as file */
+bool vcal_thd_store_file = false;
+int prev_vcal_thd_count = 0, vcal_thd_store_file_interval = 4; /* vcal_thd execution */
 
 int EnumStringToNum(const EnumPair *enum_data, const char *name, int *out_num) {
   for (; enum_data->name; enum_data++) {
@@ -1047,6 +1051,141 @@ protected:
 
 /*
     usage:
+<<<<<<< HEAD
+=======
+    ".leaf<RotateEV3>(30, speed, srew_rate)"
+    is to rotate robot 30 degrees (=clockwise in L course and counter-clockwise in R course)
+    at the specified speed.
+    srew_rate = 0.0 indidates NO tropezoidal motion.
+    srew_rate = 0.5 instructs FilteredMotor to change 1 pwm every two executions of update()
+    until the current speed gradually reaches the instructed target speed.
+*/
+class RotateEV3 : public BrainTree::Node {
+public:
+    RotateEV3(int degree, int s, double srew_rate) : deltaDegreeTarget(degree),speed(s),srewRate(srew_rate) {
+        updated = false;
+	assert(degree > -360 && degree < 360);
+	deltaDegreeTarget = _COURSE * degree; /* _COURSE = -1 when R course */
+        if (deltaDegreeTarget > 0) {
+	  clockwise = 1; 
+        } else {
+	  clockwise = -1;
+        }
+    }
+    Status update() override {
+        if (!updated) {
+	    originalDegree = plotter->getDegree();
+            srlfL->setRate(srewRate);
+            srlfR->setRate(srewRate);
+            /* stop the robot at start */
+            leftMotor->setPWM(0);
+            rightMotor->setPWM(0);
+            _log("ODO=%05d, Rotation for %d started. Current angle = %d", plotter->getDistance(), deltaDegreeTarget, originalDegree);
+            updated = true;
+            return Status::Running;
+        }
+
+	int currentDegree = plotter->getDegree();
+	if ( deltaDegreeTarget > 0 && currentDegree < originalDegree ) currentDegree += 360;
+	if ( deltaDegreeTarget < 0 && currentDegree > originalDegree ) currentDegree -= 360;
+	int deltaDegree = currentDegree - originalDegree;
+        if (clockwise * deltaDegree < clockwise * deltaDegreeTarget) {
+            if ((srewRate != 0.0) && (clockwise * deltaDegree >= clockwise * deltaDegreeTarget - 5)) {
+                /* when comes to the half-way, start decreazing the speed by tropezoidal motion */    
+                leftMotor->setPWM(clockwise * 3);
+                rightMotor->setPWM(-clockwise * 3);
+            } else {
+                leftMotor->setPWM(clockwise * speed);
+                rightMotor->setPWM((-clockwise) * speed);
+            }
+            return Status::Running;
+        } else {
+            /* stop the robot at end */
+            leftMotor->setPWM(0);
+            rightMotor->setPWM(0);
+            _log("ODO=%05d, Rotation ended. Current angle = %d", plotter->getDistance(), plotter->getDegree());
+            return Status::Success;
+        }
+    }
+private:
+    int deltaDegreeTarget;
+    int16_t originalDegree;
+    int clockwise, speed;
+    bool updated;
+    double srewRate;
+};
+
+/*
+    usage:
+    ".leaf<RotatePanorama>(30, speed, srew_rate)"
+    is to rotate robot 30 degrees (=clockwise in L course and counter-clockwise in R course)
+    at the specified speed while taking panorama view.
+    srew_rate = 0.0 indidates NO tropezoidal motion.
+    srew_rate = 0.5 instructs FilteredMotor to change 1 pwm every two executions of update()
+    until the current speed gradually reaches the instructed target speed.
+*/
+class RotatePanorama : public BrainTree::Node {
+public:
+    RotatePanorama(int degree, int s, double srew_rate) : deltaDegreeTarget(degree),speed(s),srewRate(srew_rate) {
+        updated = false;
+        assert(degree >= -180 && degree <= 180);
+	deltaDegreeTarget = _COURSE * degree; /* _COURSE = -1 when R course */
+        if (deltaDegreeTarget > 0) {
+	  clockwise = 1; 
+        } else {
+	  clockwise = -1;
+        }
+    }
+    Status update() override {
+        if (!updated) {
+	  vcal_thd_store_file = true; /* tell vcal_thd to store image files */
+	    originalDegree = plotter->getDegree();
+            srlfL->setRate(srewRate);
+            srlfR->setRate(srewRate);
+            /* stop the robot at start */
+            leftMotor->setPWM(0);
+            rightMotor->setPWM(0);
+            _log("ODO=%05d, Rotation for %d started. Current angle = %d", plotter->getDistance(), deltaDegreeTarget, originalDegree);
+            updated = true;
+            return Status::Running;
+        }
+
+        int deltaDegree = plotter->getDegree() - originalDegree;
+        if (deltaDegree > 180) {
+            deltaDegree -= 360;
+        } else if (deltaDegree < -180) {
+            deltaDegree += 360;
+        }
+        if (clockwise * deltaDegree < clockwise * deltaDegreeTarget) {
+            if ((srewRate != 0.0) && (clockwise * deltaDegree >= clockwise * deltaDegreeTarget - 5)) {
+                /* when comes to the half-way, start decreazing the speed by tropezoidal motion */    
+                leftMotor->setPWM(clockwise * 3);
+                rightMotor->setPWM(-clockwise * 3);
+            } else {
+                leftMotor->setPWM(clockwise * speed);
+                rightMotor->setPWM((-clockwise) * speed);
+            }
+            return Status::Running;
+        } else {
+	  vcal_thd_store_file = false; /* tell vcal_thd to stop writing files */
+            /* stop the robot at end */
+            leftMotor->setPWM(0);
+            rightMotor->setPWM(0);
+            _log("ODO=%05d, Rotation ended. Current angle = %d", plotter->getDistance(), plotter->getDegree());
+            return Status::Success;
+        }
+    }
+private:
+    int deltaDegreeTarget;
+    int16_t originalDegree;
+    int clockwise, speed;
+    bool updated;
+    double srewRate;
+};
+
+/*
+    usage:
+>>>>>>> 2201d4b06edd6ecdecd587061ebb532428f6fe73
     ".leaf<SetGuideLocation>()"
     is to remember the current location that can be used later as a guide / basis.
 */
@@ -2316,6 +2455,15 @@ public:
 	f = frame_in.clone();
 	te_cap_local = te_cap;
 	mut1.unlock();
+	/* check file store flag and if specified interval is passed */
+	if (vcal_thd_store_file &&
+	    vcal_thd_count >= prev_vcal_thd_count + vcal_thd_store_file_interval) {
+	  prev_vcal_thd_count = vcal_thd_count;
+	  std::ostringstream oss;
+	  oss << "./msad2023_pri/work/img" << setw(7) << setfill('0') << vcal_thd_count << ".jpg";
+	  _logNoAsp("vcal_thd writing frame as file - %s", oss.str().c_str());
+	  imwrite(oss.str(), f);
+	}
 	f = video->calculateTarget(f);
 	std::chrono::system_clock::time_point te_cal_local = std::chrono::system_clock::now();
 	/* critical section 2 */
