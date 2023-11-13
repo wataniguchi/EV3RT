@@ -294,8 +294,7 @@ Mat Video::calculateTarget(Mat f) {
     Mat blank = Mat::zeros(Size(FRAME_WIDTH,BLK_FRAME_U_LIMIT), CV_8UC1);
     blank.copyTo(destRoi);
     /* dilate the image */
-    Mat kernel = Mat::ones(Size(AREA_DILATE_KERNEL_SIZE,AREA_DILATE_KERNEL_SIZE), CV_8UC1);
-    dilate(img_bin_white_area, img_bin_white_area_dil, kernel, Point(-1,-1), 1);
+    dilate(img_bin_white_area, img_bin_white_area_dil, kernel_dil, Point(-1,-1), 1);
 
     /* find the largest contour and then its hull as the block challenge area surronded by white */
     vector<Point> cnt_white_area = findLargestContour(img_bin_white_area_dil);
@@ -626,27 +625,28 @@ Mat Video::calculateTarget(Mat f) {
     Mat img_gray, img_bin_white_area, img_bin_white_area_dil, img_mask, img_mask_gray, img_gray_part, img_bin_part, img_bin, img_bin_mor, img_cnt_gray, scan_line;
 
     /* convert the image from BGR to grayscale */
-    cvtColor(f, img_gray, COLOR_BGR2GRAY);
+    //cvtColor(f, img_gray, COLOR_BGR2GRAY);
     /* generate a binarized image of white area */
-    inRange(img_gray, AREA_GS_MIN, AREA_GS_MAX, img_bin_white_area);
+    //inRange(img_gray, AREA_GS_MIN, AREA_GS_MAX, img_bin_white_area);
     /* dilate the image */
-    dilate(img_bin_white_area, img_bin_white_area_dil, kernel_dil, Point(-1,-1), 1);
+    //dilate(img_bin_white_area, img_bin_white_area_dil, kernel_dil, Point(-1,-1), 1);
     /* find the largest contour */
-    vector<Point> cnt_white_area = findLargestContour(img_bin_white_area_dil);
+    //vector<Point> cnt_white_area = findLargestContour(img_bin_white_area_dil);
     /* create mask for extraction */
     /*
       Note: Mat::ones/zeros with CV_8UC3 does NOT work and don't know why
     */
-    Mat mask(f.size(), CV_8UC3, Scalar(255,255,255));
-    fillPoly(mask, {cnt_white_area}, Scalar(0,0,0));
+    //Mat mask(f.size(), CV_8UC3, Scalar(255,255,255));
+    //fillPoly(mask, {cnt_white_area}, Scalar(0,0,0));
     /* paint outside of the contour to white */
-    bitwise_or(f, mask, img_mask);
+    //bitwise_or(f, mask, img_mask);
     
     /* modify img_orig to show masked area as blurred on monitor window */
-    addWeighted(img_mask, 0.5, f, 0.5, 0, f);
+    //addWeighted(img_mask, 0.5, f, 0.5, 0, f);
     
     /* convert the extracted image from BGR to grayscale */
-    cvtColor(img_mask, img_mask_gray, COLOR_BGR2GRAY);
+    //cvtColor(img_mask, img_mask_gray, COLOR_BGR2GRAY);
+    cvtColor(f, img_mask_gray, COLOR_BGR2GRAY);
     /* crop a part of image for binarization */
     img_gray_part = img_mask_gray(Range(CROP_U_LIMIT-blockOffset,CROP_D_LIMIT-blockOffset), Range(CROP_L_LIMIT,CROP_R_LIMIT));
     /* binarize the image */
