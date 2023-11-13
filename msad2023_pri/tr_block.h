@@ -1,7 +1,8 @@
 #define TR_BLOCK1_R \
   /* BLOCK1: move closer to the block area and determine if VLine Column 1 is clear */ \
   .composite<BrainTree::MemSequence>() \
-    /* section R101: set guide angle and location */ \
+    /* section R101: set guide angle and location after forcing Plotter degree to 180 */ \
+    .leaf<SetPlotterDegree>(180) \
     .leaf<SetGuideAngle>() \
     .leaf<SetGuideLocation>() \
     /* section R102: position in the center of Red circle */ \
