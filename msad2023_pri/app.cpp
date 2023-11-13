@@ -1461,6 +1461,7 @@ public:
 	    decoyMoved = treasureFound = 0;
 	    rowState[0] = rowState[1] = rowState[2] = rowState[3] = rowState[4] = VS_UNKNOWN;
 	    columnState[0] = columnState[1] = columnState[2] = columnState[3] = columnState[4] = VS_UNKNOWN;
+	    treasureMoving = false;
 	    detour = false;
             updated = true;
         }
@@ -1548,7 +1549,7 @@ public:
 		    ndChild = nd10;		    
 		  } else { /* mv == MV_ON_COLUMN or mv = MV_ON_ROW other cases from above */
 		    if (move == MV_ON_COLUMN) {
-		      distX = 3 * 350 + 150 - vLineColumnStartDist;
+		      distX = 3 * 350 + 150 - (currentDist - vLineColumnStartDist);
 		    } else { /* mv = MV_ON_ROW */
 		      distX = (4 - vLineRow) * 350 + 100;
 		    }
@@ -1579,7 +1580,7 @@ public:
 		  BrainTree::Composite* nd6 = new BrainTree::ParallelSequence(1,2);
 		  nd6->addChild(nd4);
 		  nd6->addChild(nd5);
-		  Node* nd7 = new RotateEV3(170, TVL_ROTATE_POWER, 0.0); /* To-Do: magic numbers */
+		  Node* nd7 = new RotateEV3(TVL_ROT_180, TVL_ROTATE_POWER, 0.0);
 		  BrainTree::Composite* nd8 = new BrainTree::MemSequence();
 		  nd8->addChild(nd3);
 		  nd8->addChild(nd6);
@@ -1617,7 +1618,7 @@ public:
 		BrainTree::Composite* nd6 = new BrainTree::ParallelSequence(1,2);
 		nd6->addChild(nd4);
 		nd6->addChild(nd5);
-		Node* nd7 = new RotateEV3(170, TVL_ROTATE_POWER, 0.0); /* To-Do: magic numbers */
+		Node* nd7 = new RotateEV3(TVL_ROT_180, TVL_ROTATE_POWER, 0.0);
 		BrainTree::Composite* nd8 = new BrainTree::MemSequence();
 		nd8->addChild(nd3);
 		nd8->addChild(nd6);
@@ -1837,16 +1838,20 @@ public:
 	      _log("ODO=%05d, vLineColumnStartX set to %d", currentDist, vLineColumnStartX);
 	      st = TVLST_IDENTIFYING_BLOCK;
 	    } else if (rowState[vLineRow] == VS_NONE || (rowState[vLineRow] == VS_TREASURE && decoyMoved < 2)) { /* nothing to see */
-	      if ( (directionOnColumn ==  1 && vLineRow == 4) ||
-		   (directionOnColumn == -1 && vLineRow == 1) ) {
-		ndChild = new RotateEV3(170, TVL_ROTATE_POWER, 0.0); /* To-Do: magic numbers */
+	      if ( (directionOnColumn ==  1 && vLineRow == 4 && video->getTraceTargetType() == TT_VLINE) ||
+		   (directionOnColumn == -1 && vLineRow == 1 && video->getTraceTargetType() == TT_VLINE) ) {
+		leftMotor->setPWM(0);
+		rightMotor->setPWM(0);
+		ndChild = new RotateEV3(TVL_ROT_180, TVL_ROTATE_POWER, 0.0);
 		directionOnColumn *= -1; /* change direction in advance */
 		st = TVLST_CENTERING_CIRCLE;
 	      } else if ( (detour && directionOnColumn ==  1 && vLineRow == 3) ||
 			  (detour && directionOnColumn == -1 && vLineRow == 2) ) {
 		detour = false;
 		_log("ODO=%05d, detour ending...", currentDist);
-		ndChild = new RotateEV3(170, TVL_ROTATE_POWER, 0.0); /* To-Do: magic numbers */
+		leftMotor->setPWM(0);
+		rightMotor->setPWM(0);
+		ndChild = new RotateEV3(TVL_ROT_180, TVL_ROTATE_POWER, 0.0);
 		directionOnColumn *= -1; /* change direction in advance */
 		st = TVLST_CENTERING_CIRCLE;
 	      } else {
@@ -1856,12 +1861,18 @@ public:
 	      st = TVLST_IN_CIRCLE;
 	    } else if (blockOnInitColumn && columnState[vLineColumn] == VS_TREASURE && directionOnColumn == -1 && vLineRow == 3) { /* do not see */
 	      st = TVLST_IN_CIRCLE;
+	    } else if (blockOnInitColumn && vLineRow >= 3 && treasureMoving) { /* do not see */
+	      st = TVLST_IN_CIRCLE;
 	    } else { /* something to see */
 	      if (initColumn == 1) {
-		ndChild = new RotateEV3((-1)*directionOnColumn*80, TVL_ROTATE_POWER, 0.0); /* To-Do: magic numbers */
+		leftMotor->setPWM(0);
+		rightMotor->setPWM(0);
+		ndChild = new RotateEV3((-1)*directionOnColumn*TVL_ROT_90, TVL_ROTATE_POWER, 0.0);
 		directionOnRow = 1;
 	      } else { /* initColumn == 4 */
-		ndChild = new RotateEV3(directionOnColumn*80, TVL_ROTATE_POWER, 0.0); /* To-Do: magic numbers */
+		leftMotor->setPWM(0);
+		rightMotor->setPWM(0);
+		ndChild = new RotateEV3(directionOnColumn*TVL_ROT_90, TVL_ROTATE_POWER, 0.0);
 		directionOnRow = -1;
 	      }
 	      move = MV_ON_ROW;
@@ -1884,7 +1895,7 @@ public:
 			   decoyMoved == 2 && treasureFound == 1 &&
 			   columnState[vLineColumn] != VS_TREASURE) ) {
 		_log("ODO=%05d, no need to visit empty Row", currentDist);
-		directionOnColumn *= -1; /* change direction */		
+		directionOnColumn *= -1; /* change direction */
 	      } else if ( (vLineRow == 2 && directionOnColumn == -1) || /* go other direction to avoid the use of color sensor */
 			  (vLineRow == 3 && directionOnColumn ==  1) ) {
 		//detour = true;
@@ -1892,7 +1903,9 @@ public:
 		//directionOnColumn *= -1; /* change direction */
 		_log("ODO=%05d, detour SKIPPED", currentDist);
 	      }
-	      ndChild = new RotateEV3(directionOnRow*directionOnColumn*80, TVL_ROTATE_POWER, 0.0); /* To-Do: magic numbers */
+	      leftMotor->setPWM(0);
+	      rightMotor->setPWM(0);
+	      ndChild = new RotateEV3(directionOnRow*directionOnColumn*TVL_ROT_90, TVL_ROTATE_POWER, 0.0);
 	      move = MV_ON_COLUMN;
 	      st = TVLST_CENTERING_CIRCLE;
 	    } else {
@@ -1910,12 +1923,12 @@ public:
 	  }
 	  break;
 	case TVLST_CENTERING_CIRCLE:
-	  //if (currentDist - circleDist >= 60) {
+	  if (currentDist - circleDist >= 50) {
 	    leftMotor->setPWM(0);
 	    rightMotor->setPWM(0);
             _log("ODO=%05d, centered in circle and stopped.", currentDist);
 	    st = TVLST_ROTATING_IN_CIRCLE;
-	  //}
+	  }
 	  break;
 	case TVLST_ROTATING_IN_CIRCLE:
 	  stsChild = ndChild->update();
@@ -1961,7 +1974,7 @@ public:
 		video->setTraceTargetType(TT_TRE_ON_VLINE);
 		count = hasCaughtCount = 0;
 		targetBlockType = BT_TREASURE;
-		vLineColumnStartDist = currentDist - 350 * (3 - vLineRow);
+		vLineColumnStartDist = currentDist - 350 * (vLineRow - 1);
 		_log("ODO=%05d, vLineColumnStartDist set to %d", currentDist, vLineColumnStartDist);
 	      }
 	      st = TVLST_IN_CIRCLE;
@@ -1987,7 +2000,7 @@ public:
 		    //directionOnColumn *= -1; /* change direction */
 		    _log("ODO=%05d, detour SKIPPED", currentDist);
 		  }
-		  ndChild = new RotateEV3(directionOnRow*directionOnColumn*80, TVL_ROTATE_POWER, 0.0); /* To-Do: magic numbers */
+		  ndChild = new RotateEV3(directionOnRow*directionOnColumn*TVL_ROT_90, TVL_ROTATE_POWER, 0.0);
 		  move = MV_ON_COLUMN;
 		  st = TVLST_ROTATING_IN_CIRCLE;
 		} else { /* decoyMoved == 2 */
@@ -2006,6 +2019,7 @@ public:
 		int cy = video->getCY();
 		if (cy > 75) {
 		  _log("ODO=%05d, Column %d marked as VS_TREASURE and MOVING the block at cy=%d...", currentDist, vLineColumn, cy);
+		  treasureMoving = true;
 		  /* target at the block */
 		  _log("ODO=%05d, targeting at Treasure block...", currentDist);
 		  video->setTraceTargetType(TT_TRE_ON_VLINE);
@@ -2016,10 +2030,10 @@ public:
 		  st = TVLST_IN_CIRCLE;
 		} else { /* Treasure block is already on Row 4 */
 		  _log("ODO=%05d, Column %d marked as VS_TREASURE with block at cy=%d", currentDist, vLineColumn, cy);
-		  ndChild = new RotateEV3(-80, TVL_ROTATE_POWER, 0.0); /* To-Do: magic numbers */
+		  ndChild = new RotateEV3((-1)*TVL_ROT_90, TVL_ROTATE_POWER, 0.0);
 		  directionOnRow = 1;
 		  move = MV_ON_ROW;
-		  st = TVLST_ROTATING_IN_CIRCLE;		  
+		  st = TVLST_ROTATING_IN_CIRCLE;
 		}
 	      }
 	    } else { /* identifyingBlockType == BT_DECOY */
@@ -2046,7 +2060,7 @@ public:
 		  //directionOnColumn *= -1; /* change direction */
 		  _log("ODO=%05d, detour SKIPPED", currentDist);
 		}
-		ndChild = new RotateEV3(directionOnRow*directionOnColumn*80, TVL_ROTATE_POWER, 0.0); /* To-Do: magic numbers */
+		ndChild = new RotateEV3(directionOnRow*directionOnColumn*TVL_ROT_90, TVL_ROTATE_POWER, 0.0);
 		move = MV_ON_COLUMN;
 		st = TVLST_ROTATING_IN_CIRCLE;
 	      }
@@ -2067,7 +2081,7 @@ public:
 		  //directionOnColumn *= -1; /* change direction */
 		  _log("ODO=%05d, detour SKIPPED", currentDist);
 		}
-		ndChild = new RotateEV3(directionOnRow*directionOnColumn*80, TVL_ROTATE_POWER, 0.0); /* To-Do: magic numbers */
+		ndChild = new RotateEV3(directionOnRow*directionOnColumn*TVL_ROT_90, TVL_ROTATE_POWER, 0.0);
 		move = MV_ON_COLUMN;
 		st = TVLST_ROTATING_IN_CIRCLE;
 	      } else { /*  move == MV_ON_COLUMN on blockOnInitColumn case */
@@ -2122,6 +2136,7 @@ public:
 		_log("ODO=%05d, Column %d marked as VS_TREASURE", currentDist, vLineColumn);
 		vLineColumnStartX = plotter->getLocX() - 150;
 		_log("ODO=%05d, vLineColumnStartX set to %d", currentDist, vLineColumnStartX);
+		treasureMoving = false;
 		directionOnColumn = -1;
 		vLineRow = 4;
 		st = TVLST_ON_LINE;
@@ -2260,7 +2275,7 @@ protected:
     rgb_raw_t cur_rgb;
     Movement move;
     BlockType targetBlockType, identifyingBlockType;
-    bool updated, detour;
+    bool updated, detour, treasureMoving;
 };
 
 /*

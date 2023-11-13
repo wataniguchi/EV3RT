@@ -81,6 +81,8 @@ using namespace ev3api;
 #define ARM_SHIFT_PWM            30
 #define TVL_ROTATE_POWER         58
 #define TVL_HIGH_SPEED           45
+#define TVL_ROT_90               75
+#define TVL_ROT_180             170
 
 enum Color {
     CL_JETBLACK,
