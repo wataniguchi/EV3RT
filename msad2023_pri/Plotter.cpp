@@ -18,34 +18,34 @@ leftMotor(lm),rightMotor(rm),gyroSensor(gs) {
     distance = azimuth = locX = locY = 0.0;
 }
 
-int32_t Plotter::getDistance() {
-    return (int32_t)distance;
+int Plotter::getDistance() {
+    return (int)distance;
 }
 
-int16_t Plotter::getAzimuth() {
-    return (int32_t)azimuth;
+int Plotter::getAzimuth() {
+    return (int)azimuth;
 }
 
-int16_t Plotter::getDegree() {
+int Plotter::getDegree() {
     // degree = 360.0 * radian / M_TWOPI;
-    int16_t degree = (360.0 * azimuth / M_TWOPI);
+    double degree = (360.0 * azimuth / M_TWOPI);
     if (degree == 360) degree = 0; /* guarantee 0 <= degree <= 359 */ 
-    return degree;
+    return (int)degree;
 }
 
-int32_t Plotter::getLocX() {
-    return (int32_t)locX;
+int Plotter::getLocX() {
+    return (int)locX;
 }
 
-int32_t Plotter::getLocY() {
-    return (int32_t)locY;
+int Plotter::getLocY() {
+    return (int)locY;
 }
 
-int32_t Plotter::getAngL() {
+int Plotter::getAngL() {
     return prevAngL;
 }
 
-int32_t Plotter::getAngR() {
+int Plotter::getAngR() {
     return prevAngR;
 }
 

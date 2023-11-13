@@ -49,7 +49,7 @@ FilteredMotor*  rightMotor;
 Motor*          armMotor;
 Plotter*        plotter;
 Video*          video;
-int16_t         guideAngle = 0;
+int             guideAngle = 0;
 int             guideLocX = 0, guideLocY = 0;
 int             vLineRow = 0, vLineColumn = 0;
 bool            blockOnInitColumn = false;
@@ -261,7 +261,7 @@ protected:
 */
 class IsDistanceEarned : public BrainTree::Node {
 public:
-    IsDistanceEarned(int32_t d) : deltaDistTarget(d) {
+    IsDistanceEarned(int d) : deltaDistTarget(d) {
         updated = false;
         earned = false;
     }
@@ -271,7 +271,7 @@ public:
             _log("ODO=%05d, Distance accumulation started for delta distance %d.", originalDist, deltaDistTarget);
             updated = true;
         }
-        int32_t deltaDist = plotter->getDistance() - originalDist;
+        int deltaDist = plotter->getDistance() - originalDist;
         
         if ((deltaDist >= deltaDistTarget) || (-deltaDist <= -deltaDistTarget)) {
             if (!earned) {
@@ -284,7 +284,7 @@ public:
         }
     }
 protected:
-    int32_t deltaDistTarget, originalDist;
+    int deltaDistTarget, originalDist;
     bool updated, earned;
 };
 
@@ -559,8 +559,8 @@ public:
 	    count = 0;
             return Status::Success;
 	  } else {
-	    _log("ODO=%05d, test for %d blocks FAILED with %d out of 20 at x=%d:y=%d:deg=%d",
-		 plotter->getDistance(), numTest, numStat[numTest], plotter->getLocX(), plotter->getLocY(),
+	    _log("ODO=%05d, test for %d blocks FAILED with numStat[0]=%d, numStat[1]=%d, numStat[2]=%d out of 20 at x=%d:y=%d:deg=%d",
+		 plotter->getDistance(), numTest, numStat[0], numStat[1], numStat[2], plotter->getLocX(), plotter->getLocY(),
 		 plotter->getDegree());
 	    count = 0;
             return Status::Failure;
@@ -838,7 +838,7 @@ public:
     }
 private:
     int deltaDegreeTarget;
-    int16_t originalDegree;
+    int originalDegree;
     int clockwise, speed, count;
     bool updated;
     double srewRate;
@@ -1473,7 +1473,7 @@ public:
 	    video->getTraceTargetType() == TT_DEC_ON_VLINE) {
 	  /* adjust Plotter degree where necessary */
 	  if (move == MV_ON_COLUMN) {
-	    if (currentDist - vLineColumnStartDist > 400) {
+	    if (currentDist - vLineColumnStartDist > 200) {
 	      int origDeg = plotter->getDegree();
 	      int correctDeg = 180 + 90 * directionOnColumn * _COURSE; /* _COURSE = -1 when R course */
 	      if (origDeg - correctDeg >= 3) {
@@ -1482,7 +1482,7 @@ public:
 	      }
 	    }
 	  } else { /* move = MV_ON_ROW */
-	    if (currentDist - vLineRowStartDist > 400) {
+	    if (currentDist - vLineRowStartDist > 200) {
 	      int origDeg = plotter->getDegree();
 	      int correctDeg = 90 + 90 * directionOnRow; /* direction on Row is NOT relevant to L/R */
 	      if (origDeg - correctDeg >= 3) {
@@ -1906,12 +1906,12 @@ public:
 	  }
 	  break;
 	case TVLST_CENTERING_CIRCLE:
-	  if (currentDist - circleDist >= 60) {
+	  //if (currentDist - circleDist >= 60) {
 	    leftMotor->setPWM(0);
 	    rightMotor->setPWM(0);
             _log("ODO=%05d, centered in circle and stopped.", currentDist);
 	    st = TVLST_ROTATING_IN_CIRCLE;
-	  }
+	  //}
 	  break;
 	case TVLST_ROTATING_IN_CIRCLE:
 	  stsChild = ndChild->update();

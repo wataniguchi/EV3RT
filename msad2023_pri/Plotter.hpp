@@ -32,20 +32,20 @@
 class Plotter {
 public:
     Plotter(ev3api::Motor* lm, ev3api::Motor* rm, ev3api::GyroSensor* gs);
-    int32_t getDistance();
-    int16_t getAzimuth();
-    int16_t getDegree();
-    int32_t getLocX();
-    int32_t getLocY();
-    int32_t getAngL();
-    int32_t getAngR();
+    int getDistance();
+    int getAzimuth();
+    int getDegree();
+    int getLocX();
+    int getLocY();
+    int getAngL();
+    int getAngR();
     void setDegree(int deg);
     void plot();
 protected:
     ev3api::Motor *leftMotor, *rightMotor;
     ev3api::GyroSensor *gyroSensor;
     double distance, azimuth, locX, locY;
-    int32_t prevAngL, prevAngR;
+    int prevAngL, prevAngR;
 };
 
 #endif /* Plotter_hpp */
