@@ -1546,8 +1546,12 @@ public:
 		    nd10->addChild(nd6);
 		    nd10->addChild(nd9);
 		    ndChild = nd10;		    
-		  } else { /* mv == MV_ON_COLUMN */
-		    distX = 3 * 350 + 150 - vLineColumnStartDist;
+		  } else { /* mv == MV_ON_COLUMN or mv = MV_ON_ROW other cases from above */
+		    if (move == MV_ON_COLUMN) {
+		      distX = 3 * 350 + 150 - vLineColumnStartDist;
+		    } else { /* mv = MV_ON_ROW */
+		      distX = (4 - vLineRow) * 350 + 100;
+		    }
 		    /* manually build a behavior tree for moving Trasure block */
 		    Node* nd1 = new IsDistanceEarned(distX);
 		    Node* nd2 = new RunPerGuideAngle(90, speed, {2.5, 0.0001, 0.4}); /* To-Do: magic numbers */
