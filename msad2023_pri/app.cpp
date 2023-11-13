@@ -1476,7 +1476,7 @@ public:
 	    if (currentDist - vLineColumnStartDist > 200) {
 	      int origDeg = plotter->getDegree();
 	      int correctDeg = 180 + 90 * directionOnColumn * _COURSE; /* _COURSE = -1 when R course */
-	      if (origDeg - correctDeg >= 3) {
+	      if (abs(origDeg - correctDeg) >= 3) {
 		plotter->setDegree(correctDeg);
 		_log("ODO=%05d, Plotter degree forcefully changed from %d to %d.", currentDist, origDeg, correctDeg);	      
 	      }
@@ -1485,7 +1485,7 @@ public:
 	    if (currentDist - vLineRowStartDist > 200) {
 	      int origDeg = plotter->getDegree();
 	      int correctDeg = 90 + 90 * directionOnRow; /* direction on Row is NOT relevant to L/R */
-	      if (origDeg - correctDeg >= 3) {
+	      if (abs(origDeg - correctDeg) >= 3) {
 		plotter->setDegree(correctDeg);
 		_log("ODO=%05d, Plotter degree forcefully changed from %d to %d.", currentDist, origDeg, correctDeg);	      
 	      }
@@ -1567,7 +1567,7 @@ public:
 		  vLineColumnStartDist = currentDist - 350; /* this happens only when Treasure Block is on C1R2 */ 
 		  _log("ODO=%05d, vLineColumnStartDist recovered to %d", currentDist, vLineColumnStartDist);
 		  /* distance between adjcent circles = 350 */
-		  int distSweep = 800; /* TODO: magic number */
+		  int distSweep = 700; /* TODO: magic number */
 		  /* manually build a behavior tree for pushing off Decoy block */
 		  Node* nd1 = new IsDistanceEarned(distSweep);
 		  Node* nd2 = new RunPerGuideAngle(90, speed, {2.5, 0.0001, 0.4}); /* To-Do: magic numbers */
@@ -1673,7 +1673,7 @@ public:
 		(video->getTraceTargetType() == TT_VLINE && (currentDist - circleDist) > 150) ) {
 	      int origDeg = plotter->getDegree();
 	      int correctDeg = 180 + 90 * directionOnColumn * _COURSE; /* _COURSE = -1 when R course */
-	      if (origDeg - correctDeg >= 3) {
+	      if (abs(origDeg - correctDeg) >= 3) {
 		plotter->setDegree(correctDeg);
 		_log("ODO=%05d, Plotter degree forcefully changed from %d to %d.", currentDist, origDeg, correctDeg);	      
 	      }
@@ -1684,7 +1684,7 @@ public:
 		(video->getTraceTargetType() == TT_VLINE && (currentDist - circleDist) > 150) ) {
 	      int origDeg = plotter->getDegree();
 	      int correctDeg = 90 + 90 * directionOnRow; /* direction on Row is NOT relevant to L/R */
-	      if (origDeg - correctDeg >= 3) {
+	      if (abs(origDeg - correctDeg) >= 3) {
 		plotter->setDegree(correctDeg);
 		_log("ODO=%05d, Plotter degree forcefully changed from %d to %d.", currentDist, origDeg, correctDeg);	      
 	      }
