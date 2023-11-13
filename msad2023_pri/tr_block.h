@@ -154,6 +154,12 @@
 	    prof->getValueAsNum("BLOCK_GS_MAX"), 0.0, \
             (TraceSide)prof->getValueAsIntFromEnum("BLOCK_R603_TS", gEnumPairs)) \
     .end() \
+    .composite<BrainTree::ParallelSequence>(1,2) \
+      .leaf<IsDistanceEarned>(prof->getValueAsNum("BLOCK_R604_DIST")) \
+      .leaf<IsColorDetected>(CL_BLUE) \
+      .leaf<RunAsInstructed>(prof->getValueAsNum("BLOCK_R604_PWML"), \
+            prof->getValueAsNum("BLOCK_R604_PWMR"), 0.0) \
+    .end() \
     .leaf<StopNow>() \
   .end()
 

@@ -1528,7 +1528,7 @@ public:
 		      distY = 2 * 350 - (currentDist - vLineRowStartDist);
 		    }
 		    Node* nd1 = new IsDistanceEarned(distX);
-		    Node* nd2 = new RunPerGuideAngle(105, speed, {2.5, 0.0001, 0.4}); /* To-Do: magic numbers */
+		    Node* nd2 = new RunPerGuideAngle(115, speed, {2.5, 0.0001, 0.4}); /* To-Do: magic numbers */
 		    BrainTree::Composite* nd3 = new BrainTree::ParallelSequence(1,2);
 		    nd3->addChild(nd1);
 		    nd3->addChild(nd2);
@@ -1603,9 +1603,9 @@ public:
 		/* distance between adjcent circles = 350 */
 		int distSweep;
 		if (move == MV_ON_ROW) {
-		  distSweep = 150 + 350 * 3 - (currentDist - vLineRowStartDist);
+		  distSweep = 140 + 350 * 3 - (currentDist - vLineRowStartDist);
 		} else { /* move == MV_ON_COLUMN */
-		  distSweep = 150 + 350 * 3 - (currentDist - vLineColumnStartDist);
+		  distSweep = 140 + 350 * 3 - (currentDist - vLineColumnStartDist);
 		}
 		/* manually build a behavior tree for pushing off Decoy block */
 		Node* nd1 = new IsDistanceEarned(distSweep);
