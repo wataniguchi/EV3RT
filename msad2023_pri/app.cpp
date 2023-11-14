@@ -1692,10 +1692,10 @@ public:
 		/* distance between adjcent circles = 350 */
 		int distSweep, correctDeg;
 		if (move == MV_ON_ROW) {
-		  distSweep = 140 + 350 * 3 - (currentDist - vLineRowStartDist);
+		  distSweep = 130 + 350 * 3 - (currentDist - vLineRowStartDist);
 		  correctDeg = 90 + 90 * directionOnRow; /* direction on Row is NOT relevant to L/R */
 		} else { /* move == MV_ON_COLUMN */
-		  distSweep = 140 + 350 * 3 - (currentDist - vLineColumnStartDist);
+		  distSweep = 130 + 350 * 3 - (currentDist - vLineColumnStartDist);
 		  correctDeg = 180 + 90 * directionOnColumn * _COURSE; /* _COURSE = -1 when R course */
 
 		}
