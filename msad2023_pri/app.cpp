@@ -1976,10 +1976,16 @@ public:
 		st = TVLST_IN_CIRCLE;
 	      }
 	    } else if (blockOnInitColumn && columnState[vLineColumn] == VS_UNKNOWN && directionOnColumn == 1 && vLineRow != 1) { /* do not see */
+	      _log("ODO=%05d, Row observation skipped for takeing care of BLOCK ON COLUMN FIRST...", currentDist);
 	      st = TVLST_IN_CIRCLE;
 	    } else if (blockOnInitColumn && columnState[vLineColumn] == VS_TREASURE && directionOnColumn == -1 && vLineRow == 3) { /* do not see */
+	      _log("ODO=%05d, Row observation skipped for NOT STABLE...", currentDist);
 	      st = TVLST_IN_CIRCLE;
 	    } else if (blockOnInitColumn && vLineRow >= 3 && treasureMoving) { /* do not see */
+	      _log("ODO=%05d, Row observation skipped for MOVING TREASURE...", currentDist);
+	      st = TVLST_IN_CIRCLE;
+	    } else if (blockOnInitColumn && vLineRow >= 3 && video->getTraceTargetType() == TT_TRE_ON_VLINE) { /* do not see */
+	      _log("ODO=%05d, Row observation skipped for PURSUING TREASURE...", currentDist);
 	      st = TVLST_IN_CIRCLE;
 	    } else { /* something to see */
 	      if (initColumn == 1) {
