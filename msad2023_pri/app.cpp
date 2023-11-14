@@ -1356,6 +1356,87 @@ protected:
 
 /*
     usage:
+    ".leaf<TraceVLineCam>(speed, pid, gs_min, gs_max, target_deg, trace_side)"
+    is to instruct the robot to trace the line at the given speed.
+    pid is a vector of three constants for PID control.
+    gs_min, gs_max are grayscale threshold for line recognition binalization.
+    correct_deg is a degree to be FORCEFULLY set to Plotter during run.
+    until the current speed gradually reaches the instructed target speed.
+    trace_side = TS_NORMAL   when in R(L) course and tracing the right(left) side of the line.
+    trace_side = TS_OPPOSITE when in R(L) course and tracing the left(right) side of the line.
+    trace_side = TS_CENTER   when tracing the center of the line.
+*/
+class TraceVLineCam : public BrainTree::Node {
+public:
+  TraceVLineCam(int s, std::vector<double> pid, int gs_min, int gs_max, int correct_deg, TraceSide trace_side) : speed(s),gsMin(gs_min),gsMax(gs_max),correctDeg(correct_deg),side(trace_side) {
+        updated = false;
+	assert(pid.size() == 3);
+        ltPid = new PIDcalculator(pid[0], pid[1], pid[2], PERIOD_UPD_TSK, -speed, speed);
+    }
+    ~TraceVLineCam() {
+        delete ltPid;
+    }
+    Status update() override {
+        if (!updated) {
+	    video->setTraceTargetType(TT_VLINE);
+	    video->setThresholds(gsMin, gsMax);
+	    if (side == TS_NORMAL) {
+	      if (_COURSE == -1) { /* right course */
+	        video->setTraceSide(1);
+	      } else {
+	        video->setTraceSide(0);
+	      }
+	    } else if (side == TS_OPPOSITE) {
+	      if (_COURSE == -1) { /* right course */
+		video->setTraceSide(0);
+	      } else {
+		video->setTraceSide(1);
+	      }
+	    } else {
+	      video->setTraceSide(2);
+	    }
+            /* The following code chunk is to properly set prevXin in SRLF */
+            srlfL->setRate(0.0);
+            leftMotor->setPWM(leftMotor->getPWM());
+            srlfR->setRate(0.0);
+            rightMotor->setPWM(rightMotor->getPWM());
+            _log("ODO=%05d, Camera VLine Trace run started. TS=%1d", plotter->getDistance(), (int)side);
+            updated = true;
+        }
+	int origDeg = plotter->getDegree();
+	//MOVE_ON_COLUMN: correctDeg = 180 + 90 * directionOnColumn * _COURSE; /* _COURSE = -1 when R course */
+	//MOVE_ON_ROW:    correctDeg = 90 + 90 * directionOnRow; /* direction on Row is NOT relevant to L/R */
+	if (abs(origDeg - correctDeg) >= 3) {
+	  plotter->setDegree(correctDeg);
+	  _log("ODO=%05d, Plotter degree forcefully changed from %d to %d.", plotter->getDistance(), origDeg, correctDeg);	      
+	}
+
+        int forward, turn, pwmL, pwmR;
+	int theta = video->getTheta();
+	_debug(_log("ODO=%05d, theta = %d", plotter->getDistance(), theta),3); /* if _DEBUG_LEVEL >= 3 */
+	
+        /* compute necessary amount of steering by PID control */
+        turn = (-1) * ltPid->compute(theta, 0); /* 0 is the center */
+	_debug(_log("ODO=%05d, turn = %d", plotter->getDistance(), turn),3); /* if _DEBUG_LEVEL >= 3 */
+        forward = speed;
+        /* steer EV3 by setting different speed to the motors */
+	/* TODO: take care of overflow case pwm <= 100 */
+        pwmL = forward - turn;
+        pwmR = forward + turn;
+        leftMotor->setPWM(pwmL);
+        rightMotor->setPWM(pwmR);
+        return Status::Running;
+    }
+protected:
+    int speed, gsMin, gsMax;
+    PIDcalculator* ltPid;
+    int correctDeg;
+    TraceSide side;
+    bool updated;
+};
+
+/*
+    usage:
     ".leaf<SetVLineColumn>(column, block_on_init_column)"
     is to set the current column number of Block Challenge area
     that can be used in TraverseVLine action class.
@@ -1411,6 +1492,7 @@ public:
         ltPidSen = new PIDcalculator(pidSen[0], pidSen[1], pidSen[2], PERIOD_UPD_TSK, -speed, speed);
 	assert(pidCam.size() == 3);
         ltPidCam = new PIDcalculator(pidCam[0], pidCam[1], pidCam[2], PERIOD_UPD_TSK, -speed, speed);
+	pidTraceVLineCam = pidCam;
     }
     ~TraverseVLine() {
         delete ltPidCam;
@@ -1569,23 +1651,30 @@ public:
 		  _log("ODO=%05d, vLineColumnStartDist recovered to %d", currentDist, vLineColumnStartDist);
 		  /* distance between adjcent circles = 350 */
 		  int distSweep = 700; /* TODO: magic number */
+		  int correctDeg = 180 + 90 * directionOnColumn * _COURSE; /* _COURSE = -1 when R course */
 		  /* manually build a behavior tree for pushing off Decoy block */
-		  Node* nd1 = new IsDistanceEarned(distSweep);
-		  Node* nd2 = new RunPerGuideAngle(90, speed, {2.5, 0.0001, 0.4}); /* To-Do: magic numbers */
+		  Node* nd1 = new IsDistanceEarned(350);
+		  Node* nd2 = new TraceVLineCam(speed, pidTraceVLineCam, gsMin, gsMax, correctDeg, side);
 		  BrainTree::Composite* nd3 = new BrainTree::ParallelSequence(1,2);
 		  nd3->addChild(nd1);
 		  nd3->addChild(nd2);
-		  Node* nd4 = new IsDistanceEarned(100); /* To-Do: magic numbers */
-		  Node* nd5 = new RunAsInstructed(-speed, -speed, 0.0);
+		  Node* nd4 = new IsDistanceEarned(distSweep - 350);
+		  Node* nd5 = new RunPerGuideAngle(90, speed, {2.5, 0.0001, 0.4}); /* To-Do: magic numbers */
 		  BrainTree::Composite* nd6 = new BrainTree::ParallelSequence(1,2);
 		  nd6->addChild(nd4);
 		  nd6->addChild(nd5);
-		  Node* nd7 = new RotateEV3(TVL_ROT_180, TVL_ROTATE_POWER, 0.0);
-		  BrainTree::Composite* nd8 = new BrainTree::MemSequence();
-		  nd8->addChild(nd3);
-		  nd8->addChild(nd6);
-		  nd8->addChild(nd7);
-		  ndChild = nd8;
+		  Node* nd7 = new IsDistanceEarned(100); /* To-Do: magic numbers */
+		  Node* nd8 = new RunAsInstructed(-speed, -speed, 0.0);
+		  BrainTree::Composite* nd9 = new BrainTree::ParallelSequence(1,2);
+		  nd9->addChild(nd7);
+		  nd9->addChild(nd8);
+		  Node* nd10 = new RotateEV3(TVL_ROT_180, TVL_ROTATE_POWER, 0.0);
+		  BrainTree::Composite* nd11 = new BrainTree::MemSequence();
+		  nd11->addChild(nd3);
+		  nd11->addChild(nd6);
+		  nd11->addChild(nd9);
+		  nd11->addChild(nd10);
+		  ndChild = nd11;
 		  video->setTraceTargetType(TT_VLINE);
 		  st = TVLST_SWEEPING_OUT; /* intention is to move Treasure Block to C1R4 */
 		}
@@ -1601,29 +1690,58 @@ public:
 		}
 		count = hasCaughtCount = 0;
 		/* distance between adjcent circles = 350 */
-		int distSweep;
+		int distSweep, correctDeg;
 		if (move == MV_ON_ROW) {
 		  distSweep = 140 + 350 * 3 - (currentDist - vLineRowStartDist);
+		  correctDeg = 90 + 90 * directionOnRow; /* direction on Row is NOT relevant to L/R */
 		} else { /* move == MV_ON_COLUMN */
 		  distSweep = 140 + 350 * 3 - (currentDist - vLineColumnStartDist);
+		  correctDeg = 180 + 90 * directionOnColumn * _COURSE; /* _COURSE = -1 when R course */
+
 		}
 		/* manually build a behavior tree for pushing off Decoy block */
-		Node* nd1 = new IsDistanceEarned(distSweep);
-		Node* nd2 = new RunPerGuideAngle((move == MV_ON_ROW ? 90-directionOnRow*90 : 90), speed, {2.5, 0.0001, 0.4}); /* To-Do: magic numbers */
-		BrainTree::Composite* nd3 = new BrainTree::ParallelSequence(1,2);
-		nd3->addChild(nd1);
-		nd3->addChild(nd2);
-		Node* nd4 = new IsDistanceEarned(150); /* To-Do: magic numbers */
-		Node* nd5 = new RunAsInstructed(-speed, -speed, 0.0);
-		BrainTree::Composite* nd6 = new BrainTree::ParallelSequence(1,2);
-		nd6->addChild(nd4);
-		nd6->addChild(nd5);
-		Node* nd7 = new RotateEV3(TVL_ROT_180, TVL_ROTATE_POWER, 0.0);
-		BrainTree::Composite* nd8 = new BrainTree::MemSequence();
-		nd8->addChild(nd3);
-		nd8->addChild(nd6);
-		nd8->addChild(nd7);
-		ndChild = nd8;
+		if ( (move == MV_ON_ROW    && (currentDist - vLineRowStartDist)    < 525) ||
+		     (move == MV_ON_COLUMN && (currentDist - vLineColumnStartDist) < 525) ) {
+		  Node* nd1 = new IsDistanceEarned(350);
+		  Node* nd2 = new TraceVLineCam(speed, pidTraceVLineCam, gsMin, gsMax, correctDeg, side);
+		  BrainTree::Composite* nd3 = new BrainTree::ParallelSequence(1,2);
+		  nd3->addChild(nd1);
+		  nd3->addChild(nd2);
+		  Node* nd4 = new IsDistanceEarned(distSweep - 350);
+		  Node* nd5 = new RunPerGuideAngle((move == MV_ON_ROW ? 90-directionOnRow*90 : 90), speed, {2.5, 0.0001, 0.4}); /* To-Do: magic numbers */
+		  BrainTree::Composite* nd6 = new BrainTree::ParallelSequence(1,2);
+		  nd6->addChild(nd4);
+		  nd6->addChild(nd5);
+		  Node* nd7 = new IsDistanceEarned(150); /* To-Do: magic numbers */
+		  Node* nd8 = new RunAsInstructed(-speed, -speed, 0.0);
+		  BrainTree::Composite* nd9 = new BrainTree::ParallelSequence(1,2);
+		  nd9->addChild(nd7);
+		  nd9->addChild(nd8);
+		  Node* nd10 = new RotateEV3(TVL_ROT_180, TVL_ROTATE_POWER, 0.0);
+		  BrainTree::Composite* nd11 = new BrainTree::MemSequence();
+		  nd11->addChild(nd3);
+		  nd11->addChild(nd6);
+		  nd11->addChild(nd9);
+		  nd11->addChild(nd10);
+		  ndChild = nd11;
+		} else {
+		  Node* nd1 = new IsDistanceEarned(distSweep);
+		  Node* nd2 = new RunPerGuideAngle((move == MV_ON_ROW ? 90-directionOnRow*90 : 90), speed, {2.5, 0.0001, 0.4}); /* To-Do: magic numbers */
+		  BrainTree::Composite* nd3 = new BrainTree::ParallelSequence(1,2);
+		  nd3->addChild(nd1);
+		  nd3->addChild(nd2);
+		  Node* nd4 = new IsDistanceEarned(150); /* To-Do: magic numbers */
+		  Node* nd5 = new RunAsInstructed(-speed, -speed, 0.0);
+		  BrainTree::Composite* nd6 = new BrainTree::ParallelSequence(1,2);
+		  nd6->addChild(nd4);
+		  nd6->addChild(nd5);
+		  Node* nd7 = new RotateEV3(TVL_ROT_180, TVL_ROTATE_POWER, 0.0);
+		  BrainTree::Composite* nd8 = new BrainTree::MemSequence();
+		  nd8->addChild(nd3);
+		  nd8->addChild(nd6);
+		  nd8->addChild(nd7);
+		  ndChild = nd8;
+		}
 		video->setTraceTargetType(TT_VLINE);
 		st = TVLST_SWEEPING_OUT;
 	      }
@@ -1885,8 +2003,8 @@ public:
 	      st = TVLST_IN_CIRCLE;
 	    } else if ( (initColumn == 4 && directionOnRow ==  1 && vLineColumn == 4) ||
 			(initColumn == 1 && directionOnRow == -1 && vLineColumn == 1) ) {
-	      if ( (vLineRow == 1 && directionOnColumn == -1) ||
-		   (vLineRow == 4 && directionOnColumn ==  1) ) {
+	      if ( (vLineRow == 1 && directionOnColumn == -1 && video->getTraceTargetType() == TT_VLINE) ||
+		   (vLineRow == 4 && directionOnColumn ==  1 && video->getTraceTargetType() == TT_VLINE) ) {
 		directionOnColumn *= -1; /* change direction */
 	      } else if ( (vLineRow == 2 && directionOnColumn == -1 && rowState[1] != VS_TREASURE &&
 			   decoyMoved == 2 && treasureFound == 1 &&
@@ -2268,6 +2386,7 @@ protected:
     PIDcalculator *ltPidSen, *ltPidCam;
     TraceSide side;
     std::vector<double> bgrMinTre, bgrMaxTre, bgrMinDec, bgrMaxDec, bgrMinLin, bgrMaxLin;
+    std::vector<double> pidTraceVLineCam;
     TVLState st;
     Color circleColor;
     Node* ndChild;
