@@ -1544,6 +1544,7 @@ public:
 	    rowState[0] = rowState[1] = rowState[2] = rowState[3] = rowState[4] = VS_UNKNOWN;
 	    columnState[0] = columnState[1] = columnState[2] = columnState[3] = columnState[4] = VS_UNKNOWN;
 	    treasureMoving = false;
+	    targetBlockInClose = false;
 	    detour = false;
             updated = true;
         }
@@ -1580,10 +1581,14 @@ public:
 	  } else {
 	    if ( hasCaughtCount >= 3 || /* when target determined has caught more than 3 times out of 5 attempts */
 		 /* or reached to the end of Row/Column - forced BAIL OUT */
-		 (move == MV_ON_COLUMN && (currentDist - vLineColumnStartDist) > 350*3 - 50) || /* early detection */
-		 (move == MV_ON_ROW && (currentDist - vLineRowStartDist) > 350*3 - 50) ) {
+		 (move == MV_ON_COLUMN && !targetBlockInClose && (currentDist - vLineColumnStartDist) > 350*3 - 50) || /* early detection */
+		 (move == MV_ON_ROW && !targetBlockInClose && (currentDist - vLineRowStartDist) > 350*3 - 50) ||
+		 /* or reached to Block in close by distance - forced BAIL OUT */
+		 (move == MV_ON_COLUMN && targetBlockInClose && (currentDist - vLineColumnStartDist) > 350 - 50) || /* early detection */
+		 (move == MV_ON_ROW && targetBlockInClose && (currentDist - vLineRowStartDist) > 350 - 50) ) {
 	      leftMotor->setPWM(0);
 	      rightMotor->setPWM(0);
+	      if (targetBlockInClose) targetBlockInClose = false; /* reset the flag */
 	      if (targetBlockType == BT_TREASURE) {
 		if (hasCaughtCount >= 3) {
 		  _log("ODO=%05d, CAUGHT TREASURE block", currentDist);
@@ -1646,9 +1651,6 @@ public:
 		  video->setTraceTargetType(TT_VLINE);
 		  st = TVLST_EXIT;
 		} else {
-		  /* recover the false vLineColumnStartDist */
-		  vLineColumnStartDist = currentDist - 350; /* this happens only when Treasure Block is on C1R2 */ 
-		  _log("ODO=%05d, vLineColumnStartDist recovered to %d", currentDist, vLineColumnStartDist);
 		  /* distance between adjcent circles = 350 */
 		  int distSweep = 700; /* TODO: magic number */
 		  int correctDeg = 180 + 90 * directionOnColumn * _COURSE; /* _COURSE = -1 when R course */
@@ -1984,7 +1986,7 @@ public:
 	    } else if (blockOnInitColumn && vLineRow >= 3 && treasureMoving) { /* do not see */
 	      _log("ODO=%05d, Row observation skipped for MOVING TREASURE...", currentDist);
 	      st = TVLST_IN_CIRCLE;
-	    } else if (blockOnInitColumn && vLineRow >= 3 && video->getTraceTargetType() == TT_TRE_ON_VLINE) { /* do not see */
+	    } else if (blockOnInitColumn && video->getTraceTargetType() == TT_TRE_ON_VLINE) { /* do not see */
 	      _log("ODO=%05d, Row observation skipped for PURSUING TREASURE...", currentDist);
 	      st = TVLST_IN_CIRCLE;
 	    } else { /* something to see */
@@ -2128,6 +2130,13 @@ public:
 		  move = MV_ON_COLUMN;
 		  st = TVLST_ROTATING_IN_CIRCLE;
 		} else { /* decoyMoved == 2 */
+		  int cy = video->getCY();
+		  if (cy > 75) {
+		    targetBlockInClose = true; /* earlier block catch detection by distance */
+		    _log("ODO=%05d, target block in close distance at cy=%d...", currentDist, cy);
+		  } else {
+		    targetBlockInClose = false;
+		  }
 		  /* target at the block */
 		  _log("ODO=%05d, targeting at Treasure block...", currentDist);
 		  video->setTraceTargetType(TT_TRE_ON_VLINE);
@@ -2142,6 +2151,7 @@ public:
 		treasureFound = 1;
 		int cy = video->getCY();
 		if (cy > 75) {
+		  targetBlockInClose = true; /* earlier block catch detection by distance */
 		  _log("ODO=%05d, Column %d marked as VS_TREASURE and MOVING the block at cy=%d...", currentDist, vLineColumn, cy);
 		  treasureMoving = true;
 		  /* target at the block */
@@ -2149,8 +2159,8 @@ public:
 		  video->setTraceTargetType(TT_TRE_ON_VLINE);
 		  count = hasCaughtCount = 0;
 		  targetBlockType = BT_TREASURE;
-		  vLineColumnStartDist = currentDist - (350*2);
-		  _log("ODO=%05d, vLineColumnStartDist FORCEFULLY set to %d", currentDist, vLineColumnStartDist);		
+		  vLineColumnStartDist = currentDist;
+		  _log("ODO=%05d, vLineColumnStartDist set to %d", currentDist, vLineColumnStartDist);
 		  st = TVLST_IN_CIRCLE;
 		} else { /* Treasure block is already on Row 4 */
 		  _log("ODO=%05d, Column %d marked as VS_TREASURE with block at cy=%d", currentDist, vLineColumn, cy);
@@ -2162,6 +2172,13 @@ public:
 	      }
 	    } else { /* identifyingBlockType == BT_DECOY */
 	      if (decoyMoved < 2) {
+		int cy = video->getCY();
+		if (cy > 75) {
+		  targetBlockInClose = true; /* earlier block catch detection by distance */
+		  _log("ODO=%05d, target block in close distance at cy=%d...", currentDist, cy);
+		} else {
+		  targetBlockInClose = false;
+		}
 		/* target at the block */
 		_log("ODO=%05d, targeting at Decoy block...", currentDist);
 		video->setTraceTargetType(TT_DEC_ON_VLINE);
@@ -2209,6 +2226,13 @@ public:
 		move = MV_ON_COLUMN;
 		st = TVLST_ROTATING_IN_CIRCLE;
 	      } else { /*  move == MV_ON_COLUMN on blockOnInitColumn case */
+		int cy = video->getCY();
+		if (cy > 75) {
+		  targetBlockInClose = true; /* earlier block catch detection by distance */
+		  _log("ODO=%05d, target block in close distance at cy=%d...", currentDist, cy);
+		} else {
+		  targetBlockInClose = false;
+		}
 		/* target at the block */
 		_log("ODO=%05d, targeting at Decoy block...", currentDist);
 		video->setTraceTargetType(TT_DEC_ON_VLINE);
@@ -2400,7 +2424,7 @@ protected:
     rgb_raw_t cur_rgb;
     Movement move;
     BlockType targetBlockType, identifyingBlockType;
-    bool updated, detour, treasureMoving;
+    bool updated, detour, treasureMoving, targetBlockInClose;
 };
 
 /*
