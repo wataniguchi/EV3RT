@@ -62,7 +62,7 @@
           .leaf<IsDistanceEarned>(prof->getValueAsNum("RUN_R4_DIST")) \
         .end() \
         .leaf<TraceLineCam>(prof->getValueAsNum("RUN_R4_SPEED"), \
-	      prof->getValueAsNumVec("RUN_Rx_PID_CONST"), \
+	      prof->getValueAsNumVec("RUN_Ry_PID_CONST"), \
 	      prof->getValueAsNum("RUN_Rx_GS_MIN"), \
 	      prof->getValueAsNum("RUN_Rx_GS_MAX"), 0.0, \
               (TraceSide)prof->getValueAsIntFromEnum("RUN_R4_TS", gEnumPairs)) \
@@ -109,7 +109,7 @@
           .leaf<IsJunction>(JST_JOINED) \
         .end() \
         .leaf<TraceLineCam>(prof->getValueAsNum("RUN_R8_SPEED"), \
-	      prof->getValueAsNumVec("RUN_Rx_PID_CONST"), \
+	      prof->getValueAsNumVec("RUN_Ry_PID_CONST"), \
 	      prof->getValueAsNum("RUN_Rx_GS_MIN"), \
 	      prof->getValueAsNum("RUN_Rx_GS_MAX"), 0.0, \
               (TraceSide)prof->getValueAsIntFromEnum("RUN_R8_TS", gEnumPairs)) \
@@ -126,13 +126,35 @@
 	      prof->getValueAsNum("RUN_Rx_GS_MAX"), 0.0, \
               (TraceSide)prof->getValueAsIntFromEnum("RUN_R9_TS", gEnumPairs)) \
       .end() \
+    /* section R10A: pass the fork beyond LAP Gate */ \
+      .composite<BrainTree::ParallelSequence>(1,2) \
+        .composite<BrainTree::MemSequence>() \
+          .leaf<IsDistanceEarned>(prof->getValueAsNum("RUN_R10A_DIST")) \
+        .end() \
+        .leaf<TraceLineCam>(prof->getValueAsNum("RUN_R10_SPEED"), \
+	      prof->getValueAsNumVec("RUN_Rv_PID_CONST"), \
+	      prof->getValueAsNum("RUN_Rx_GS_MIN"), \
+	      prof->getValueAsNum("RUN_Rx_GS_MAX"), 0.0, \
+              (TraceSide)prof->getValueAsIntFromEnum("RUN_R10A_TS", gEnumPairs)) \
+      .end() \
+    /* section R10B: pass the fork beyond LAP Gate */ \
+      .composite<BrainTree::ParallelSequence>(1,2) \
+        .composite<BrainTree::MemSequence>() \
+          .leaf<IsDistanceEarned>(prof->getValueAsNum("RUN_R10B_DIST")) \
+        .end() \
+        .leaf<TraceLineCam>(prof->getValueAsNum("RUN_R10_SPEED"), \
+	      prof->getValueAsNumVec("RUN_Rz_PID_CONST"), \
+	      prof->getValueAsNum("RUN_Rx_GS_MIN"), \
+	      prof->getValueAsNum("RUN_Rx_GS_MAX"), 0.0, \
+              (TraceSide)prof->getValueAsIntFromEnum("RUN_R10B_TS", gEnumPairs)) \
+      .end() \
       /* section R10: pass the fork beyond LAP Gate */ \
       .composite<BrainTree::ParallelSequence>(1,2) \
         .composite<BrainTree::MemSequence>() \
           .leaf<IsDistanceEarned>(prof->getValueAsNum("RUN_R10_DIST")) \
         .end() \
         .leaf<TraceLineCam>(prof->getValueAsNum("RUN_R10_SPEED"), \
-	      prof->getValueAsNumVec("RUN_Rx_PID_CONST"), \
+	      prof->getValueAsNumVec("RUN_Rv_PID_CONST"), \
 	      prof->getValueAsNum("RUN_Rx_GS_MIN"), \
 	      prof->getValueAsNum("RUN_Rx_GS_MAX"), 0.0, \
               (TraceSide)prof->getValueAsIntFromEnum("RUN_R10_TS", gEnumPairs)) \
@@ -161,19 +183,35 @@
       .composite<BrainTree::ParallelSequence>(1,2) \
         .leaf<IsDistanceEarned>(prof->getValueAsNum("RUN_LA_DIST")) \
         .leaf<TraceLineCam>(prof->getValueAsNum("RUN_LA_SPEED"), \
-	      prof->getValueAsNumVec("RUN_Rx_PID_CONST"), \
+	      prof->getValueAsNumVec("RUN_Lx_PID_CONST"), \
 	      prof->getValueAsNum("RUN_Rx_GS_MIN"), \
 	      prof->getValueAsNum("RUN_Rx_GS_MAX"), 0.0, \
               (TraceSide)prof->getValueAsIntFromEnum("RUN_LA_TS", gEnumPairs)) \
       .end() \
-      /* section RB: to the first join */ \
+      /* section LB: to the first join */ \
       .composite<BrainTree::ParallelSequence>(1,2) \
-        .leaf<IsDistanceEarned>(prof->getValueAsNum("RUN_LB_DIST")) \
-        .leaf<TraceLineCam>(prof->getValueAsNum("RUN_LB_SPEED"), \
-	      prof->getValueAsNumVec("RUN_Rx_PID_CONST"), \
-	      prof->getValueAsNum("RUN_Rx_GS_MIN"), \
-	      prof->getValueAsNum("RUN_Rx_GS_MAX"), 0.0, \
-              (TraceSide)prof->getValueAsIntFromEnum("RUN_LB_TS", gEnumPairs)) \
+        .leaf<IsDistanceEarned>(prof->getValueAsNum("RUN_LB1_DIST")) \
+        .leaf<RunAsInstructed>((prof->getValueAsNum("RUN_LB1_PWL")), \
+        (prof->getValueAsNum("RUN_LB1_PWR")), \
+        (prof->getValueAsNum("RUN_LB1_SR"))) \
+      .end() \
+      .composite<BrainTree::ParallelSequence>(1,2) \
+        .leaf<IsDistanceEarned>(prof->getValueAsNum("RUN_LB2_DIST")) \
+        .leaf<RunAsInstructed>((prof->getValueAsNum("RUN_LB2_PWL")), \
+        (prof->getValueAsNum("RUN_LB2_PWR")), \
+        (prof->getValueAsNum("RUN_LB2_SR"))) \
+      .end() \
+      .composite<BrainTree::ParallelSequence>(1,2) \
+        .leaf<IsDistanceEarned>(prof->getValueAsNum("RUN_LB3_DIST")) \
+        .leaf<RunAsInstructed>((prof->getValueAsNum("RUN_LB3_PWL")), \
+        (prof->getValueAsNum("RUN_LB3_PWR")), \
+        (prof->getValueAsNum("RUN_LB3_SR"))) \
+      .end() \
+      .composite<BrainTree::ParallelSequence>(1,2) \
+        .leaf<IsDistanceEarned>(prof->getValueAsNum("RUN_LB4_DIST")) \
+        .leaf<RunAsInstructed>((prof->getValueAsNum("RUN_LB4_PWL")), \
+        (prof->getValueAsNum("RUN_LB4_PWR")), \
+        (prof->getValueAsNum("RUN_LB4_SR"))) \
       .end() \
       /* section L1: to the first join */ \
       .composite<BrainTree::ParallelSequence>(1,2) \
@@ -182,22 +220,35 @@
 /*          .leaf<IsJunction>(JST_JOINED)  */ \
         .end() \
         .leaf<TraceLineCam>(prof->getValueAsNum("RUN_L1_SPEED"), \
-	      prof->getValueAsNumVec("RUN_Rx_PID_CONST"), \
+	      prof->getValueAsNumVec("RUN_Lx_PID_CONST"), \
 	      prof->getValueAsNum("RUN_Rx_GS_MIN"), \
 	      prof->getValueAsNum("RUN_Rx_GS_MAX"), 0.0, \
               (TraceSide)prof->getValueAsIntFromEnum("RUN_L1_TS", gEnumPairs)) \
       .end() \
       /* section L2: to the fork beyond LAP Gate */ \
       .composite<BrainTree::ParallelSequence>(1,2) \
-        .composite<BrainTree::MemSequence>() \
-          .leaf<IsDistanceEarned>(prof->getValueAsNum("RUN_L2_DIST")) \
-          .leaf<IsJunction>(JST_FORKED) \
-        .end() \
-        .leaf<TraceLineCam>(prof->getValueAsNum("RUN_L2_SPEED"), \
-	      prof->getValueAsNumVec("RUN_Rx_PID_CONST"), \
-	      prof->getValueAsNum("RUN_Rx_GS_MIN"), \
-	      prof->getValueAsNum("RUN_Rx_GS_MAX"), 0.0, \
-              (TraceSide)prof->getValueAsIntFromEnum("RUN_L2_TS", gEnumPairs)) \
+        .leaf<IsDistanceEarned>(prof->getValueAsNum("RUN_L21_DIST")) \
+        .leaf<RunAsInstructed>((prof->getValueAsNum("RUN_L21_PWL")), \
+        (prof->getValueAsNum("RUN_L21_PWR")), \
+        (prof->getValueAsNum("RUN_L21_SR"))) \
+      .end() \
+      .composite<BrainTree::ParallelSequence>(1,2) \
+        .leaf<IsDistanceEarned>(prof->getValueAsNum("RUN_L22_DIST")) \
+        .leaf<RunAsInstructed>((prof->getValueAsNum("RUN_L22_PWL")), \
+        (prof->getValueAsNum("RUN_L22_PWR")), \
+        (prof->getValueAsNum("RUN_L22_SR"))) \
+      .end() \
+      .composite<BrainTree::ParallelSequence>(1,2) \
+        .leaf<IsDistanceEarned>(prof->getValueAsNum("RUN_L23_DIST")) \
+        .leaf<RunAsInstructed>((prof->getValueAsNum("RUN_L23_PWL")), \
+        (prof->getValueAsNum("RUN_L23_PWR")), \
+        (prof->getValueAsNum("RUN_L23_SR"))) \
+      .end() \
+      .composite<BrainTree::ParallelSequence>(1,2) \
+        .leaf<IsDistanceEarned>(prof->getValueAsNum("RUN_L24_DIST")) \
+        .leaf<RunAsInstructed>((prof->getValueAsNum("RUN_L24_PWL")), \
+        (prof->getValueAsNum("RUN_L24_PWR")), \
+        (prof->getValueAsNum("RUN_L24_SR"))) \
       .end() \
       /* section L3: while passing the fork beyond LAP Gate */ \
       .composite<BrainTree::ParallelSequence>(1,2) \
@@ -205,7 +256,7 @@
           .leaf<IsDistanceEarned>(prof->getValueAsNum("RUN_L3_DIST")) \
         .end() \
         .leaf<TraceLineCam>(prof->getValueAsNum("RUN_L3_SPEED"), \
-	      prof->getValueAsNumVec("RUN_Rx_PID_CONST"), \
+	      prof->getValueAsNumVec("RUN_Ly_PID_CONST"), \
 	      prof->getValueAsNum("RUN_Rx_GS_MIN"), \
 	      prof->getValueAsNum("RUN_Rx_GS_MAX"), 0.0, \
               (TraceSide)prof->getValueAsIntFromEnum("RUN_L3_TS", gEnumPairs)) \
@@ -216,7 +267,7 @@
           .leaf<IsDistanceEarned>(prof->getValueAsNum("RUN_L4_DIST")) \
         .end() \
         .leaf<TraceLineCam>(prof->getValueAsNum("RUN_L4_SPEED"), \
-	      prof->getValueAsNumVec("RUN_Rx_PID_CONST"), \
+	      prof->getValueAsNumVec("RUN_Ly_PID_CONST"), \
 	      prof->getValueAsNum("RUN_Rx_GS_MIN"), \
 	      prof->getValueAsNum("RUN_Rx_GS_MAX"), 0.0, \
               (TraceSide)prof->getValueAsIntFromEnum("RUN_L4_TS", gEnumPairs)) \
@@ -228,7 +279,7 @@
           .leaf<IsJunction>(JST_JOINING) \
         .end() \
         .leaf<TraceLineCam>(prof->getValueAsNum("RUN_L5_SPEED"), \
-	      prof->getValueAsNumVec("RUN_Rx_PID_CONST"), \
+	      prof->getValueAsNumVec("RUN_Ly_PID_CONST"), \
 	      prof->getValueAsNum("RUN_Rx_GS_MIN"), \
 	      prof->getValueAsNum("RUN_Rx_GS_MAX"), 0.0, \
               (TraceSide)prof->getValueAsIntFromEnum("RUN_L5_TS", gEnumPairs)) \
@@ -239,7 +290,7 @@
           .leaf<IsDistanceEarned>(prof->getValueAsNum("RUN_L6_DIST")) \
         .end() \
         .leaf<TraceLineCam>(prof->getValueAsNum("RUN_L6_SPEED"), \
-	      prof->getValueAsNumVec("RUN_Rx_PID_CONST"), \
+	      prof->getValueAsNumVec("RUN_Ly_PID_CONST"), \
 	      prof->getValueAsNum("RUN_Rx_GS_MIN"), \
 	      prof->getValueAsNum("RUN_Rx_GS_MAX"), 0.0, \
               (TraceSide)prof->getValueAsIntFromEnum("RUN_L6_TS", gEnumPairs)) \
@@ -251,7 +302,7 @@
           .leaf<IsJunction>(JST_JOINING) \
         .end() \
         .leaf<TraceLineCam>(prof->getValueAsNum("RUN_L7_SPEED"), \
-	      prof->getValueAsNumVec("RUN_Rx_PID_CONST"), \
+	      prof->getValueAsNumVec("RUN_Ly_PID_CONST"), \
 	      prof->getValueAsNum("RUN_Rx_GS_MIN"), \
 	      prof->getValueAsNum("RUN_Rx_GS_MAX"), 0.0, \
               (TraceSide)prof->getValueAsIntFromEnum("RUN_L7_TS", gEnumPairs)) \
@@ -263,7 +314,7 @@
           .leaf<IsJunction>(JST_JOINED) \
         .end() \
         .leaf<TraceLineCam>(prof->getValueAsNum("RUN_L8_SPEED"), \
-	      prof->getValueAsNumVec("RUN_Rx_PID_CONST"), \
+	      prof->getValueAsNumVec("RUN_Ly_PID_CONST"), \
 	      prof->getValueAsNum("RUN_Rx_GS_MIN"), \
 	      prof->getValueAsNum("RUN_Rx_GS_MAX"), 0.0, \
               (TraceSide)prof->getValueAsIntFromEnum("RUN_L8_TS", gEnumPairs)) \
@@ -275,7 +326,7 @@
           .leaf<IsJunction>(JST_FORKED) \
         .end() \
         .leaf<TraceLineCam>(prof->getValueAsNum("RUN_L9_SPEED"), \
-	      prof->getValueAsNumVec("RUN_Rx_PID_CONST"), \
+	      prof->getValueAsNumVec("RUN_Ly_PID_CONST"), \
 	      prof->getValueAsNum("RUN_Rx_GS_MIN"), \
 	      prof->getValueAsNum("RUN_Rx_GS_MAX"), 0.0, \
               (TraceSide)prof->getValueAsIntFromEnum("RUN_L9_TS", gEnumPairs)) \
@@ -286,7 +337,7 @@
           .leaf<IsDistanceEarned>(prof->getValueAsNum("RUN_L10_DIST")) \
         .end() \
         .leaf<TraceLineCam>(prof->getValueAsNum("RUN_L10_SPEED"), \
-	      prof->getValueAsNumVec("RUN_Rx_PID_CONST"), \
+	      prof->getValueAsNumVec("RUN_Ly_PID_CONST"), \
 	      prof->getValueAsNum("RUN_Rx_GS_MIN"), \
 	      prof->getValueAsNum("RUN_Rx_GS_MAX"), 0.0, \
               (TraceSide)prof->getValueAsIntFromEnum("RUN_L10_TS", gEnumPairs)) \
@@ -298,10 +349,10 @@
           .leaf<IsColorDetected>(CL_RED) \
         .end() \
         .leaf<TraceLineCam>(prof->getValueAsNum("RUN_L11_SPEED"), \
-	      prof->getValueAsNumVec("RUN_Rx_PID_CONST"), \
+	      prof->getValueAsNumVec("RUN_Ly_PID_CONST"), \
 	      prof->getValueAsNum("RUN_Rx_GS_MIN"), \
 	      prof->getValueAsNum("RUN_Rx_GS_MAX"), 0.0, \
               (TraceSide)prof->getValueAsIntFromEnum("RUN_L11_TS", gEnumPairs)) \
-      .end() \ 
+      .end() \
     .end() \
   .end()

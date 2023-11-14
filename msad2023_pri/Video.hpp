@@ -63,22 +63,34 @@ extern FilteredMotor*       rightMotor;
 #define CROP_D_LIMIT (CROP_U_LIMIT+CROP_HEIGHT)
 #define CROP_L_LIMIT int((FRAME_WIDTH-CROP_WIDTH)/2)
 #define CROP_R_LIMIT (CROP_L_LIMIT+CROP_WIDTH)
+#define BLK_FRAME_U_LIMIT int(FRAME_HEIGHT/6)
 #define BLK_ROI_U_LIMIT 0
 #define BLK_ROI_D_LIMIT int(7*FRAME_HEIGHT/8)
 #define BLK_ROI_L_LIMIT int(FRAME_WIDTH/8)   /* at bottom of the image */
 #define BLK_ROI_R_LIMIT int(7*FRAME_WIDTH/8) /* at bottom of the image */
 #define BLOCK_OFFSET int(3*FRAME_HEIGHT/8)
+#define BLOCK_CROP_ADJ int(2*FRAME_WIDTH/16) 
 static_assert(CROP_U_LIMIT > BLOCK_OFFSET,"CROP_U_LIMIT > BLOCK_OFFSET");
 
-#define MORPH_KERNEL_SIZE roundUpToOdd(int(FRAME_WIDTH/40))
-#define BLK_AREA_MIN (20.0*FRAME_WIDTH/640.0)*(20.0*FRAME_WIDTH/640.0)
-#define ROI_BOUNDARY int(FRAME_WIDTH/16)
+#define MORPH_KERNEL_SIZE roundUpToOdd(int(FRAME_WIDTH/48))
+#define BLK_LEN_MIN_Y50  (20.0*FRAME_WIDTH/640.0)
+#define BLK_LEN_MIN_Y150 (100.0*FRAME_WIDTH/640.0)
+#define MAX_VLINE_XGAP int(FRAME_WIDTH/10)
+#define ROI_BOUNDARY int(FRAME_WIDTH/10)
 #define LINE_THICKNESS int(FRAME_WIDTH/80)
 #define CIRCLE_RADIUS int(FRAME_WIDTH/40)
 #define SCAN_V_POS int(13*FRAME_HEIGHT/16 - LINE_THICKNESS)
 static_assert(SCAN_V_POS > CROP_U_LIMIT,"SCAN_V_POS > CROP_U_LIMIT");
 static_assert(SCAN_V_POS < CROP_D_LIMIT,"SCAN_V_POS < CROP_D_LIMIT");
-#define DATA_INDENT int(OUT_FRAME_HEIGHT/16)
+#define DATA_INDENT int(OUT_FRAME_HEIGHT/24)
+
+#define AREA_DILATE_KERNEL_SIZE roundUpToOdd(int(FRAME_WIDTH/24))
+#define AREA_GS_MIN 130
+#define AREA_GS_MAX 255
+
+#define HOUGH_LINES_THRESH int(FRAME_HEIGHT/10)
+#define MIN_LINE_LENGTH int(FRAME_HEIGHT/10)
+#define MAX_LINE_GAP int(FRAME_HEIGHT/8)
 
 /* frame size for X11 painting */
 #define OUT_FRAME_WIDTH  128
@@ -98,6 +110,9 @@ enum TargetType {
   TT_LINE, /* Line   */
   TT_LINE_WITH_BLK, /* Line with a block in the arm */
   TT_BLKS, /* Blocks */
+  TT_VLINE, /* Virtual line in the block area */
+  TT_TRE_ON_VLINE,
+  TT_DEC_ON_VLINE,
 };
 
 /* prototype of global functions */
@@ -121,15 +136,17 @@ protected:
   Font font;
   void* gbuf;
   Mat frame_prev;
-  Mat kernel;
+  Mat kernel, kernel_dil;
   unsigned long* buf;
-  char strbuf[5][40];
-  int mx, cx, cy, gsmin, gsmax, gs_block, gs_C, side, rangeOfEdges, blockOffset;
+  char strbuf[6][40];
+  int mx, cx, cy, gsmin, gsmax, gs_block, gs_C, side, rangeOfEdges, blockOffset, blockCropAdj;
   int inFrameWidth, inFrameHeight;
-  Scalar bgr_min_tre, bgr_max_tre, bgr_min_dec, bgr_max_dec;
+  int num_tre, num_dec;
+  Scalar bgr_min_tre, bgr_max_tre, bgr_min_dec, bgr_max_dec, bgr_min_lin, bgr_max_lin;
   float theta;
   BinarizationAlgorithm algo;
   TargetType traceTargetType;
+  Rect prevTargetBlock;
   bool targetInSight;
 public:
   Video();
@@ -140,16 +157,22 @@ public:
   float getTheta();
   int getRangeOfEdges();
   void setThresholds(int gsMin, int gsMax);
-  void setMaskThresholds(Scalar& bgrMinTre, Scalar& bgrMaxTre, Scalar& bgrMinDec, Scalar& bgrMaxDec);
+  void setMaskThresholds(std::vector<double> bgrMinTre, std::vector<double> bgrMaxTre, std::vector<double> bgrMinDec, std::vector<double> bgrMaxDec, std::vector<double> bgrMinLin, std::vector<double> bgrMaxLin);
   void setTraceSide(int traceSide);
   void setBinarizationAlgorithm(BinarizationAlgorithm ba);
   void setTraceTargetType(TargetType tt);
+  TargetType getTraceTargetType() { return traceTargetType; }
   bool isTargetInSight();
   bool hasCaughtTarget();
+  int getNumBlockOnVLine() { return num_tre + num_dec; }
+  int getNumTreBlockOnVLine() { return num_tre; }
+  int getNumDecBlockOnVLine() { return num_dec; }
+  int getCY() { return cy; }
   ~Video();
 protected:
-  void locateBlocks(vector<vector<Point>>&, vector<Vec4i>&, vector<vector<float>>&);
-  void binalizeWithColorMask(Mat&, Scalar&, Scalar&, int, int, Mat&);
+  void locateBlocks(vector<vector<Point>>, vector<Vec4i>, vector<vector<float>>&);
+  void binalizeWithColorMask(Mat, Scalar, Scalar, int, int, Mat&);
+  bool intersect(Point p1, Point p2, Point p3, Point p4);
 };
 
 #endif /* Video_hpp */

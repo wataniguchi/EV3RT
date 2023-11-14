@@ -9,7 +9,27 @@ int roundUpToOdd(int x) {
   return 2 * ceil(((float)x - 1.0) / 2.0) + 1;
 }
 
-void Video::locateBlocks(vector<vector<Point>>& contours, vector<Vec4i>& hierarchy,
+vector<Point> findLargestContour(Mat img_bin) {
+  vector<vector<Point>> contours;
+  vector<Vec4i> hierarchy;
+  findContours(img_bin, contours, hierarchy, RETR_EXTERNAL, CHAIN_APPROX_SIMPLE);
+  if (contours.size() >= 1) {
+    int i_area_max = 0;
+    double area_max = 0.0;
+    for (int i = 0; i < (int)contours.size(); i++) {
+      double area = contourArea(contours[i]);
+      if (area > area_max) {
+	area_max = area;
+	i_area_max = i;
+      }
+    }
+    return contours[i_area_max];
+  } else {
+    return {Point(0,0),Point(img_bin.cols-1,0),Point(img_bin.cols-1,img_bin.rows-1),Point(0,img_bin.rows-1)};
+  }
+}
+
+void Video::locateBlocks(vector<vector<Point>> contours, vector<Vec4i> hierarchy,
 		  vector<vector<float>>& cnt_idx) { /* cnt_idx: area, idx, w/h, x, y */
   for (unsigned int i = 0; i < contours.size(); i++) {
     if (hierarchy[i][3] == -1) { /* if contour is external */
@@ -24,9 +44,17 @@ void Video::locateBlocks(vector<vector<Point>>& contours, vector<Vec4i>& hierarc
       float wh = static_cast<float>(bbcnt.width) / bbcnt.height; /* width / height */
       vector<Point> hull;
       convexHull(cnt, hull);
-      if (area > BLK_AREA_MIN && wh > 0.5 && wh < 2 &&
-	  1.45*area > contourArea(hull) && /* the contour and its hull are not much different */
-	  pointPolygonTest(blk_roi, Point2f(x,y), false) == 1) { /* the contour is inside ROI */
+      double deltaLen = BLK_LEN_MIN_Y150 - BLK_LEN_MIN_Y50;
+      double deltaY = 150.0 - 50.0;
+      double blkLenMin = deltaLen*y/deltaY - deltaLen*150.0/deltaY + BLK_LEN_MIN_Y150;
+      double blkAreaMin = blkLenMin*blkLenMin;
+      if ( (area > blkAreaMin && area < 9.0*blkAreaMin && wh > 0.4 && wh < 2.5 &&
+	    2.0*area > contourArea(hull) && /* the contour and its hull are not much different */
+	    pointPolygonTest(blk_roi, Point2f(x,y), false) == 1) || /* the contour is inside ROI */
+	   (x > static_cast<float>(FRAME_WIDTH)/3.0 && x < 2.0*FRAME_WIDTH/3.0 &&
+	    y > 2.0*FRAME_HEIGHT/3.0 && /* when the contour is positioned close to the bottom center, */
+	    area > blkAreaMin && area < 9.0*blkAreaMin && wh > 0.4 && wh < 2.5 &&
+	    2.0*area > contourArea(hull) ) ) { /* ignore ROI */
 	if (hierarchy[i][2] == -1) { /* if the contour has no child */
 	  cnt_idx.push_back({area, float(i), wh, x, y});
 	} else { /* ensure the area is not donut-shaped */
@@ -46,7 +74,7 @@ void Video::locateBlocks(vector<vector<Point>>& contours, vector<Vec4i>& hierarc
   return;
 }
 
-void Video::binalizeWithColorMask(Mat& img_orig, Scalar& bgr_min, Scalar& bgr_max, int gs_min, int gs_max, Mat& img_bin_mor) {
+void Video::binalizeWithColorMask(Mat img_orig, Scalar bgr_min, Scalar bgr_max, int gs_min, int gs_max, Mat& img_bin_mor) {
   Mat img_mask, img_ext, img_gray, img_bin;
   /* extract areas by color */
   inRange(img_orig, bgr_min, bgr_max, img_mask);
@@ -59,6 +87,15 @@ void Video::binalizeWithColorMask(Mat& img_orig, Scalar& bgr_min, Scalar& bgr_ma
   //Mat kernel = Mat::ones(Size(MORPH_KERNEL_SIZE,MORPH_KERNEL_SIZE), CV_8UC1);
   morphologyEx(img_bin, img_bin_mor, MORPH_CLOSE, kernel);
   return;
+}
+
+/* determina if two line segments are crossed */
+bool Video::intersect(Point p1, Point p2, Point p3, Point p4) {
+  double tc1 = (p1.x - p2.x) * (p3.y - p1.y) + (p1.y - p2.y) * (p1.x - p3.x);
+  double tc2 = (p1.x - p2.x) * (p4.y - p1.y) + (p1.y - p2.y) * (p1.x - p4.x);
+  double td1 = (p3.x - p4.x) * (p1.y - p3.y) + (p3.y - p4.y) * (p3.x - p1.x);
+  double td2 = (p3.x - p4.x) * (p2.y - p3.y) + (p3.y - p4.y) * (p3.x - p2.x);
+  return (tc1*tc2 < 0) && (td1*td2 < 0);
 }
 
 Video::Video() {
@@ -115,6 +152,7 @@ Video::Video() {
   XInitImage(ximg);
 
   blockOffset = 0;
+  blockCropAdj = 0;
   /* initial region of interest is set to crop zone */
   roi = Rect(CROP_L_LIMIT, CROP_U_LIMIT, CROP_WIDTH, CROP_HEIGHT);
   /* initial ROI for TT_BLKS */
@@ -123,8 +161,9 @@ Video::Video() {
   vector<Point> roi_init {{0,BLK_ROI_U_LIMIT},{FRAME_WIDTH,BLK_ROI_U_LIMIT},
 			  {roi_dr_limit,BLK_ROI_D_LIMIT},{roi_dl_limit,BLK_ROI_D_LIMIT}};
   blk_roi = blk_roi_init = roi_init;
-  /* prepare and keep kernel for morphology */
+  /* prepare and keep kernel for morphology and dilate */
   kernel = Mat::ones(Size(MORPH_KERNEL_SIZE,MORPH_KERNEL_SIZE), CV_8UC1);
+  kernel_dil = Mat::ones(Size(AREA_DILATE_KERNEL_SIZE,AREA_DILATE_KERNEL_SIZE), CV_8UC1);
   /* initial trace target */
   cx = (int)(FRAME_WIDTH/2);
   cy = SCAN_V_POS;
@@ -201,7 +240,285 @@ void Video::writeFrame(Mat f) {
 Mat Video::calculateTarget(Mat f) {
   if (f.empty()) return f;
 
-  if (traceTargetType == TT_BLKS) {
+  if (traceTargetType == TT_VLINE || traceTargetType == TT_TRE_ON_VLINE || traceTargetType == TT_DEC_ON_VLINE) {
+    Mat img_bin_tre, img_bin_tre_dil, img_bin_dec, img_bin_dec_dil, img_gray, img_bin_white_area, img_bin_white_area_dil, img_inner_white, img_bin_mor, img_bin_cnt;
+
+    if (traceTargetType != TT_DEC_ON_VLINE) {
+      /* prepare for locating the treasure block */
+      binalizeWithColorMask(f, bgr_min_tre, bgr_max_tre, gsmin, gsmax, img_bin_tre);
+      /* ignore the top part */
+      for (int i = 0; i < int(FRAME_HEIGHT/8); i++) {
+	for (int j = 0; j < FRAME_WIDTH; j++) {
+	  img_bin_tre.at<uchar>(i,j) = 0; /* type = CV_8U */
+	}
+      }
+    } else { /* blank when TT_DEC_ON_VLINE to ignore RED image */
+      img_bin_tre = Mat::zeros(Size(FRAME_WIDTH,FRAME_HEIGHT), CV_8UC1);
+    }
+    /* dilate the image */
+    dilate(img_bin_tre, img_bin_tre_dil, kernel, Point(-1,-1), 1);
+    /* locate the treasure block */
+    vector<vector<Point>> contours_tre;
+    vector<Vec4i> hierarchy_tre;
+    findContours(img_bin_tre_dil, contours_tre, hierarchy_tre, RETR_TREE, CHAIN_APPROX_SIMPLE);
+    vector<vector<float>> cnt_idx_tre; /* cnt_idx: area, idx, w/h, x, y */
+    locateBlocks(contours_tre, hierarchy_tre, cnt_idx_tre);
+
+    if (traceTargetType != TT_TRE_ON_VLINE) {
+      /* prepare for locating decoy blocks */
+      binalizeWithColorMask(f, bgr_min_dec, bgr_max_dec, gsmin, gsmax, img_bin_dec);
+      /* ignore the top part */
+      for (int i = 0; i < int(FRAME_HEIGHT/8); i++) {
+	for (int j = 0; j < FRAME_WIDTH; j++) {
+	  img_bin_dec.at<uchar>(i,j) = 0; /* type = CV_8U */
+	}
+      }
+    } else { /* blank when TT_TRE_ON_VLINE to ignore BLUE image */
+      img_bin_dec = Mat::zeros(Size(FRAME_WIDTH,FRAME_HEIGHT), CV_8UC1);
+    }
+    /* dilate the image */
+    dilate(img_bin_dec, img_bin_dec_dil, kernel, Point(-1,-1), 1);
+    /* locate decoy blocks */
+    vector<vector<Point>> contours_dec;
+    vector<Vec4i> hierarchy_dec;
+    findContours(img_bin_dec_dil, contours_dec, hierarchy_dec, RETR_TREE, CHAIN_APPROX_SIMPLE);
+    vector<vector<float>> cnt_idx_dec; /* cnt_idx: area, idx, w/h, x, y */
+    locateBlocks(contours_dec, hierarchy_dec, cnt_idx_dec);
+
+    /* convert the image from BGR to grayscale */
+    cvtColor(f, img_gray, COLOR_BGR2GRAY);
+    /* generate a binarized image of white area */
+    inRange(img_gray, AREA_GS_MIN, AREA_GS_MAX, img_bin_white_area);
+    /* cut the top part of image */
+    Mat destRoi = img_bin_white_area(Rect(0,0,FRAME_WIDTH,BLK_FRAME_U_LIMIT));
+    Mat blank = Mat::zeros(Size(FRAME_WIDTH,BLK_FRAME_U_LIMIT), CV_8UC1);
+    blank.copyTo(destRoi);
+    /* dilate the image */
+    dilate(img_bin_white_area, img_bin_white_area_dil, kernel_dil, Point(-1,-1), 1);
+
+    /* find the largest contour and then its hull as the block challenge area surronded by white */
+    vector<Point> cnt_white_area = findLargestContour(img_bin_white_area_dil);
+    vector<Point> hull_white_area;
+    convexHull(cnt_white_area, hull_white_area);
+    /* create mask */
+    Mat mask(Size(FRAME_WIDTH,FRAME_HEIGHT), CV_8UC3, Scalar(255,255,255));
+    fillPoly(mask, {hull_white_area}, Scalar(0,0,0));
+    /* mask the original image to extract image inside white area */
+    bitwise_or(f, mask, img_inner_white);
+    /* modify img_orig to show masked area as blurred on monitor window */
+    addWeighted(img_inner_white, 0.5, f, 0.5, 0, f);
+
+    /* try to filter only black lines while removing colorful block circles as much as possible */
+    binalizeWithColorMask(f, bgr_min_lin, bgr_max_lin, gsmin, gsmax, img_bin_mor);
+    /* find contours */
+    vector<vector<Point>> contours;
+    vector<Vec4i> hierarchy;
+    findContours(img_bin_mor, contours, hierarchy, RETR_EXTERNAL, CHAIN_APPROX_SIMPLE);
+    /* create a blank image and draw contours on it */
+    img_bin_cnt = Mat::zeros(Size(FRAME_WIDTH,FRAME_HEIGHT), CV_8UC1);
+    for (int i = 0; i < (int)contours.size(); i++) {
+      polylines(img_bin_cnt, (vector<vector<Point>>){contours[i]}, true, 255, 1);
+    }
+    /* find lines */
+    vector<Vec4i> lines;
+    HoughLinesP(img_bin_cnt, lines, 1.0, M_PI/360.0, HOUGH_LINES_THRESH, MIN_LINE_LENGTH, MAX_LINE_GAP);
+    /* repare empty cnt_idx array for blocks on the lines */
+    vector<vector<float>> cnt_idx_tre_online, cnt_idx_dec_online;
+    cy = 0;
+    cx = FRAME_WIDTH/2;
+    /* select appropriate lines */
+    if (lines.size() > 0) {
+      vector<vector<int>> tlines;
+      for (int i = 0; i < (int)lines.size(); i++) {
+	int x1 = lines[i][0];
+	int y1 = lines[i][1];
+	int x2 = lines[i][2];
+	int y2 = lines[i][3];
+	/* add 1e-5 to avoid division by zero */
+	float dx = x2-x1 + 1e-5;
+	float dy = y2-y1 + 1e-5;
+	if ((abs(dy/dx) > static_cast<float>(FRAME_HEIGHT)/FRAME_WIDTH) &&
+	    !(x1 == 0 && x2 == 0) &&
+	    !(x1 == FRAME_WIDTH and x2 == FRAME_WIDTH)) {
+	  /* calculate where the extention of this line touches the bottom and top edge of image */
+	  int x_bottom = static_cast<int>(static_cast<float>(FRAME_HEIGHT - y1)*dx/dy + x1);
+	  int x_top    = static_cast<int>(static_cast<float>(-y1)*dx/dy + x1);
+	  vector<int> tline = {abs(x_bottom - static_cast<int>(FRAME_WIDTH/2)), x_bottom, x_top, x1, y1, x2, y2};
+	  tlines.push_back(tline);
+	}
+      }
+      if (tlines.size() >= 1) {
+	sort(tlines.begin(), tlines.end(), [](const vector<int> &alpha, const vector<int> &beta){return alpha[0] < beta[0];});
+	int x_bottom_smaller = FRAME_WIDTH, x_bottom_larger = 0, tx1_1st = 0;
+	for (int i = 0; i < (int)tlines.size(); i++) {
+	  if (i < 2) { /* select two lines closest to the bottom center */
+	    int x_bottom = tlines[i][1];
+	    int x_top = tlines[i][2];
+	    int x1 = tlines[i][3];
+	    int y1 = tlines[i][4];
+	    int x2 = tlines[i][5];
+	    int y2 = tlines[i][6];
+	    /* add 1e-5 to avoid division by zero */
+	    float dx = x2-x1 + 1e-5;
+	    float dy = y2-y1 + 1e-5;
+	    /* calculate where the line crosses edges of image */
+	    int tx1, ty1, tx2, ty2;
+	    if ((x_bottom >= 0) && (x_bottom <= FRAME_WIDTH)) {
+	      tx1 = x_bottom;
+	      ty1 = FRAME_HEIGHT;
+	    } else if (x_bottom < 0) {
+	      tx1 = 0;
+	      ty1 = static_cast<int>(- static_cast<float>(x1)*dy/dx + y1);
+	    } else { /* x_bottom > FRAME_WIDTH */
+	      tx1 = FRAME_WIDTH;
+	      ty1 = static_cast<int>(static_cast<float>(FRAME_WIDTH-x1)*dy/dx + y1);
+	    }
+	    if ((x_top >= 0) && (x_top <= FRAME_WIDTH)) {
+	      tx2 = x_top;
+	      ty2 = 0;
+	    } else if (x_top < 0) {
+	      tx2 = 0;
+	      ty2 = static_cast<int>(- static_cast<float>(x1)*dy/dx + y1);
+	    } else { /* x_top > FRAME_WIDTH */
+	      tx2 = FRAME_WIDTH;
+	      ty2 = static_cast<int>(static_cast<float>(FRAME_WIDTH-x1)*dy/dx + y1);
+	    }
+	    /* ignore the second closest line if it is too apart from the first */
+	    if (i == 0) {
+	      tx1_1st = tx1;
+	    } else if (i == 1) {
+	      if (abs(tx1 - tx1_1st) > MAX_VLINE_XGAP) break;
+	    }
+	    /* indicate the virtual line on the original image */
+	    line(f, Point(tx1,ty1), Point(tx2,ty2), Scalar(0,255,0), LINE_THICKNESS, LINE_4);
+	    /* prepare for trace target calculation */
+	    if (x_bottom_smaller > tx1) x_bottom_smaller = tx1;
+	    if (x_bottom_larger  < tx1) x_bottom_larger  = tx1;
+	    /* see if blocks are on the closest line */
+	    if (i == 0) {
+	      for (int j = 0; j < (int)cnt_idx_tre.size(); j++) {
+		vector<float> cnt_idx_entry = cnt_idx_tre[j];
+		Rect blk = boundingRect(contours_tre[cnt_idx_entry[1]]);
+		/* ensure y-cordinate of the block indicator remains within FRAME_HEIGHT */
+		int y_blk = blk.y+blk.height;
+		if (y_blk >= FRAME_HEIGHT) y_blk = FRAME_HEIGHT - 1;
+		/* draw block indicator */
+		int x_blk_adj = 2 * (FRAME_HEIGHT - y_blk) / FRAME_HEIGHT;
+		line(f, Point(blk.x-x_blk_adj*blk.width,y_blk), Point(blk.x+(1+x_blk_adj)*blk.width,y_blk), Scalar(0,0,255), 1, LINE_4);
+		if ( intersect(Point(blk.x-x_blk_adj*blk.width,y_blk), Point(blk.x+(1+x_blk_adj)*blk.width,y_blk), Point(tx1,ty1), Point(tx2,ty2)) ) {
+		  cnt_idx_tre_online.push_back(cnt_idx_entry);
+		  if (blk.y > cy) {
+		    cx = cnt_idx_entry[3];
+		    cy = cnt_idx_entry[4];
+		  }
+		  if (blk.y > prevTargetBlock.y) prevTargetBlock = blk;
+		}
+	      }
+	      for (int j = 0; j < (int)cnt_idx_dec.size(); j++) {
+		vector<float> cnt_idx_entry = cnt_idx_dec[j];
+		Rect blk = boundingRect(contours_dec[cnt_idx_entry[1]]);
+		/* ensure y-cordinate of the block indicator remains within FRAME_HEIGHT */
+		int y_blk = blk.y+blk.height;
+		if (y_blk >= FRAME_HEIGHT) y_blk = FRAME_HEIGHT - 1;
+		/* draw block indicator */
+		int x_blk_adj = 2 * (FRAME_HEIGHT - y_blk) / FRAME_HEIGHT;
+		line(f, Point(blk.x-x_blk_adj*blk.width,y_blk), Point(blk.x+(1+x_blk_adj)*blk.width,y_blk), Scalar(255,0,0), 1, LINE_4);
+		if ( intersect(Point(blk.x-x_blk_adj*blk.width,y_blk), Point(blk.x+(1+x_blk_adj)*blk.width,y_blk), Point(tx1,ty1), Point(tx2,ty2)) ) {
+		  cnt_idx_dec_online.push_back(cnt_idx_entry);
+		  if (blk.y > cy) {
+		    cx = cnt_idx_entry[3];
+		    cy = cnt_idx_entry[4];
+		  }
+		  if (blk.y > prevTargetBlock.y) prevTargetBlock = blk;
+		}
+	      }
+	    }
+	  }
+	}
+	if (traceTargetType == TT_VLINE) {
+	  /* calculate the trace target using the edges */
+	  if (side == 0) {
+	    mx = x_bottom_smaller;
+	  } else if (side == 1) {
+	    mx = x_bottom_larger;
+	  } else {
+	    mx = int((x_bottom_smaller+x_bottom_larger) / 2);
+	  }
+	} else { /* traceTargetType == TT_TRE_ON_VLINE or TT_DEC_ON_VLINE */
+	  mx = cx;
+	}
+	num_tre = cnt_idx_tre_online.size();
+	if (num_tre > 1) num_tre = 1;
+	num_dec = cnt_idx_dec_online.size();
+	if (num_dec > 2) num_dec = 2;
+      } else { /* if (tlines.size() >= 1) */
+	/* LOS must be blocked - this happens when two blocks are on the line
+	   1 tre and 1 dec are assumed. could be 2 decs in reality. who cares? */
+	num_tre = 1;
+	num_dec = 1;
+      }
+    } else { /* if (lines.size() > 0) */
+      /* LOS must be blocked - this happens when two blocks are on the line
+	 1 tre and 1 dec are assumed. could be 2 decs in reality. who cares? */
+      num_tre = 1;
+      num_dec = 1;
+    }
+    /* when TT_TRE_ON_VLINE or TT_DEC_ON_VLINE, track the target block assuming its location on image is gradually moving */
+    if (traceTargetType == TT_TRE_ON_VLINE) {
+      if (cnt_idx_tre_online.size() == 0) {
+	/* see if there is a contour whose bounding rectangle overlaps with the previous one */
+	for (int i = 0; i < (int)cnt_idx_tre.size(); i++) {
+	  vector<float> cnt_idx_entry = cnt_idx_tre[i];
+	  Rect blk = boundingRect(contours_tre[cnt_idx_entry[1]]);
+	  Rect intersect = prevTargetBlock & blk;
+	  if (intersect.area() > 0) {
+	    prevTargetBlock = blk;
+	    cnt_idx_tre_online.push_back(cnt_idx_entry);
+	    if (blk.y > cy) {
+	      cx = cnt_idx_entry[3];
+	      cy = cnt_idx_entry[4];
+	    }
+	  }
+	}
+      }
+      mx = cx;
+      num_tre = cnt_idx_tre_online.size();
+      if (num_tre > 1) num_tre = 1;
+    }
+    if (traceTargetType == TT_DEC_ON_VLINE) {
+      if (cnt_idx_dec_online.size() == 0) {
+	/* see if there is a contour whose bounding rectangle overlaps with the previous one */
+	for (int i = 0; i < (int)cnt_idx_dec.size(); i++) {
+	  vector<float> cnt_idx_entry = cnt_idx_dec[i];
+	  Rect blk = boundingRect(contours_dec[cnt_idx_entry[1]]);
+	  Rect intersect = prevTargetBlock & blk;
+	  if (intersect.area() > 0) {
+	    prevTargetBlock = blk;
+	    cnt_idx_dec_online.push_back(cnt_idx_entry);
+	    if (blk.y > cy) {
+	      cx = cnt_idx_entry[3];
+	      cy = cnt_idx_entry[4];
+	    }
+	  }
+	}
+      }
+      mx = cx;
+      num_dec = cnt_idx_dec_online.size();
+      if (num_dec > 2) num_dec = 2;
+    }
+    /* draw blocks */
+    for (int i = 0; i < (int)cnt_idx_tre_online.size(); i++) {
+      vector<float> cnt_idx_entry = cnt_idx_tre_online[i];
+      polylines(f, (vector<vector<Point>>){contours_tre[cnt_idx_entry[1]]}, true, Scalar(0,0,255), LINE_THICKNESS);
+    }
+    for (int i = 0; i < (int)cnt_idx_dec_online.size(); i++) {
+      vector<float> cnt_idx_entry = cnt_idx_dec_online[i];
+      polylines(f, (vector<vector<Point>>){contours_dec[cnt_idx_entry[1]]}, true, Scalar(255,0,0), LINE_THICKNESS);
+    }    
+    /* draw ROI */
+    polylines(f, blk_roi, true, Scalar(0,255,255), LINE_THICKNESS);
+    
+  } else if (traceTargetType == TT_BLKS) {
     Mat img_orig, img_bin_tre, img_bin_dec;
 
     /* keep the original image for repeated use for identifying all blocks */
@@ -309,12 +626,33 @@ Mat Video::calculateTarget(Mat f) {
     polylines(f, blk_roi, true, Scalar(0,255,255), LINE_THICKNESS);
 
   } else if (traceTargetType == TT_LINE || traceTargetType == TT_LINE_WITH_BLK) {
-    Mat img_gray, img_gray_part, img_bin_part, img_bin, img_bin_mor, img_cnt_gray, scan_line;
+    Mat img_gray, img_bin_white_area, img_bin_white_area_dil, img_mask, img_mask_gray, img_gray_part, img_bin_part, img_bin, img_bin_mor, img_cnt_gray, scan_line;
 
     /* convert the image from BGR to grayscale */
-    cvtColor(f, img_gray, COLOR_BGR2GRAY);
+    //cvtColor(f, img_gray, COLOR_BGR2GRAY);
+    /* generate a binarized image of white area */
+    //inRange(img_gray, AREA_GS_MIN, AREA_GS_MAX, img_bin_white_area);
+    /* dilate the image */
+    //dilate(img_bin_white_area, img_bin_white_area_dil, kernel_dil, Point(-1,-1), 1);
+    /* find the largest contour */
+    //vector<Point> cnt_white_area = findLargestContour(img_bin_white_area_dil);
+    /* create mask for extraction */
+    /*
+      Note: Mat::ones/zeros with CV_8UC3 does NOT work and don't know why
+    */
+    //Mat mask(f.size(), CV_8UC3, Scalar(255,255,255));
+    //fillPoly(mask, {cnt_white_area}, Scalar(0,0,0));
+    /* paint outside of the contour to white */
+    //bitwise_or(f, mask, img_mask);
+    
+    /* modify img_orig to show masked area as blurred on monitor window */
+    //addWeighted(img_mask, 0.5, f, 0.5, 0, f);
+    
+    /* convert the extracted image from BGR to grayscale */
+    //cvtColor(img_mask, img_mask_gray, COLOR_BGR2GRAY);
+    cvtColor(f, img_mask_gray, COLOR_BGR2GRAY);
     /* crop a part of image for binarization */
-    img_gray_part = img_gray(Range(CROP_U_LIMIT-blockOffset,CROP_D_LIMIT-blockOffset), Range(CROP_L_LIMIT,CROP_R_LIMIT));
+    img_gray_part = img_mask_gray(Range(CROP_U_LIMIT-blockOffset,CROP_D_LIMIT-blockOffset), Range(CROP_L_LIMIT,CROP_R_LIMIT));
     /* binarize the image */
     switch (algo) {
       case BA_NORMAL:
@@ -339,13 +677,6 @@ Mat Video::calculateTarget(Mat f) {
         img_bin.at<uchar>(i,j) = img_bin_part.at<uchar>(i-(CROP_U_LIMIT-blockOffset),j-CROP_L_LIMIT); /* type = CV_8U */
     	}
     }
-    /* remove noise */
-    morphologyEx(img_bin, img_bin_mor, MORPH_CLOSE, kernel);
-
-    /* convert the image from BGR to grayscale */
-    cvtColor(f, img_gray, COLOR_BGR2GRAY);
-    /* binarize the image */
-    inRange(img_gray, gsmin, gsmax, img_bin);
     /* remove noise */
     morphologyEx(img_bin, img_bin_mor, MORPH_CLOSE, kernel);
 
@@ -408,14 +739,14 @@ Mat Video::calculateTarget(Mat f) {
       roi.y = roi.y - ROI_BOUNDARY;
       roi.width = roi.width + 2*ROI_BOUNDARY;
       roi.height = roi.height + 2*ROI_BOUNDARY;
-      if (roi.x < CROP_L_LIMIT) {
-	roi.x = CROP_L_LIMIT;
+      if (roi.x < CROP_L_LIMIT+blockCropAdj) {
+	roi.x = CROP_L_LIMIT+blockCropAdj;
       }
       if (roi.y < CROP_U_LIMIT-blockOffset) {
 	roi.y = CROP_U_LIMIT-blockOffset;
       }
-      if (roi.x + roi.width > CROP_R_LIMIT) {
-	roi.width = CROP_R_LIMIT - roi.x;
+      if (roi.x + roi.width > CROP_R_LIMIT-blockCropAdj) {
+	roi.width = CROP_R_LIMIT-blockCropAdj - roi.x;
       }
       if (roi.y + roi.height > CROP_D_LIMIT-blockOffset) {
 	roi.height = CROP_D_LIMIT-blockOffset - roi.y;
@@ -450,7 +781,7 @@ Mat Video::calculateTarget(Mat f) {
       targetInSight = true;
     } else { /* contours.size() == 0 */
       rangeOfEdges = 0;
-      roi = Rect(CROP_L_LIMIT, CROP_U_LIMIT-blockOffset, CROP_WIDTH, CROP_HEIGHT);
+      roi = Rect(CROP_L_LIMIT+blockCropAdj, CROP_U_LIMIT-blockOffset, CROP_WIDTH-2*blockCropAdj, CROP_HEIGHT);
       /* keep mx in order to maintain the current move of robot */
       cx = (int)(FRAME_WIDTH/2);
       cy = SCAN_V_POS-blockOffset;
@@ -484,16 +815,18 @@ Mat Video::calculateTarget(Mat f) {
 void Video::show() {
   sprintf(strbuf[0], "x=%+05d,y=%+05d", plotter->getLocX(), plotter->getLocY());
   sprintf(strbuf[1], "ODO=%05d,T=%+03.1f", plotter->getDistance(), getTheta());
-  sprintf(strbuf[2], "cx=%03d,cy=%03d", cx, cy);
-  sprintf(strbuf[3], "deg=%03d,gyro=%+04d", plotter->getDegree(), gyroSensor->getAngle());
+  sprintf(strbuf[2], "deg=%03d,gyro=%+04d", plotter->getDegree(), gyroSensor->getAngle());
+  sprintf(strbuf[3], "cx=%03d,cy=%03d", cx, cy);
   sprintf(strbuf[4], "pwR=%+04d,pwL=%+04d", rightMotor->getPWM(), leftMotor->getPWM());
+  sprintf(strbuf[5], "mV=%04d,mA=%04d", ev3_battery_voltage_mV(), ev3_battery_current_mA());
 
   XPutImage(disp, win, gc, ximg, 0, 0, 0, 0, OUT_FRAME_WIDTH, 2*OUT_FRAME_HEIGHT);
-  XDrawString(disp, win, gc, DATA_INDENT, OUT_FRAME_HEIGHT+2*DATA_INDENT, strbuf[0], strlen(strbuf[0]));
-  XDrawString(disp, win, gc, DATA_INDENT, OUT_FRAME_HEIGHT+5*DATA_INDENT, strbuf[1], strlen(strbuf[1]));
-  XDrawString(disp, win, gc, DATA_INDENT, OUT_FRAME_HEIGHT+8*DATA_INDENT, strbuf[2], strlen(strbuf[2]));
-  XDrawString(disp, win, gc, DATA_INDENT, OUT_FRAME_HEIGHT+11*DATA_INDENT, strbuf[3], strlen(strbuf[3]));
-  XDrawString(disp, win, gc, DATA_INDENT, OUT_FRAME_HEIGHT+14*DATA_INDENT, strbuf[4], strlen(strbuf[4]));
+  XDrawString(disp, win, gc, DATA_INDENT, OUT_FRAME_HEIGHT+3*DATA_INDENT, strbuf[0], strlen(strbuf[0]));
+  XDrawString(disp, win, gc, DATA_INDENT, OUT_FRAME_HEIGHT+7*DATA_INDENT, strbuf[1], strlen(strbuf[1]));
+  XDrawString(disp, win, gc, DATA_INDENT, OUT_FRAME_HEIGHT+11*DATA_INDENT, strbuf[2], strlen(strbuf[2]));
+  XDrawString(disp, win, gc, DATA_INDENT, OUT_FRAME_HEIGHT+15*DATA_INDENT, strbuf[3], strlen(strbuf[3]));
+  XDrawString(disp, win, gc, DATA_INDENT, OUT_FRAME_HEIGHT+19*DATA_INDENT, strbuf[4], strlen(strbuf[4]));
+  XDrawString(disp, win, gc, DATA_INDENT, OUT_FRAME_HEIGHT+23*DATA_INDENT, strbuf[5], strlen(strbuf[5]));
   XFlush(disp);
 }
 
@@ -510,11 +843,19 @@ void Video::setThresholds(int gsMin, int gsMax) {
   gsmax = gsMax;
 }
 
-void Video::setMaskThresholds(Scalar& bgrMinTre, Scalar& bgrMaxTre, Scalar& bgrMinDec, Scalar& bgrMaxDec) {
-  bgr_min_tre = bgrMinTre;
-  bgr_max_tre = bgrMaxTre;
-  bgr_min_dec = bgrMinDec;
-  bgr_max_dec = bgrMaxDec;
+void Video::setMaskThresholds(std::vector<double> bgrMinTre, std::vector<double> bgrMaxTre, std::vector<double> bgrMinDec, std::vector<double> bgrMaxDec, std::vector<double> bgrMinLin, std::vector<double> bgrMaxLin) {
+  assert(bgrMinTre.size() == 3);
+  assert(bgrMaxTre.size() == 3);
+  assert(bgrMinDec.size() == 3);
+  assert(bgrMaxDec.size() == 3);
+  assert(bgrMinLin.size() == 3);
+  assert(bgrMaxLin.size() == 3);
+  bgr_min_tre = Scalar(bgrMinTre[0], bgrMinTre[1], bgrMinTre[2]);
+  bgr_max_tre = Scalar(bgrMaxTre[0], bgrMaxTre[1], bgrMaxTre[2]);
+  bgr_min_dec = Scalar(bgrMinDec[0], bgrMinDec[1], bgrMinDec[2]);
+  bgr_max_dec = Scalar(bgrMaxDec[0], bgrMaxDec[1], bgrMaxDec[2]);
+  bgr_min_lin = Scalar(bgrMinLin[0], bgrMinLin[1], bgrMinLin[2]);
+  bgr_max_lin = Scalar(bgrMaxLin[0], bgrMaxLin[1], bgrMaxLin[2]);
 }
 
 void Video::setTraceSide(int traceSide) {
@@ -529,15 +870,18 @@ void Video::setTraceTargetType(TargetType tt) {
   traceTargetType = tt;
   if (tt == TT_LINE) {
     blockOffset = 0;
+    blockCropAdj = 0;
     /* initial region of interest is set to crop zone */
     roi = Rect(CROP_L_LIMIT, CROP_U_LIMIT, CROP_WIDTH, CROP_HEIGHT);
   } else if (tt == TT_LINE_WITH_BLK) {
     blockOffset = BLOCK_OFFSET;
+    blockCropAdj = BLOCK_CROP_ADJ;
     /* initial region of interest is set to crop zone with block offset */
-    roi = Rect(CROP_L_LIMIT, CROP_U_LIMIT-blockOffset, CROP_WIDTH, CROP_HEIGHT);
-  } else {
+    roi = Rect(CROP_L_LIMIT+blockCropAdj, CROP_U_LIMIT-blockOffset, CROP_WIDTH-2*blockCropAdj, CROP_HEIGHT);
+  } else { /* tt == BLKS || tt == TT_VLINE || tt == TT_TRE_ON_VLINE || tt == TT_DEC_ON_VLINE */
     /* initial ROI for block challenge */
     blk_roi = blk_roi_init;
+    if (tt != TT_TRE_ON_VLINE && tt != TT_DEC_ON_VLINE) prevTargetBlock = Rect(0, 0, FRAME_WIDTH, FRAME_HEIGHT);
   }
   /* initial trace target */
   cx = (int)(FRAME_WIDTH/2);
@@ -550,7 +894,7 @@ bool Video::isTargetInSight() {
 }
 
 bool Video::hasCaughtTarget() {
-  if (traceTargetType == TT_BLKS) {
+  if (traceTargetType == TT_BLKS || traceTargetType == TT_TRE_ON_VLINE || traceTargetType == TT_DEC_ON_VLINE) {
     if (cx > 7 * FRAME_WIDTH / 16 && cx < 9 * FRAME_WIDTH &&
 	cy > 3 * FRAME_HEIGHT / 4) {
       return true;

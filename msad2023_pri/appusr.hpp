@@ -79,6 +79,10 @@ using namespace ev3api;
 
 #define SONAR_ALERT_DISTANCE    100     /* in millimeter                           */
 #define ARM_SHIFT_PWM            30
+#define TVL_ROTATE_POWER         60
+#define TVL_HIGH_SPEED           45
+#define TVL_ROT_90               75
+#define TVL_ROT_180             170
 
 enum Color {
     CL_JETBLACK,
@@ -87,6 +91,7 @@ enum Color {
     CL_RED,
     CL_YELLOW,
     CL_GREEN,
+    CL_WHITE,
 };
 
 enum State {
@@ -120,6 +125,11 @@ enum JState {
 enum ArmDirection {
     AD_UP = -1,
     AD_DOWN = 1,
+};
+
+enum BlockType {
+    BT_TREASURE = 0,
+    BT_DECOY = 1,
 };
 
 #ifndef ENUMPAIR_TYPE_DEFINED

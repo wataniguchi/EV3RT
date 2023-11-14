@@ -6,8 +6,21 @@ import numpy as np
 import time
 from picamera import PiCamera
 
-def roundUpToOdd(x) -> int:
-    return 2 * int(np.ceil((x - 1.0) / 2.0)) + 1
+# round up to the next odd number
+def round_up_to_odd(f) -> int:
+    return int(np.ceil(f) // 2 * 2 + 1)
+
+# find the largest contour
+def findLargestContour(img_bin):
+    contours, _ = cv2.findContours(img_bin, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    i_area_max = 0
+    area_max = 0
+    for i, cnt in enumerate(contours):
+        area = cv2.contourArea(cnt)
+        if area > area_max:
+            area_max = area
+            i_area_max = i
+    return contours[i_area_max]
 
 # frame size for Raspberry Pi camera capture
 IN_FRAME_WIDTH  = 1640
@@ -26,11 +39,15 @@ CROP_L_LIMIT = int((FRAME_WIDTH-CROP_WIDTH)/2)
 CROP_R_LIMIT = CROP_L_LIMIT+CROP_WIDTH
 BLOCK_OFFSET = int(3*FRAME_HEIGHT/8)
 
-MORPH_KERNEL_SIZE = roundUpToOdd(int(FRAME_WIDTH/40))
+MORPH_KERNEL_SIZE = round_up_to_odd(int(FRAME_WIDTH/40))
 ROI_BOUNDARY   = int(FRAME_WIDTH/16)
 LINE_THICKNESS = int(FRAME_WIDTH/80)
 CIRCLE_RADIUS  = int(FRAME_WIDTH/40)
 SCAN_V_POS     = int(13*FRAME_HEIGHT/16 - LINE_THICKNESS)
+
+AREA_DILATE_KERNEL_SIZE = round_up_to_odd(int(FRAME_WIDTH/40))
+AREA_GS_MIN = 130
+AREA_GS_MAX = 255
 
 # frame size for X11 painting
 #OUT_FRAME_WIDTH  = 160
@@ -91,8 +108,27 @@ while True:
             sys.exit(-1)
     # convert the image from BGR to grayscale
     img_gray = cv2.cvtColor(img_orig, cv2.COLOR_BGR2GRAY)
+
+    # generate a binarized image of white area
+    img_bin_white_area = cv2.inRange(img_gray, AREA_GS_MIN, AREA_GS_MAX)
+    # dilate the image
+    kernel = np.ones((AREA_DILATE_KERNEL_SIZE,AREA_DILATE_KERNEL_SIZE), np.uint8)
+    img_bin_white_area_dil = cv2.dilate(img_bin_white_area, kernel, iterations = 3)
+    # find the largest contour
+    cnt_white_area = findLargestContour(img_bin_white_area_dil)
+    # create mask for extraction
+    mask = np.full((FRAME_HEIGHT,FRAME_WIDTH,3), 255, dtype=np.uint8)
+    cv2.fillPoly(mask, [cnt_white_area], (0,0,0))
+    # paint outside of the contour to white
+    img_mask = cv2.bitwise_or(img_orig, mask)
+    
+    # modify img_orig to show masked area as blurred on monitor window
+    img_orig = cv2.addWeighted(img_mask, 0.5, img_orig, 0.5, 0)
+    
+    # convert the extracted image from BGR to grayscale
+    img_mask_gray = cv2.cvtColor(img_mask, cv2.COLOR_BGR2GRAY)
     # crop a part of the image
-    img_gray_part = img_gray[CROP_U_LIMIT-blockOffset:CROP_D_LIMIT-blockOffset, CROP_L_LIMIT:CROP_R_LIMIT]
+    img_gray_part = img_mask_gray[CROP_U_LIMIT-blockOffset:CROP_D_LIMIT-blockOffset, CROP_L_LIMIT:CROP_R_LIMIT]
     # binarize the image
     img_bin_part = cv2.inRange(img_gray_part, gs_min, gs_max)
     # prepare an empty matrix
@@ -123,7 +159,7 @@ while True:
                 i_area_max = i
         # draw the largest contour on the original image
         #img_orig = cv2.drawContours(img_orig, [contours[i_area_max]], 0, (0,255,0), LINE_THICKNESS)
-        img_orig = cv2.polylines(img_orig, [contours[i_area_max]], 0, (0,255,0), LINE_THICKNESS)
+        img_orig = cv2.polylines(img_orig, [contours[i_area_max]], True, (0,255,0), LINE_THICKNESS)
 
         # calculate the bounding box around the largest contour
         # and set it as the new region of interest

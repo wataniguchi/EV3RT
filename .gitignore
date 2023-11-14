@@ -15,6 +15,7 @@
 !/msad2023_ent/
 /msad2023_ent/work/
 !/msad2023_pri/
+/msad2023_pri/batch_stitch
 /msad2023_pri/work/
 !/test-asyncio/
 /test-asyncio/*

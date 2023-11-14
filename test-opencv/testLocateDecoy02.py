@@ -6,10 +6,17 @@ import numpy as np
 import time
 import glob
 import re
+from picamera import PiCamera
 
 # frame size for Raspberry Pi camera capture
-IN_FRAME_WIDTH  = 640
-IN_FRAME_HEIGHT = 480
+#IN_FRAME_WIDTH  = 1640
+#IN_FRAME_HEIGHT = 1232
+#SENSOR_MODE = 5
+#IN_FPS = 40
+IN_FRAME_WIDTH  = 3280
+IN_FRAME_HEIGHT = 2464
+SENSOR_MODE = 3
+IN_FPS = 15
 
 # frame size for OpenCV
 FRAME_WIDTH  = 640
@@ -34,10 +41,15 @@ frame = np.empty([0,0,0])
 if 1 == len(args):
     print("No image file specified. Capture images from camera.")
     # prepare the camera
-    cap = cv2.VideoCapture(0)
-    cap.set(cv2.CAP_PROP_FRAME_WIDTH,IN_FRAME_WIDTH)
-    cap.set(cv2.CAP_PROP_FRAME_HEIGHT,IN_FRAME_HEIGHT)
-    cap.set(cv2.CAP_PROP_FPS,90)
+    picam = PiCamera()
+    picam.resolution = (IN_FRAME_WIDTH, IN_FRAME_HEIGHT)
+    picam.sensor_mode = SENSOR_MODE
+    picam.framerate = IN_FPS
+
+    # vertical resolution is rounded up to the nearest multiple of 16 pixels
+    # horizontal resolution is rounded up to the nearest multiple of 32 pixels
+    frame = np.empty((16*math.ceil(IN_FRAME_HEIGHT/16), 32*math.ceil(IN_FRAME_WIDTH/32), 3),
+                     dtype=np.uint8)
 else:
     files = sorted(glob.glob(args[1]))
 
@@ -67,7 +79,7 @@ while True:
     time.sleep(0.01)
 
     if 1 == len(args):
-        ret, frame = cap.read()
+        picam.capture(frame, 'bgr')
     elif len(frame) == 0:
         file = files[idx]
         frame = cv2.imread(file)
@@ -161,4 +173,5 @@ while True:
         print(f"Writing image file {file_wrt}...")
         cv2.imwrite(file_wrt, img_comm)
 
+picam.close()
 cv2.destroyAllWindows
