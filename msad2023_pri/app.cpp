@@ -337,8 +337,8 @@ bool isColor(Color c, rgb_raw_t cur_rgb) {
     if (prof->getValueAsNum("USE_SPIKE_API_CL_BLUE")) {
       if (colorSensor->getColorNumber() == 3) return true;
     } else {
-      if (cur_rgb.r < 60 && cur_rgb.g < 100 && cur_rgb.b >= 100 &&
-	  cur_rgb.b - cur_rgb.r >= 60 && cur_rgb.g - cur_rgb.r >= 30) return true;
+      if (cur_rgb.r < 50 && cur_rgb.g < 70 && cur_rgb.b >= 75 &&
+	  cur_rgb.b - cur_rgb.r >= 30 && cur_rgb.g - cur_rgb.r >= 25) return true;
     }
     break;
   case CL_RED:
@@ -353,16 +353,16 @@ bool isColor(Color c, rgb_raw_t cur_rgb) {
     if (prof->getValueAsNum("USE_SPIKE_API_CL_YELLOW")) {
       if (colorSensor->getColorNumber() == 7) return true;
     } else {
-      if (cur_rgb.r >= 140 && cur_rgb.g >= 120 && cur_rgb.b <= 120 &&
-	  cur_rgb.r - cur_rgb.g >= 20 && cur_rgb.g - cur_rgb.b >= 20) return true;
+      if (cur_rgb.r >= 140 && cur_rgb.g >= 140 && cur_rgb.b <= 130 &&
+	        cur_rgb.g - cur_rgb.b >= 20) return true;
     }
     break;
   case CL_GREEN:
     if (prof->getValueAsNum("USE_SPIKE_API_CL_GREEN")) {
       if (colorSensor->getColorNumber() == 5) return true;
     } else {
-      if (cur_rgb.r <= 60 && cur_rgb.g >= 70 && cur_rgb.b <= 70 &&
-	  cur_rgb.g - cur_rgb.r >= 30 && cur_rgb.g - cur_rgb.b >= 15) return true;
+      if (cur_rgb.r <= 65 && cur_rgb.g >= 80 && cur_rgb.b <= 90 &&
+	  cur_rgb.g - cur_rgb.r >= 30 && cur_rgb.g - cur_rgb.b >= 5) return true;
     }
     break;
   case CL_WHITE:
@@ -1694,10 +1694,10 @@ public:
 		/* distance between adjcent circles = 350 */
 		int distSweep, correctDeg;
 		if (move == MV_ON_ROW) {
-		  distSweep = 130 + 350 * 3 - (currentDist - vLineRowStartDist);
+		  distSweep = 100 + 350 * 3 - (currentDist - vLineRowStartDist);
 		  correctDeg = 90 + 90 * directionOnRow; /* direction on Row is NOT relevant to L/R */
 		} else { /* move == MV_ON_COLUMN */
-		  distSweep = 130 + 350 * 3 - (currentDist - vLineColumnStartDist);
+		  distSweep = 100 + 350 * 3 - (currentDist - vLineColumnStartDist);
 		  correctDeg = 180 + 90 * directionOnColumn * _COURSE; /* _COURSE = -1 when R course */
 
 		}
