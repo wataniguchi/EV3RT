@@ -149,9 +149,8 @@
     /* section R602: move closer to the line to Goal */ \
     .composite<BrainTree::ParallelSequence>(1,2) \
       .leaf<IsDistanceEarned>(prof->getValueAsNum("BLOCK_R602A_DIST")) \
-      .leaf<RunPerGuideAngle>(prof->getValueAsNum("BLOCK_R602A_OFFSET"), \
-	    prof->getValueAsNum("BLOCK_R602_SPEED"), \
-	    prof->getValueAsNumVec("BLOCK_ANG_PID_CONST")) \
+      .leaf<RunAsInstructed>(prof->getValueAsNum("BLOCK_R602A_PWML"), \
+            prof->getValueAsNum("BLOCK_R602A_PWMR"), 0.0) \
     .end() \
     /* section R603: start tracing the line to Goal */ \
     .composite<BrainTree::ParallelSequence>(1,3) \
@@ -323,14 +322,14 @@
     /* section R602: move closer to the line to Goal */ \
     .composite<BrainTree::ParallelSequence>(1,2) \
       .leaf<IsDistanceEarned>(prof->getValueAsNum("BLOCK_L602A_DIST")) \
-      .leaf<RunPerGuideAngle>(prof->getValueAsNum("BLOCK_L602A_OFFSET"), \
-	    prof->getValueAsNum("BLOCK_L602_SPEED"), \
-	    prof->getValueAsNumVec("BLOCK_ANG_PID_CONST")) \
+      .leaf<IsTimeEarned>(prof->getValueAsNum("BLOCK_L602A_TIME")) \
+      .leaf<RunAsInstructed>(prof->getValueAsNum("BLOCK_L602A_PWML"), \
+            prof->getValueAsNum("BLOCK_L602A_PWMR"), 0.0) \
     .end() \
+    .leaf<StopNow>() \
     /* section R603: start tracing the line to Goal */ \
     .composite<BrainTree::ParallelSequence>(1,3) \
       .leaf<IsDistanceEarned>(prof->getValueAsNum("BLOCK_L603_DIST")) \
-      .leaf<IsColorDetected>(CL_BLUE) \
       .leaf<TraceLineCamWithBlockInArm>(prof->getValueAsNum("BLOCK_L603_SPEED"), \
 	    prof->getValueAsNumVec("BLOCK_PIDCAM_CONST"), \
 	    prof->getValueAsNum("BLOCK_GS_MIN"),    \
