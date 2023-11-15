@@ -1823,62 +1823,82 @@ public:
 	  }
 	  /* try to detect circle by color sensor */
 	  if (isColor(CL_BLUE, cur_rgb)) {
-	    if (move == MV_ON_COLUMN) {
-	      vLineRow += directionOnColumn;
-	      if (vLineRow < 1) vLineRow = 1;
-	      if (vLineRow > 4) vLineRow = 4;
+	    if (currentDist - circleDist > TVL_INTER_CIRCLE_DIST_MIN) {
+	      if (move == MV_ON_COLUMN) {
+		vLineRow += directionOnColumn;
+		if (vLineRow < 1) vLineRow = 1;
+		if (vLineRow > 4) vLineRow = 4;
+	      } else {
+		vLineColumn += directionOnRow;
+		if (vLineColumn < 1) vLineColumn = 1;
+		if (vLineColumn > 4) vLineColumn = 4;
+	      }
+	      circleDist = currentDist;
+	      _log("ODO=%05d, circle CL_BLUE detected with rgb(%03d,%03d,%03d) at Column %d, Row %d", circleDist, cur_rgb.r, cur_rgb.g, cur_rgb.b, vLineColumn, vLineRow);
+	      circleColor = CL_BLUE;
+	      st = TVLST_ENTERING_CIRCLE;
 	    } else {
-	      vLineColumn += directionOnRow;
-	      if (vLineColumn < 1) vLineColumn = 1;
-	      if (vLineColumn > 4) vLineColumn = 4;
+	      _log("ODO=%05d, *** WARNING - circle CL_BLUE detected with rgb(%03d,%03d,%03d) IGNORED. distance %d too short from privious circle", currentDist, cur_rgb.r, cur_rgb.g, cur_rgb.b, currentDist - circleDist);
+	      /* keep the state */
 	    }
-	    circleDist = currentDist;
-	    _log("ODO=%05d, circle CL_BLUE detected with rgb(%03d,%03d,%03d) at Column %d, Row %d", circleDist, cur_rgb.r, cur_rgb.g, cur_rgb.b, vLineColumn, vLineRow);
-	    circleColor = CL_BLUE;
-	    st = TVLST_ENTERING_CIRCLE;
 	  } else if (isColor(CL_RED, cur_rgb)) {
-	    if (move == MV_ON_COLUMN) {
-	      vLineRow += directionOnColumn;
-	      if (vLineRow < 1) vLineRow = 1;
-	      if (vLineRow > 4) vLineRow = 4;
+	    if (currentDist - circleDist > TVL_INTER_CIRCLE_DIST_MIN) {
+	      if (move == MV_ON_COLUMN) {
+		vLineRow += directionOnColumn;
+		if (vLineRow < 1) vLineRow = 1;
+		if (vLineRow > 4) vLineRow = 4;
+	      } else {
+		vLineColumn += directionOnRow;
+		if (vLineColumn < 1) vLineColumn = 1;
+		if (vLineColumn > 4) vLineColumn = 4;
+	      }
+	      circleDist = currentDist;
+	      _log("ODO=%05d, circle CL_RED detected with rgb(%03d,%03d,%03d) at Column %d, Row %d", circleDist, cur_rgb.r, cur_rgb.g, cur_rgb.b, vLineColumn, vLineRow);
+	      circleColor = CL_RED;
+	      st = TVLST_ENTERING_CIRCLE;
 	    } else {
-	      vLineColumn += directionOnRow;
-	      if (vLineColumn < 1) vLineColumn = 1;
-	      if (vLineColumn > 4) vLineColumn = 4;
+	      _log("ODO=%05d, *** WARNING - circle CL_RED detected with rgb(%03d,%03d,%03d) IGNORED. distance %d too short from privious circle", currentDist, cur_rgb.r, cur_rgb.g, cur_rgb.b, currentDist - circleDist);
+	      /* keep the state */
 	    }
-	    circleDist = currentDist;
-	    _log("ODO=%05d, circle CL_RED detected with rgb(%03d,%03d,%03d) at Column %d, Row %d", circleDist, cur_rgb.r, cur_rgb.g, cur_rgb.b, vLineColumn, vLineRow);
-	    circleColor = CL_RED;
-	    st = TVLST_ENTERING_CIRCLE;
 	  } else if (isColor(CL_YELLOW, cur_rgb)) {
-	    if (move == MV_ON_COLUMN) {
-	      vLineRow += directionOnColumn;
-	      if (vLineRow < 1) vLineRow = 1;
-	      if (vLineRow > 4) vLineRow = 4;
+	    if (currentDist - circleDist > TVL_INTER_CIRCLE_DIST_MIN) {
+	      if (move == MV_ON_COLUMN) {
+		vLineRow += directionOnColumn;
+		if (vLineRow < 1) vLineRow = 1;
+		if (vLineRow > 4) vLineRow = 4;
+	      } else {
+		vLineColumn += directionOnRow;
+		if (vLineColumn < 1) vLineColumn = 1;
+		if (vLineColumn > 4) vLineColumn = 4;
+	      }
+	      circleDist = currentDist;
+	      _log("ODO=%05d, circle CL_YELLOW detected with rgb(%03d,%03d,%03d) at Column %d, Row %d", circleDist, cur_rgb.r, cur_rgb.g, cur_rgb.b, vLineColumn, vLineRow);
+	      circleColor = CL_YELLOW;
+	      st = TVLST_ENTERING_CIRCLE;
 	    } else {
-	      vLineColumn += directionOnRow;
-	      if (vLineColumn < 1) vLineColumn = 1;
-	      if (vLineColumn > 4) vLineColumn = 4;
+	      _log("ODO=%05d, *** WARNING - circle CL_YELLOW detected with rgb(%03d,%03d,%03d) IGNORED. distance %d too short from privious circle", currentDist, cur_rgb.r, cur_rgb.g, cur_rgb.b, currentDist - circleDist);
+	      /* keep the state */
 	    }
-	    circleDist = currentDist;
-	    _log("ODO=%05d, circle CL_YELLOW detected with rgb(%03d,%03d,%03d) at Column %d, Row %d", circleDist, cur_rgb.r, cur_rgb.g, cur_rgb.b, vLineColumn, vLineRow);
-	    circleColor = CL_YELLOW;
-	    st = TVLST_ENTERING_CIRCLE;
 	  } else if (isColor(CL_GREEN, cur_rgb)) {
-	    if (move == MV_ON_COLUMN) {
-	      vLineRow += directionOnColumn;
-	      if (vLineRow < 1) vLineRow = 1;
-	      if (vLineRow > 4) vLineRow = 4;
+	    if (currentDist - circleDist > TVL_INTER_CIRCLE_DIST_MIN) {
+	      if (move == MV_ON_COLUMN) {
+		vLineRow += directionOnColumn;
+		if (vLineRow < 1) vLineRow = 1;
+		if (vLineRow > 4) vLineRow = 4;
+	      } else {
+		vLineColumn += directionOnRow;
+		if (vLineColumn < 1) vLineColumn = 1;
+		if (vLineColumn > 4) vLineColumn = 4;
+	      }
+	      circleDist = currentDist;
+	      _log("ODO=%05d, circle CL_GREEN detected with rgb(%03d,%03d,%03d) at Column %d, Row %d", circleDist, cur_rgb.r, cur_rgb.g, cur_rgb.b, vLineColumn, vLineRow);
+	      circleColor = CL_GREEN;
+	      st = TVLST_ENTERING_CIRCLE;
 	    } else {
-	      vLineColumn += directionOnRow;
-	      if (vLineColumn < 1) vLineColumn = 1;
-	      if (vLineColumn > 4) vLineColumn = 4;
+	      _log("ODO=%05d, *** WARNING - circle CL_GREEN detected with rgb(%03d,%03d,%03d) IGNORED. distance %d too short from privious circle", currentDist, cur_rgb.r, cur_rgb.g, cur_rgb.b, currentDist - circleDist);
+	      /* keep the state */
 	    }
-	    circleDist = currentDist;
-	    _log("ODO=%05d, circle CL_GREEN detected with rgb(%03d,%03d,%03d) at Column %d, Row %d", circleDist, cur_rgb.r, cur_rgb.g, cur_rgb.b, vLineColumn, vLineRow);
-	    circleColor = CL_GREEN;
-	    st = TVLST_ENTERING_CIRCLE;
-	  } else if (currentDist - circleDist > 300) { /* TODO: magic number */
+	  } else if (currentDist - circleDist > TVL_INTER_CIRCLE_DIST_MAX) {
 	    if (move == MV_ON_COLUMN) {
 	      vLineRow += directionOnColumn;
 	      if (vLineRow < 1) vLineRow = 1;
