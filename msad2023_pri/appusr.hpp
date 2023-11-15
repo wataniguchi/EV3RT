@@ -85,6 +85,7 @@ using namespace ev3api;
 #define TVL_ROT_180             170
 #define TVL_INTER_CIRCLE_DIST_MIN 150
 #define TVL_INTER_CIRCLE_DIST_MAX 300
+#define TVL_SWEEP_OFF_DIST      100
 
 enum Color {
     CL_JETBLACK,
