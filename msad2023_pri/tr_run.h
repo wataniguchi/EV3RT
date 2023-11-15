@@ -319,7 +319,7 @@
           .leaf<IsDistanceEarned>(prof->getValueAsNum("RUN_L10B_DIST")) \
         .end() \
         .leaf<TraceLineCam>(prof->getValueAsNum("RUN_L10_SPEED"), \
-	      prof->getValueAsNumVec("RUN_Rz_PID_CONST"), \
+	      prof->getValueAsNumVec("RUN_Lz_PID_CONST"), \
 	      prof->getValueAsNum("RUN_Rx_GS_MIN"), \
 	      prof->getValueAsNum("RUN_Rx_GS_MAX"), 0.0, \
               (TraceSide)prof->getValueAsIntFromEnum("RUN_L10B_TS", gEnumPairs)) \
@@ -330,7 +330,7 @@
           .leaf<IsDistanceEarned>(prof->getValueAsNum("RUN_L10_DIST")) \
         .end() \
         .leaf<TraceLineCam>(prof->getValueAsNum("RUN_L10_SPEED"), \
-	      prof->getValueAsNumVec("RUN_Rz_PID_CONST"), \
+	      prof->getValueAsNumVec("RUN_Lz_PID_CONST"), \
 	      prof->getValueAsNum("RUN_Rx_GS_MIN"), \
 	      prof->getValueAsNum("RUN_Rx_GS_MAX"), 0.0, \
               (TraceSide)prof->getValueAsIntFromEnum("RUN_L10_TS", gEnumPairs)) \

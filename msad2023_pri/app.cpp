@@ -369,7 +369,8 @@ bool isColor(Color c, rgb_raw_t cur_rgb) {
     if (prof->getValueAsNum("USE_SPIKE_API_CL_WHITE")) {
       if (colorSensor->getColorNumber() == 10) return true;
     } else {
-      if (cur_rgb.r >= 150 && cur_rgb.g >= 150 && cur_rgb.b >= 150) return true;
+            if (cur_rgb.r < 90 && cur_rgb.g < 120 && cur_rgb.b >= 115 &&
+	  cur_rgb.b - cur_rgb.r >= 30 && cur_rgb.g - cur_rgb.r >= 20)return true;
     }
     break;
   default:
@@ -1615,7 +1616,7 @@ public:
 		      distY = 2 * 350 - (currentDist - vLineRowStartDist);
 		    }
 		    Node* nd1 = new IsDistanceEarned(distX);
-		    Node* nd2 = new RunPerGuideAngle(115, speed, {2.5, 0.0001, 0.4}); /* To-Do: magic numbers */
+		    Node* nd2 = new RunPerGuideAngle(110, speed, {2.5, 0.0001, 0.4}); /* To-Do: magic numbers */
 		    BrainTree::Composite* nd3 = new BrainTree::ParallelSequence(1,2);
 		    nd3->addChild(nd1);
 		    nd3->addChild(nd2);
@@ -1642,7 +1643,7 @@ public:
 		    }
 		    /* manually build a behavior tree for moving Trasure block */
 		    Node* nd1 = new IsDistanceEarned(distX);
-		    Node* nd2 = new RunPerGuideAngle(90, speed, {2.5, 0.0001, 0.4}); /* To-Do: magic numbers */
+		    Node* nd2 = new RunPerGuideAngle(85, speed, {2.5, 0.0001, 0.4}); /* To-Do: magic numbers */
 		    BrainTree::Composite* nd3 = new BrainTree::ParallelSequence(1,2);
 		    nd3->addChild(nd1);
 		    nd3->addChild(nd2);
