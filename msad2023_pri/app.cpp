@@ -1977,9 +1977,33 @@ public:
 	      vLineColumnStartX = plotter->getLocX() - 60 * directionOnColumn;
 	      _log("ODO=%05d, vLineColumnStartX set to %d", currentDist, vLineColumnStartX);
 	      st = TVLST_IDENTIFYING_BLOCK;
-	    } else if (rowState[vLineRow] == VS_NONE || (rowState[vLineRow] == VS_TREASURE && decoyMoved < 2)) { /* nothing to see */
+	    } else if (rowState[vLineRow] == VS_NONE ||
+		       rowState[vLineRow] == VS_SWEPT ||
+		       (rowState[vLineRow] == VS_TREASURE && decoyMoved < 2)) { /* nothing to see */
 	      if ( (directionOnColumn ==  1 && vLineRow == 4 && video->getTraceTargetType() == TT_VLINE) ||
 		   (directionOnColumn == -1 && vLineRow == 1 && video->getTraceTargetType() == TT_VLINE) ) {
+		/* check if inaccurately marked VS_NONE */
+		if (rowState[1] != VS_UNKNOWN && rowState[2] != VS_UNKNOWN &&
+		    rowState[3] != VS_UNKNOWN && rowState[4] != VS_UNKNOWN &&
+		    (treasureFound == 0 || decoyMoved < 2) ) {
+		  _log("ODO=%05d, *** WARNING - must have inaccurately marked VS_NONE...", currentDist);
+		  if (rowState[1] == VS_NONE) {
+		    rowState[1] = VS_UNKNOWN;
+		    _log("ODO=%05d, *** WARNING - Row 1 FORCEFULLY marked VS_UNKNOWN", currentDist);
+		  }
+		  if (rowState[2] == VS_NONE) {
+		    rowState[2] = VS_UNKNOWN;
+		    _log("ODO=%05d, *** WARNING - Row 2 FORCEFULLY marked VS_UNKNOWN", currentDist);
+		  }
+		  if (rowState[3] == VS_NONE) {
+		    rowState[3] = VS_UNKNOWN;
+		    _log("ODO=%05d, *** WARNING - Row 3 FORCEFULLY marked VS_UNKNOWN", currentDist);
+		  }
+		  if (rowState[4] == VS_NONE) {
+		    rowState[4] = VS_UNKNOWN;
+		    _log("ODO=%05d, *** WARNING - Row 4 FORCEFULLY marked VS_UNKNOWN", currentDist);
+		  }
+		}
 		leftMotor->setPWM(0);
 		rightMotor->setPWM(0);
 		ndChild = new RotateEV3(TVL_ROT_180, TVL_ROTATE_POWER, 0.0);
@@ -2033,6 +2057,28 @@ public:
 			(initColumn == 1 && directionOnRow == -1 && vLineColumn == 1) ) {
 	      if ( (vLineRow == 1 && directionOnColumn == -1 && video->getTraceTargetType() == TT_VLINE) ||
 		   (vLineRow == 4 && directionOnColumn ==  1 && video->getTraceTargetType() == TT_VLINE) ) {
+		/* check if inaccurately marked VS_NONE */
+		if (rowState[1] != VS_UNKNOWN && rowState[2] != VS_UNKNOWN &&
+		    rowState[3] != VS_UNKNOWN && rowState[4] != VS_UNKNOWN &&
+		    (treasureFound == 0 || decoyMoved < 2) ) {
+		  _log("ODO=%05d, *** WARNING - must have inaccurately marked VS_NONE...", currentDist);
+		  if (rowState[1] == VS_NONE) {
+		    rowState[1] = VS_UNKNOWN;
+		    _log("ODO=%05d, *** WARNING - Row 1 FORCEFULLY marked VS_UNKNOWN", currentDist);
+		  }
+		  if (rowState[2] == VS_NONE) {
+		    rowState[2] = VS_UNKNOWN;
+		    _log("ODO=%05d, *** WARNING - Row 2 FORCEFULLY marked VS_UNKNOWN", currentDist);
+		  }
+		  if (rowState[3] == VS_NONE) {
+		    rowState[3] = VS_UNKNOWN;
+		    _log("ODO=%05d, *** WARNING - Row 3 FORCEFULLY marked VS_UNKNOWN", currentDist);
+		  }
+		  if (rowState[4] == VS_NONE) {
+		    rowState[4] = VS_UNKNOWN;
+		    _log("ODO=%05d, *** WARNING - Row 4 FORCEFULLY marked VS_UNKNOWN", currentDist);
+		  }
+		}
 		directionOnColumn *= -1; /* change direction */
 	      } else if ( (vLineRow == 2 && directionOnColumn == -1 && rowState[1] != VS_TREASURE &&
 			   decoyMoved == 2 && treasureFound == 1 &&
@@ -2295,8 +2341,8 @@ public:
 	    if (move == MV_ON_ROW && initColumn == 1) {
 	      circleDist = currentDist;
 	      _log("ODO=%05d, circleDist is set after sweeping", currentDist);
-	      rowState[vLineRow] = VS_NONE;
-	      _log("ODO=%05d, Row %d marked as VS_NONE", currentDist, vLineRow);
+	      rowState[vLineRow] = VS_SWEPT;
+	      _log("ODO=%05d, Row %d marked as VS_SWEPT", currentDist, vLineRow);
 	      directionOnRow = -1;
 	      vLineColumn = 4;
 	      decoyMoved += 1;
@@ -2305,8 +2351,8 @@ public:
 	    } else if (move == MV_ON_ROW && initColumn == 4) {
 	      circleDist = currentDist;
 	      _log("ODO=%05d, circleDist is set after sweeping", currentDist);
-	      rowState[vLineRow] = VS_NONE;
-	      _log("ODO=%05d, Row %d marked as VS_NONE", currentDist, vLineRow);
+	      rowState[vLineRow] = VS_SWEPT;
+	      _log("ODO=%05d, Row %d marked as VS_SWEPT", currentDist, vLineRow);
 	      directionOnRow = 1;
 	      vLineColumn = 1;
 	      decoyMoved += 1;
@@ -2327,8 +2373,8 @@ public:
 	      } else { /* targetBlockType = BT_DECOY */
 		circleDist = currentDist;
 		_log("ODO=%05d, circleDist is set after sweeping", currentDist);
-		columnState[vLineColumn] = VS_NONE;
-		_log("ODO=%05d, Column %d marked as VS_NONE", currentDist, vLineColumn);
+		columnState[vLineColumn] = VS_SWEPT;
+		_log("ODO=%05d, Column %d marked as VS_SWEPT", currentDist, vLineColumn);
 		vLineColumnStartX = plotter->getLocX();
 		_log("ODO=%05d, vLineColumnStartX set to %d", currentDist, vLineColumnStartX);
 		directionOnColumn = -1;
@@ -2442,6 +2488,7 @@ protected:
     enum VLineState {
       VS_NONE,
       VS_TREASURE,
+      VS_SWEPT,
       VS_UNKNOWN,
     };
     int speed, target, gsMin, gsMax, initDist, circleDist, countBlack, countWhite, count, hasCaughtCount;
