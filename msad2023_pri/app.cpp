@@ -1589,7 +1589,7 @@ public:
 	      leftMotor->setPWM(0);
 	      rightMotor->setPWM(0);
 	      if (targetBlockInClose) targetBlockInClose = false; /* reset the flag */
-	      if (targetBlockType == BT_TREASURE) {
+	      if (targetBlockType == BT_TREASURE || targetBlockType == BT_DECOY_ASIF_TREASURE) {
 		if (hasCaughtCount >= 3) {
 		  _log("ODO=%05d, CAUGHT TREASURE block", currentDist);
 		} else {
@@ -2207,23 +2207,39 @@ public:
 		vLineRowStartDist = currentDist;
 		_log("ODO=%05d, vLineRowStartDist set to %d", currentDist, vLineRowStartDist);
 		st = TVLST_IN_CIRCLE;
-	      } else { /* must be false positive */
-		_log("ODO=%05d, detected Decoy block. must be FALSE POSITVE...", currentDist);
-		rowState[vLineRow] = VS_NONE;
-		_log("ODO=%05d, Row %d marked as VS_NONE", currentDist, vLineRow);	      
-		if ( (directionOnColumn ==  1 && vLineRow == 4) ||
-		     (directionOnColumn == -1 && vLineRow == 1) ) {
-		  directionOnColumn *= -1; /* change direction in advance */
-		} else if ( (vLineRow == 2 && directionOnColumn == -1) || /* go other direction to avoid the use of color sensor */
-			    (vLineRow == 3 && directionOnColumn ==  1) ) {  /* go other direction to avoid the use of color sensor */
-		  //detour = true;
-		  //_log("ODO=%05d, detour starting to avoid use of color sensor...", currentDist);
-		  //directionOnColumn *= -1; /* change direction */
-		  _log("ODO=%05d, detour SKIPPED", currentDist);
+	      } else { /* decoyMoved = 2 */
+		int cy = video->getCY();
+		if (cy > 75) {
+		  targetBlockInClose = true; /* earlier block catch detection by distance */
+		  _log("ODO=%05d, target block in close distance at cy=%d...", currentDist, cy);
+		} else {
+		  targetBlockInClose = false;
 		}
-		ndChild = new RotateEV3(directionOnRow*directionOnColumn*TVL_ROT_90, TVL_ROTATE_POWER, 0.0);
-		move = MV_ON_COLUMN;
-		st = TVLST_ROTATING_IN_CIRCLE;
+		/* target at the block */
+		_log("ODO=%05d, *** WARNING - targeting at Decoy block AS IF TREASURE block...", currentDist);
+		video->setTraceTargetType(TT_DEC_ON_VLINE);
+		count = hasCaughtCount = 0;
+		targetBlockType = BT_DECOY_ASIF_TREASURE;
+		vLineRowStartDist = currentDist;
+		_log("ODO=%05d, vLineRowStartDist set to %d", currentDist, vLineRowStartDist);
+		st = TVLST_IN_CIRCLE;
+		///* must be false positive */
+		//_log("ODO=%05d, detected Decoy block. must be FALSE POSITVE...", currentDist);
+		//rowState[vLineRow] = VS_NONE;
+		//_log("ODO=%05d, Row %d marked as VS_NONE", currentDist, vLineRow);	      
+		//if ( (directionOnColumn ==  1 && vLineRow == 4) ||
+		//     (directionOnColumn == -1 && vLineRow == 1) ) {
+		//  directionOnColumn *= -1; /* change direction in advance */
+		//} else if ( (vLineRow == 2 && directionOnColumn == -1) || /* go other direction to avoid the use of color sensor */
+		//	    (vLineRow == 3 && directionOnColumn ==  1) ) {  /* go other direction to avoid the use of color sensor */
+		//  //detour = true;
+		//  //_log("ODO=%05d, detour starting to avoid use of color sensor...", currentDist);
+		//  //directionOnColumn *= -1; /* change direction */
+		//  _log("ODO=%05d, detour SKIPPED", currentDist);
+		//}
+		//ndChild = new RotateEV3(directionOnRow*directionOnColumn*TVL_ROT_90, TVL_ROTATE_POWER, 0.0);
+		//move = MV_ON_COLUMN;
+		//st = TVLST_ROTATING_IN_CIRCLE;
 	      }
 	    }
 	  } else if (stsChild == Status::Failure) {

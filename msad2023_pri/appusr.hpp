@@ -132,6 +132,7 @@ enum ArmDirection {
 enum BlockType {
     BT_TREASURE = 0,
     BT_DECOY = 1,
+    BT_DECOY_ASIF_TREASURE = 2,
 };
 
 #ifndef ENUMPAIR_TYPE_DEFINED
