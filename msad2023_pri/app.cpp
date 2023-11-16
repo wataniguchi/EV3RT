@@ -1763,12 +1763,20 @@ public:
 	      vLineRow = 1;
 	      circleDist = currentDist;
 	      _log("ODO=%05d, circle CL_BLUE detected with rgb(%03d,%03d,%03d) at Column %d, Row %d", circleDist, cur_rgb.r, cur_rgb.g, cur_rgb.b, vLineColumn, vLineRow);
+	      vLineColumnStartDist = currentDist;
+	      _log("ODO=%05d, vLineColumnStartDist set to %d", currentDist, vLineColumnStartDist);
+	      vLineColumnStartX = plotter->getLocX();
+	      _log("ODO=%05d, vLineColumnStartX set to %d", currentDist, vLineColumnStartX);
 	      circleColor = CL_BLUE;
 	      st = TVLST_ENTERING_CIRCLE;
 	    } else if ((currentDist - initDist) >= 300) { /* To-Do: magic number */
 	      vLineRow = 1;
 	      circleDist = currentDist;
 	      _log("ODO=%05d, assumed to be entering circle without circle detected at Column %d, Row %d", currentDist, vLineColumn, vLineRow);
+	      vLineColumnStartDist = currentDist;
+	      _log("ODO=%05d, vLineColumnStartDist set to %d", currentDist, vLineColumnStartDist);
+	      vLineColumnStartX = plotter->getLocX();
+	      _log("ODO=%05d, vLineColumnStartX set to %d", currentDist, vLineColumnStartX);
 	      circleColor = CL_BLUE;
 	      st = TVLST_ENTERING_CIRCLE;
 	    }
@@ -1777,12 +1785,20 @@ public:
 	      vLineRow = 1;
 	      circleDist = currentDist;
 	      _log("ODO=%05d, circle CL_RED detected with rgb(%03d,%03d,%03d) at Column %d, Row %d", circleDist, cur_rgb.r, cur_rgb.g, cur_rgb.b, vLineColumn, vLineRow);
+	      vLineColumnStartDist = currentDist;
+	      _log("ODO=%05d, vLineColumnStartDist set to %d", currentDist, vLineColumnStartDist);
+	      vLineColumnStartX = plotter->getLocX();
+	      _log("ODO=%05d, vLineColumnStartX set to %d", currentDist, vLineColumnStartX);
 	      circleColor = CL_RED;
 	      st = TVLST_ENTERING_CIRCLE;
 	    } else if ((currentDist - initDist) >= 150) { /* To-Do: magic number */
 	      vLineRow = 1;
 	      circleDist = currentDist;
 	      _log("ODO=%05d, assumed to be entering circle without circle detected at Column %d, Row %d", currentDist, vLineColumn, vLineRow);
+	      vLineColumnStartDist = currentDist;
+	      _log("ODO=%05d, vLineColumnStartDist set to %d", currentDist, vLineColumnStartDist);
+	      vLineColumnStartX = plotter->getLocX();
+	      _log("ODO=%05d, vLineColumnStartX set to %d", currentDist, vLineColumnStartX);
 	      circleColor = CL_RED;
 	      st = TVLST_ENTERING_CIRCLE;
 	    }
@@ -1845,7 +1861,15 @@ public:
 	  } else if (isColor(CL_RED, cur_rgb)) {
 	    if (currentDist - circleDist > TVL_INTER_CIRCLE_DIST_MIN) {
 	      if (move == MV_ON_COLUMN) {
-		vLineRow += directionOnColumn;
+		/* correction if Row 1 is overlooked */
+		if (initColumn == 4 && currentDist - initDist > 300 && currentDist - initDist < 650) {
+		  vLineRow = 2;
+		  _log("ODO=%05d, *** WARNING - Row 1 seems to be overlooked.  vLineRow FORCEFULLY set to 2", currentDist);
+		  vLineColumnStartDist -= 350;
+		  _log("ODO=%05d, vLineColumnStartDist CORRECTED to %d", currentDist, vLineColumnStartDist);
+		} else {
+		  vLineRow += directionOnColumn;
+		}
 		if (vLineRow < 1) vLineRow = 1;
 		if (vLineRow > 4) vLineRow = 4;
 	      } else {
