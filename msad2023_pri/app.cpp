@@ -1695,7 +1695,11 @@ public:
 		/* distance between adjcent circles = 350 */
 		int distSweep, correctDeg;
 		if (move == MV_ON_ROW) {
-		  distSweep = TVL_SWEEP_OFF_DIST + 350 * 3 - (currentDist - vLineRowStartDist);
+		  if (initColumn == 4) {
+		    distSweep = TVL_SWEEP_OFF_DIST_COL4 + 350 * 3 - (currentDist - vLineRowStartDist);
+		  } else {
+		    distSweep = TVL_SWEEP_OFF_DIST + 350 * 3 - (currentDist - vLineRowStartDist);
+		  }
 		  correctDeg = 90 + 90 * directionOnRow; /* direction on Row is NOT relevant to L/R */
 		} else { /* move == MV_ON_COLUMN */
 		  distSweep = TVL_SWEEP_OFF_DIST + 350 * 3 - (currentDist - vLineColumnStartDist);
@@ -1715,7 +1719,12 @@ public:
 		  BrainTree::Composite* nd6 = new BrainTree::ParallelSequence(1,2);
 		  nd6->addChild(nd4);
 		  nd6->addChild(nd5);
-		  Node* nd7 = new IsDistanceEarned(TVL_SWEEP_OFF_DIST);
+		  Node* nd7;
+		  if (initColumn == 4) {
+		    nd7 = new IsDistanceEarned(TVL_SWEEP_OFF_DIST_COL4);
+		  } else {
+		    nd7 = new IsDistanceEarned(TVL_SWEEP_OFF_DIST);
+		  }
 		  Node* nd8 = new RunAsInstructed(-speed, -speed, 0.0);
 		  BrainTree::Composite* nd9 = new BrainTree::ParallelSequence(1,2);
 		  nd9->addChild(nd7);
@@ -1733,7 +1742,12 @@ public:
 		  BrainTree::Composite* nd3 = new BrainTree::ParallelSequence(1,2);
 		  nd3->addChild(nd1);
 		  nd3->addChild(nd2);
-		  Node* nd4 = new IsDistanceEarned(TVL_SWEEP_OFF_DIST);
+		  Node* nd4;
+		  if (initColumn == 4) {
+		    nd4 = new IsDistanceEarned(TVL_SWEEP_OFF_DIST_COL4);
+		  } else {
+		    nd4 = new IsDistanceEarned(TVL_SWEEP_OFF_DIST);
+		  }
 		  Node* nd5 = new RunAsInstructed(-speed, -speed, 0.0);
 		  BrainTree::Composite* nd6 = new BrainTree::ParallelSequence(1,2);
 		  nd6->addChild(nd4);
