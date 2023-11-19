@@ -48,7 +48,7 @@ void Video::locateBlocks(vector<vector<Point>> contours, vector<Vec4i> hierarchy
       double deltaY = 150.0 - 50.0;
       double blkLenMin = deltaLen*y/deltaY - deltaLen*150.0/deltaY + BLK_LEN_MIN_Y150;
       double blkAreaMin = blkLenMin*blkLenMin;
-      if ( (area > blkAreaMin && area < 9.0*blkAreaMin && wh > 0.4 && wh < 2.5 &&
+      if ( (area > BLK_AREA_MIN && area > blkAreaMin && area < 9.0*blkAreaMin && wh > 0.4 && wh < 2.5 && /* magic number */
 	    2.0*area > contourArea(hull) && /* the contour and its hull are not much different */
 	    pointPolygonTest(blk_roi, Point2f(x,y), false) == 1) || /* the contour is inside ROI */
 	   (x > static_cast<float>(FRAME_WIDTH)/3.0 && x < 2.0*FRAME_WIDTH/3.0 &&

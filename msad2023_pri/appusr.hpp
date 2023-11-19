@@ -79,10 +79,14 @@ using namespace ev3api;
 
 #define SONAR_ALERT_DISTANCE    100     /* in millimeter                           */
 #define ARM_SHIFT_PWM            30
-#define TVL_ROTATE_POWER         60
+#define TVL_ROTATE_POWER         63
 #define TVL_HIGH_SPEED           45
-#define TVL_ROT_90               75
+#define TVL_ROT_90               70
 #define TVL_ROT_180             170
+#define TVL_INTER_CIRCLE_DIST_MIN 150
+#define TVL_INTER_CIRCLE_DIST_MAX 300
+#define TVL_SWEEP_OFF_DIST      100
+#define TVL_SWEEP_OFF_DIST_COL4 150
 
 enum Color {
     CL_JETBLACK,
@@ -130,6 +134,7 @@ enum ArmDirection {
 enum BlockType {
     BT_TREASURE = 0,
     BT_DECOY = 1,
+    BT_DECOY_ASIF_TREASURE = 2,
 };
 
 #ifndef ENUMPAIR_TYPE_DEFINED
