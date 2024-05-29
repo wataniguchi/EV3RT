@@ -4,6 +4,11 @@
 !/2022base_ent/
 !/2022base_pri/
 !/2023base_pri/
+!/2024base/
+/2024base/*.snap*
+/2024base/*.dot
+/2024base/*.png
+/2024base/*.svg
 !/aflac2019/
 !/aflac2020/
 !/ms2021/
@@ -43,3 +48,4 @@ a.out
 .$*.drawio.*
 *#
 *.bk
+__pycache__
