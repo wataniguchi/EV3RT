@@ -144,34 +144,6 @@ class TraceLine(Behaviour):
         return Status.RUNNING
 
 
-def BuildBehaviourTree() -> BehaviourTree:
-    global INTERVAL
-    root = Sequence(name="double loop neo", memory=True)
-    section1 = Parallel(name="section 1", policy=ParallelPolicy.SuccessOnOne())
-    section1.add_children(
-        [
-            TraceLine(name="run", interval=INTERVAL, target=60, power=35, pid_p=0.56, pid_i=0.005, pid_d=0.015),
-            IsDistanceEarned(name="check distance", delta_dist = 2000),
-        ]
-    )
-    root.add_children(
-        [
-            IsTouchOn(name="start"),
-            section1,
-            StopNow(name="stop"),
-            TheEnd(name="end"),
-        ]
-    )
-    return root
-
-def ETRoboInitialize(backend: str) -> ETRobo:
-    return (ETRobo(backend=backend)
-     .add_hub('hub')
-     .add_device('right_motor', device_type=Motor, port='B')
-     .add_device('left_motor', device_type=Motor, port='C')
-     .add_device('touch_sensor', device_type=TouchSensor, port='1')
-     .add_device('color_sensor', device_type=ColorSensor, port='2'))
-
 class TraverseBehaviourTree(object):
     def __init__(self, tree: BehaviourTree) -> None:
         self.tree = tree
@@ -198,7 +170,34 @@ class ExposeDevices(object):
         g_touch_sensor = touch_sensor
         g_color_sensor = color_sensor
 
-        
+
+def BuildBehaviourTree() -> BehaviourTree:
+    root = Sequence(name="double loop neo", memory=True)
+    section1 = Parallel(name="section 1", policy=ParallelPolicy.SuccessOnOne())
+    section1.add_children(
+        [
+            TraceLine(name="run", interval=INTERVAL, target=60, power=35, pid_p=0.56, pid_i=0.005, pid_d=0.015),
+            IsDistanceEarned(name="check distance", delta_dist = 2000),
+        ]
+    )
+    root.add_children(
+        [
+            IsTouchOn(name="start"),
+            section1,
+            StopNow(name="stop"),
+            TheEnd(name="end"),
+        ]
+    )
+    return root
+
+def ETRoboInitialize(backend: str) -> ETRobo:
+    return (ETRobo(backend=backend)
+     .add_hub('hub')
+     .add_device('right_motor', device_type=Motor, port='B')
+     .add_device('left_motor', device_type=Motor, port='C')
+     .add_device('touch_sensor', device_type=TouchSensor, port='1')
+     .add_device('color_sensor', device_type=ColorSensor, port='2'))
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--port', default='/dev/ttyAMA1', help='Serial port.')
