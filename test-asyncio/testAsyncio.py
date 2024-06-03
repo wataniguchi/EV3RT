@@ -37,7 +37,7 @@ MOTOR_D_CONFIG = 67
 ONE_WAY_CMD = 0
 WAIT_ACK_CMD = 1
 
-ack_received = np.full(DATA_AREA_SIZE, False, dtype=np.bool)
+ack_received = np.full(DATA_AREA_SIZE, False, dtype=bool)
 rx_data_area = np.zeros(DATA_AREA_SIZE, dtype=np.int32)
 tx_data_area = np.zeros(DATA_AREA_SIZE, dtype=np.int16)
 tx_data_area_prev = np.zeros(DATA_AREA_SIZE, dtype=np.int16)
