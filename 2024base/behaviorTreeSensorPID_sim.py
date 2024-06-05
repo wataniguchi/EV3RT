@@ -171,7 +171,7 @@ class ExposeDevices(object):
         g_color_sensor = color_sensor
 
 
-def BuildBehaviourTree() -> BehaviourTree:
+def build_behaviour_tree() -> BehaviourTree:
     root = Sequence(name="double loop neo", memory=True)
     section1 = Parallel(name="section 1", policy=ParallelPolicy.SuccessOnOne())
     section1.add_children(
@@ -190,7 +190,7 @@ def BuildBehaviourTree() -> BehaviourTree:
     )
     return root
 
-def ETRoboInitialize(backend: str) -> ETRobo:
+def initialize_etrobo(backend: str) -> ETRobo:
     return (ETRobo(backend=backend)
      .add_hub('hub')
      .add_device('right_motor', device_type=Motor, port='B')
@@ -204,10 +204,10 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     #py_trees.logging.level = py_trees.logging.Level.DEBUG
-    tree = BuildBehaviourTree()
+    tree = build_behaviour_tree()
     display_tree.render_dot_tree(tree)
     
-    etrobo = ETRoboInitialize(backend='simulator')
+    etrobo = initialize_etrobo(backend='simulator')
     etrobo.add_handler(ExposeDevices())
     etrobo.add_handler(Plotter())
     etrobo.add_handler(TraverseBehaviourTree(tree))
