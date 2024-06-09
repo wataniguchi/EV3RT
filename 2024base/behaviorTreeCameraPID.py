@@ -16,7 +16,7 @@ from py_trees import (
     display as display_tree,
     logging as log_tree
 )
-from etrobo_camera import Video, TraceSide
+from py_etrobo_util import Video, TraceSide
 
 INTERVAL: float = 0.04
 TIRE_DIAMETER: float = 100.0

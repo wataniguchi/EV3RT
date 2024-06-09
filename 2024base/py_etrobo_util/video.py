@@ -2,6 +2,7 @@ import cv2
 import math
 import numpy as np
 from enum import Enum
+from picamera2 import Picamera2
 
 def round_up_to_odd(f) -> int:
     return int(np.ceil(f / 2.) * 2 + 1)
@@ -50,10 +51,10 @@ class Video(object):
         # set number of threads
         #cv2.setNumThreads(0)
         # prepare the camera
-        self.cap = cv2.VideoCapture(0)
-        self.cap.set(cv2.CAP_PROP_FRAME_WIDTH,IN_FRAME_WIDTH)
-        self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT,IN_FRAME_HEIGHT)
-        self.cap.set(cv2.CAP_PROP_FPS,90)
+        self.pc2 = Picamera2()
+        config = self.pc2.create_preview_configuration(main={"format": 'RGB888', "size": (IN_FRAME_WIDTH, IN_FRAME_HEIGHT)})
+        self.pc2.configure(config)
+        self.pc2.start()
 
         # initial region of interest
         self.roi = (CROP_L_LIMIT, CROP_U_LIMIT, CROP_WIDTH, CROP_HEIGHT)
@@ -72,11 +73,11 @@ class Video(object):
 
     def __del__(self):
         cv2.destroyAllWindows
-        self.cap.release()
+        self.pc2.stop()
 
 
     def process(self) -> None:
-        ret, frame = self.cap.read()
+        frame = self.pc2.capture_array()
 
         # clone the image if exists, otherwise use the previous image
         if len(frame) != 0:
