@@ -4,6 +4,8 @@ import cv2
 import math
 import numpy as np
 import time
+import argparse
+from picamera2 import Picamera2
 
 # constants
 FRAME_WIDTH = 640
@@ -13,11 +15,22 @@ FRAME_HEIGHT = 480
 def nothing(x):
     pass
 
-# prepare the camera
-cap = cv2.VideoCapture(0)
-cap.set(cv2.CAP_PROP_FRAME_WIDTH,FRAME_WIDTH)
-cap.set(cv2.CAP_PROP_FRAME_HEIGHT,FRAME_HEIGHT)
-cap.set(cv2.CAP_PROP_FPS,90)
+parser = argparse.ArgumentParser()
+parser.add_argument('--legacy', action='store_true', help='legacy camera mode')
+args = parser.parse_args()
+
+if args.legacy:
+    # prepare the camera
+    cap = cv2.VideoCapture(0)
+    cap.set(cv2.CAP_PROP_FRAME_WIDTH,FRAME_WIDTH)
+    cap.set(cv2.CAP_PROP_FRAME_HEIGHT,FRAME_HEIGHT)
+    cap.set(cv2.CAP_PROP_FPS,90)
+else:
+    # prepare the camera
+    pc2 = Picamera2()
+    config = pc2.create_preview_configuration(main={"format": 'RGB888', "size": (640, 480)})
+    pc2.configure(config)
+    pc2.start()
 
 # create trackbars
 cv2.namedWindow("testTrace1")
@@ -44,7 +57,10 @@ while True:
 
     time.sleep(0.01)
 
-    ret, img = cap.read()
+    if args.legacy:
+        ret, img = cap.read()
+    else:
+        img = pc2.capture_array()
     # crop the nearest/bottom part of the image
     img_bgr = img[int(FRAME_HEIGHT/2):FRAME_HEIGHT, 0:FRAME_WIDTH]
     # convert the image from BGR to HSV

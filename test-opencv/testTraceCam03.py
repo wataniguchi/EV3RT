@@ -4,6 +4,8 @@ import cv2
 import math
 import numpy as np
 import time
+import argparse
+from picamera2 import Picamera2
 
 # frame size for Raspberry Pi camera capture
 IN_FRAME_WIDTH  = 640
@@ -27,15 +29,27 @@ OUT_FRAME_HEIGHT = 120
 def nothing(x):
     pass
 
+parser = argparse.ArgumentParser()
+parser.add_argument('--legacy', action='store_true', help='legacy camera mode')
+args = parser.parse_args()
+
 cv2.setLogLevel(3) # LOG_LEVEL_WARNING
 # set number of threads
 #cv2.setNumThreads(0)
-# prepare the camera
-cap = cv2.VideoCapture(0)
-cap.set(cv2.CAP_PROP_FRAME_WIDTH,IN_FRAME_WIDTH)
-cap.set(cv2.CAP_PROP_FRAME_HEIGHT,IN_FRAME_HEIGHT)
-cap.set(cv2.CAP_PROP_FPS,90)
 
+if args.legacy:
+    # prepare the camera
+    cap = cv2.VideoCapture(0)
+    cap.set(cv2.CAP_PROP_FRAME_WIDTH,IN_FRAME_WIDTH)
+    cap.set(cv2.CAP_PROP_FRAME_HEIGHT,IN_FRAME_HEIGHT)
+    cap.set(cv2.CAP_PROP_FPS,90)
+else:
+    # prepare the camera
+    pc2 = Picamera2()
+    config = pc2.create_preview_configuration(main={"format": 'RGB888', "size": (IN_FRAME_WIDTH, IN_FRAME_HEIGHT)})
+    pc2.configure(config)
+    pc2.start()
+    
 # create trackbars
 cv2.namedWindow("testTrace1")
 
@@ -56,7 +70,10 @@ while True:
 
     time.sleep(0.01)
 
-    ret, frame = cap.read()
+    if args.legacy:
+        ret, frame = cap.read()
+    else:
+        frame = pc2.capture_array()
 
     # clone the image if exists, otherwise use the previous image
     if len(frame) != 0:

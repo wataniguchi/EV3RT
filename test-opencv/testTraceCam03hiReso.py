@@ -4,16 +4,12 @@ import cv2
 import math
 import numpy as np
 import time
+import argparse
+from picamera2 import Picamera2
 from picamera import PiCamera
 
 def roundUpToOdd(x) -> int:
     return 2 * int(np.ceil((x - 1.0) / 2.0)) + 1
-
-# frame size for Raspberry Pi camera capture
-IN_FRAME_WIDTH  = 1640
-IN_FRAME_HEIGHT = 1232
-SENSOR_MODE = 4
-IN_FPS = 40
 
 # frame size for OpenCV
 FRAME_WIDTH  = 320
@@ -42,16 +38,35 @@ OUT_FRAME_HEIGHT = 240
 def nothing(x):
     pass
 
+parser = argparse.ArgumentParser()
+parser.add_argument('--legacy', action='store_true', help='legacy camera mode')
+args = parser.parse_args()
+
 cv2.setLogLevel(3) # LOG_LEVEL_WARNING
 # set number of threads
 #cv2.setNumThreads(0)
-# prepare the camera
-inFrameHeight = 16 * int(np.ceil(IN_FRAME_HEIGHT/16))
-inFrameWidth  = 32 * int(np.ceil(IN_FRAME_WIDTH /32))
-picam = PiCamera()
-picam.resolution = (inFrameWidth, inFrameHeight)
-picam.sensor_mode = SENSOR_MODE
-picam.framerate = IN_FPS
+
+if args.legacy:
+    IN_FRAME_WIDTH  = 1640
+    IN_FRAME_HEIGHT = 1232
+    SENSOR_MODE = 4
+    IN_FPS = 40
+    # prepare the camera
+    inFrameHeight = 16 * int(np.ceil(IN_FRAME_HEIGHT/16))
+    inFrameWidth  = 32 * int(np.ceil(IN_FRAME_WIDTH /32))
+    picam = PiCamera()
+    picam.resolution = (inFrameWidth, inFrameHeight)
+    picam.sensor_mode = SENSOR_MODE
+    picam.framerate = IN_FPS
+else:
+    IN_FRAME_WIDTH  = 640
+    IN_FRAME_HEIGHT = 480
+    # prepare the camera
+    pc2 = Picamera2()
+    full_reso = pc2.camera_properties['PixelArraySize']
+    config = pc2.create_preview_configuration(main={"format": 'RGB888', "size": (IN_FRAME_WIDTH, IN_FRAME_HEIGHT)}, raw={"size": full_reso})
+    pc2.configure(config)
+    pc2.start()
 
 # create trackbars
 cv2.namedWindow("testTrace1")
@@ -78,8 +93,11 @@ while True:
     edge  = cv2.getTrackbarPos("Edge",  "testTrace1")
 
     #time.sleep(0.01)
-
-    picam.capture(frame, 'bgr')
+    
+    if args.legacy:
+        picam.capture(frame, 'bgr')
+    else:
+        frame = pc2.capture_array()
 
     # clone the image if exists, otherwise use the previous image
     #if len(frame) != 0:
