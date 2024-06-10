@@ -3,6 +3,7 @@ import time
 import math
 import threading
 import signal
+from enum import Enum, IntEnum
 from etrobo_python import ETRobo, Hub, Motor, ColorSensor, TouchSensor, SonarSensor, GyroSensor
 from simple_pid import PID
 import py_trees.common
@@ -19,6 +20,11 @@ from py_trees import (
 from py_etrobo_util import Video, TraceSide, Plotter
 
 INTERVAL: float = 0.04
+ARM_SHIFT_PWM = 30
+
+class ArmDirection(IntEnum):
+    UP = -1
+    DOWN = 1
 
 g_plotter: Plotter = None
 g_hub: Hub = None
@@ -47,6 +53,50 @@ class TheEnd(Behaviour):
         return Status.RUNNING
 
 
+class ResetArm(Behaviour):
+    def __init__(self, name: str):
+        super(ResetArm, self).__init__(name)
+        self.logger.debug("%s.__init__()" % (self.__class__.__name__))
+        self.count = 0
+
+    def update(self) -> Status:
+        if self.count == 0:
+            g_arm_motor.reset_count()
+            self.logger.info("%+06d %s.resetting..." % (g_plotter.get_distance(), self.__class__.__name__))
+        elif self.count > 3:
+            self.logger.info("%+06d %s.complete" % (g_plotter.get_distance(), self.__class__.__name__))
+            return Status.SUCCESS
+        self.count += 1
+        return Status.RUNNING
+
+
+class ArmUpDownFull(Behaviour):
+    def __init__(self, name: str, direction: ArmDirection):
+        super(ArmUpDownFull, self).__init__(name)
+        self.logger.debug("%s.__init__()" % (self.__class__.__name__))
+        self.direction = direction
+        self.running = False
+
+    def update(self) -> Status:
+        if not self.running:
+            self.running = True
+            self.prev_degree = g_arm_motor.get_count()
+            self.count = 0
+        else:
+            cur_degree = g_arm_motor.get_count()
+            if cur_degree == self.prev_degree:
+                if self.count > 10:
+                    g_arm_motor.set_power(0)
+                    g_arm_motor.set_brake(True)
+                    self.logger.info("%+06d %s.position set to %d" % (g_plotter.get_distance(), self.__class__.__name__, cur_degree))
+                    return Status.SUCCESS
+                else:
+                    self.count += 1
+            self.prev_degree = cur_degree
+        g_arm_motor.set_power(ARM_SHIFT_PWM * self.direction)
+        return Status.RUNNING
+
+
 class IsDistanceEarned(Behaviour):
     def __init__(self, name: str, delta_dist: int):
         super(IsDistanceEarned, self).__init__(name)
@@ -56,11 +106,10 @@ class IsDistanceEarned(Behaviour):
         self.earned = False
 
     def update(self) -> Status:
-        global g_distance
         if not self.running:
             self.running = True
             self.orig_dist = g_plotter.get_distance()
-            self.logger.info("%+06d %s.distance accumulation started for delta=%d" % (self.orig_dist, self.__class__.__name__, self.delta_dist))
+            self.logger.info("%+06d %s.accumulation started for delta=%d" % (self.orig_dist, self.__class__.__name__, self.delta_dist))
         cur_dist = g_plotter.get_distance()
         earned_dist = cur_dist - self.orig_dist
         if (earned_dist >= self.delta_dist or -earned_dist <= -self.delta_dist):
@@ -82,10 +131,10 @@ class IsTouchOn(Behaviour):
         if (g_touch_sensor.is_pressed() or
             g_hub.is_left_button_pressed() or
             g_hub.is_right_button_pressed()):
-            self.logger.info("%+06d %s.touch sensor pressed" % (g_plotter.get_distance(), self.__class__.__name__))
+            self.logger.info("%+06d %s.pressed" % (g_plotter.get_distance(), self.__class__.__name__))
             return Status.SUCCESS
         else:
-            return Status.FAILURE
+            return Status.RUNNING
 
 
 class StopNow(Behaviour):
@@ -96,7 +145,9 @@ class StopNow(Behaviour):
     def update(self) -> Status:
         global g_right_motor, g_left_motor
         g_right_motor.set_power(0)
+        g_right_motor.set_brake(True)
         g_left_motor.set_power(0)
+        g_left_motor.set_brake(True)
         self.logger.info("%+06d %s.motors stopped" % (g_plotter.get_distance(), self.__class__.__name__))
         return Status.SUCCESS
 
@@ -218,17 +269,16 @@ class VideoThread(threading.Thread):
 
 
 def build_behaviour_tree() -> BehaviourTree:
-    root = Sequence(name="double loop neo", memory=True)
-#    section1 = Parallel(name="section 1", policy=ParallelPolicy.SuccessOnOne())
-    section2 = Parallel(name="section 2", policy=ParallelPolicy.SuccessOnOne())
-#    section1.add_children(
-#        [
-#            TraceLine(name="run", interval=INTERVAL, target=60, power=35, pid_p=0.56, pid_i=0.005, pid_d=0.015,
-#                      trace_side=TraceSide.NORMAL),
-#            IsDistanceEarned(name="check distance", delta_dist = 2000),
-#        ]
-#    )
-    section2.add_children(
+    root = Sequence(name="competition", memory=True)
+    calibration = Sequence(name="calibration", memory=True)
+    loop_sect1 = Parallel(name="loop section 1", policy=ParallelPolicy.SuccessOnOne())
+    calibration.add_children(
+        [
+            ArmUpDownFull(name="arm down", direction=ArmDirection.DOWN),
+            ResetArm(name="arm reset"),
+        ]
+    )
+    loop_sect1.add_children(
         [
             TraceLineCam(name="run", interval=INTERVAL, power=33, pid_p=2.5, pid_i=0.0015, pid_d=0.1,
                          gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
@@ -237,9 +287,9 @@ def build_behaviour_tree() -> BehaviourTree:
     )
     root.add_children(
         [
+            calibration,
             IsTouchOn(name="start"),
-#            section1,
-            section2,
+            loop_sect1,
             StopNow(name="stop"),
             TheEnd(name="end"),
         ]
@@ -299,7 +349,6 @@ if __name__ == '__main__':
     try:
         etrobo = initialize_etrobo(backend='raspike')
         etrobo.add_handler(ExposeDevices())
-        #etrobo.add_handler(Plotter())
         etrobo.add_handler(TraverseBehaviourTree(tree))
         etrobo.dispatch(interval=INTERVAL, port=args.port, logfile=args.logfile)
     finally:

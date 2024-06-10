@@ -201,9 +201,12 @@ class Video(object):
         # prepare text area
         img_text = np.zeros((FRAME_HEIGHT, FRAME_WIDTH, 3), np.uint8)
         if not plotter is None:
-            cv2.putText(img_text, f"ODO={plotter.get_distance():+06}", (0,15), cv2.FONT_HERSHEY_PLAIN, 1.2, (255,255,255), 1, cv2.LINE_AA)
-            cv2.putText(img_text, f"cx={self.cx:} cy={self.cy} T={self.theta:+06.1f}", (0,30), cv2.FONT_HERSHEY_PLAIN, 1.2, (255,255,255), 1, cv2.LINE_AA)
-            cv2.putText(img_text, f"mV={hub.get_battery_voltage():04} mA={hub.get_battery_current():04}", (0,45), cv2.FONT_HERSHEY_PLAIN, 1.2, (255,255,255), 1, cv2.LINE_AA)
+            try:
+                cv2.putText(img_text, f"ODO={plotter.get_distance():+06}", (0,15), cv2.FONT_HERSHEY_PLAIN, 1.2, (255,255,255), 1, cv2.LINE_AA)
+                cv2.putText(img_text, f"cx={self.cx:} cy={self.cy} T={self.theta:+06.1f}", (0,30), cv2.FONT_HERSHEY_PLAIN, 1.2, (255,255,255), 1, cv2.LINE_AA)
+                cv2.putText(img_text, f"mV={hub.get_battery_voltage():04} mA={hub.get_battery_current():04}", (0,45), cv2.FONT_HERSHEY_PLAIN, 1.2, (255,255,255), 1, cv2.LINE_AA)
+            except Exception as e:
+                pass
         # concatinate the images - original + text area
         img_comm = cv2.vconcat([img_orig,img_text])
         # shrink the image to avoid delay in transmission
