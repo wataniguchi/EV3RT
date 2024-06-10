@@ -2,7 +2,9 @@ import cv2
 import math
 import numpy as np
 from enum import Enum
-from picamera2 import Picamera2
+from picamera2 import Picamera2, Preview
+from .plotter import Plotter
+from etrobo_python import Hub, Motor, ColorSensor, TouchSensor, SonarSensor, GyroSensor
 
 def round_up_to_odd(f) -> int:
     return int(np.ceil(f / 2.) * 2 + 1)
@@ -17,10 +19,10 @@ IN_FRAME_HEIGHT = 480
 FRAME_WIDTH  = 320
 FRAME_HEIGHT = 240
 
-#CROP_WIDTH     = int(13*FRAME_WIDTH/16) # for full angle
-CROP_WIDTH     = int(9*FRAME_WIDTH/16)
-#CROP_HEIGHT    = int(3*FRAME_HEIGHT/8) # for full angle
-CROP_HEIGHT    = int(2*FRAME_HEIGHT/8)
+CROP_WIDTH     = int(13*FRAME_WIDTH/16) # for full angle
+#CROP_WIDTH     = int(9*FRAME_WIDTH/16)
+CROP_HEIGHT    = int(3*FRAME_HEIGHT/8) # for full angle
+#CROP_HEIGHT    = int(2*FRAME_HEIGHT/8)
 CROP_U_LIMIT   = FRAME_HEIGHT-CROP_HEIGHT
 CROP_D_LIMIT   = FRAME_HEIGHT
 CROP_L_LIMIT   = int((FRAME_WIDTH-CROP_WIDTH)/2)
@@ -29,8 +31,8 @@ MORPH_KERNEL_SIZE = round_up_to_odd(int(FRAME_WIDTH/48))
 ROI_BOUNDARY   = int(FRAME_WIDTH/10)
 LINE_THICKNESS = int(FRAME_WIDTH/80)
 CIRCLE_RADIUS  = int(FRAME_WIDTH/40)
-#SCAN_V_POS     = int(13*FRAME_HEIGHT/16 - LINE_THICKNESS) # for full angle
-SCAN_V_POS     = int(16*FRAME_HEIGHT/16 - LINE_THICKNESS)
+SCAN_V_POS     = int(13*FRAME_HEIGHT/16 - LINE_THICKNESS) # for full angle
+#SCAN_V_POS     = int(16*FRAME_HEIGHT/16 - LINE_THICKNESS)
 
 # frame size for X11 painting
 OUT_FRAME_WIDTH  = 160
@@ -52,7 +54,8 @@ class Video(object):
         #cv2.setNumThreads(0)
         # prepare the camera
         self.pc2 = Picamera2()
-        config = self.pc2.create_preview_configuration(main={"format": 'RGB888', "size": (IN_FRAME_WIDTH, IN_FRAME_HEIGHT)})
+        full_reso = self.pc2.camera_properties['PixelArraySize']
+        config = self.pc2.create_preview_configuration(main={"format": 'RGB888', "size": (IN_FRAME_WIDTH, IN_FRAME_HEIGHT)}, raw={"size": full_reso})
         self.pc2.configure(config)
         self.pc2.start()
 
@@ -74,9 +77,20 @@ class Video(object):
     def __del__(self):
         cv2.destroyAllWindows
         self.pc2.stop()
+        del pc2
 
 
-    def process(self) -> None:
+    def process(self,
+                plotter: Plotter,
+                hub: Hub,
+                arm_motor: Motor,
+                right_motor: Motor,
+                left_motor: Motor,
+                touch_sensor: TouchSensor,
+                color_sensor: ColorSensor,
+                sonar_sensor: SonarSensor,
+                gyro_sensor: GyroSensor,
+                ) -> None:
         frame = self.pc2.capture_array()
 
         # clone the image if exists, otherwise use the previous image
@@ -186,7 +200,10 @@ class Video(object):
 
         # prepare text area
         img_text = np.zeros((FRAME_HEIGHT, FRAME_WIDTH, 3), np.uint8)
-        cv2.putText(img_text, f"cx={self.cx:} cy={self.cy} T={self.theta:+06.1f}", (0,10), cv2.FONT_HERSHEY_PLAIN, 1, (255,255,255), 1, cv2.LINE_AA)
+        if not plotter is None:
+            cv2.putText(img_text, f"ODO={plotter.get_distance():+06}", (0,15), cv2.FONT_HERSHEY_PLAIN, 1.2, (255,255,255), 1, cv2.LINE_AA)
+            cv2.putText(img_text, f"cx={self.cx:} cy={self.cy} T={self.theta:+06.1f}", (0,30), cv2.FONT_HERSHEY_PLAIN, 1.2, (255,255,255), 1, cv2.LINE_AA)
+            cv2.putText(img_text, f"mV={hub.get_battery_voltage():04} mA={hub.get_battery_current():04}", (0,45), cv2.FONT_HERSHEY_PLAIN, 1.2, (255,255,255), 1, cv2.LINE_AA)
         # concatinate the images - original + text area
         img_comm = cv2.vconcat([img_orig,img_text])
         # shrink the image to avoid delay in transmission
