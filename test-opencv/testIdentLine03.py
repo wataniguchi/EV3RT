@@ -6,17 +6,13 @@ import numpy as np
 import time
 import glob
 import re
+import argparse
+from picamera2 import Picamera2
 from picamera import PiCamera
 
 # round up to the next odd number
 def roundUpToOdd(f) -> int:
     return int(np.ceil(f) // 2 * 2 + 1)
-
-# frame size for Raspberry Pi camera capture
-IN_FRAME_WIDTH  = 1640
-IN_FRAME_HEIGHT = 1232
-SENSOR_MODE = 4
-IN_FPS = 40
 
 # frame size for OpenCV
 FRAME_WIDTH  = 320
@@ -46,16 +42,16 @@ FONT_SCALE = FRAME_WIDTH/640.0
 
 B_MIN_TRE = 0
 G_MIN_TRE = 0
-R_MIN_TRE = 80
-B_MAX_TRE = 50
-G_MAX_TRE = 40
-R_MAX_TRE = 255
-B_MIN_DEC = 35
+R_MIN_TRE = 35
+B_MAX_TRE = 25
+G_MAX_TRE = 34
+R_MAX_TRE = 145
+B_MIN_DEC = 49
 G_MIN_DEC = 0
 R_MIN_DEC = 0
-B_MAX_DEC = 255
-G_MAX_DEC = 65
-R_MAX_DEC = 30
+B_MAX_DEC = 145
+G_MAX_DEC = 87
+R_MAX_DEC = 39
 
 # frame size for X11 painting
 #OUT_FRAME_WIDTH  = 160
@@ -135,26 +131,31 @@ def intersect(p1, p2, p3, p4):
     td2 = (p3[0] - p4[0]) * (p2[1] - p3[1]) + (p3[1] - p4[1]) * (p3[0] - p2[0])
     return tc1*tc2<0 and td1*td2<0
 
-# check if exist any arguments
-args = sys.argv
-idx = 0
-frame = np.empty([0,0,0])
-if 1 == len(args):
-    print("No image file specified. Capture images from camera.")
+parser = argparse.ArgumentParser()
+parser.add_argument('--legacy', action='store_true', help='legacy camera mode')
+args = parser.parse_args()
+
+if args.legacy:
+    IN_FRAME_WIDTH  = 1640
+    IN_FRAME_HEIGHT = 1232
+    SENSOR_MODE = 4
+    IN_FPS = 40
     # prepare the camera
-    picam = PiCamera()
     inFrameHeight = 16 * int(np.ceil(IN_FRAME_HEIGHT/16))
     inFrameWidth  = 32 * int(np.ceil(IN_FRAME_WIDTH /32))
+    picam = PiCamera()
     picam.resolution = (inFrameWidth, inFrameHeight)
     picam.sensor_mode = SENSOR_MODE
     picam.framerate = IN_FPS
-
-    # vertical resolution is rounded up to the nearest multiple of 16 pixels
-    # horizontal resolution is rounded up to the nearest multiple of 32 pixels
-    frame = np.empty((16*math.ceil(IN_FRAME_HEIGHT/16), 32*math.ceil(IN_FRAME_WIDTH/32), 3),
-                     dtype=np.uint8)
 else:
-    files = sorted(glob.glob(args[1]))
+    IN_FRAME_WIDTH  = 640
+    IN_FRAME_HEIGHT = 480
+    # prepare the camera
+    pc2 = Picamera2()
+    full_reso = pc2.camera_properties['PixelArraySize']
+    config = pc2.create_preview_configuration(main={"format": 'RGB888', "size": (IN_FRAME_WIDTH, IN_FRAME_HEIGHT)}, raw={"size": full_reso})
+    pc2.configure(config)
+    pc2.start()
 
 # create trackbars
 cv2.namedWindow("testTrace1")
@@ -176,6 +177,11 @@ blk_roi = roi_init
 # initial trace target
 mx = int(FRAME_WIDTH/2)
 
+# vertical resolution is rounded up to the nearest multiple of 16 pixels
+# horizontal resolution is rounded up to the nearest multiple of 32 pixels
+frame = np.empty((16*math.ceil(IN_FRAME_HEIGHT/16), 32*math.ceil(IN_FRAME_WIDTH/32), 3),
+                 dtype=np.uint8)
+
 while True:
     # obtain values from the trackbars
     r_min = cv2.getTrackbarPos("R_min", "testTrace1")
@@ -190,26 +196,17 @@ while True:
 
     #time.sleep(0.01)
 
-    if 1 == len(args):
+    if args.legacy:
         picam.capture(frame, 'bgr')
-    elif len(frame) == 0:
-        file = files[idx]
-        frame = cv2.imread(file)
-        if type(frame) is np.ndarray:
-            print(f"Processing image file {file}...")
-            # overwrite IN_FRAME_* by actual image size
-            IN_FRAME_WIDTH = frame.shape[1]
-            IN_FRAME_HEIGHT = frame.shape[0]
-        else:
-            print(f"Invalid image file {file}.")
-            sys.exit(-1)
+    else:
+        frame = pc2.capture_array()
 
     # clone the image if exists, otherwise use the previous image
-    if len(frame) != 0:
-        img_orig = frame.copy()
+    #if len(frame) != 0:
+    #    img_orig = frame.copy()
     # resize the image for OpenCV processing
     if FRAME_WIDTH != IN_FRAME_WIDTH or FRAME_HEIGHT != IN_FRAME_HEIGHT:
-        img_orig = cv2.resize(img_orig, (FRAME_WIDTH,FRAME_HEIGHT))
+        img_orig = cv2.resize(frame, (FRAME_WIDTH,FRAME_HEIGHT))
         if img_orig.shape[1] != FRAME_WIDTH or img_orig.shape[0] != FRAME_HEIGHT:
             sys.exit(-1)
 
@@ -373,15 +370,5 @@ while True:
 
     if c == ord('q') or c == ord('Q'):
         break
-    elif 1 != len(args) and idx > 0 and (c == ord('b') or c == ord('B')):
-        idx = idx - 1
-        frame = np.empty([0,0,0])
-    elif 1 != len(args) and idx < len(files)-1 and (c == ord('f') or c == ord('F')):
-        idx = idx + 1
-        frame = np.empty([0,0,0])
-    elif 1 != len(args) and (c == ord('w') or c == ord('W')):
-        file_wrt = re.sub('(.+)\.(.+)', r'\1_1.\2', file)
-        print(f"Writing image file {file_wrt}...")
-        cv2.imwrite(file_wrt, img_comm)
 
 cv2.destroyAllWindows
