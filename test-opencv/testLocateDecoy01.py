@@ -6,6 +6,8 @@ import numpy as np
 import time
 import glob
 import re
+import argparse
+from picamera2 import Picamera2
 
 # frame size for Raspberry Pi camera capture
 IN_FRAME_WIDTH  = 640
@@ -27,29 +29,33 @@ OUT_FRAME_HEIGHT = 240
 def nothing(x):
     pass
 
-# check if exist any arguments
-args = sys.argv
-idx = 0
-frame = np.empty([0,0,0])
-if 1 == len(args):
-    print("No image file specified. Capture images from camera.")
+parser = argparse.ArgumentParser()
+parser.add_argument('--legacy', action='store_true', help='legacy camera mode')
+args = parser.parse_args()
+
+if args.legacy:
     # prepare the camera
     cap = cv2.VideoCapture(0)
     cap.set(cv2.CAP_PROP_FRAME_WIDTH,IN_FRAME_WIDTH)
     cap.set(cv2.CAP_PROP_FRAME_HEIGHT,IN_FRAME_HEIGHT)
     cap.set(cv2.CAP_PROP_FPS,90)
 else:
-    files = sorted(glob.glob(args[1]))
+    # prepare the camera
+    pc2 = Picamera2()
+    full_reso = pc2.camera_properties['PixelArraySize']
+    config = pc2.create_preview_configuration(main={"format": 'RGB888', "size": (IN_FRAME_WIDTH, IN_FRAME_HEIGHT)}, raw={"size": full_reso})
+    pc2.configure(config)
+    pc2.start()
 
 # create trackbars
 cv2.namedWindow("testTrace1")
 
-cv2.createTrackbar("B_min", "testTrace1", 48, 255, nothing)
-cv2.createTrackbar("B_max", "testTrace1", 255, 255, nothing)
+cv2.createTrackbar("B_min", "testTrace1", 49, 255, nothing)
+cv2.createTrackbar("B_max", "testTrace1", 145, 255, nothing)
 cv2.createTrackbar("G_min", "testTrace1", 0, 255, nothing)
-cv2.createTrackbar("G_max", "testTrace1", 50, 255, nothing)
+cv2.createTrackbar("G_max", "testTrace1", 87, 255, nothing)
 cv2.createTrackbar("R_min", "testTrace1", 0, 255, nothing)
-cv2.createTrackbar("R_max", "testTrace1", 255, 255, nothing)
+cv2.createTrackbar("R_max", "testTrace1", 39, 255, nothing)
 cv2.createTrackbar("GS_min", "testTrace1", 10, 255, nothing)
 cv2.createTrackbar("GS_max", "testTrace1", 100, 255, nothing)
 
@@ -66,19 +72,10 @@ while True:
 
     time.sleep(0.01)
 
-    if 1 == len(args):
+    if args.legacy:
         ret, frame = cap.read()
-    elif len(frame) == 0:
-        file = files[idx]
-        frame = cv2.imread(file)
-        if type(frame) is np.ndarray:
-            print(f"Processing image file {file}...")
-            # overwrite IN_FRAME_* by actual image size
-            IN_FRAME_WIDTH = frame.shape[1]
-            IN_FRAME_HEIGHT = frame.shape[0]
-        else:
-            print(f"Invalid image file {file}.")
-            sys.exit(-1)
+    else:
+        frame = pc2.capture_array()
 
     # clone the image if exists, otherwise use the previous image
     if len(frame) != 0:
@@ -150,15 +147,5 @@ while True:
 
     if c == ord('q') or c == ord('Q'):
         break
-    elif 1 != len(args) and idx > 0 and (c == ord('b') or c == ord('B')):
-        idx = idx - 1
-        frame = np.empty([0,0,0])
-    elif 1 != len(args) and idx < len(files)-1 and (c == ord('f') or c == ord('F')):
-        idx = idx + 1
-        frame = np.empty([0,0,0])
-    elif 1 != len(args) and (c == ord('w') or c == ord('W')):
-        file_wrt = re.sub('(.+)\.(.+)', r'\1_decoy.\2', file)
-        print(f"Writing image file {file_wrt}...")
-        cv2.imwrite(file_wrt, img_comm)
 
 cv2.destroyAllWindows
