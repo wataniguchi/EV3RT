@@ -150,7 +150,7 @@ class IsTouchOn(Behaviour):
         self.logger.debug("%s.__init__()" % (self.__class__.__name__))
 
     def update(self) -> Status:
-        global g_hub, g_touch_sensor
+        #global g_hub, g_touch_sensor
         if (g_touch_sensor.is_pressed() or
             g_hub.is_left_button_pressed() or
             g_hub.is_right_button_pressed()):
@@ -166,7 +166,7 @@ class StopNow(Behaviour):
         self.logger.debug("%s.__init__()" % (self.__class__.__name__))
 
     def update(self) -> Status:
-        global g_right_motor, g_left_motor
+        #global g_right_motor, g_left_motor
         g_right_motor.set_power(0)
         g_right_motor.set_brake(True)
         g_left_motor.set_power(0)
@@ -185,7 +185,7 @@ class TraceLine(Behaviour):
         self.running = False
 
     def update(self) -> Status:
-        global g_color_sensor, g_right_motor, g_left_motor, g_course
+        #global g_color_sensor, g_right_motor, g_left_motor, g_course
         if not self.running:
             self.running = True
             self.logger.info("%+06d %s.trace started with TS=%s" % (g_plotter.get_distance(), self.__class__.__name__, self.trace_side.name))
@@ -210,7 +210,7 @@ class TraceLineCam(Behaviour):
         self.running = False
 
     def update(self) -> Status:
-        global g_video, g_right_motor, g_left_motor, g_course
+        #global g_video, g_right_motor, g_left_motor, g_course
         if not self.running:
             self.running = True
             g_video.set_thresholds(self.gs_min, self.gs_max)

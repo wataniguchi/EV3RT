@@ -71,6 +71,7 @@ class Video(object):
         self.gsmin = 0
         self.gsmax = 100
         self.trace_side = TraceSide.NORMAL
+        self.range_of_edges = 0
         self.theta:float = 0
         self.target_insight = False
 
@@ -123,20 +124,45 @@ class Video(object):
         contours, hierarchy = cv2.findContours(img_roi, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE, offset=(x,y))
         # identify the largest contour
         if len(contours) >= 1:
-            i_area_max = 0
-            area_max = 0
-            for i, cnt in enumerate(contours):
-                area = cv2.contourArea(cnt)
-                if area > area_max:
-                    area_max = area
-                    i_area_max = i
-            # draw the largest contour on the original image
-            #img_orig = cv2.drawContours(img_orig, [contours[i_area_max]], 0, (0,255,0), LINE_THICKNESS)
-            img_orig = cv2.polylines(img_orig, [contours[i_area_max]], 0, (0,255,0), LINE_THICKNESS)
+            i_target = 0
+            if len(contours) >= 2:
+                cnt_idx = np.empty((0,2), int)
+                for i, cnt in enumerate(contours):
+                    area = cv2.contourArea(cnt)
+                    cnt_idx = np.append(cnt_idx, np.array([[i, int(area)]]), axis=0)
+                # sort cnt_idx by area in descending order
+                cnt_idx = cnt_idx[np.argsort(cnt_idx[:, 1])[::-1]]
+                # calculate the bounding box around the two largest contours,
+                # either of which is to be set as the new region of interest 
+                x1, y1, w1, h1 = cv2.boundingRect(contours[cnt_idx[0,0]])
+                x2, y2, w2, h2 = cv2.boundingRect(contours[cnt_idx[1,0]])
+                x, y, w, h = self.roi
+                # the second largest contour touches the roi bottom
+                # and the second largest contour is large enough?
+                if y2 + h2 >= h and 2*cnt_idx[1,1] >= cnt_idx[0,1]:
+                    if self.trace_side == TraceSide.LEFT:
+                        # look for the left rectangle
+                        if x1 <= x2:
+                            i_target = cnt_idx[0,0]
+                        else:
+                            i_target = cnt_idx[1,0]
+                    elif self.trace_side == TraceSide.RIGHT:
+                        # look for the right rectangle
+                        if x1 + w1 >= x2 + w2:
+                            i_target = cnt_idx[0,0]
+                        else:
+                            i_target = cnt_idx[1,0]
+                    else: # tracing the line center goes after the largest contour
+                        i_target = cnt_idx[0,0]
+                else: # the second largest contour does not touch the roi bottom and shall be ignored
+                    i_target = cnt_idx[0,0]
+
+            # draw the target contour on the original image
+            img_orig = cv2.polylines(img_orig, [contours[i_target]], 0, (0,255,0), LINE_THICKNESS)
 
             # calculate the bounding box around the largest contour
             # and set it as the new region of interest
-            x, y, w, h = cv2.boundingRect(contours[i_area_max])
+            x, y, w, h = cv2.boundingRect(contours[i_target])
             # adjust the region of interest
             x = x - ROI_BOUNDARY
             y = y - ROI_BOUNDARY
@@ -155,7 +181,7 @@ class Video(object):
         
             # prepare for trace target calculation
             img_cnt = np.zeros_like(img_orig)
-            img_cnt = cv2.drawContours(img_cnt, [contours[i_area_max]], 0, (0,255,0), 1)
+            img_cnt = cv2.drawContours(img_cnt, [contours[i_target]], 0, (0,255,0), 1)
             img_cnt_gray = cv2.cvtColor(img_cnt, cv2.COLOR_BGR2GRAY)
             # scan the line at SCAN_V_POS to find edges
             scan_line = img_cnt_gray[SCAN_V_POS]
