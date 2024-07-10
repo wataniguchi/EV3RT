@@ -53,15 +53,18 @@ class TheEnd(Behaviour):
         return Status.RUNNING
 
 
-class ResetArm(Behaviour):
+class ResetDevice(Behaviour):
     def __init__(self, name: str):
-        super(ResetArm, self).__init__(name)
+        super(ResetDevice, self).__init__(name)
         self.logger.debug("%s.__init__()" % (self.__class__.__name__))
         self.count = 0
 
     def update(self) -> Status:
         if self.count == 0:
             g_arm_motor.reset_count()
+            g_right_motor.reset_count()
+            g_left_motor.reset_count()
+            g_gyro_sensor.reset()
             self.logger.info("%+06d %s.resetting..." % (g_plotter.get_distance(), self.__class__.__name__))
         elif self.count > 3:
             self.logger.info("%+06d %s.complete" % (g_plotter.get_distance(), self.__class__.__name__))
@@ -275,12 +278,12 @@ def build_behaviour_tree() -> BehaviourTree:
     calibration.add_children(
         [
             ArmUpDownFull(name="arm down", direction=ArmDirection.DOWN),
-            ResetArm(name="arm reset"),
+            ResetDevice(name="device reset"),
         ]
     )
     loop_sect1.add_children(
         [
-            TraceLineCam(name="run", interval=INTERVAL, power=33, pid_p=2.5, pid_i=0.0015, pid_d=0.1,
+            TraceLineCam(name="run", interval=INTERVAL, power=40, pid_p=2.5, pid_i=0.0015, pid_d=0.1,
                          gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
             IsDistanceEarned(name="check distance", delta_dist = 2000),
         ]
