@@ -124,6 +124,26 @@ class IsDistanceEarned(Behaviour):
             return Status.RUNNING
 
 
+class IsSonarOn(Behaviour):
+    def __init__(self, name: str, alert_dist: int):
+        super(IsSonarOn, self).__init__(name)
+        self.logger.debug("%s.__init__()" % (self.__class__.__name__))
+        self.alert_dist = alert_dist
+        self.running = False
+
+    def update(self) -> Status:
+        if not self.running:
+            self.running = True
+            self.logger.info("%+06d %s.detection started for dist=%d" % (g_plotter.get_distance(), self.__class__.__name__, self.alert_dist))
+        
+        dist = 10 * g_sonar_sensor.get_distance()
+        if (dist <= self.alert_dist and dist > 0):
+            self.logger.info("%+06d %s.alerted at dist=%d" % (g_plotter.get_distance(), self.__class__.__name__, dist))
+            return Status.SUCCESS
+        else:
+            return Status.RUNNING
+
+
 class IsTouchOn(Behaviour):
     def __init__(self, name: str):
         super(IsTouchOn, self).__init__(name)
@@ -274,11 +294,18 @@ class VideoThread(threading.Thread):
 def build_behaviour_tree() -> BehaviourTree:
     root = Sequence(name="competition", memory=True)
     calibration = Sequence(name="calibration", memory=True)
+    start = Parallel(name="start", policy=ParallelPolicy.SuccessOnOne())
     loop_sect1 = Parallel(name="loop section 1", policy=ParallelPolicy.SuccessOnOne())
     calibration.add_children(
         [
             ArmUpDownFull(name="arm down", direction=ArmDirection.DOWN),
             ResetDevice(name="device reset"),
+        ]
+    )
+    start.add_children(
+        [
+            IsSonarOn(name="soner start", alert_dist=50),
+            IsTouchOn(name="touch start"),
         ]
     )
     loop_sect1.add_children(
@@ -291,7 +318,7 @@ def build_behaviour_tree() -> BehaviourTree:
     root.add_children(
         [
             calibration,
-            IsTouchOn(name="start"),
+            start,
             loop_sect1,
             StopNow(name="stop"),
             TheEnd(name="end"),
