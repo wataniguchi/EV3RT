@@ -19,7 +19,8 @@ from py_trees import (
 )
 from py_etrobo_util import Video, TraceSide, Plotter
 
-INTERVAL: float = 0.04
+EXEC_INTERVAL: float = 0.04
+VIDEO_INTERVAL: float = 0.02
 ARM_SHIFT_PWM = 30
 JUNCT_UPPER_THRESH = 50
 JUNCT_LOWER_THRESH = 30
@@ -273,11 +274,11 @@ class TraceLine(Behaviour):
 
 
 class TraceLineCam(Behaviour):
-    def __init__(self, name: str, interval: float, power: int, pid_p: float, pid_i: float, pid_d: float,
+    def __init__(self, name: str, power: int, pid_p: float, pid_i: float, pid_d: float,
                  gs_min: int, gs_max: int, trace_side: TraceSide) -> None:
         super(TraceLineCam, self).__init__(name)
         self.power = power
-        self.pid = PID(pid_p, pid_i, pid_d, setpoint=0, sample_time=interval, output_limits=(-power, power))
+        self.pid = PID(pid_p, pid_i, pid_d, setpoint=0, sample_time=EXEC_INTERVAL, output_limits=(-power, power))
         self.gs_min = gs_min
         self.gs_max = gs_max
         self.trace_side = trace_side
@@ -361,7 +362,7 @@ class VideoThread(threading.Thread):
     def run(self):
         while not self._stop_event.is_set():
             g_video.process(g_plotter, g_hub, g_arm_motor, g_right_motor, g_left_motor, g_touch_sensor, g_color_sensor, g_sonar_sensor, g_gyro_sensor)
-            time.sleep(0.02)
+            time.sleep(VIDEO_INTERVAL)
 
 
 def build_behaviour_tree() -> BehaviourTree:
@@ -389,49 +390,49 @@ def build_behaviour_tree() -> BehaviourTree:
     )
     loop_01.add_children(
         [
-            TraceLineCam(name="trace normal edge", interval=INTERVAL, power=40, pid_p=2.5, pid_i=0.0015, pid_d=0.1,
+            TraceLineCam(name="trace normal edge", power=40, pid_p=2.5, pid_i=0.0015, pid_d=0.1,
                          gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
             IsDistanceEarned(name="check distance", delta_dist = 2000),
         ]
     )
     loop_02.add_children(
         [
-            TraceLineCam(name="trace normal edge", interval=INTERVAL, power=40, pid_p=2.5, pid_i=0.0011, pid_d=0.15,
+            TraceLineCam(name="trace normal edge", power=40, pid_p=2.5, pid_i=0.001, pid_d=0.15,
                          gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
             IsJunction(name="scan joined junction", target_state = JState.JOINED),
         ]
     )
     loop_03.add_children(
         [
-            TraceLineCam(name="trace opposite edge", interval=INTERVAL, power=40, pid_p=2.5, pid_i=0.0011, pid_d=0.15,
+            TraceLineCam(name="trace opposite edge", power=40, pid_p=2.5, pid_i=0.0011, pid_d=0.15,
                          gs_min=0, gs_max=80, trace_side=TraceSide.OPPOSITE),
             IsJunction(name="scan joined junction", target_state = JState.JOINED),
         ]
     )
     loop_04.add_children(
         [
-            TraceLineCam(name="trace normal edge", interval=INTERVAL, power=40, pid_p=2.5, pid_i=0.0015, pid_d=0.1,
+            TraceLineCam(name="trace normal edge", power=40, pid_p=2.5, pid_i=0.0015, pid_d=0.1,
                          gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
             IsDistanceEarned(name="check distance", delta_dist = 2000),
         ]
     )
     loop_05.add_children(
         [
-            TraceLineCam(name="trace normal edge", interval=INTERVAL, power=40, pid_p=2.5, pid_i=0.0011, pid_d=0.15,
+            TraceLineCam(name="trace normal edge", power=40, pid_p=2.5, pid_i=0.0011, pid_d=0.15,
                          gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
             IsJunction(name="scan joined junction", target_state = JState.JOINED),
         ]
     )
     loop_06.add_children(
         [
-            TraceLineCam(name="trace opposite edge", interval=INTERVAL, power=40, pid_p=2.5, pid_i=0.0011, pid_d=0.15,
+            TraceLineCam(name="trace opposite edge", power=40, pid_p=2.5, pid_i=0.0011, pid_d=0.15,
                          gs_min=0, gs_max=80, trace_side=TraceSide.OPPOSITE),
             IsJunction(name="scan joined junction", target_state = JState.JOINED),
         ]
     )
     loop_07.add_children(
         [
-            TraceLineCam(name="trace normal edge", interval=INTERVAL, power=40, pid_p=2.5, pid_i=0.0015, pid_d=0.1,
+            TraceLineCam(name="trace normal edge", power=40, pid_p=2.5, pid_i=0.0015, pid_d=0.1,
                          gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
             IsDistanceEarned(name="check distance", delta_dist = 600),
         ]
@@ -464,7 +465,7 @@ def initialize_etrobo(backend: str) -> ETRobo:
             .add_device('sonar_sensor', device_type=SonarSensor, port='3')
             .add_device('gyro_sensor', device_type=GyroSensor, port='4'))
 
-def setup():
+def setup_thread():
     global g_video, g_video_thread
     g_video = Video()
 
@@ -472,7 +473,7 @@ def setup():
     g_video_thread = VideoThread()
     g_video_thread.start()
 
-def cleanup():
+def cleanup_thread():
     global g_video, g_video_thread
     print(" -- stopping VideoThread...")
     g_video_thread.stop()
@@ -495,7 +496,7 @@ if __name__ == '__main__':
     else:
         g_course = 1
 
-    setup()
+    setup_thread()
 
     #py_trees.logging.level = py_trees.logging.Level.DEBUG
     tree = build_behaviour_tree()
@@ -507,11 +508,11 @@ if __name__ == '__main__':
         etrobo = initialize_etrobo(backend='raspike')
         etrobo.add_handler(ExposeDevices())
         etrobo.add_handler(TraverseBehaviourTree(tree))
-        etrobo.dispatch(interval=INTERVAL, port=args.port, logfile=args.logfile)
+        etrobo.dispatch(interval=EXEC_INTERVAL, port=args.port, logfile=args.logfile)
     finally:
         signal.signal(signal.SIGTERM, signal.SIG_IGN)
         signal.signal(signal.SIGINT, signal.SIG_IGN)
-        cleanup()
+        cleanup_thread()
         signal.signal(signal.SIGTERM, signal.SIG_DFL)
         signal.signal(signal.SIGINT, signal.SIG_DFL)
         print(" -- exiting...")
