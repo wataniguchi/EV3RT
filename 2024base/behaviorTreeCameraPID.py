@@ -3,7 +3,7 @@ import time
 import math
 import threading
 import signal
-from enum import Enum, IntEnum
+from enum import Enum, IntEnum, auto
 from etrobo_python import ETRobo, Hub, Motor, ColorSensor, TouchSensor, SonarSensor, GyroSensor
 from simple_pid import PID
 import py_trees.common
@@ -21,10 +21,28 @@ from py_etrobo_util import Video, TraceSide, Plotter
 
 INTERVAL: float = 0.04
 ARM_SHIFT_PWM = 30
+JUNCT_UPPER_THRESH = 50
+JUNCT_LOWER_THRESH = 30
 
 class ArmDirection(IntEnum):
     UP = -1
     DOWN = 1
+
+class JState(Enum):
+    INITIAL = auto()
+    JOINING = auto()
+    JOINED = auto()
+    FORKING = auto()
+    FORKED = auto()
+
+class Color(Enum):
+    JETBLACK = auto()
+    BLACK = auto()
+    BLUE = auto()
+    RED = auto()
+    YELLOW = auto()
+    GREEN = auto()
+    WHITE = auto()
 
 g_plotter: Plotter = None
 g_hub: Hub = None
@@ -53,15 +71,18 @@ class TheEnd(Behaviour):
         return Status.RUNNING
 
 
-class ResetArm(Behaviour):
+class ResetDevice(Behaviour):
     def __init__(self, name: str):
-        super(ResetArm, self).__init__(name)
+        super(ResetDevice, self).__init__(name)
         self.logger.debug("%s.__init__()" % (self.__class__.__name__))
         self.count = 0
 
     def update(self) -> Status:
         if self.count == 0:
             g_arm_motor.reset_count()
+            g_right_motor.reset_count()
+            g_left_motor.reset_count()
+            g_gyro_sensor.reset()
             self.logger.info("%+06d %s.resetting..." % (g_plotter.get_distance(), self.__class__.__name__))
         elif self.count > 3:
             self.logger.info("%+06d %s.complete" % (g_plotter.get_distance(), self.__class__.__name__))
@@ -121,13 +142,32 @@ class IsDistanceEarned(Behaviour):
             return Status.RUNNING
 
 
+class IsSonarOn(Behaviour):
+    def __init__(self, name: str, alert_dist: int):
+        super(IsSonarOn, self).__init__(name)
+        self.logger.debug("%s.__init__()" % (self.__class__.__name__))
+        self.alert_dist = alert_dist
+        self.running = False
+
+    def update(self) -> Status:
+        if not self.running:
+            self.running = True
+            self.logger.info("%+06d %s.detection started for dist=%d" % (g_plotter.get_distance(), self.__class__.__name__, self.alert_dist))
+        
+        dist = 10 * g_sonar_sensor.get_distance()
+        if (dist <= self.alert_dist and dist > 0):
+            self.logger.info("%+06d %s.alerted at dist=%d" % (g_plotter.get_distance(), self.__class__.__name__, dist))
+            return Status.SUCCESS
+        else:
+            return Status.RUNNING
+
+
 class IsTouchOn(Behaviour):
     def __init__(self, name: str):
         super(IsTouchOn, self).__init__(name)
         self.logger.debug("%s.__init__()" % (self.__class__.__name__))
 
     def update(self) -> Status:
-        global g_hub, g_touch_sensor
         if (g_touch_sensor.is_pressed() or
             g_hub.is_left_button_pressed() or
             g_hub.is_right_button_pressed()):
@@ -143,13 +183,71 @@ class StopNow(Behaviour):
         self.logger.debug("%s.__init__()" % (self.__class__.__name__))
 
     def update(self) -> Status:
-        global g_right_motor, g_left_motor
         g_right_motor.set_power(0)
         g_right_motor.set_brake(True)
         g_left_motor.set_power(0)
         g_left_motor.set_brake(True)
         self.logger.info("%+06d %s.motors stopped" % (g_plotter.get_distance(), self.__class__.__name__))
         return Status.SUCCESS
+
+
+class IsJunction(Behaviour):
+    def __init__(self, name: str, target_state: JState) -> None:
+        super(IsJunction, self).__init__(name)
+        self.target_state = target_state
+        self.reached = False
+        self.prev_roe = 0
+        self.state:JState = JState.INITIAL
+        self.running = False
+
+    def update(self) -> Status:
+        if not self.running:
+            self.running = True
+            self.logger.info("%+06d %s.scan started" % (g_plotter.get_distance(), self.__class__.__name__))
+        roe = g_video.get_range_of_edges()
+        if roe != 0:
+            if self.state == JState.INITIAL:
+                if (self.target_state == JState.JOINING or self.target_state == JState.JOINED) and roe >= JUNCT_UPPER_THRESH and self.prev_roe <= JUNCT_LOWER_THRESH:
+                    self.logger.info("%+06d %s.lines are joining" % (g_plotter.get_distance(), self.__class__.__name__))
+                    self.state = JState.JOINING
+                elif (self.target_state == JState.FORKING or self.target_state == JState.FORKED) and roe >= JUNCT_LOWER_THRESH and self.prev_roe <= JUNCT_LOWER_THRESH:
+                    self.logger.info("%+06d %s.lines are forking" % (g_plotter.get_distance(), self.__class__.__name__))
+                    self.state = JState.FORKING
+            elif self.state == JState.JOINING:
+                if roe <= JUNCT_LOWER_THRESH:
+                    self.logger.info("%+06d %s.the join completed" % (g_plotter.get_distance(), self.__class__.__name__))
+                    self.state = JState.JOINED
+                    
+            elif self.state == JState.FORKING:
+                if roe <= JUNCT_LOWER_THRESH and self.prev_roe >= JUNCT_UPPER_THRESH:
+                    self.logger.info("%+06d %s.the fork completed" % (g_plotter.get_distance(), self.__class__.__name__))
+                    self.state = JState.FORKED
+            else:
+                pass
+        self.prev_roe = roe
+
+        if not self.reached and self.state == self.target_state:
+            self.reached = True
+            self.logger.info("%+06d %s.target state reached" % (g_plotter.get_distance(), self.__class__.__name__))
+            return Status.SUCCESS
+        else:
+            return Status.RUNNING
+
+
+class RunAsInstructed(Behaviour):
+    def __init__(self, name: str, pwm_l: int, pwm_r: int) -> None:
+        super(RunAsInstucted, self).__init__(name)
+        self.pwm_l = g_course * pwm_l
+        self.pwm_r = g_course * pwm_r
+        self.running = False
+
+    def update(self) -> Status:
+        if not self.running:
+            self.running = True
+            self.logger.info("%+06d %s.started with pwm=(%s, %s)" % (g_plotter.get_distance(), self.__class__.__name__, self.pwm_l, self.pwm_r))
+        g_right_motor.set_power(self.pwm_r)
+        g_left_motor.set_power(self.pwm_l)
+        return Status.RUNNING
 
 
 class TraceLine(Behaviour):
@@ -162,7 +260,6 @@ class TraceLine(Behaviour):
         self.running = False
 
     def update(self) -> Status:
-        global g_color_sensor, g_right_motor, g_left_motor, g_course
         if not self.running:
             self.running = True
             self.logger.info("%+06d %s.trace started with TS=%s" % (g_plotter.get_distance(), self.__class__.__name__, self.trace_side.name))
@@ -187,7 +284,6 @@ class TraceLineCam(Behaviour):
         self.running = False
 
     def update(self) -> Status:
-        global g_video, g_right_motor, g_left_motor, g_course
         if not self.running:
             self.running = True
             g_video.set_thresholds(self.gs_min, self.gs_max)
@@ -271,25 +367,86 @@ class VideoThread(threading.Thread):
 def build_behaviour_tree() -> BehaviourTree:
     root = Sequence(name="competition", memory=True)
     calibration = Sequence(name="calibration", memory=True)
-    loop_sect1 = Parallel(name="loop section 1", policy=ParallelPolicy.SuccessOnOne())
+    start = Parallel(name="start", policy=ParallelPolicy.SuccessOnOne())
+    loop_01 = Parallel(name="loop 01", policy=ParallelPolicy.SuccessOnOne())
+    loop_02 = Parallel(name="loop 02", policy=ParallelPolicy.SuccessOnOne())
+    loop_03 = Parallel(name="loop 03", policy=ParallelPolicy.SuccessOnOne())
+    loop_04 = Parallel(name="loop 04", policy=ParallelPolicy.SuccessOnOne())
+    loop_05 = Parallel(name="loop 05", policy=ParallelPolicy.SuccessOnOne())
+    loop_06 = Parallel(name="loop 06", policy=ParallelPolicy.SuccessOnOne())
+    loop_07 = Parallel(name="loop 07", policy=ParallelPolicy.SuccessOnOne())
     calibration.add_children(
         [
             ArmUpDownFull(name="arm down", direction=ArmDirection.DOWN),
-            ResetArm(name="arm reset"),
+            ResetDevice(name="device reset"),
         ]
     )
-    loop_sect1.add_children(
+    start.add_children(
         [
-            TraceLineCam(name="run", interval=INTERVAL, power=33, pid_p=2.5, pid_i=0.0015, pid_d=0.1,
+            IsSonarOn(name="soner start", alert_dist=50),
+            IsTouchOn(name="touch start"),
+        ]
+    )
+    loop_01.add_children(
+        [
+            TraceLineCam(name="trace normal edge", interval=INTERVAL, power=40, pid_p=2.5, pid_i=0.0015, pid_d=0.1,
                          gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
             IsDistanceEarned(name="check distance", delta_dist = 2000),
+        ]
+    )
+    loop_02.add_children(
+        [
+            TraceLineCam(name="trace normal edge", interval=INTERVAL, power=40, pid_p=2.5, pid_i=0.0011, pid_d=0.15,
+                         gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
+            IsJunction(name="scan joined junction", target_state = JState.JOINED),
+        ]
+    )
+    loop_03.add_children(
+        [
+            TraceLineCam(name="trace opposite edge", interval=INTERVAL, power=40, pid_p=2.5, pid_i=0.0011, pid_d=0.15,
+                         gs_min=0, gs_max=80, trace_side=TraceSide.OPPOSITE),
+            IsJunction(name="scan joined junction", target_state = JState.JOINED),
+        ]
+    )
+    loop_04.add_children(
+        [
+            TraceLineCam(name="trace normal edge", interval=INTERVAL, power=40, pid_p=2.5, pid_i=0.0015, pid_d=0.1,
+                         gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
+            IsDistanceEarned(name="check distance", delta_dist = 2000),
+        ]
+    )
+    loop_05.add_children(
+        [
+            TraceLineCam(name="trace normal edge", interval=INTERVAL, power=40, pid_p=2.5, pid_i=0.0011, pid_d=0.15,
+                         gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
+            IsJunction(name="scan joined junction", target_state = JState.JOINED),
+        ]
+    )
+    loop_06.add_children(
+        [
+            TraceLineCam(name="trace opposite edge", interval=INTERVAL, power=40, pid_p=2.5, pid_i=0.0011, pid_d=0.15,
+                         gs_min=0, gs_max=80, trace_side=TraceSide.OPPOSITE),
+            IsJunction(name="scan joined junction", target_state = JState.JOINED),
+        ]
+    )
+    loop_07.add_children(
+        [
+            TraceLineCam(name="trace normal edge", interval=INTERVAL, power=40, pid_p=2.5, pid_i=0.0015, pid_d=0.1,
+                         gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
+            IsDistanceEarned(name="check distance", delta_dist = 600),
         ]
     )
     root.add_children(
         [
             calibration,
-            IsTouchOn(name="start"),
-            loop_sect1,
+            start,
+            loop_01,
+            loop_02,
+            loop_03,
+            loop_04,
+            loop_05,
+            loop_06,
+            loop_07,
             StopNow(name="stop"),
             TheEnd(name="end"),
         ]
