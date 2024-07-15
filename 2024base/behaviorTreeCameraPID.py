@@ -3,7 +3,7 @@ import time
 import math
 import threading
 import signal
-from enum import Enum, IntEnum
+from enum import Enum, IntEnum, auto
 from etrobo_python import ETRobo, Hub, Motor, ColorSensor, TouchSensor, SonarSensor, GyroSensor
 from simple_pid import PID
 import py_trees.common
@@ -17,14 +17,32 @@ from py_trees import (
     display as display_tree,
     logging as log_tree
 )
-from py_etrobo_util import Video, TraceSide, Plotter
+from py_etrobo_util import Video, TraceSide, Plotter, FRAME_WIDTH, IN_FRAME_WIDTH
 
 INTERVAL: float = 0.04
 ARM_SHIFT_PWM = 30
+JUNCT_UPPER_THRESH = int(250*FRAME_WIDTH/IN_FRAME_WIDTH)
+JUNCT_LOWER_THRESH = int(200*FRAME_WIDTH/IN_FRAME_WIDTH)
 
 class ArmDirection(IntEnum):
     UP = -1
     DOWN = 1
+
+class JState(Enum):
+    INITIAL = auto()
+    JOINING = auto()
+    JOINED = auto()
+    FORKING = auto()
+    FORKED = auto()
+
+class Color(Enum):
+    JETBLACK = auto()
+    BLACK = auto()
+    BLUE = auto()
+    RED = auto()
+    YELLOW = auto()
+    GREEN = auto()
+    WHITE = auto()
 
 g_plotter: Plotter = None
 g_hub: Hub = None
@@ -150,7 +168,6 @@ class IsTouchOn(Behaviour):
         self.logger.debug("%s.__init__()" % (self.__class__.__name__))
 
     def update(self) -> Status:
-        #global g_hub, g_touch_sensor
         if (g_touch_sensor.is_pressed() or
             g_hub.is_left_button_pressed() or
             g_hub.is_right_button_pressed()):
@@ -166,13 +183,71 @@ class StopNow(Behaviour):
         self.logger.debug("%s.__init__()" % (self.__class__.__name__))
 
     def update(self) -> Status:
-        #global g_right_motor, g_left_motor
         g_right_motor.set_power(0)
         g_right_motor.set_brake(True)
         g_left_motor.set_power(0)
         g_left_motor.set_brake(True)
         self.logger.info("%+06d %s.motors stopped" % (g_plotter.get_distance(), self.__class__.__name__))
         return Status.SUCCESS
+
+
+class IsJunction(Behaviour):
+    def __init__(self, name: str, target_state: JState) -> None:
+        super(IsJunction, self).__init__(name)
+        self.target_state = target_state
+        self.reached = False
+        self.prev_roe = 0
+        self.state:JState = JState.INITIAL
+        self.running = False
+
+    def update(self) -> Status:
+        if not self.running:
+            self.running = True
+            self.logger.info("%+06d %s.scan started" % (g_plotter.get_distance(), self.__class__.__name__))
+        roe = g_video.get_range_of_edges()
+        if roe != 0:
+            if self.state == JState.INITIAL:
+                if (self.target_state == JState.JOINING or self.target_state == JState.JOINED) and roe >= JUNCT_UPPER_THRESH and self.prev_roe <= JUNCT_LOWER_THRESH:
+                    self.logger.info("%+06d %s.lines are joining" % (g_plotter.get_distance(), self.__class__.__name__))
+                    self.state = JState.JOINING
+                elif (self.target_state == JState.FORKING or self.target_state == JState.FORKED) and roe >= JUNCT_LOWER_THRESH and self.prev_roe <= JUNCT_LOWER_THRESH:
+                    self.logger.info("%+06d %s.lines are forking" % (g_plotter.get_distance(), self.__class__.__name__))
+                    self.state = JState.FORKING
+            elif self.state == JState.JOINING:
+                if roe <= JUNCT_LOWER_THRESH:
+                    self.logger.info("%+06d %s.the join completed" % (g_plotter.get_distance(), self.__class__.__name__))
+                    self.state = JState.JOINED
+                    
+            elif self.state == JState.FORKING:
+                if roe <= JUNCT_LOWER_THRESH and self.prev_roe >= JUNCT_UPPER_THRESH:
+                    self.logger.info("%+06d %s.the fork completed" % (g_plotter.get_distance(), self.__class__.__name__))
+                    self.state = JState.FORKED
+            else:
+                pass
+        self.prev_roe = roe
+
+        if not self.reached and self.state == self.target_state:
+            self.reached = True
+            self.logger.info("%+06d %s.target state reached" % (g_plotter.get_distance(), self.__class__.__name__))
+            return Status.SUCCESS
+        else:
+            return Status.RUNNING
+
+
+class RunAsInstructed(Behaviour):
+    def __init__(self, name: str, pwm_l: int, pwm_r: int) -> None:
+        super(RunAsInstucted, self).__init__(name)
+        self.pwm_l = g_course * pwm_l
+        self.pwm_r = g_course * pwm_r
+        self.running = False
+
+    def update(self) -> Status:
+        if not self.running:
+            self.running = True
+            self.logger.info("%+06d %s.started with pwm=(%s, %s)" % (g_plotter.get_distance(), self.__class__.__name__, self.pwm_l, self.pwm_r))
+        g_right_motor.set_power(self.pwm_r)
+        g_left_motor.set_power(self.pwm_l)
+        return Status.RUNNING
 
 
 class TraceLine(Behaviour):
@@ -185,7 +260,6 @@ class TraceLine(Behaviour):
         self.running = False
 
     def update(self) -> Status:
-        #global g_color_sensor, g_right_motor, g_left_motor, g_course
         if not self.running:
             self.running = True
             self.logger.info("%+06d %s.trace started with TS=%s" % (g_plotter.get_distance(), self.__class__.__name__, self.trace_side.name))
@@ -210,7 +284,6 @@ class TraceLineCam(Behaviour):
         self.running = False
 
     def update(self) -> Status:
-        #global g_video, g_right_motor, g_left_motor, g_course
         if not self.running:
             self.running = True
             g_video.set_thresholds(self.gs_min, self.gs_max)
@@ -296,6 +369,7 @@ def build_behaviour_tree() -> BehaviourTree:
     calibration = Sequence(name="calibration", memory=True)
     start = Parallel(name="start", policy=ParallelPolicy.SuccessOnOne())
     loop_sect1 = Parallel(name="loop section 1", policy=ParallelPolicy.SuccessOnOne())
+    loop_sect2 = Parallel(name="loop section 2", policy=ParallelPolicy.SuccessOnOne())
     calibration.add_children(
         [
             ArmUpDownFull(name="arm down", direction=ArmDirection.DOWN),
@@ -315,11 +389,19 @@ def build_behaviour_tree() -> BehaviourTree:
             IsDistanceEarned(name="check distance", delta_dist = 2000),
         ]
     )
+    loop_sect2.add_children(
+        [
+            TraceLineCam(name="run", interval=INTERVAL, power=40, pid_p=2.5, pid_i=0.0011, pid_d=0.15,
+                         gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
+            IsJunction(name="scan junction", target_state = JState.FORKING),
+        ]
+    )
     root.add_children(
         [
             calibration,
             start,
             loop_sect1,
+            loop_sect2,
             StopNow(name="stop"),
             TheEnd(name="end"),
         ]

@@ -72,7 +72,7 @@ class Video(object):
         self.gsmax = 100
         self.trace_side = TraceSide.NORMAL
         self.range_of_edges = 0
-        self.theta:float = 0
+        self.theta:float = 0.0
         self.target_insight = False
 
     def __del__(self):
@@ -188,6 +188,7 @@ class Video(object):
             edges = np.flatnonzero(scan_line)
             # calculate the trace target using the edges
             if len(edges) >= 2:
+                self.range_of_edges = edges[len(edges)-1] - edges[0]
                 if self.trace_side == TraceSide.LEFT:
                     self.cx = edges[0]
                 elif self.trace_side == TraceSide.RIGHT:
@@ -195,10 +196,12 @@ class Video(object):
                 else:
                     self.cx = int((edges[0]+edges[len(edges)-1]) / 2)
             elif len(edges) == 1:
+                self.range_of_edges = 1
                 self.cx = edges[0]
             self.mx = self.cx
             self.target_insight = True
         else: # len(contours) == 0
+            self.range_of_edges = 0
             self.roi = (CROP_L_LIMIT, CROP_U_LIMIT, CROP_WIDTH, CROP_HEIGHT)
             # keep mx in order to maintain the current move of robot
             self.cx = int(FRAME_WIDTH/2)
@@ -248,9 +251,15 @@ class Video(object):
     def get_theta(self) -> float:
         return self.theta
 
+    def get_range_of_edges(self) -> int:
+        return self.range_of_edges
+
     def set_thresholds(self, gs_min: int, gs_max: int) -> None:
         self.gs_min = gs_min
         self.gs_max = gs_max
 
     def set_trace_side(self, trace_side: TraceSide) -> None:
         self.trace_side = trace_side
+
+    def is_target_insight(self) -> bool:
+        return self.target_insight
