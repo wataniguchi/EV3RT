@@ -17,12 +17,12 @@ from py_trees import (
     display as display_tree,
     logging as log_tree
 )
-from py_etrobo_util import Video, TraceSide, Plotter, FRAME_WIDTH, IN_FRAME_WIDTH
+from py_etrobo_util import Video, TraceSide, Plotter
 
 INTERVAL: float = 0.04
 ARM_SHIFT_PWM = 30
-JUNCT_UPPER_THRESH = int(250*FRAME_WIDTH/IN_FRAME_WIDTH)
-JUNCT_LOWER_THRESH = int(200*FRAME_WIDTH/IN_FRAME_WIDTH)
+JUNCT_UPPER_THRESH = 50
+JUNCT_LOWER_THRESH = 30
 
 class ArmDirection(IntEnum):
     UP = -1
@@ -368,8 +368,13 @@ def build_behaviour_tree() -> BehaviourTree:
     root = Sequence(name="competition", memory=True)
     calibration = Sequence(name="calibration", memory=True)
     start = Parallel(name="start", policy=ParallelPolicy.SuccessOnOne())
-    loop_sect1 = Parallel(name="loop section 1", policy=ParallelPolicy.SuccessOnOne())
-    loop_sect2 = Parallel(name="loop section 2", policy=ParallelPolicy.SuccessOnOne())
+    loop_01 = Parallel(name="loop 01", policy=ParallelPolicy.SuccessOnOne())
+    loop_02 = Parallel(name="loop 02", policy=ParallelPolicy.SuccessOnOne())
+    loop_03 = Parallel(name="loop 03", policy=ParallelPolicy.SuccessOnOne())
+    loop_04 = Parallel(name="loop 04", policy=ParallelPolicy.SuccessOnOne())
+    loop_05 = Parallel(name="loop 05", policy=ParallelPolicy.SuccessOnOne())
+    loop_06 = Parallel(name="loop 06", policy=ParallelPolicy.SuccessOnOne())
+    loop_07 = Parallel(name="loop 07", policy=ParallelPolicy.SuccessOnOne())
     calibration.add_children(
         [
             ArmUpDownFull(name="arm down", direction=ArmDirection.DOWN),
@@ -382,26 +387,66 @@ def build_behaviour_tree() -> BehaviourTree:
             IsTouchOn(name="touch start"),
         ]
     )
-    loop_sect1.add_children(
+    loop_01.add_children(
         [
-            TraceLineCam(name="run", interval=INTERVAL, power=40, pid_p=2.5, pid_i=0.0015, pid_d=0.1,
+            TraceLineCam(name="trace normal edge", interval=INTERVAL, power=40, pid_p=2.5, pid_i=0.0015, pid_d=0.1,
                          gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
             IsDistanceEarned(name="check distance", delta_dist = 2000),
         ]
     )
-    loop_sect2.add_children(
+    loop_02.add_children(
         [
-            TraceLineCam(name="run", interval=INTERVAL, power=40, pid_p=2.5, pid_i=0.0011, pid_d=0.15,
+            TraceLineCam(name="trace normal edge", interval=INTERVAL, power=40, pid_p=2.5, pid_i=0.0011, pid_d=0.15,
                          gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
-            IsJunction(name="scan junction", target_state = JState.FORKING),
+            IsJunction(name="scan joined junction", target_state = JState.JOINED),
+        ]
+    )
+    loop_03.add_children(
+        [
+            TraceLineCam(name="trace opposite edge", interval=INTERVAL, power=40, pid_p=2.5, pid_i=0.0011, pid_d=0.15,
+                         gs_min=0, gs_max=80, trace_side=TraceSide.OPPOSITE),
+            IsJunction(name="scan joined junction", target_state = JState.JOINED),
+        ]
+    )
+    loop_04.add_children(
+        [
+            TraceLineCam(name="trace normal edge", interval=INTERVAL, power=40, pid_p=2.5, pid_i=0.0015, pid_d=0.1,
+                         gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
+            IsDistanceEarned(name="check distance", delta_dist = 2000),
+        ]
+    )
+    loop_05.add_children(
+        [
+            TraceLineCam(name="trace normal edge", interval=INTERVAL, power=40, pid_p=2.5, pid_i=0.0011, pid_d=0.15,
+                         gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
+            IsJunction(name="scan joined junction", target_state = JState.JOINED),
+        ]
+    )
+    loop_06.add_children(
+        [
+            TraceLineCam(name="trace opposite edge", interval=INTERVAL, power=40, pid_p=2.5, pid_i=0.0011, pid_d=0.15,
+                         gs_min=0, gs_max=80, trace_side=TraceSide.OPPOSITE),
+            IsJunction(name="scan joined junction", target_state = JState.JOINED),
+        ]
+    )
+    loop_07.add_children(
+        [
+            TraceLineCam(name="trace normal edge", interval=INTERVAL, power=40, pid_p=2.5, pid_i=0.0015, pid_d=0.1,
+                         gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
+            IsDistanceEarned(name="check distance", delta_dist = 600),
         ]
     )
     root.add_children(
         [
             calibration,
             start,
-            loop_sect1,
-            loop_sect2,
+            loop_01,
+            loop_02,
+            loop_03,
+            loop_04,
+            loop_05,
+            loop_06,
+            loop_07,
             StopNow(name="stop"),
             TheEnd(name="end"),
         ]

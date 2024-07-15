@@ -231,11 +231,12 @@ class Video(object):
         img_text = np.zeros((FRAME_HEIGHT, FRAME_WIDTH, 3), np.uint8)
         if not plotter is None:
             try:
-                cv2.putText(img_text, f"ODO={plotter.get_distance():+06}", (0,15), cv2.FONT_HERSHEY_PLAIN, 1.2, (255,255,255), 1, cv2.LINE_AA)
-                cv2.putText(img_text, f"x={plotter.get_loc_x():+06} y={plotter.get_loc_y():+06}", (0,30), cv2.FONT_HERSHEY_PLAIN, 1.2, (255,255,255), 1, cv2.LINE_AA)
-                cv2.putText(img_text, f"deg={plotter.get_degree():+04} gyro={gyro_sensor.get_angle():+04}", (0,45), cv2.FONT_HERSHEY_PLAIN, 1.2, (255,255,255), 1, cv2.LINE_AA)
-                cv2.putText(img_text, f"cx={self.cx:} cy={self.cy} T={self.theta:+06.1f}", (0,60), cv2.FONT_HERSHEY_PLAIN, 1.2, (255,255,255), 1, cv2.LINE_AA)
-                cv2.putText(img_text, f"mV={hub.get_battery_voltage():04} mA={hub.get_battery_current():04}", (0,75), cv2.FONT_HERSHEY_PLAIN, 1.2, (255,255,255), 1, cv2.LINE_AA)
+                cv2.putText(img_text, f"ODO={plotter.get_distance():+06}", (0,20), cv2.FONT_HERSHEY_DUPLEX, 0.6, (255,255,255), 1, cv2.LINE_AA)
+                cv2.putText(img_text, f"x={plotter.get_loc_x():+05} y={plotter.get_loc_y():+05}", (0,40), cv2.FONT_HERSHEY_DUPLEX, 0.6, (255,255,255), 1, cv2.LINE_AA)
+                cv2.putText(img_text, f"deg={plotter.get_degree():+04} gyro={gyro_sensor.get_angle():+04}", (0,60), cv2.FONT_HERSHEY_DUPLEX, 0.6, (255,255,255), 1, cv2.LINE_AA)
+                cv2.putText(img_text, f"cx={self.cx:} cy={self.cy} theta={self.theta:+06.1f}", (0,80), cv2.FONT_HERSHEY_DUPLEX, 0.6, (255,255,255), 1, cv2.LINE_AA)
+                cv2.putText(img_text, f"roe={self.range_of_edges:03}", (0,100), cv2.FONT_HERSHEY_DUPLEX, 0.6, (255,255,255), 1, cv2.LINE_AA)
+                cv2.putText(img_text, f"mV={hub.get_battery_voltage():04} mA={hub.get_battery_current():04}", (0,120), cv2.FONT_HERSHEY_DUPLEX, 0.6, (255,255,255), 1, cv2.LINE_AA)
             except Exception as e:
                 pass
         # concatinate the images - original + text area
