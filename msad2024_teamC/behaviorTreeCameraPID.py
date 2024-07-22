@@ -1,3 +1,4 @@
+# インポート
 import argparse
 import time
 import math
@@ -19,12 +20,14 @@ from py_trees import (
 )
 from py_etrobo_util import Video, TraceSide, Plotter
 
+# 定数
 EXEC_INTERVAL: float = 0.04
 VIDEO_INTERVAL: float = 0.02
 ARM_SHIFT_PWM = 30
 JUNCT_UPPER_THRESH = 50
 JUNCT_LOWER_THRESH = 30
 
+# 列挙型
 class ArmDirection(IntEnum):
     UP = -1
     DOWN = 1
@@ -45,6 +48,7 @@ class Color(Enum):
     GREEN = auto()
     WHITE = auto()
 
+# グローバル変数
 g_plotter: Plotter = None
 g_hub: Hub = None
 g_arm_motor: Motor = None
@@ -58,7 +62,9 @@ g_video: Video = None
 g_video_thread: threading.Thread = None
 g_course: int = 0
 
+# 行動 （py_trees.behaviour.Behaviourのサブクラス）
 
+# behaviorTreeの実行終了を知らせる
 class TheEnd(Behaviour):
     def __init__(self, name: str):
         super(TheEnd, self).__init__(name)
@@ -71,7 +77,7 @@ class TheEnd(Behaviour):
             self.logger.info("%+06d %s.behavior tree exhausted. ctrl+C shall terminate the program" % (g_plotter.get_distance(), self.__class__.__name__))
         return Status.RUNNING
 
-
+# 全デバイスをリセットする
 class ResetDevice(Behaviour):
     def __init__(self, name: str):
         super(ResetDevice, self).__init__(name)
@@ -91,7 +97,7 @@ class ResetDevice(Behaviour):
         self.count += 1
         return Status.RUNNING
 
-
+# アームモーターを上下させる
 class ArmUpDownFull(Behaviour):
     def __init__(self, name: str, direction: ArmDirection):
         super(ArmUpDownFull, self).__init__(name)
@@ -118,7 +124,7 @@ class ArmUpDownFull(Behaviour):
         g_arm_motor.set_power(ARM_SHIFT_PWM * self.direction)
         return Status.RUNNING
 
-
+# 特定の距離を移動したか確認する
 class IsDistanceEarned(Behaviour):
     def __init__(self, name: str, delta_dist: int):
         super(IsDistanceEarned, self).__init__(name)
@@ -142,7 +148,7 @@ class IsDistanceEarned(Behaviour):
         else:
             return Status.RUNNING
 
-
+# ソナーセンサーがアラート距離内でオブジェクトを検出しているかをチェックする行動
 class IsSonarOn(Behaviour):
     def __init__(self, name: str, alert_dist: int):
         super(IsSonarOn, self).__init__(name)
@@ -162,7 +168,7 @@ class IsSonarOn(Behaviour):
         else:
             return Status.RUNNING
 
-
+# タッチセンサーまたはハブボタンが押されているかをチェックする
 class IsTouchOn(Behaviour):
     def __init__(self, name: str):
         super(IsTouchOn, self).__init__(name)
@@ -177,7 +183,7 @@ class IsTouchOn(Behaviour):
         else:
             return Status.RUNNING
 
-
+# 両モーターを停止する
 class StopNow(Behaviour):
     def __init__(self, name: str):
         super(StopNow, self).__init__(name)
@@ -191,7 +197,7 @@ class StopNow(Behaviour):
         self.logger.info("%+06d %s.motors stopped" % (g_plotter.get_distance(), self.__class__.__name__))
         return Status.SUCCESS
 
-
+# ビデオ処理で分岐状態を検出する
 class IsJunction(Behaviour):
     def __init__(self, name: str, target_state: JState) -> None:
         super(IsJunction, self).__init__(name)
@@ -234,7 +240,7 @@ class IsJunction(Behaviour):
         else:
             return Status.RUNNING
 
-
+# 指示されたPWM値でモーターを実行する
 class RunAsInstructed(Behaviour):
     def __init__(self, name: str, pwm_l: int, pwm_r: int) -> None:
         super(RunAsInstucted, self).__init__(name)
@@ -250,7 +256,7 @@ class RunAsInstructed(Behaviour):
         g_left_motor.set_power(self.pwm_l)
         return Status.RUNNING
 
-
+# カラーセンサーとPID制御を使用してラインを追跡する
 class TraceLine(Behaviour):
     def __init__(self, name: str, target: int, power: int, pid_p: float, pid_i: float, pid_d: float,
                  trace_side: TraceSide) -> None:
@@ -272,7 +278,7 @@ class TraceLine(Behaviour):
         g_left_motor.set_power(self.power + turn)
         return Status.RUNNING
 
-
+# ビデオ処理とPID制御を使用してラインを追跡する
 class TraceLineCam(Behaviour):
     def __init__(self, name: str, power: int, pid_p: float, pid_i: float, pid_d: float,
                  gs_min: int, gs_max: int, trace_side: TraceSide) -> None:
@@ -306,7 +312,7 @@ class TraceLineCam(Behaviour):
         g_left_motor.set_power(self.power + turn)
         return Status.RUNNING
 
-
+# ビヘイビアツリーをトラバースして実行する
 class TraverseBehaviourTree(object):
     def __init__(self, tree: BehaviourTree) -> None:
         self.tree = tree
@@ -327,7 +333,7 @@ class TraverseBehaviourTree(object):
             self.tree.tick_once()
             g_plotter.plot(**kwargs)
 
-
+# デバイスを外部から公開・登録するためのハンドラークラス
 class ExposeDevices(object):
     def __call__(
         self,
@@ -350,7 +356,7 @@ class ExposeDevices(object):
         g_sonar_sensor = sonar_sensor
         g_gyro_sensor = gyro_sensor
 
-
+# ビデオ処理のためのスレッド管理
 class VideoThread(threading.Thread):
     def __init__(self):
         super().__init__()
@@ -364,7 +370,7 @@ class VideoThread(threading.Thread):
             g_video.process(g_plotter, g_hub, g_arm_motor, g_right_motor, g_left_motor, g_touch_sensor, g_color_sensor, g_sonar_sensor, g_gyro_sensor)
             time.sleep(VIDEO_INTERVAL)
 
-
+# behaviorTreeの構築
 def build_behaviour_tree() -> BehaviourTree:
     root = Sequence(name="competition", memory=True)
     calibration = Sequence(name="calibration", memory=True)
@@ -454,6 +460,7 @@ def build_behaviour_tree() -> BehaviourTree:
     )
     return root
 
+# 初期化とデバイスのセットアップ
 def initialize_etrobo(backend: str) -> ETRobo:
     return (ETRobo(backend=backend)
             .add_hub('hub')
@@ -481,10 +488,13 @@ def cleanup_thread():
 
     del g_video
 
+# シグナルハンドリング
 def sig_handler(signum, frame) -> None:
     sys.exit(1)
-    
+
+# メインプログラムの実行    
 if __name__ == '__main__':
+    # コマンドライン引数の解析
     parser = argparse.ArgumentParser()
     parser.add_argument('course', choices=['right', 'left'], help='Course to run')
     parser.add_argument('--port', default='/dev/ttyAMA1', help='Serial port')
@@ -495,20 +505,24 @@ if __name__ == '__main__':
         g_course = -1
     else:
         g_course = 1
-
+    # ビデオ処理スレッドのセットアップ    
     setup_thread()
 
     #py_trees.logging.level = py_trees.logging.Level.DEBUG
+    # behaviourTreeを構築し、その構造を表示する
     tree = build_behaviour_tree()
     display_tree.render_dot_tree(tree)
 
     signal.signal(signal.SIGTERM, sig_handler)
-
+    
+    # ETRoboを初期化して行動をディスパッチ
     try:
         etrobo = initialize_etrobo(backend='raspike')
         etrobo.add_handler(ExposeDevices())
         etrobo.add_handler(TraverseBehaviourTree(tree))
         etrobo.dispatch(interval=EXEC_INTERVAL, port=args.port, logfile=args.logfile)
+        
+    # プログラム終了時のクリーンアップ
     finally:
         signal.signal(signal.SIGTERM, signal.SIG_IGN)
         signal.signal(signal.SIGINT, signal.SIG_IGN)
