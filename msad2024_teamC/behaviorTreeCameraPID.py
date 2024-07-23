@@ -1,4 +1,5 @@
 # インポート
+import sys
 import argparse
 import time
 import math
@@ -21,11 +22,11 @@ from py_trees import (
 from py_etrobo_util import Video, TraceSide, Plotter
 
 # 定数
-EXEC_INTERVAL: float = 0.04
-VIDEO_INTERVAL: float = 0.02
-ARM_SHIFT_PWM = 30
-JUNCT_UPPER_THRESH = 50
-JUNCT_LOWER_THRESH = 30
+EXEC_INTERVAL: float = 0.04 # etrobo-pythonが制御ハンドラを呼び出す間隔を秒単位で指定。PID計算の微分・積分用経過時間としても使用。
+VIDEO_INTERVAL: float = 0.02 # モニタ画像を送信するための非同期スレッドの実行間隔を秒単位で指定
+ARM_SHIFT_PWM = 30 # アームを動かす際のパワー指定
+JUNCT_UPPER_THRESH = 50 # IsJunctionクラスによるライン合流・枝分かれ検知をする際に複数ラインがあると判定するための閾値
+JUNCT_LOWER_THRESH = 30 # IsJunctionクラスによるライン合流・枝分かれ検知をする際にラインが1本しかないと判定するための閾値
 
 # 列挙型
 class ArmDirection(IntEnum):
@@ -62,9 +63,9 @@ g_video: Video = None
 g_video_thread: threading.Thread = None
 g_course: int = 0
 
-# 行動 （py_trees.behaviour.Behaviourのサブクラス）
+# py_trees.behaviour.Behaviourのサブクラス
 
-# behaviorTreeの実行終了を知らせる
+# 何もせずに待機する。ビヘイビアツリーの最終ノードとして指定する。
 class TheEnd(Behaviour):
     def __init__(self, name: str):
         super(TheEnd, self).__init__(name)
@@ -77,7 +78,7 @@ class TheEnd(Behaviour):
             self.logger.info("%+06d %s.behavior tree exhausted. ctrl+C shall terminate the program" % (g_plotter.get_distance(), self.__class__.__name__))
         return Status.RUNNING
 
-# 全デバイスをリセットする
+# 左右車輪モータ、アームモータ、ジャイロセンサをリセットし現在位置を角度0とする。
 class ResetDevice(Behaviour):
     def __init__(self, name: str):
         super(ResetDevice, self).__init__(name)
@@ -97,7 +98,7 @@ class ResetDevice(Behaviour):
         self.count += 1
         return Status.RUNNING
 
-# アームモーターを上下させる
+# アームを一杯上げる、または下げる。
 class ArmUpDownFull(Behaviour):
     def __init__(self, name: str, direction: ArmDirection):
         super(ArmUpDownFull, self).__init__(name)
@@ -124,7 +125,13 @@ class ArmUpDownFull(Behaviour):
         g_arm_motor.set_power(ARM_SHIFT_PWM * self.direction)
         return Status.RUNNING
 
-# 特定の距離を移動したか確認する
+"""
+「IsDistanceEarnedクラスのインスタンスへ与えている定数」
+
+delta_dist:ロボットが停止するまでの距離をmm単位で指定する。
+
+"""
+# 指定の走行距離を移動したか確認する
 class IsDistanceEarned(Behaviour):
     def __init__(self, name: str, delta_dist: int):
         super(IsDistanceEarned, self).__init__(name)
@@ -148,7 +155,7 @@ class IsDistanceEarned(Behaviour):
         else:
             return Status.RUNNING
 
-# ソナーセンサーがアラート距離内でオブジェクトを検出しているかをチェックする行動
+# ソナーセンサーが指定距離内でオブジェクトを検出しているかをチェックする
 class IsSonarOn(Behaviour):
     def __init__(self, name: str, alert_dist: int):
         super(IsSonarOn, self).__init__(name)
@@ -183,7 +190,7 @@ class IsTouchOn(Behaviour):
         else:
             return Status.RUNNING
 
-# 両モーターを停止する
+# 両モーターを停止する（ロボットの走行を停止する）
 class StopNow(Behaviour):
     def __init__(self, name: str):
         super(StopNow, self).__init__(name)
@@ -240,10 +247,10 @@ class IsJunction(Behaviour):
         else:
             return Status.RUNNING
 
-# 指示されたPWM値でモーターを実行する
+# 左右のモータの回転数を指定して決め打ち走行する。
 class RunAsInstructed(Behaviour):
     def __init__(self, name: str, pwm_l: int, pwm_r: int) -> None:
-        super(RunAsInstucted, self).__init__(name)
+        super(RunAsInstructed, self).__init__(name)
         self.pwm_l = g_course * pwm_l
         self.pwm_r = g_course * pwm_r
         self.running = False
@@ -256,10 +263,18 @@ class RunAsInstructed(Behaviour):
         g_left_motor.set_power(self.pwm_l)
         return Status.RUNNING
 
+"""
+「TraceLineクラスのインスタンスへ与えている定数」
+
+target:制御目標とするカラーセンサのグレースケール目標値。実際にセンサーから読み取った値がこれより大きい（白っぽい）時に走行体は反時計方向へ、小さい（黒っぽい）時には時計方向へ転舵しようとする。
+power:ロボットの走行速度。数値は"0"から"100"とされているが、実際の動作域はもっと狭い。
+pid_p・pid_i・pid_d:比例制御・積分制御・微分制御用定数。
+
+"""
+
 # カラーセンサーとPID制御を使用してラインを追跡する
 class TraceLine(Behaviour):
-    def __init__(self, name: str, target: int, power: int, pid_p: float, pid_i: float, pid_d: float,
-                 trace_side: TraceSide) -> None:
+    def __init__(self, name: str, target: int, power: int, pid_p: float, pid_i: float, pid_d: float,trace_side: TraceSide) -> None:
         super(TraceLine, self).__init__(name)
         self.power = power
         self.pid = PID(pid_p, pid_i, pid_d, setpoint=target, sample_time=EXEC_INTERVAL, output_limits=(-power, power))
@@ -278,10 +293,19 @@ class TraceLine(Behaviour):
         g_left_motor.set_power(self.power + turn)
         return Status.RUNNING
 
+"""
+「TraceLineCamクラスのインスタンスへ与えている定数」
+
+power:ロボットの走行速度。数値は"0"から"100"とされている。
+pid_p・pid_i・pid_d:比例制御・積分制御・微分制御用定数。
+gs_min:グレースケール変換したカメラ画像から「ライン」候補を構成する可能性のある画素を判定する際に使用する下限値。
+gs_max:グレースケール変換したカメラ画像から「ライン」候補構成する可能性のあると画素を判定する際に使用する上限値。
+trace_side:カメラトレースするラインのエッジを指定する。
+
+"""
 # ビデオ処理とPID制御を使用してラインを追跡する
 class TraceLineCam(Behaviour):
-    def __init__(self, name: str, power: int, pid_p: float, pid_i: float, pid_d: float,
-                 gs_min: int, gs_max: int, trace_side: TraceSide) -> None:
+    def __init__(self, name: str, power: int, pid_p: float, pid_i: float, pid_d: float, gs_min: int, gs_max: int, trace_side: TraceSide) -> None:
         super(TraceLineCam, self).__init__(name)
         self.power = power
         self.pid = PID(pid_p, pid_i, pid_d, setpoint=0, sample_time=EXEC_INTERVAL, output_limits=(-power, power))
@@ -311,8 +335,8 @@ class TraceLineCam(Behaviour):
         g_right_motor.set_power(self.power - turn)
         g_left_motor.set_power(self.power + turn)
         return Status.RUNNING
-
-# ビヘイビアツリーをトラバースして実行する
+    
+# ビヘイビアツリーのノード巡回 tick_once()の実行とPlotterによる位置推定
 class TraverseBehaviourTree(object):
     def __init__(self, tree: BehaviourTree) -> None:
         self.tree = tree
@@ -333,7 +357,7 @@ class TraverseBehaviourTree(object):
             self.tree.tick_once()
             g_plotter.plot(**kwargs)
 
-# デバイスを外部から公開・登録するためのハンドラークラス
+# デバイスをグローバル変数へ格納してアクションクラスから利用可能にする
 class ExposeDevices(object):
     def __call__(
         self,
@@ -382,64 +406,83 @@ def build_behaviour_tree() -> BehaviourTree:
     loop_05 = Parallel(name="loop 05", policy=ParallelPolicy.SuccessOnOne())
     loop_06 = Parallel(name="loop 06", policy=ParallelPolicy.SuccessOnOne())
     loop_07 = Parallel(name="loop 07", policy=ParallelPolicy.SuccessOnOne())
+    
+    # シーケンスノードとして以下の動作を順序実行する。
+    # a.アームを一杯下げる
+    # b.その位置をアーム角度0とする
     calibration.add_children(
         [
             ArmUpDownFull(name="arm down", direction=ArmDirection.DOWN),
             ResetDevice(name="device reset"),
         ]
     )
+    # SPIKEハブのボタン押下またはソナー検知まで待機する
     start.add_children(
         [
             IsSonarOn(name="soner start", alert_dist=50),
             IsTouchOn(name="touch start"),
         ]
     )
+    # パラレルノードとしてライントレースと走行距離測定を同時実行する。終了条件は同時実行ノードのいずれか一つがSuccessを返すこと。
+    # a.速度40でNORMALエッジ（左コース走行時は左エッジ、右コース走行時は右エッジ）をカメラトレースする
+    # b.走行距離測定開始から2000mm走行したらSuccessを返す
     loop_01.add_children(
         [
-            TraceLineCam(name="trace normal edge", power=40, pid_p=2.5, pid_i=0.0015, pid_d=0.1,
-                         gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
+            TraceLineCam(name="trace normal edge", power=40, pid_p=2.5, pid_i=0.0015, pid_d=0.1, gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
             IsDistanceEarned(name="check distance", delta_dist = 2000),
         ]
     )
+    # 走行距離測定開始から2000mm走行したらSuccessを返す。
+    # a.速度40でNORMALエッジ（左コース走行時は左エッジ、右コース走行時は右エッジ）をカメラトレースする
+    # b.複数のラインが合流し終わったらSuccessを返す
     loop_02.add_children(
         [
-            TraceLineCam(name="trace normal edge", power=40, pid_p=2.5, pid_i=0.001, pid_d=0.15,
-                         gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
+            TraceLineCam(name="trace normal edge", power=40, pid_p=2.5, pid_i=0.001, pid_d=0.15, gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
             IsJunction(name="scan joined junction", target_state = JState.JOINED),
         ]
     )
+    # パラレルノードとしてライントレースとライン合流検知を同時実行する。終了条件は同時実行ノードのいずれか一つがSuccessを返すこと。
+    # a.速度40でOPPOSITEエッジ（左コース走行時は右エッジ、右コース走行時は左エッジ）をカメラトレースする
+    # b.複数のラインが合流し終わったらSuccessを返す
     loop_03.add_children(
         [
-            TraceLineCam(name="trace opposite edge", power=40, pid_p=2.5, pid_i=0.0011, pid_d=0.15,
-                         gs_min=0, gs_max=80, trace_side=TraceSide.OPPOSITE),
+            TraceLineCam(name="trace opposite edge", power=40, pid_p=2.5, pid_i=0.0011, pid_d=0.15, gs_min=0, gs_max=80, trace_side=TraceSide.OPPOSITE),
             IsJunction(name="scan joined junction", target_state = JState.JOINED),
         ]
     )
+    # パラレルノードとしてライントレースと走行距離測定を同時実行する。終了条件は同時実行ノードのいずれか一つがSuccessを返すこと。
+    # a.速度40でNORMALエッジ（左コース走行時は左エッジ、右コース走行時は右エッジ）をカメラトレースする
+    # b.走行距離測定開始から2000mm走行したらSuccessを返す
     loop_04.add_children(
         [
-            TraceLineCam(name="trace normal edge", power=40, pid_p=2.5, pid_i=0.0015, pid_d=0.1,
-                         gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
+            TraceLineCam(name="trace normal edge", power=40, pid_p=2.5, pid_i=0.0015, pid_d=0.1, gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
             IsDistanceEarned(name="check distance", delta_dist = 2000),
         ]
     )
+    # パラレルノードとしてライントレースとライン合流検知を同時実行する。終了条件は同時実行ノードのいずれか一つがSuccessを返すこと。
+    # a.速度40でNORMALエッジ（左コース走行時は左エッジ、右コース走行時は右エッジ）をカメラトレースする。
+    # b.複数のラインが合流し終わったらSuccessを返す。
     loop_05.add_children(
         [
-            TraceLineCam(name="trace normal edge", power=40, pid_p=2.5, pid_i=0.0011, pid_d=0.15,
-                         gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
+            TraceLineCam(name="trace normal edge", power=40, pid_p=2.5, pid_i=0.0011, pid_d=0.15, gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
             IsJunction(name="scan joined junction", target_state = JState.JOINED),
         ]
     )
+    # パラレルノードとしてライントレースとライン合流検知を同時実行する。終了条件は同時実行ノードのいずれか一つがSuccessを返すこと。
+    # a.速度40でOPPOSITEエッジ（左コース走行時は右エッジ、右コース走行時は左エッジ）をカメラトレースする。
+    # b.複数のラインが合流し終わったらSuccessを返す。
     loop_06.add_children(
         [
-            TraceLineCam(name="trace opposite edge", power=40, pid_p=2.5, pid_i=0.0011, pid_d=0.15,
-                         gs_min=0, gs_max=80, trace_side=TraceSide.OPPOSITE),
+            TraceLineCam(name="trace opposite edge", power=40, pid_p=2.5, pid_i=0.0011, pid_d=0.15, gs_min=0, gs_max=80, trace_side=TraceSide.OPPOSITE),
             IsJunction(name="scan joined junction", target_state = JState.JOINED),
         ]
     )
+    # パラレルノードとしてライントレースと走行距離測定を同時実行する。終了条件は同時実行ノードのいずれか一つがSuccessを返すこと。
+    # a.速度40でNORMALエッジ（左コース走行時は左エッジ、右コース走行時は右エッジ）をカメラトレースする。
+    # b.走行距離測定開始から600mm走行したらSuccessを返す。
     loop_07.add_children(
         [
-            TraceLineCam(name="trace normal edge", power=40, pid_p=2.5, pid_i=0.0015, pid_d=0.1,
-                         gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
+            TraceLineCam(name="trace normal edge", power=40, pid_p=2.5, pid_i=0.0015, pid_d=0.1, gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
             IsDistanceEarned(name="check distance", delta_dist = 600),
         ]
     )
@@ -472,6 +515,7 @@ def initialize_etrobo(backend: str) -> ETRobo:
             .add_device('sonar_sensor', device_type=SonarSensor, port='3')
             .add_device('gyro_sensor', device_type=GyroSensor, port='4'))
 
+# スレッドの開始
 def setup_thread():
     global g_video, g_video_thread
     g_video = Video()
@@ -480,6 +524,7 @@ def setup_thread():
     g_video_thread = VideoThread()
     g_video_thread.start()
 
+# スレッドの終了
 def cleanup_thread():
     global g_video, g_video_thread
     print(" -- stopping VideoThread...")
@@ -488,7 +533,7 @@ def cleanup_thread():
 
     del g_video
 
-# シグナルハンドリング
+# シグナルハンドラ
 def sig_handler(signum, frame) -> None:
     sys.exit(1)
 
@@ -505,7 +550,8 @@ if __name__ == '__main__':
         g_course = -1
     else:
         g_course = 1
-    # ビデオ処理スレッドのセットアップ    
+        
+    # ビデオ処理スレッド開始   
     setup_thread()
 
     #py_trees.logging.level = py_trees.logging.Level.DEBUG
@@ -526,6 +572,7 @@ if __name__ == '__main__':
     finally:
         signal.signal(signal.SIGTERM, signal.SIG_IGN)
         signal.signal(signal.SIGINT, signal.SIG_IGN)
+        # 画像処理スレッド終了
         cleanup_thread()
         signal.signal(signal.SIGTERM, signal.SIG_DFL)
         signal.signal(signal.SIGINT, signal.SIG_DFL)
