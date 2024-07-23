@@ -253,7 +253,7 @@ class RunAsInstructed(Behaviour):
 
 class TraceLine(Behaviour):
     def __init__(self, name: str, target: int, power: int, pid_p: float, pid_i: float, pid_d: float,
-                 trace_side: TraceSide) -> None:
+                trace_side: TraceSide) -> None:
         super(TraceLine, self).__init__(name)
         self.power = power
         self.pid = PID(pid_p, pid_i, pid_d, setpoint=target, sample_time=EXEC_INTERVAL, output_limits=(-power, power))
@@ -275,7 +275,7 @@ class TraceLine(Behaviour):
 
 class TraceLineCam(Behaviour):
     def __init__(self, name: str, power: int, pid_p: float, pid_i: float, pid_d: float,
-                 gs_min: int, gs_max: int, trace_side: TraceSide) -> None:
+                gs_min: int, gs_max: int, trace_side: TraceSide) -> None:
         super(TraceLineCam, self).__init__(name)
         self.power = power
         self.pid = PID(pid_p, pid_i, pid_d, setpoint=0, sample_time=EXEC_INTERVAL, output_limits=(-power, power))
@@ -305,6 +305,24 @@ class TraceLineCam(Behaviour):
         g_right_motor.set_power(self.power - turn)
         g_left_motor.set_power(self.power + turn)
         return Status.RUNNING
+    
+
+class IsColorDetected(Behaviour):
+    def __init__(self, name: str):
+        super(IsColorDetected, self).__init__(name)
+        self.logger.debug("%s.__init__()" % (self.__class__.__name__))
+
+    def update(self) -> Status:
+        global g_color_sensor
+        #RGBの値を取得
+        color = g_color_sensor.get_raw_color
+        #Blue判定
+        if(color[2] - color[0]>45 & color[2] <=255 & color[0] <=255):
+            self.logger.info("%+06d %s.detected blue" % (g_plotter.get_distance(), self.__class__.__name__))
+            return Status.SUCCESS
+        else:
+            #指定色でないならRUNNINGを返却
+            return Status.RUNNING
 
 
 class TraverseBehaviourTree(object):
@@ -368,86 +386,90 @@ class VideoThread(threading.Thread):
 def build_behaviour_tree() -> BehaviourTree:
     root = Sequence(name="competition", memory=True)
     calibration = Sequence(name="calibration", memory=True)
-    start = Parallel(name="start", policy=ParallelPolicy.SuccessOnOne())
-    loop_01 = Parallel(name="loop 01", policy=ParallelPolicy.SuccessOnOne())
-    loop_02 = Parallel(name="loop 02", policy=ParallelPolicy.SuccessOnOne())
-    loop_03 = Parallel(name="loop 03", policy=ParallelPolicy.SuccessOnOne())
-    loop_04 = Parallel(name="loop 04", policy=ParallelPolicy.SuccessOnOne())
-    loop_05 = Parallel(name="loop 05", policy=ParallelPolicy.SuccessOnOne())
-    loop_06 = Parallel(name="loop 06", policy=ParallelPolicy.SuccessOnOne())
-    loop_07 = Parallel(name="loop 07", policy=ParallelPolicy.SuccessOnOne())
+    loop_before_firstcurve = Parallel(name="loop_before_bluelineR", policy=ParallelPolicy.SuccessOnOne())
+    loop_before_secondcurve = Parallel(name="loop_before_bluelineR", policy=ParallelPolicy.SuccessOnOne())
+    loop_before_bluelineN = Parallel(name="loop_before_bluelineR", policy=ParallelPolicy.SuccessOnOne())
+    loop_before_bluelineR = Parallel(name="loop_before_bluelineR", policy=ParallelPolicy.SuccessOnOne())
+    loop_before_bluelineL = Parallel(name="loop_before_bluelineL", policy=ParallelPolicy.SuccessOnOne())
+    loop_reach_distanceR = Parallel(name="loop_reach_distanceR", policy=ParallelPolicy.SuccessOnOne())
+    loop_reach_distanceL = Parallel(name="loop_reach_distanceL", policy=ParallelPolicy.SuccessOnOne())
     calibration.add_children(
         [
             ArmUpDownFull(name="arm down", direction=ArmDirection.DOWN),
-            ResetDevice(name="device reset"),
+            ResetArm(name="arm reset"),
         ]
     )
-    start.add_children(
+    loop_before_firstcurve.add_children(
         [
-            IsSonarOn(name="soner start", alert_dist=50),
-            IsTouchOn(name="touch start"),
+            TraceLineCam(name="run", interval=INTERVAL, power=75, pid_p=2.5, pid_i=0.0015, pid_d=0.1,
+                        gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
+            IsDistanceEarned(name="check distance", delta_dist = 2700),
         ]
     )
-    loop_01.add_children(
+    loop_before_secondcurve.add_children(
         [
-            TraceLineCam(name="trace normal edge", power=40, pid_p=2.5, pid_i=0.0015, pid_d=0.1,
-                         gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
-            IsDistanceEarned(name="check distance", delta_dist = 2000),
+            TraceLineCam(name="run", interval=INTERVAL, power=75, pid_p=2.5, pid_i=0.0015, pid_d=0.1,
+                        gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
+            IsDistanceEarned(name="check distance", delta_dist = 1600),
         ]
     )
-    loop_02.add_children(
+    loop_before_bluelineN.add_children(
         [
-            TraceLineCam(name="trace normal edge", power=40, pid_p=2.5, pid_i=0.001, pid_d=0.15,
-                         gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
-            IsJunction(name="scan joined junction", target_state = JState.JOINED),
+            TraceLineCam(name="run", interval=INTERVAL, power=50, pid_p=2.5, pid_i=0.0015, pid_d=0.1,
+                        gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
+            IsColorDetected(name="blue"),
         ]
     )
-    loop_03.add_children(
+    loop_before_bluelineR.add_children(
         [
-            TraceLineCam(name="trace opposite edge", power=40, pid_p=2.5, pid_i=0.0011, pid_d=0.15,
-                         gs_min=0, gs_max=80, trace_side=TraceSide.OPPOSITE),
-            IsJunction(name="scan joined junction", target_state = JState.JOINED),
+            TraceLineCam(name="run", interval=INTERVAL, power=50, pid_p=2.5, pid_i=0.0015, pid_d=0.1,
+                        gs_min=0, gs_max=80, trace_side=TraceSide.RIGHT),
+            IsColorDetected(name="blue"),
         ]
     )
-    loop_04.add_children(
+    loop_before_bluelineL.add_children(
         [
-            TraceLineCam(name="trace normal edge", power=40, pid_p=2.5, pid_i=0.0015, pid_d=0.1,
-                         gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
-            IsDistanceEarned(name="check distance", delta_dist = 2000),
+            TraceLineCam(name="run", interval=INTERVAL, power=50, pid_p=2.5, pid_i=0.0015, pid_d=0.1,
+                        gs_min=0, gs_max=80, trace_side=TraceSide.LEFT),
+            IsColorDetected(name="blue"),
         ]
     )
-    loop_05.add_children(
+    loop_reach_distanceR.add_children(
         [
-            TraceLineCam(name="trace normal edge", power=40, pid_p=2.5, pid_i=0.0011, pid_d=0.15,
-                         gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
-            IsJunction(name="scan joined junction", target_state = JState.JOINED),
+            TraceLineCam(name="run", interval=INTERVAL, power=50, pid_p=2.5, pid_i=0.0015, pid_d=0.1,
+                        gs_min=0, gs_max=80, trace_side=TraceSide.RIGHT),
+            IsDistanceEarned(name="check distance", delta_dist = 300),
         ]
     )
-    loop_06.add_children(
+    loop_reach_distanceL.add_children(
         [
-            TraceLineCam(name="trace opposite edge", power=40, pid_p=2.5, pid_i=0.0011, pid_d=0.15,
-                         gs_min=0, gs_max=80, trace_side=TraceSide.OPPOSITE),
-            IsJunction(name="scan joined junction", target_state = JState.JOINED),
+            TraceLineCam(name="run", interval=INTERVAL, power=50, pid_p=2.5, pid_i=0.0015, pid_d=0.1,
+                        gs_min=0, gs_max=80, trace_side=TraceSide.LEFT),
+            IsDistanceEarned(name="check distance", delta_dist = 300),
         ]
     )
-    loop_07.add_children(
-        [
-            TraceLineCam(name="trace normal edge", power=40, pid_p=2.5, pid_i=0.0015, pid_d=0.1,
-                         gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
-            IsDistanceEarned(name="check distance", delta_dist = 600),
-        ]
-    )
+    #Lコース
     root.add_children(
         [
             calibration,
-            start,
-            loop_01,
-            loop_02,
-            loop_03,
-            loop_04,
-            loop_05,
-            loop_06,
-            loop_07,
+            IsTouchOn(name="start"),
+            loop_before_firstcurve,
+            loop_before_bluelineN,
+            loop_before_secondcurve,
+            #最初の青線に入ったら右トレース
+            loop_before_bluelineN,
+            loop_reach_distanceR,
+            #青線検知で左トレース
+            loop_before_bluelineR,
+            loop_reach_distanceL,
+            #青線検知で右トレース
+            loop_before_bluelineL,
+            loop_reach_distanceR,
+            #青線検知で左トレース
+            loop_before_bluelineR,
+            loop_reach_distanceL,
+            #最後の青線を検知したら次の青線を検知するまで直進(Wループ後)
+            loop_before_bluelineN,
             StopNow(name="stop"),
             TheEnd(name="end"),
         ]
