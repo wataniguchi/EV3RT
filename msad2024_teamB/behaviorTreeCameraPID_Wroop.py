@@ -20,6 +20,7 @@ from py_trees import (
 from py_etrobo_util import Video, TraceSide, Plotter
 
 EXEC_INTERVAL: float = 0.04
+#値を増加させると画像の伝送遅れが改善する
 VIDEO_INTERVAL: float = 0.02
 ARM_SHIFT_PWM = 30
 JUNCT_UPPER_THRESH = 50
@@ -396,54 +397,54 @@ def build_behaviour_tree() -> BehaviourTree:
     calibration.add_children(
         [
             ArmUpDownFull(name="arm down", direction=ArmDirection.DOWN),
-            ResetArm(name="arm reset"),
+            ResetDevice(name="arm reset"),
         ]
     )
     loop_before_firstcurve.add_children(
         [
-            TraceLineCam(name="run", interval=INTERVAL, power=75, pid_p=2.5, pid_i=0.0015, pid_d=0.1,
+            TraceLineCam(name="run", power=75, pid_p=2.5, pid_i=0.0015, pid_d=0.1,
                         gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
             IsDistanceEarned(name="check distance", delta_dist = 2700),
         ]
     )
     loop_before_secondcurve.add_children(
         [
-            TraceLineCam(name="run", interval=INTERVAL, power=75, pid_p=2.5, pid_i=0.0015, pid_d=0.1,
+            TraceLineCam(name="run", power=75, pid_p=2.5, pid_i=0.0015, pid_d=0.1,
                         gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
             IsDistanceEarned(name="check distance", delta_dist = 1600),
         ]
     )
     loop_before_bluelineN.add_children(
         [
-            TraceLineCam(name="run", interval=INTERVAL, power=50, pid_p=2.5, pid_i=0.0015, pid_d=0.1,
+            TraceLineCam(name="run", power=50, pid_p=2.5, pid_i=0.0015, pid_d=0.1,
                         gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
             IsColorDetected(name="blue"),
         ]
     )
     loop_before_bluelineR.add_children(
         [
-            TraceLineCam(name="run", interval=INTERVAL, power=50, pid_p=2.5, pid_i=0.0015, pid_d=0.1,
+            TraceLineCam(name="run", power=50, pid_p=2.5, pid_i=0.0015, pid_d=0.1,
                         gs_min=0, gs_max=80, trace_side=TraceSide.RIGHT),
             IsColorDetected(name="blue"),
         ]
     )
     loop_before_bluelineL.add_children(
         [
-            TraceLineCam(name="run", interval=INTERVAL, power=50, pid_p=2.5, pid_i=0.0015, pid_d=0.1,
+            TraceLineCam(name="run", power=50, pid_p=2.5, pid_i=0.0015, pid_d=0.1,
                         gs_min=0, gs_max=80, trace_side=TraceSide.LEFT),
             IsColorDetected(name="blue"),
         ]
     )
     loop_reach_distanceR.add_children(
         [
-            TraceLineCam(name="run", interval=INTERVAL, power=50, pid_p=2.5, pid_i=0.0015, pid_d=0.1,
+            TraceLineCam(name="run", power=50, pid_p=2.5, pid_i=0.0015, pid_d=0.1,
                         gs_min=0, gs_max=80, trace_side=TraceSide.RIGHT),
             IsDistanceEarned(name="check distance", delta_dist = 300),
         ]
     )
     loop_reach_distanceL.add_children(
         [
-            TraceLineCam(name="run", interval=INTERVAL, power=50, pid_p=2.5, pid_i=0.0015, pid_d=0.1,
+            TraceLineCam(name="run", power=50, pid_p=2.5, pid_i=0.0015, pid_d=0.1,
                         gs_min=0, gs_max=80, trace_side=TraceSide.LEFT),
             IsDistanceEarned(name="check distance", delta_dist = 300),
         ]
