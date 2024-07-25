@@ -396,6 +396,7 @@ def build_behaviour_tree() -> BehaviourTree:
     loop_before_bluelineR3 = Parallel(name="loop_before_bluelineR2", policy=ParallelPolicy.SuccessOnOne())
     loop_before_bluelineL = Parallel(name="loop_before_bluelineL", policy=ParallelPolicy.SuccessOnOne())
     loop_before_bluelineL2 = Parallel(name="loop_before_bluelineL2", policy=ParallelPolicy.SuccessOnOne())
+    loop_before_bluelineL3 = Parallel(name="loop_before_bluelineL3", policy=ParallelPolicy.SuccessOnOne())
     loop_reach_distanceR = Parallel(name="loop_reach_distanceR", policy=ParallelPolicy.SuccessOnOne())
     loop_reach_distanceR2 = Parallel(name="loop_reach_distanceR2", policy=ParallelPolicy.SuccessOnOne())
     loop_reach_distanceL = Parallel(name="loop_reach_distanceL", policy=ParallelPolicy.SuccessOnOne())
