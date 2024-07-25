@@ -318,7 +318,7 @@ class IsColorDetected(Behaviour):
         color = g_color_sensor.get_raw_color()
         print(color)
         #Blue判定
-        if(color[2] - color[0]>45 & color[2] <=255 & color[0] <=255):
+        if(color[2] - color[0]>80 & color[2] <=255 & color[0] <=255):
             self.logger.info("%+06d %s.detected blue" % (g_plotter.get_distance(), self.__class__.__name__))
             return Status.SUCCESS
         else:
