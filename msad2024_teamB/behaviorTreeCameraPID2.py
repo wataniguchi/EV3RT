@@ -494,28 +494,28 @@ def build_behaviour_tree() -> BehaviourTree:
         [
             TraceLineCam(name="run", power=50, pid_p=2.5, pid_i=0.0015, pid_d=0.1,
                         gs_min=0, gs_max=80, trace_side=TraceSide.RIGHT),
-            IsDistanceEarned(name="check distance", delta_dist = 300),
+            IsDistanceEarned(name="check distance", delta_dist = 1000),
         ]
     )
     loop_reach_distanceR2.add_children(
         [
             TraceLineCam(name="run", power=50, pid_p=2.5, pid_i=0.0015, pid_d=0.1,
                         gs_min=0, gs_max=80, trace_side=TraceSide.RIGHT),
-            IsDistanceEarned(name="check distance", delta_dist = 300),
+            IsDistanceEarned(name="check distance", delta_dist = 1000),
         ]
     )
     loop_reach_distanceL.add_children(
         [
             TraceLineCam(name="run", power=50, pid_p=2.5, pid_i=0.0015, pid_d=0.1,
                         gs_min=0, gs_max=80, trace_side=TraceSide.LEFT),
-            IsDistanceEarned(name="check distance", delta_dist = 300),
+            IsDistanceEarned(name="check distance", delta_dist = 1000),
         ]
     )
     loop_reach_distanceL2.add_children(
         [
             TraceLineCam(name="run", power=50, pid_p=2.5, pid_i=0.0015, pid_d=0.1,
                         gs_min=0, gs_max=80, trace_side=TraceSide.LEFT),
-            IsDistanceEarned(name="check distance", delta_dist = 300),
+            IsDistanceEarned(name="check distance", delta_dist = 1000),
         ]
     )
     root.add_children(
