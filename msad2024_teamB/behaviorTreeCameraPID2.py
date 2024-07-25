@@ -475,6 +475,20 @@ def build_behaviour_tree() -> BehaviourTree:
             IsColorDetected(name="blue"),
         ]
     )
+    loop_before_bluelineL2.add_children(
+        [
+            TraceLineCam(name="run", power=50, pid_p=2.5, pid_i=0.0015, pid_d=0.1,
+                        gs_min=0, gs_max=80, trace_side=TraceSide.LEFT),
+            IsColorDetected(name="blue"),
+        ]
+    )
+    loop_before_bluelineL3.add_children(
+        [
+            TraceLineCam(name="run", power=50, pid_p=2.5, pid_i=0.0015, pid_d=0.1,
+                        gs_min=0, gs_max=80, trace_side=TraceSide.LEFT),
+            IsColorDetected(name="blue"),
+        ]
+    )
     loop_reach_distanceR.add_children(
         [
             TraceLineCam(name="run", power=50, pid_p=2.5, pid_i=0.0015, pid_d=0.1,
@@ -512,18 +526,35 @@ def build_behaviour_tree() -> BehaviourTree:
             # loop_before_secondcurve,
             #最初の青線に入ったら右トレース
             loop_before_bluelineN2,
-            loop_reach_distanceR,
-            #青線検知で左トレース
-            loop_before_bluelineR2,
             loop_reach_distanceL,
-            #青線検知で右トレース
-            loop_before_bluelineL,
-            loop_reach_distanceR2,
             #青線検知で左トレース
-            loop_before_bluelineR3,
+            loop_before_bluelineL2,
+            loop_reach_distanceR,
+            #青線検知で右トレース
+            loop_before_bluelineR,
             loop_reach_distanceL2,
+            #青線検知で左トレース
+            loop_before_bluelineL3,
+            loop_reach_distanceR2,
             #最後の青線を検知したら次の青線を検知するまで直進(Wループ後)
             loop_before_bluelineN3,
+            # # loop_before_firstcurve,
+            # loop_before_bluelineN,
+            # # loop_before_secondcurve,
+            # #最初の青線に入ったら右トレース
+            # loop_before_bluelineN2,
+            # loop_reach_distanceR,
+            # #青線検知で左トレース
+            # loop_before_bluelineR2,
+            # loop_reach_distanceL,
+            # #青線検知で右トレース
+            # loop_before_bluelineL,
+            # loop_reach_distanceR2,
+            # #青線検知で左トレース
+            # loop_before_bluelineR3,
+            # loop_reach_distanceL2,
+            # #最後の青線を検知したら次の青線を検知するまで直進(Wループ後)
+            # loop_before_bluelineN3,
             StopNow(name="stop"),
             TheEnd(name="end"),
         ]
