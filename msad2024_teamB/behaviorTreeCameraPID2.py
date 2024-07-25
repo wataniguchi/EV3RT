@@ -389,10 +389,17 @@ def build_behaviour_tree() -> BehaviourTree:
     loop_before_firstcurve = Parallel(name="loop_before_firstcurve", policy=ParallelPolicy.SuccessOnOne())
     loop_before_secondcurve = Parallel(name="loop_before_secondcurve", policy=ParallelPolicy.SuccessOnOne())
     loop_before_bluelineN = Parallel(name="loop_before_bluelineN", policy=ParallelPolicy.SuccessOnOne())
+    loop_before_bluelineN2 = Parallel(name="loop_before_bluelineN2", policy=ParallelPolicy.SuccessOnOne())
+    loop_before_bluelineN3 = Parallel(name="loop_before_bluelineN3", policy=ParallelPolicy.SuccessOnOne())
     loop_before_bluelineR = Parallel(name="loop_before_bluelineR", policy=ParallelPolicy.SuccessOnOne())
+    loop_before_bluelineR2 = Parallel(name="loop_before_bluelineR2", policy=ParallelPolicy.SuccessOnOne())
+    loop_before_bluelineR3 = Parallel(name="loop_before_bluelineR2", policy=ParallelPolicy.SuccessOnOne())
     loop_before_bluelineL = Parallel(name="loop_before_bluelineL", policy=ParallelPolicy.SuccessOnOne())
+    loop_before_bluelineL2 = Parallel(name="loop_before_bluelineL2", policy=ParallelPolicy.SuccessOnOne())
     loop_reach_distanceR = Parallel(name="loop_reach_distanceR", policy=ParallelPolicy.SuccessOnOne())
+    loop_reach_distanceR2 = Parallel(name="loop_reach_distanceR2", policy=ParallelPolicy.SuccessOnOne())
     loop_reach_distanceL = Parallel(name="loop_reach_distanceL", policy=ParallelPolicy.SuccessOnOne())
+    loop_reach_distanceL2 = Parallel(name="loop_reach_distanceL2", policy=ParallelPolicy.SuccessOnOne())
     calibration.add_children(
         [
             ArmUpDownFull(name="arm down", direction=ArmDirection.DOWN),
