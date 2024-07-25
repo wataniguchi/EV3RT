@@ -387,9 +387,9 @@ class VideoThread(threading.Thread):
 def build_behaviour_tree() -> BehaviourTree:
     root = Sequence(name="competition", memory=True)
     calibration = Sequence(name="calibration", memory=True)
-    loop_before_firstcurve = Parallel(name="loop_before_bluelineR", policy=ParallelPolicy.SuccessOnOne())
-    loop_before_secondcurve = Parallel(name="loop_before_bluelineR", policy=ParallelPolicy.SuccessOnOne())
-    loop_before_bluelineN = Parallel(name="loop_before_bluelineR", policy=ParallelPolicy.SuccessOnOne())
+    loop_before_firstcurve = Parallel(name="loop_before_firstcurve", policy=ParallelPolicy.SuccessOnOne())
+    loop_before_secondcurve = Parallel(name="loop_before_secondcurve", policy=ParallelPolicy.SuccessOnOne())
+    loop_before_bluelineN = Parallel(name="loop_before_bluelineN", policy=ParallelPolicy.SuccessOnOne())
     loop_before_bluelineR = Parallel(name="loop_before_bluelineR", policy=ParallelPolicy.SuccessOnOne())
     loop_before_bluelineL = Parallel(name="loop_before_bluelineL", policy=ParallelPolicy.SuccessOnOne())
     loop_reach_distanceR = Parallel(name="loop_reach_distanceR", policy=ParallelPolicy.SuccessOnOne())
