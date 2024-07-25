@@ -386,6 +386,7 @@ class VideoThread(threading.Thread):
 
 def build_behaviour_tree() -> BehaviourTree:
     root = Sequence(name="competition", memory=True)
+    start = Parallel(name="start", policy=ParallelPolicy.SuccessOnOne())
     calibration = Sequence(name="calibration", memory=True)
     loop_before_firstcurve = Parallel(name="loop_before_firstcurve", policy=ParallelPolicy.SuccessOnOne())
     loop_before_secondcurve = Parallel(name="loop_before_secondcurve", policy=ParallelPolicy.SuccessOnOne())
