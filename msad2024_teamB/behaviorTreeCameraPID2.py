@@ -407,7 +407,7 @@ def build_behaviour_tree() -> BehaviourTree:
     loop_reach_distanceL2 = Parallel(name="loop_reach_distanceL2", policy=ParallelPolicy.SuccessOnOne())
     calibration.add_children(
         [
-            ArmUpDownFull(name="arm down", direction=ArmDirection.DOWN),
+            # ArmUpDownFull(name="arm down", direction=ArmDirection.DOWN),
             ResetDevice(name="device reset"),
         ]
     )
