@@ -397,7 +397,13 @@ def build_behaviour_tree() -> BehaviourTree:
     calibration.add_children(
         [
             ArmUpDownFull(name="arm down", direction=ArmDirection.DOWN),
-            ResetDevice(name="arm reset"),
+            ResetDevice(name="device reset"),
+        ]
+    )
+    start.add_children(
+        [
+            IsSonarOn(name="soner start", alert_dist=50),
+            IsTouchOn(name="touch start"),
         ]
     )
     loop_before_firstcurve.add_children(
