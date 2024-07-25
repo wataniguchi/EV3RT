@@ -526,7 +526,7 @@ def build_behaviour_tree() -> BehaviourTree:
             loop_before_bluelineN,
             # loop_before_secondcurve,
             #最初の青線に入ったら右トレース
-            loop_before_bluelineN2,
+            # loop_before_bluelineN2,
             loop_reach_distanceL,
             #青線検知で左トレース
             loop_before_bluelineL2,
