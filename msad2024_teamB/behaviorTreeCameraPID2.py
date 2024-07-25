@@ -315,7 +315,7 @@ class IsColorDetected(Behaviour):
     def update(self) -> Status:
         global g_color_sensor
         #RGBの値を取得
-        color = g_color_sensor.get_raw_color
+        color = g_color_sensor.get_raw_color()
         #Blue判定
         if(color[2] - color[0]>45 & color[2] <=255 & color[0] <=255):
             self.logger.info("%+06d %s.detected blue" % (g_plotter.get_distance(), self.__class__.__name__))
@@ -507,9 +507,9 @@ def build_behaviour_tree() -> BehaviourTree:
         [
             calibration,
             start,
-            loop_before_firstcurve,
+            # loop_before_firstcurve,
             loop_before_bluelineN,
-            loop_before_secondcurve,
+            # loop_before_secondcurve,
             #最初の青線に入ったら右トレース
             loop_before_bluelineN2,
             loop_reach_distanceR,
