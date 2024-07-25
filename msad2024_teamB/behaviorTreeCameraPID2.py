@@ -323,7 +323,7 @@ class IsColorDetected(Behaviour):
         else:
             #指定色でないならRUNNINGを返却
             return Status.RUNNING
-            
+
 class TraverseBehaviourTree(object):
     def __init__(self, tree: BehaviourTree) -> None:
         self.tree = tree
@@ -461,20 +461,20 @@ def build_behaviour_tree() -> BehaviourTree:
             loop_before_firstcurve,
             loop_before_bluelineN,
             loop_before_secondcurve,
-            #最初の青線に入ったら右トレース
-            loop_before_bluelineN,
-            loop_reach_distanceR,
-            #青線検知で左トレース
-            loop_before_bluelineR,
-            loop_reach_distanceL,
-            #青線検知で右トレース
-            loop_before_bluelineL,
-            loop_reach_distanceR,
-            #青線検知で左トレース
-            loop_before_bluelineR,
-            loop_reach_distanceL,
-            #最後の青線を検知したら次の青線を検知するまで直進(Wループ後)
-            loop_before_bluelineN,
+            # #最初の青線に入ったら右トレース
+            # loop_before_bluelineN,
+            # loop_reach_distanceR,
+            # #青線検知で左トレース
+            # loop_before_bluelineR,
+            # loop_reach_distanceL,
+            # #青線検知で右トレース
+            # loop_before_bluelineL,
+            # loop_reach_distanceR,
+            # #青線検知で左トレース
+            # loop_before_bluelineR,
+            # loop_reach_distanceL,
+            # #最後の青線を検知したら次の青線を検知するまで直進(Wループ後)
+            # loop_before_bluelineN,
             StopNow(name="stop"),
             TheEnd(name="end"),
         ]
