@@ -390,49 +390,49 @@ def build_behaviour_tree() -> BehaviourTree:
     )
     loop_01.add_children(
         [
-            TraceLineCam(name="trace normal edge", power=60, pid_p=2.5, pid_i=0.0015, pid_d=0.1,
+            TraceLineCam(name="trace normal edge", power=50, pid_p=2.5, pid_i=0.0015, pid_d=0.1,
                          gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
             IsDistanceEarned(name="check distance", delta_dist = 10),
         ]
     )
     loop_02.add_children(
         [
-            TraceLineCam(name="trace normal edge", power=60, pid_p=2.5, pid_i=0.001, pid_d=0.15,
+            TraceLineCam(name="trace normal edge", power=50, pid_p=2.5, pid_i=0.001, pid_d=0.15,
                          gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
             IsJunction(name="scan joined junction", target_state = JState.JOINED),
         ]
     )
     loop_03.add_children(
         [
-            TraceLineCam(name="trace opposite edge", power=60, pid_p=2.5, pid_i=0.0011, pid_d=0.15,
+            TraceLineCam(name="trace opposite edge", power=50, pid_p=2.5, pid_i=0.0011, pid_d=0.15,
                          gs_min=0, gs_max=80, trace_side=TraceSide.OPPOSITE),
             IsJunction(name="scan joined junction", target_state = JState.JOINED),
         ]
     )
     loop_04.add_children(
         [
-            TraceLineCam(name="trace normal edge", power=60, pid_p=2.5, pid_i=0.0015, pid_d=0.1,
+            TraceLineCam(name="trace normal edge", power=50, pid_p=2.5, pid_i=0.0015, pid_d=0.1,
                          gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
             IsDistanceEarned(name="check distance", delta_dist = 2000),
         ]
     )
     loop_05.add_children(
         [
-            TraceLineCam(name="trace normal edge", power=60, pid_p=2.5, pid_i=0.0011, pid_d=0.15,
+            TraceLineCam(name="trace normal edge", power=50, pid_p=2.5, pid_i=0.0011, pid_d=0.15,
                          gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
             IsJunction(name="scan joined junction", target_state = JState.JOINED),
         ]
     )
     loop_06.add_children(
         [
-            TraceLineCam(name="trace opposite edge", power=60, pid_p=2.5, pid_i=0.0011, pid_d=0.15,
+            TraceLineCam(name="trace opposite edge", power=50, pid_p=2.5, pid_i=0.0011, pid_d=0.15,
                          gs_min=0, gs_max=80, trace_side=TraceSide.OPPOSITE),
             IsJunction(name="scan joined junction", target_state = JState.JOINED),
         ]
     )
     loop_07.add_children(
         [
-            TraceLineCam(name="trace normal edge", power=60, pid_p=2.5, pid_i=0.0015, pid_d=0.1,
+            TraceLineCam(name="trace normal edge", power=50, pid_p=2.5, pid_i=0.0015, pid_d=0.1,
                          gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
             IsDistanceEarned(name="check distance", delta_dist = 600),
         ]
