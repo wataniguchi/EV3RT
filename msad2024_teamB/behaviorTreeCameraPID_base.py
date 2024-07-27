@@ -421,7 +421,7 @@ def build_behaviour_tree() -> BehaviourTree:
             TraceLineCam(name="trace normal edge", power=40, pid_p=2.5, pid_i=0.0011, pid_d=0.15,
                          gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
             # IsJunction(name="scan joined junction", target_state = JState.JOINED),
-            IsDistanceEarned(name="check distance", delta_dist = 4500),
+            IsDistanceEarned(name="check distance", delta_dist = 1000),
         ]
     )
     loop_06.add_children(
