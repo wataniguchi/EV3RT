@@ -370,6 +370,7 @@ def build_behaviour_tree() -> BehaviourTree:
     calibration = Sequence(name="calibration", memory=True)
     start = Parallel(name="start", policy=ParallelPolicy.SuccessOnOne())
     loop_01 = Parallel(name="loop 01", policy=ParallelPolicy.SuccessOnOne())
+    loop_01_2 = Parallel(name="loop 01", policy=ParallelPolicy.SuccessOnOne())
     loop_02 = Parallel(name="loop 02", policy=ParallelPolicy.SuccessOnOne())
     loop_03 = Parallel(name="loop 03", policy=ParallelPolicy.SuccessOnOne())
     loop_04 = Parallel(name="loop 04", policy=ParallelPolicy.SuccessOnOne())
@@ -392,9 +393,16 @@ def build_behaviour_tree() -> BehaviourTree:
     )
     loop_01.add_children(
         [
-            TraceLineCam(name="trace normal edge", power=50, pid_p=2.0, pid_i=0.0015, pid_d=0.3,
+            TraceLineCam(name="trace normal edge", power=70, pid_p=1.5, pid_i=0.0015, pid_d=0.4,
                          gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
             IsDistanceEarned(name="check distance", delta_dist = 3500),
+        ]
+    )
+    loop_01_2.add_children(
+        [
+            TraceLineCam(name="trace normal edge", power=50, pid_p=2.0, pid_i=0.0015, pid_d=0.3,
+                         gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
+            IsDistanceEarned(name="check distance", delta_dist = 1000),
         ]
     )
     loop_02.add_children(
@@ -458,6 +466,7 @@ def build_behaviour_tree() -> BehaviourTree:
             calibration,
             start,
             loop_01,
+            loop_01_2,
             # loop_02,
             # loop_03,
             # loop_04,
