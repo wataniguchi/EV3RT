@@ -472,7 +472,7 @@ def build_behaviour_tree() -> BehaviourTree:
         [
             TraceLineCam(name="trace normal edge", power=45, pid_p=2.0, pid_i=0.0015, pid_d=0.3,
                          gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
-            IsDistanceEarned(name="check distance", delta_dist = 600),
+            IsDistanceEarned(name="check distance", delta_dist = 1000),
         ]
     )
     root.add_children(
@@ -482,14 +482,14 @@ def build_behaviour_tree() -> BehaviourTree:
             loop_01,
             loop_01_2,
             loop_01_3,
-            # loop_02,
-            # loop_03,
-            # loop_04,
-            # loop_05,
-            # # loop_05_2,
-            # # loop_05_3,
-            # loop_06,
-            # loop_07,
+            loop_02,
+            loop_03,
+            loop_04,
+            loop_05,
+            loop_05_2,
+            loop_05_3,
+            loop_06,
+            loop_07,
             StopNow(name="stop"),
             TheEnd(name="end"),
         ]
