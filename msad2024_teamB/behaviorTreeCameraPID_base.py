@@ -418,9 +418,9 @@ def build_behaviour_tree() -> BehaviourTree:
     )
     loop_01_3.add_children(
         [
-            TraceLineCam(name="trace normal edge", power=60, pid_p=1.5, pid_i=0.0015, pid_d=0.4,
+            TraceLineCam(name="trace normal edge", power=70, pid_p=1.5, pid_i=0.0015, pid_d=0.4,
                          gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
-            IsDistanceEarned(name="check distance", delta_dist = 1000),
+            IsDistanceEarned(name="check distance", delta_dist = 1500),
         ]
     )
     #コンタクトⅠ直前
@@ -434,7 +434,7 @@ def build_behaviour_tree() -> BehaviourTree:
     #コンタクトⅠ通過後、コンタクトⅡまで
     loop_03.add_children(
         [
-            TraceLineCam(name="trace opposite edge", power=45, pid_p=2.0, pid_i=0.0011, pid_d=0.35,
+            TraceLineCam(name="trace opposite edge", power=43, pid_p=2.0, pid_i=0.0011, pid_d=0.35,
                          gs_min=0, gs_max=80, trace_side=TraceSide.OPPOSITE),
             IsJunction(name="scan joined junction", target_state = JState.JOINED),
         ]
@@ -450,7 +450,7 @@ def build_behaviour_tree() -> BehaviourTree:
     #コンタクトⅢからコンタクトⅡまで
     loop_05.add_children(
         [
-            TraceLineCam(name="trace normal edge", power=45, pid_p=2.0, pid_i=0.0011, pid_d=0.35,
+            TraceLineCam(name="trace normal edge", power=43, pid_p=2.0, pid_i=0.0011, pid_d=0.35,
                          gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
             IsJunction(name="scan joined junction", target_state = JState.JOINED),
         ]
