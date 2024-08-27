@@ -490,14 +490,14 @@ def build_behaviour_tree() -> BehaviourTree:
     loop_02.add_children(
         [
             TraceLineCam(name="trace normal edge", power=40, pid_p=2.5, pid_i=0.0015, pid_d=0.1, gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
-            IsSonarOn(name="soner start", alert_dist=50),
+            IsSonarOn(name="soner start", alert_dist=30),
         ]
     )
 
-    # 右に90度回転させる
+    # 左に90度回転させる
     loop_03.add_children(
         [
-            RotateDegrees(name="rotate 90 degrees right", power=50, target_angle=90)
+            RotateDegrees(name="rotate 90 degrees right", power=50, target_angle=-90)
         ]
     )
 
@@ -509,10 +509,10 @@ def build_behaviour_tree() -> BehaviourTree:
         ]
     )
 
-    # 左に110度回転させる
+    # 右に110度回転させる
     loop_05.add_children(
         [
-            RotateDegrees(name="rotate 110 degrees left", power=50, target_angle=-110)
+            RotateDegrees(name="rotate 110 degrees left", power=50, target_angle=110)
         ]
     )
 
