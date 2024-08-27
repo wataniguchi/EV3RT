@@ -265,6 +265,10 @@ class RunAsInstructed(Behaviour):
         return Status.RUNNING
 
 class CheckColor(Behaviour):
+    def __init__(self, name: str):
+        super(CheckColor, self).__init__(name)
+        self.logger.debug("%s.__init__()" % (self.__class__.__name__))
+        self.logger.info(g_color_sensor)
     def blue() -> Status:
         global g_color_sensor
         # RGB値を0〜1の範囲に正規化
@@ -487,7 +491,7 @@ def build_behaviour_tree() -> BehaviourTree:
     loop_01.add_children(
         [
             RunAsInstructed(name="move to SC",pwm_l= 50,pwm_r=50),
-            CheckColor.blue(),
+            CheckColor.blue(name="blue check"),
         ]
     )
     
