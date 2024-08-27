@@ -269,8 +269,8 @@ class CheckColor(Behaviour):
         super(CheckColor, self).__init__(name)
         self.logger.debug("%s.__init__()" % (self.__class__.__name__))
         self.logger.info(g_color_sensor)
-    def blue() -> Status:
-        global g_color_sensor
+    def update(self) -> Status:
+        self.logger.info(g_color_sensor)
         # RGB値を0〜1の範囲に正規化
         r, g, b = [x / 255.0 for x in g_color_sensor.get_raw_color()]
         # RGBをHSVに変換
@@ -284,12 +284,7 @@ class CheckColor(Behaviour):
             return Status.SUCCESS
         else:
             return Status.RUNNING
-        
-    def update(self) -> Status:
-        if not self.running:
-            self.logger.info(g_color_sensor)
-        return Status.RUNNING
-        
+
 class RotateDegrees(Behaviour):
     def __init__(self, name: str, power: int, target_angle: int):
         super(RotateDegrees, self).__init__(name)
@@ -491,7 +486,7 @@ def build_behaviour_tree() -> BehaviourTree:
     loop_01.add_children(
         [
             RunAsInstructed(name="move to SC",pwm_l= 50,pwm_r=50),
-            CheckColor.blue(name="blue check"),
+            CheckColor(name="blue check"),
         ]
     )
     
