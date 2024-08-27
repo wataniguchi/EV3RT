@@ -266,9 +266,7 @@ class RunAsInstructed(Behaviour):
 
 class CheckColor(Behaviour):
     def blue() -> Status:
-        print("test1",g_color_sensor)
         global g_color_sensor
-        print("test2",g_color_sensor)
         # RGB値を0〜1の範囲に正規化
         r, g, b = [x / 255.0 for x in g_color_sensor.get_raw_color()]
         # RGBをHSVに変換
@@ -281,6 +279,11 @@ class CheckColor(Behaviour):
         if 200 <= h_degrees <= 245 and s > 0.3 and v > 0.2:
             return Status.SUCCESS
         else:
+            return Status.RUNNING
+        
+        def update(self) -> Status:
+            if not self.running:
+                self.logger.info(g_color_sensor)
             return Status.RUNNING
         
 class RotateDegrees(Behaviour):
