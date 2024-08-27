@@ -281,10 +281,10 @@ class CheckColor(Behaviour):
         else:
             return Status.RUNNING
         
-        def update(self) -> Status:
-            if not self.running:
-                self.logger.info(g_color_sensor)
-            return Status.RUNNING
+    def update(self) -> Status:
+        if not self.running:
+            self.logger.info(g_color_sensor)
+        return Status.RUNNING
         
 class RotateDegrees(Behaviour):
     def __init__(self, name: str, power: int, target_angle: int):
