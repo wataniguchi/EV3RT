@@ -252,8 +252,8 @@ class IsJunction(Behaviour):
 class RunAsInstructed(Behaviour):
     def __init__(self, name: str, pwm_l: int, pwm_r: int) -> None:
         super(RunAsInstructed, self).__init__(name)
-        self.pwm_l = g_course * pwm_l
-        self.pwm_r = g_course * pwm_r
+        self.pwm_l = pwm_l
+        self.pwm_r = pwm_r
         self.running = False
 
     def update(self) -> Status:
@@ -268,9 +268,7 @@ class CheckColor(Behaviour):
     def __init__(self, name: str):
         super(CheckColor, self).__init__(name)
         self.logger.debug("%s.__init__()" % (self.__class__.__name__))
-        self.logger.info("g_color_sensor:%s",g_color_sensor)
     def update(self) -> Status:
-        self.logger.info("g_color_sensor:%s",g_color_sensor)
         # RGB値を0〜1の範囲に正規化
         r, g, b = [x / 255.0 for x in g_color_sensor.get_raw_color()]
         # RGBをHSVに変換
