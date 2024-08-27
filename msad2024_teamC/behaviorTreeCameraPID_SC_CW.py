@@ -266,6 +266,7 @@ class RunAsInstructed(Behaviour):
 
 class CheckColor(Behaviour):
     def blue() -> Status:
+        global g_color_sensor
         # RGB値を0〜1の範囲に正規化
         r, g, b = [x / 255.0 for x in g_color_sensor.get_raw_color()]
         # RGBをHSVに変換
