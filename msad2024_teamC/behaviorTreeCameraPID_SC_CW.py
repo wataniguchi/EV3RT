@@ -265,7 +265,7 @@ class RunAsInstructed(Behaviour):
         return Status.RUNNING
 
 class CheckColor(Behaviour):
-    def blue(self) -> Status:
+    def blue() -> Status:
         # RGB値を0〜1の範囲に正規化
         r, g, b = [x / 255.0 for x in g_color_sensor.get_raw_color()]
         # RGBをHSVに変換
@@ -497,7 +497,7 @@ def build_behaviour_tree() -> BehaviourTree:
     # 左に90度回転させる
     loop_03.add_children(
         [
-            RotateDegrees(name="rotate 90 degrees right", power=50, target_angle=-90)
+            RotateDegrees(name="rotate 90 degrees left", power=50, target_angle=-90)
         ]
     )
 
@@ -512,7 +512,7 @@ def build_behaviour_tree() -> BehaviourTree:
     # 右に110度回転させる
     loop_05.add_children(
         [
-            RotateDegrees(name="rotate 110 degrees left", power=50, target_angle=110)
+            RotateDegrees(name="rotate 110 degrees right", power=50, target_angle=110)
         ]
     )
 
