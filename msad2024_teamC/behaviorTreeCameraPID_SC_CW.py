@@ -400,12 +400,14 @@ class TraverseBehaviourTree(object):
         **kwargs,
     ) -> None:
         global g_plotter
+        global g_color_sensor
         if not self.running:
             if g_hub is None:
                 print(" -- TraverseBehaviorTree waiting for ETrobo devices to be exposed...")
             else:
                 self.running = True
                 g_plotter = Plotter()
+                g_color_sensor = ColorSensor()
                 print(" -- TraverseBehaviorTree initialization complete")
         else:
             self.tree.tick_once()
