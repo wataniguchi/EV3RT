@@ -17,7 +17,8 @@ IN_FRAME_HEIGHT = 480
 #FRAME_WIDTH  = 160
 #FRAME_HEIGHT = 120
 FRAME_WIDTH  = 320
-FRAME_HEIGHT = 240
+FRAME_HEIGHT_ORIGIN = 240
+FRAME_HEIGHT = 200
 
 CROP_WIDTH     = int(13*FRAME_WIDTH/16) # for full angle
 #CROP_WIDTH     = int(9*FRAME_WIDTH/16)
@@ -31,7 +32,7 @@ MORPH_KERNEL_SIZE = round_up_to_odd(int(FRAME_WIDTH/48))
 ROI_BOUNDARY   = int(FRAME_WIDTH/10)
 LINE_THICKNESS = int(FRAME_WIDTH/80)
 CIRCLE_RADIUS  = int(FRAME_WIDTH/40)
-SCAN_V_POS     = int(13*FRAME_HEIGHT/16 - LINE_THICKNESS) # for full angle
+SCAN_V_POS     = int(12*FRAME_HEIGHT/16 - LINE_THICKNESS) # for full angle
 #SCAN_V_POS     = int(16*FRAME_HEIGHT/16 - LINE_THICKNESS)
 
 # frame size for X11 painting
@@ -99,9 +100,11 @@ class Video(object):
             img_orig = frame.copy()
             # resize the image for OpenCV processing
         if FRAME_WIDTH != IN_FRAME_WIDTH or FRAME_HEIGHT != IN_FRAME_HEIGHT:
-            img_orig = cv2.resize(img_orig, (FRAME_WIDTH,FRAME_HEIGHT))
-            if img_orig.shape[1] != FRAME_WIDTH or img_orig.shape[0] != FRAME_HEIGHT:
+            img_orig = cv2.resize(img_orig, (FRAME_WIDTH,FRAME_HEIGHT_ORIGIN))
+            if img_orig.shape[1] != FRAME_WIDTH or img_orig.shape[0] != FRAME_HEIGHT_ORIGIN:
                 sys.exit(-1)
+        # crop
+        img_orig = img_orig[0:FRAME_HEIGHT, 0:FRAME_WIDTH]
         # convert the image from BGR to grayscale
         img_gray = cv2.cvtColor(img_orig, cv2.COLOR_BGR2GRAY)
         # crop a part of image for binarization
