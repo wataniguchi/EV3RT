@@ -1,4 +1,5 @@
 import argparse
+import sys
 import time
 import math
 import threading
@@ -237,7 +238,7 @@ class IsJunction(Behaviour):
 
 class RunAsInstructed(Behaviour):
     def __init__(self, name: str, pwm_l: int, pwm_r: int) -> None:
-        super(RunAsInstucted, self).__init__(name)
+        super(RunAsInstructed, self).__init__(name)
         self.pwm_l = g_course * pwm_l
         self.pwm_r = g_course * pwm_r
         self.running = False
