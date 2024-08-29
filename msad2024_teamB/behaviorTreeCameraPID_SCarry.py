@@ -386,13 +386,13 @@ def build_behaviour_tree() -> BehaviourTree:
             IsTouchOn(name="touch start"),
         ]
     )
-    step_01.add.children(
+    step_01.add_children(
         [
             RunAsInstructed(name="freerun 1", pwm_l=30, pwm_r=30),
             IsSonarOn(name="soner redbottol", alert_dist=50)
         ]
     )
-    step_02.add.children(
+    step_02.add_children(
         [
             RunAsInstructed(name="Turn 1", pwm_l=1, pwm_r=15),
             RunAsInstructed(name="freerun 2", pwm_l=80, pwm_r=80),
@@ -400,7 +400,7 @@ def build_behaviour_tree() -> BehaviourTree:
             # color sensor add
         ]
     )
-    step_03.add.children(
+    step_03.add_children(
         [
             RunAsInstructed(name="back 1", pwm_l=-10, pwm_r=-10),
             RunAsInstructed(name="Turn 2", pwm_l=15, pwm_r=1),
@@ -409,7 +409,7 @@ def build_behaviour_tree() -> BehaviourTree:
             # color sensor add
         ]
     )
-    step_04.add.children(
+    step_04.add_children(
         [
             RunAsInstructed(name="Turn 1", pwm_l=15, pwm_r=1),
             TraceLineCam(name="trace normal edge", power=40, pid_p=2.5, pid_i=0.0015, pid_d=0.1,
