@@ -339,6 +339,35 @@ class TraceLineCamLR(Behaviour):
         g_right_motor.set_power(self.powerR - turn)
         g_left_motor.set_power(self.powerL + turn)
         return Status.RUNNING
+    
+class MoveStraight(Behaviour):
+    def __init__(self, name: str, power: int, target_distance: int) -> None:
+        super(MoveStraight, self).__init__(name)
+        self.power = power
+        self.target_distance = target_distance
+        self.start_distance = None
+        self.running = False
+
+    def update(self) -> Status:
+        if not self.running:
+            self.running = True
+            self.start_distance = g_plotter.get_distance()
+            g_right_motor.set_power(self.power)
+            g_left_motor.set_power(self.power)
+            self.logger.info("%+06d %s.開始、パワー=%d、目標距離=%d" % 
+                            (self.start_distance, self.__class__.__name__, self.power, self.target_distance))
+        
+        current_distance = g_plotter.get_distance()
+        traveled_distance = current_distance - self.start_distance
+        
+        if traveled_distance >= self.target_distance:
+            g_right_motor.set_power(0)
+            g_left_motor.set_power(0)
+            self.logger.info("%+06d %s.目標距離に到達" % (current_distance, self.__class__.__name__))
+            return Status.SUCCESS
+        else:
+            return Status.RUNNING
+
 
 class TraverseBehaviourTree(object):
     def __init__(self, tree: BehaviourTree) -> None:
@@ -483,6 +512,7 @@ def build_behaviour_tree() -> BehaviourTree:
     )
     loop_09.add_children(
         [
+             MoveStraight(name="move straight 3", power=40, target_distance=2000),
             IsDistanceEarned(name="check distance", delta_dist = 1300),
         ]
     )
