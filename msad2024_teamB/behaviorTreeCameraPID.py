@@ -340,7 +340,7 @@ class TraceLineCamLR(Behaviour):
         g_left_motor.set_power(self.powerL + turn)
         return Status.RUNNING
     
-class MoveStraight(Behaviour):
+class MoveStraightLR(Behaviour):
     def __init__(self, name: str, power: int, target_distance: int) -> None:
         super(MoveStraight, self).__init__(name)
         self.power = power
@@ -368,6 +368,34 @@ class MoveStraight(Behaviour):
         else:
             return Status.RUNNING
 
+class MoveStraight(Behaviour):
+    def __init__(self, name: str, right_power: int, left_power: int, target_distance: int) -> None:
+        super(MoveStraight, self).__init__(name)
+        self.right_power = right_power
+        self.left_power = left_power
+        self.target_distance = target_distance
+        self.start_distance = None
+        self.running = False
+
+    def update(self) -> Status:
+        if not self.running:
+            self.running = True
+            self.start_distance = g_plotter.get_distance()
+            g_right_motor.set_power(self.right_power)
+            g_left_motor.set_power(self.left_power)
+            self.logger.info("%+06d %s.開始、右パワー=%d、左パワー=%d、目標距離=%d" % 
+                             (self.start_distance, self.__class__.__name__, self.right_power, self.left_power, self.target_distance))
+        
+        current_distance = g_plotter.get_distance()
+        traveled_distance = current_distance - self.start_distance
+        
+        if traveled_distance >= self.target_distance:
+            g_right_motor.set_power(0)
+            g_left_motor.set_power(0)
+            self.logger.info("%+06d %s.目標距離に到達" % (current_distance, self.__class__.__name__))
+            return Status.SUCCESS
+        else:
+            return Status.RUNNING
 
 class TraverseBehaviourTree(object):
     def __init__(self, tree: BehaviourTree) -> None:
@@ -525,8 +553,7 @@ def build_behaviour_tree() -> BehaviourTree:
     # )
     loop_10.add_children(
         [
-            TraceLineCamLR(name="trace normal edge", powerR=1, powerL=40,  pid_p=2.5, pid_i=0.0015, pid_d=0.1,
-                         gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
+            MoveStraightLR(name="move straight 4", right_power=0, left_power=40, target_distance=20),
             IsDistanceEarned(name="check distance", delta_dist = 20),
         ]
     )
