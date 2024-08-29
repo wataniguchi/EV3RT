@@ -306,6 +306,39 @@ class TraceLineCam(Behaviour):
         g_left_motor.set_power(self.power + turn)
         return Status.RUNNING
 
+class TraceLineCamLR(Behaviour):
+    def __init__(self, name: str, powerR: int, powerL: int, pid_p: float, pid_i: float, pid_d: float,
+                 gs_min: int, gs_max: int, trace_side: TraceSide) -> None:
+        super(TraceLineCam, self).__init__(name)
+        self.powerR = powerR
+        self.powerL = powerL
+        self.pid = PID(pid_p, pid_i, pid_d, setpoint=0, sample_time=EXEC_INTERVAL, output_limits=(-powerL, powerL))
+        self.gs_min = gs_min
+        self.gs_max = gs_max
+        self.trace_side = trace_side
+        self.running = False
+
+    def update(self) -> Status:
+        if not self.running:
+            self.running = True
+            g_video.set_thresholds(self.gs_min, self.gs_max)
+            if self.trace_side == TraceSide.NORMAL:
+                if g_course == -1: # right course
+                    g_video.set_trace_side(TraceSide.RIGHT)
+                else:
+                    g_video.set_trace_side(TraceSide.LEFT)
+            elif self.trace_side == TraceSide.OPPOSITE: 
+                if g_course == -1: # right course
+                    g_video.set_trace_side(TraceSide.LEFT)
+                else:
+                    g_video.set_trace_side(TraceSide.RIGHT)
+            else: # TraceSide.CENTER
+                g_video.set_trace_side(TraceSide.CENTER)
+            self.logger.info("%+06d %s.trace started with TS=%s" % (g_plotter.get_distance(), self.__class__.__name__, self.trace_side.name))
+        turn = (-1) * int(self.pid(g_video.get_theta()))
+        g_right_motor.set_power(self.powerR - turn)
+        g_left_motor.set_power(self.powerL + turn)
+        return Status.RUNNING
 
 class TraverseBehaviourTree(object):
     def __init__(self, tree: BehaviourTree) -> None:
@@ -376,6 +409,10 @@ def build_behaviour_tree() -> BehaviourTree:
     loop_05 = Parallel(name="loop 05", policy=ParallelPolicy.SuccessOnOne())
     loop_06 = Parallel(name="loop 06", policy=ParallelPolicy.SuccessOnOne())
     loop_07 = Parallel(name="loop 07", policy=ParallelPolicy.SuccessOnOne())
+    loop_08 = Parallel(name="loop 07", policy=ParallelPolicy.SuccessOnOne())
+    loop_09 = Parallel(name="loop 07", policy=ParallelPolicy.SuccessOnOne())
+    loop_10 = Parallel(name="loop 07", policy=ParallelPolicy.SuccessOnOne())
+    loop_11 = Parallel(name="loop 07", policy=ParallelPolicy.SuccessOnOne())
     calibration.add_children(
         [
             ArmUpDownFull(name="arm down", direction=ArmDirection.DOWN),
@@ -437,17 +474,50 @@ def build_behaviour_tree() -> BehaviourTree:
             IsDistanceEarned(name="check distance", delta_dist = 600),
         ]
     )
+    loop_08.add_children(
+        [
+            TraceLineCam(name="trace normal edge", power=40, pid_p=2.5, pid_i=0.0015, pid_d=0.1,
+                         gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
+            IsDistanceEarned(name="check distance", delta_dist = 1300),
+        ]
+    )
+    loop_09.add_children(
+        [
+            TraceLineCam(name="trace normal edge", power=-40, pid_p=2.5, pid_i=0.0015, pid_d=0.1,
+                         gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
+            IsDistanceEarned(name="check distance", delta_dist = 150),
+        ]
+    )
+    loop_10.add_children(
+        [
+            TraceLineCamLR(name="trace normal edge", powerR=0, powerL=40,  pid_p=2.5, pid_i=0.0015, pid_d=0.1,
+                         gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
+            IsDistanceEarned(name="check distance", delta_dist = 20),
+        ]
+    )
+    loop_11.add_children(
+        [
+            TraceLineCam(name="trace normal edge", power=40, pid_p=2.5, pid_i=0.0015, pid_d=0.1,
+                         gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
+            IsDistanceEarned(name="check distance", delta_dist = 1000),
+        ]
+    )
     root.add_children(
         [
             calibration,
             start,
-            loop_01,
-            loop_02,
-            loop_03,
-            loop_04,
-            loop_05,
-            loop_06,
-            loop_07,
+            # loop_01,
+            # loop_02,
+            # loop_03,
+            # loop_04,
+            # loop_05,
+            # loop_06,
+            # loop_07,
+            #W-loop_end
+            loop_08,
+            loop_09,
+            loop_10,
+            loop_11,
             StopNow(name="stop"),
             TheEnd(name="end"),
         ]
