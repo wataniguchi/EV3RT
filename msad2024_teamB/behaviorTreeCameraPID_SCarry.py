@@ -396,23 +396,22 @@ def build_behaviour_tree() -> BehaviourTree:
         [
             RunAsInstructed(name="Turn 1", pwm_l=1, pwm_r=15),
             RunAsInstructed(name="freerun 2", pwm_l=80, pwm_r=80),
-            IsDistanceEarned(name="check distance", delta_dist = 1000)
+            IsDistanceEarned(name="check distance 1", delta_dist = 1000)
             # color sensor add
         ]
     )
     step_03.add.children(
         [
-            RunAsInstructed(name="Turn 1", pwm_l=-10, pwm_r=-10),
-            RunAsInstructed(name="Turn 1", pwm_l=-15, pwm_r=1),
-            RunAsInstructed(name="freerun 2", pwm_l=500, pwm_r=500),
-            IsDistanceEarned(name="check distance", delta_dist = 400),
-            RunAsInstructed(name="Turn 1", pwm_l=-15, pwm_r=1),
+            RunAsInstructed(name="back 1", pwm_l=-10, pwm_r=-10),
+            RunAsInstructed(name="Turn 2", pwm_l=15, pwm_r=1),
+            RunAsInstructed(name="freerun 3", pwm_l=50, pwm_r=50),
+            IsDistanceEarned(name="check distance 2", delta_dist = 400),
             # color sensor add
         ]
     )
     step_04.add.children(
         [
-            RunAsInstructed(name="Turn 1", pwm_l=-15, pwm_r=1),
+            RunAsInstructed(name="Turn 1", pwm_l=15, pwm_r=1),
             TraceLineCam(name="trace normal edge", power=40, pid_p=2.5, pid_i=0.0015, pid_d=0.1,
                          gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
             IsDistanceEarned(name="check distance", delta_dist = 1100)
