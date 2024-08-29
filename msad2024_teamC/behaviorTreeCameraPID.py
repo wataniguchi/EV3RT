@@ -1,4 +1,3 @@
-# test
 import argparse
 import time
 import math
