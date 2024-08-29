@@ -481,27 +481,27 @@ def build_behaviour_tree() -> BehaviourTree:
             IsDistanceEarned(name="check distance", delta_dist = 1300),
         ]
     )
-    loop_09.add_children(
-        [
-            TraceLineCam(name="trace normal edge", power=-40, pid_p=2.5, pid_i=0.0015, pid_d=0.1,
-                         gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
-            IsDistanceEarned(name="check distance", delta_dist = 150),
-        ]
-    )
-    loop_10.add_children(
-        [
-            TraceLineCamLR(name="trace normal edge", powerR=0, powerL=40,  pid_p=2.5, pid_i=0.0015, pid_d=0.1,
-                         gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
-            IsDistanceEarned(name="check distance", delta_dist = 20),
-        ]
-    )
-    loop_11.add_children(
-        [
-            TraceLineCam(name="trace normal edge", power=40, pid_p=2.5, pid_i=0.0015, pid_d=0.1,
-                         gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
-            IsDistanceEarned(name="check distance", delta_dist = 1000),
-        ]
-    )
+    # loop_09.add_children(
+    #     [
+    #         TraceLineCam(name="trace normal edge", power=-40, pid_p=2.5, pid_i=0.0015, pid_d=0.1,
+    #                      gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
+    #         IsDistanceEarned(name="check distance", delta_dist = 150),
+    #     ]
+    # )
+    # loop_10.add_children(
+    #     [
+    #         TraceLineCamLR(name="trace normal edge", powerR=0, powerL=40,  pid_p=2.5, pid_i=0.0015, pid_d=0.1,
+    #                      gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
+    #         IsDistanceEarned(name="check distance", delta_dist = 20),
+    #     ]
+    # )
+    # loop_11.add_children(
+    #     [
+    #         TraceLineCam(name="trace normal edge", power=40, pid_p=2.5, pid_i=0.0015, pid_d=0.1,
+    #                      gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
+    #         IsDistanceEarned(name="check distance", delta_dist = 1000),
+    #     ]
+    # )
     root.add_children(
         [
             calibration,
@@ -515,9 +515,9 @@ def build_behaviour_tree() -> BehaviourTree:
             # loop_07,
             #W-loop_end
             loop_08,
-            loop_09,
-            loop_10,
-            loop_11,
+            # loop_09,
+            # loop_10,
+            # loop_11,
             StopNow(name="stop"),
             TheEnd(name="end"),
         ]
