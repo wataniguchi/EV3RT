@@ -340,7 +340,7 @@ class TraceLineCamLR(Behaviour):
         g_left_motor.set_power(self.powerL + turn)
         return Status.RUNNING
     
-class MoveStraightLR(Behaviour):
+class MoveStraight(Behaviour):
     def __init__(self, name: str, power: int, target_distance: int) -> None:
         super(MoveStraight, self).__init__(name)
         self.power = power
@@ -368,9 +368,9 @@ class MoveStraightLR(Behaviour):
         else:
             return Status.RUNNING
 
-class MoveStraight(Behaviour):
+class MoveStraightLR(Behaviour):
     def __init__(self, name: str, right_power: int, left_power: int, target_distance: int) -> None:
-        super(MoveStraight, self).__init__(name)
+        super(MoveStraightLR, self).__init__(name)
         self.right_power = right_power
         self.left_power = left_power
         self.target_distance = target_distance
