@@ -94,6 +94,7 @@ class IdentifyBottle(Behaviour):
             self.i+=1
             if(self.i>5):
                 self.debri_status.setBottle(bottle)
+                self.running = False
                 return Status.SUCCESS
         else:
             self.prev_bottle = bottle
