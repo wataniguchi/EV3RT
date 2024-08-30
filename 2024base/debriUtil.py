@@ -93,7 +93,7 @@ class IdentifyBottle(Behaviour):
         if(self.prev_bottle == bottle):
             self.i+=1
             if(self.i>3):
-                self.status.setBottle(bottle)
+                self.debri_status.setBottle(bottle)
                 return Status.SUCCESS
         else:
             self.prev_bottle = bottle
