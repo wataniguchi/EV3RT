@@ -366,7 +366,7 @@ def build_behaviour_tree() -> BehaviourTree:
 
     main_task01.add_children([
         RunAsInstructed(name="stop for identify bottle", pwm_r=0, pwm_l=0),
-        IdentifyBottle(name="identify bottle", video=g_video, status=g_debri_status),
+        IdentifyBottle(name="identify bottle", video=g_video, debri_status=g_debri_status),
     ])
 
     main_task02.add_children([
