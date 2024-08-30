@@ -23,7 +23,7 @@ EXEC_INTERVAL: float = 0.04
 VIDEO_INTERVAL: float = 0.02
 ARM_SHIFT_PWM = 30
 JUNCT_UPPER_THRESH = 50
-JUNCT_LOWER_THRESH = 30
+JUNCT_LOWER_THRESH = 40
 
 class ArmDirection(IntEnum):
     UP = -1
@@ -237,7 +237,7 @@ class IsJunction(Behaviour):
 
 class RunAsInstructed(Behaviour):
     def __init__(self, name: str, pwm_l: int, pwm_r: int) -> None:
-        super(RunAsInstucted, self).__init__(name)
+        super(RunAsInstructed, self).__init__(name)
         self.pwm_l = g_course * pwm_l
         self.pwm_r = g_course * pwm_r
         self.running = False
