@@ -411,7 +411,7 @@ if __name__ == '__main__':
 
     setup_thread()
 
-    g_debri_status = DebriStatus()
+    g_debri_status = DebriStatus(name="debri status")
     #py_trees.logging.level = py_trees.logging.Level.DEBUG
     tree = build_behaviour_tree()
     display_tree.render_dot_tree(tree)
