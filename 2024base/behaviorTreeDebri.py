@@ -12,6 +12,7 @@ from py_trees.behaviour import Behaviour
 from py_trees.common import Status
 from py_trees.composites import Sequence
 from py_trees.composites import Parallel
+from py_trees.composites import Selector
 from py_trees.common import ParallelPolicy
 from py_trees import (
     display as display_tree,
@@ -19,7 +20,13 @@ from py_trees import (
 )
 from py_etrobo_util import Video, TraceSide, Plotter
 
-from debriUtil import DebriStatus, IsEnd
+from debriUtil import (
+    DebriStatus,
+    IsEnd,
+    IdentifyBottle,
+    IsExecuteRemoveBottle,
+    IsExecuteCrossCircle
+)
 
 EXEC_INTERVAL: float = 0.04
 VIDEO_INTERVAL: float = 0.02
@@ -192,8 +199,8 @@ class StopNow(Behaviour):
 class RunAsInstructed(Behaviour):
     def __init__(self, name: str, pwm_l: int, pwm_r: int) -> None:
         super(RunAsInstructed, self).__init__(name)
-        self.pwm_l = g_course * pwm_l
-        self.pwm_r = g_course * pwm_r
+        self.pwm_l = pwm_l
+        self.pwm_r = pwm_r
         self.running = False
 
     def update(self) -> Status:
@@ -305,13 +312,19 @@ def build_behaviour_tree() -> BehaviourTree:
     debri = Sequence(name="debri", memory=False)
     main = Sequence(name="main", memory=True)
 
-    main_task01 = Parallel(name="main task 01", policy=ParallelPolicy.SuccessOnOne())
-    main_task02 = Sequence(name="main task 02", memory=True)
+    main_task01 = Parallel(name="mainTask01", policy=ParallelPolicy.SuccessOnOne())
+    main_task02 = Selector(name="mainTask02", memory=True)
 
     remove_bottle = Sequence(name="remove bottle", memory=True)
     cross_circle = Sequence(name="cross circle", memory=True)
     rotate = Sequence(name="rotate", memory=True)
-    go_next_bottle = Sequence(name="go noxt bottle", memory=True)
+
+    remove_task01 = Parallel(name="removeTask01", policy=ParallelPolicy.SuccessOnOne())
+    remove_task02 = Parallel(name="removeTask02", policy=ParallelPolicy.SuccessOnOne())
+    remove_task03 = Parallel(name="removeTask03", policy=ParallelPolicy.SuccessOnOne())
+    remove_task04 = Parallel(name="removeTask04", policy=ParallelPolicy.SuccessOnOne())
+
+    cross_task01 = Parallel(name="crossTask01", policy=ParallelPolicy.SuccessOnOne())
 
     run1 = Parallel(name="run1", policy=ParallelPolicy.SuccessOnOne())
     run2 = Parallel(name="run2", policy=ParallelPolicy.SuccessOnOne())
@@ -346,28 +359,59 @@ def build_behaviour_tree() -> BehaviourTree:
     )
 
     main.add_children([
+        #main_task01,
         g_debri_status,
         main_task02,
     ])
 
-    main_task02.add_children([
-        #remove_bottle,
-        #cross_circle,
-        #rotate,
-        #go_next_bottle,
-        run1,
-        run2,
+    main_task01.add_children([
+        RunAsInstructed(name="stop for identify bottle", pwm_r=0, pwm_l=0),
+        IdentifyBottle(name="identify bottle", video=g_video, status=g_debri_status),
     ])
 
-    run1.add_children([
-        RunAsInstructed(name="run", pwm_r=30, pwm_l=30),
+    main_task02.add_children([
+        remove_bottle,
+        cross_circle,
+        #rotate,
+        #go_next_bottle,
+    ])
+
+    remove_bottle.add_children([
+        IsExecuteRemoveBottle(name="isExecuteRemoveBottle", status=g_debri_status),
+        remove_task01,
+        remove_task02,
+        remove_task03,
+        remove_task04,
+    ])
+
+    remove_task01.add_children([
+        RunAsInstructed(name="removeBottle", pwm_r=40, pwm_l=40),
         IsDistanceEarned(name="check distance", delta_dist=50),
     ])
 
-    run2.add_children([
-        RunAsInstructed(name="rotate", pwm_r=0, pwm_l=40),
-        IsRotated(name="check rotate"),
+    remove_task02.add_children([
+        RunAsInstructed(name="go back", pwm_r=-40, pwm_l=-40),
+        IsDistanceEarned(name="check distance", delta_dist=50),
+    ])
 
+    remove_task03.add_children([
+        RunAsInstructed(name="go back", pwm_r=0, pwm_l=40),
+        IsRotated(name="check rotate")
+    ])
+
+    remove_task04.add_children([
+        RunAsInstructed(name="go next", pwm_r=40, pwm_l=40),
+        IsDistanceEarned(name="check distance", delta_dist=50),
+    ])
+
+    cross_circle.add_children([
+        IsExecuteCrossCircle(name="isExecuteCrossCirle", status=g_debri_status),
+        cross_task01,
+    ])
+
+    cross_task01.add_children([
+        RunAsInstructed(name="cross circle", pwm_r=40, pwm_l=40),
+        IsDistanceEarned(name="check distance", delta_dist=70),
     ])
 
     return root
