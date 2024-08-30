@@ -108,7 +108,8 @@ class IsExecuteRemoveBottle(Behaviour):
         self.debri_status = debri_status
 
     def update(self) -> Status:
-        if(self.debri_status.getBottle()==Bottle.BLUE or self.debri_status.getBottle()==Bottle.RED):
+        #if(self.debri_status.getBottle()==Bottle.BLUE or self.debri_status.getBottle()==Bottle.RED):
+        if(self.debri_status.getTarget()==[0,1]):
             return Status.SUCCESS
         else:
             return Status.FAILURE
@@ -119,7 +120,8 @@ class IsExecuteCrossCircle(Behaviour):
         self.debri_status = debri_status
 
     def update(self) -> Status:
-        if(self.debri_status.getBottle()==Bottle.NONE):
+        #if(self.debri_status.getBottle()==Bottle.NONE):
+        if(self.debri_status.getTarget()==[0,0]):
             return Status.SUCCESS
         else:
             return Status.FAILURE
