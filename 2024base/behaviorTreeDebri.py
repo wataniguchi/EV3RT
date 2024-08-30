@@ -312,6 +312,9 @@ def build_behaviour_tree() -> BehaviourTree:
     cross_circle = Sequence(name="cross circle", memory=True)
     rotate = Sequence(name="rotate", memory=True)
     go_next_bottle = Sequence(name="go noxt bottle", memory=True)
+
+    run1 = Parallel(name="run1", policy=ParallelPolicy.SuccessOnOne())
+    run2 = Parallel(name="run2", policy=ParallelPolicy.SuccessOnOne())
     
     calibration.add_children(
         [
@@ -348,18 +351,20 @@ def build_behaviour_tree() -> BehaviourTree:
     ])
 
     main_task02.add_children([
-        remove_bottle,
+        #remove_bottle,
         #cross_circle,
-        rotate,
+        #rotate,
         #go_next_bottle,
+        run1,
+        run2,
     ])
 
-    remove_bottle.add_children([
+    run1.add_children([
         RunAsInstructed(name="run", pwm_r=30, pwm_l=30),
         IsDistanceEarned(name="check distance", delta_dist=50),
     ])
 
-    rotate.add_children([
+    run2.add_children([
         RunAsInstructed(name="rotate", pwm_r=0, pwm_l=40),
         IsRotated(name="check rotate"),
 
