@@ -1,3 +1,4 @@
+import os
 import cv2
 import math
 import numpy as np
@@ -17,7 +18,8 @@ IN_FRAME_HEIGHT = 480
 #FRAME_WIDTH  = 160
 #FRAME_HEIGHT = 120
 FRAME_WIDTH  = 320
-FRAME_HEIGHT = 240
+FRAME_HEIGHT_ORIGIN = 240
+FRAME_HEIGHT = 200
 
 CROP_WIDTH     = int(13*FRAME_WIDTH/16) # for full angle
 #CROP_WIDTH     = int(9*FRAME_WIDTH/16)
@@ -31,7 +33,7 @@ MORPH_KERNEL_SIZE = round_up_to_odd(int(FRAME_WIDTH/48))
 ROI_BOUNDARY   = int(FRAME_WIDTH/10)
 LINE_THICKNESS = int(FRAME_WIDTH/80)
 CIRCLE_RADIUS  = int(FRAME_WIDTH/40)
-SCAN_V_POS     = int(13*FRAME_HEIGHT/16 - LINE_THICKNESS) # for full angle
+SCAN_V_POS     = int(12*FRAME_HEIGHT/16 - LINE_THICKNESS) # for full angle
 #SCAN_V_POS     = int(16*FRAME_HEIGHT/16 - LINE_THICKNESS)
 
 # frame size for X11 painting
@@ -74,6 +76,8 @@ class Video(object):
         self.range_of_edges = 0
         self.theta:float = 0.0
         self.target_insight = False
+        self.range_of_red = 0
+        self.range_of_blue = 0
 
     def __del__(self):
         cv2.destroyAllWindows
@@ -99,9 +103,55 @@ class Video(object):
             img_orig = frame.copy()
             # resize the image for OpenCV processing
         if FRAME_WIDTH != IN_FRAME_WIDTH or FRAME_HEIGHT != IN_FRAME_HEIGHT:
-            img_orig = cv2.resize(img_orig, (FRAME_WIDTH,FRAME_HEIGHT))
-            if img_orig.shape[1] != FRAME_WIDTH or img_orig.shape[0] != FRAME_HEIGHT:
+            img_orig = cv2.resize(img_orig, (FRAME_WIDTH,FRAME_HEIGHT_ORIGIN))
+            if img_orig.shape[1] != FRAME_WIDTH or img_orig.shape[0] != FRAME_HEIGHT_ORIGIN:
                 sys.exit(-1)
+        # crop
+        img_orig = img_orig[0:FRAME_HEIGHT, 0:FRAME_WIDTH]
+
+        hsv = cv2.cvtColor(img_orig, cv2.COLOR_BGR2HSV)
+        hsv_min = np.array([0, 64, 0])
+        hsv_max = np.array([30, 255, 255])
+        red1 = cv2.inRange(hsv, hsv_min, hsv_max)
+        hsv_min = np.array([150, 64, 0])
+        hsv_max = np.array([179, 255, 255])
+        red2 = cv2.inRange(hsv, hsv_min, hsv_max)
+        hsv_min = np.array([90, 64, 0])
+        hsv_max = np.array([150, 255, 255])
+        blue = cv2.inRange(hsv, hsv_min, hsv_max)
+
+        red = red1 + red2
+        img_bin_red = np.zeros((FRAME_HEIGHT, FRAME_WIDTH), np.uint8)
+        img_bin_red = red
+        img_bin_mor_red = cv2.morphologyEx(img_bin_red, cv2.MORPH_CLOSE, self.kernel)
+        contours_red, hierarchy_red = cv2.findContours(img_bin_mor_red, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        
+        area_red = 0
+        target_red = 0
+        if(len(contours_red)>0):
+            for i, cnt in enumerate(contours_red):
+                    area = cv2.contourArea(cnt)
+                    if(area>area_red):
+                        area_red = area
+                        target_red = i
+        self.range_of_red = area_red
+
+
+        img_bin_blue = np.zeros((FRAME_HEIGHT, FRAME_WIDTH), np.uint8)
+        img_bin_blue = blue
+        img_bin_mor_blue = cv2.morphologyEx(img_bin_blue, cv2.MORPH_CLOSE, self.kernel)
+        contours_blue, hierarchy_blue = cv2.findContours(img_bin_mor_blue, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        
+        area_blue = 0
+        target_blue = 0
+        if(len(contours_blue)>0):
+            for i, cnt in enumerate(contours_blue):
+                    area = cv2.contourArea(cnt)
+                    if(area>area_blue):
+                        area_blue = area
+                        target_blue = i
+        self.range_of_blue = area_blue
+
         # convert the image from BGR to grayscale
         img_gray = cv2.cvtColor(img_orig, cv2.COLOR_BGR2GRAY)
         # crop a part of image for binarization
@@ -227,6 +277,11 @@ class Video(object):
         self.theta = 180 * math.atan(vxm / 205) / math.pi
         #print(f"mx = {self.mx}, vxm = {vxm}, theta = {self.theta}")
 
+        if(len(contours_red)>0):
+            img_orig = cv2.drawContours(img_orig, contours_red[target_red], -1, (255,0,0), LINE_THICKNESS)
+        if(len(contours_blue)>0):
+            img_orig = cv2.drawContours(img_orig, contours_blue[target_blue], -1, (0,0,255), LINE_THICKNESS)
+
         # prepare text area
         img_text = np.zeros((FRAME_HEIGHT, FRAME_WIDTH, 3), np.uint8)
         if not plotter is None:
@@ -237,6 +292,8 @@ class Video(object):
                 cv2.putText(img_text, f"cx={self.cx:} cy={self.cy} theta={self.theta:+06.1f}", (0,80), cv2.FONT_HERSHEY_DUPLEX, 0.6, (255,255,255), 1, cv2.LINE_AA)
                 cv2.putText(img_text, f"roe={self.range_of_edges:03}", (0,100), cv2.FONT_HERSHEY_DUPLEX, 0.6, (255,255,255), 1, cv2.LINE_AA)
                 cv2.putText(img_text, f"mV={hub.get_battery_voltage():04} mA={hub.get_battery_current():04}", (0,120), cv2.FONT_HERSHEY_DUPLEX, 0.6, (255,255,255), 1, cv2.LINE_AA)
+                cv2.putText(img_text, f"red={self.range_of_red:03}", (0,140), cv2.FONT_HERSHEY_DUPLEX, 0.6, (255,255,255), 1, cv2.LINE_AA)
+                cv2.putText(img_text, f"blue={self.range_of_blue:03}", (0,160), cv2.FONT_HERSHEY_DUPLEX, 0.6, (255,255,255), 1, cv2.LINE_AA)
             except Exception as e:
                 pass
         # concatinate the images - original + text area
@@ -264,3 +321,9 @@ class Video(object):
 
     def is_target_insight(self) -> bool:
         return self.target_insight
+    
+    def get_range_of_red(self) -> int:
+        return self.range_of_red
+    
+    def get_range_of_blue(self) -> int:
+        return self.range_of_blue
