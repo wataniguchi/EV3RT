@@ -65,13 +65,13 @@ class IsEnd(Behaviour):
             return Status.RUNNING
 
 class IdentifyBottle(Behaviour):
-    def __init__(self, name: str, video: Video, status: DebriStatus):
+    def __init__(self, name: str, video: Video, debri_status: DebriStatus):
         super(IdentifyBottle, self).__init__(name)
         self.running = False
         self.prev_bottle = Bottle.NONE
         self.i = 0
         self.video = video
-        self.status = status
+        self.debri_status = debri_status
 
     def update(self) -> Status:
         LOWER_RANGE = 8000
@@ -104,10 +104,10 @@ class IdentifyBottle(Behaviour):
 class IsExecuteRemoveBottle(Behaviour):
     def __init__(self, name: str, debri_status: DebriStatus):
         super(IsExecuteRemoveBottle, self).__init__(name)
-        self.status = debri_status
+        self.debri_status = debri_status
 
     def update(self) -> Status:
-        if(self.status.getBottle()==Bottle.BLUE or self.status.getBottle()==Bottle.RED):
+        if(self.debri_status.getBottle()==Bottle.BLUE or self.debri_status.getBottle()==Bottle.RED):
             return Status.SUCCESS
         else:
             return Status.FAILURE
@@ -115,10 +115,10 @@ class IsExecuteRemoveBottle(Behaviour):
 class IsExecuteCrossCircle(Behaviour):
     def __init__(self, name: str, debri_status: DebriStatus):
         super(IsExecuteCrossCircle, self).__init__(name)
-        self.status = debri_status
+        self.debri_status = debri_status
 
     def update(self) -> Status:
-        if(self.status.getBottle()==Bottle.NONE):
+        if(self.debri_status.getBottle()==Bottle.NONE):
             return Status.SUCCESS
         else:
             return Status.FAILURE
