@@ -102,9 +102,9 @@ class IdentifyBottle(Behaviour):
         return Status.RUNNING
 
 class IsExecuteRemoveBottle(Behaviour):
-    def __init__(self, name: str, status: DebriStatus):
+    def __init__(self, name: str, debri_status: DebriStatus):
         super(IsExecuteRemoveBottle, self).__init__(name)
-        self.status = status
+        self.status = debri_status
 
     def update(self) -> Status:
         if(self.status.getBottle()==Bottle.BLUE or self.status.getBottle()==Bottle.RED):
@@ -113,9 +113,9 @@ class IsExecuteRemoveBottle(Behaviour):
             return Status.FAILURE
 
 class IsExecuteCrossCircle(Behaviour):
-    def __init__(self, name: str, status: DebriStatus):
+    def __init__(self, name: str, debri_status: DebriStatus):
         super(IsExecuteCrossCircle, self).__init__(name)
-        self.status = status
+        self.status = debri_status
 
     def update(self) -> Status:
         if(self.status.getBottle()==Bottle.NONE):

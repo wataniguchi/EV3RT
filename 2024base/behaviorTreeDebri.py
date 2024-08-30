@@ -377,7 +377,7 @@ def build_behaviour_tree() -> BehaviourTree:
     ])
 
     remove_bottle.add_children([
-        IsExecuteRemoveBottle(name="isExecuteRemoveBottle", status=g_debri_status),
+        IsExecuteRemoveBottle(name="isExecuteRemoveBottle", debri_status=g_debri_status),
         remove_task01,
         remove_task02,
         remove_task03,
@@ -405,7 +405,7 @@ def build_behaviour_tree() -> BehaviourTree:
     ])
 
     cross_circle.add_children([
-        IsExecuteCrossCircle(name="isExecuteCrossCirle", status=g_debri_status),
+        IsExecuteCrossCircle(name="isExecuteCrossCirle", debri_status=g_debri_status),
         cross_task01,
     ])
 
