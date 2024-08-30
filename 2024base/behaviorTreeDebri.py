@@ -354,7 +354,7 @@ def build_behaviour_tree() -> BehaviourTree:
     debri.add_children(
         [
             main,
-            IsEnd(name="is end", status=g_debri_status)
+            IsEnd(name="is end", debri_status=g_debri_status)
         ]
     )
 
