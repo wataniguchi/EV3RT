@@ -360,7 +360,7 @@ def build_behaviour_tree() -> BehaviourTree:
     )
 
     main.add_children([
-        #main_task01,
+        main_task01,
         g_debri_status,
         main_task02,
     ])
