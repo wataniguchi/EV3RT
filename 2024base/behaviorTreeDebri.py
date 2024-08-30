@@ -36,7 +36,7 @@ JUNCT_UPPER_THRESH = 50
 JUNCT_LOWER_THRESH = 40
 
 TIRE_DIAMETER: float = 100.0
-WHEEL_TREAD: float = 120.0
+WHEEL_TREAD: float = 110.0
 
 class ArmDirection(IntEnum):
     UP = -1
