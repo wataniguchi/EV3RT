@@ -50,10 +50,10 @@ class DebriStatus(Behaviour):
         self.bottle = bottle
     
 class IsEnd(Behaviour):
-    def __init__(self, name: str, status: DebriStatus):
+    def __init__(self, name: str, debri_status: DebriStatus):
         super(IsEnd, self).__init__(name)
         self.logger.debug("%s.__init__()" % (self.__class__.__name__))
-        self.debri_status = status
+        self.debri_status = debri_status
 
     def update(self) -> Status:
         target_list = self.debri_status.getTargetList()

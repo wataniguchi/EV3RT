@@ -329,6 +329,16 @@ def build_behaviour_tree() -> BehaviourTree:
     run1 = Parallel(name="run1", policy=ParallelPolicy.SuccessOnOne())
     run2 = Parallel(name="run2", policy=ParallelPolicy.SuccessOnOne())
     
+    root.add_children(
+        [
+            calibration,
+            start,
+            debri,
+            StopNow(name="stop"),
+            TheEnd(name="end"),
+        ]
+    )
+
     calibration.add_children(
         [
             ArmUpDownFull(name="arm down", direction=ArmDirection.DOWN),
@@ -338,16 +348,6 @@ def build_behaviour_tree() -> BehaviourTree:
     start.add_children(
         [
             IsSonarOn(name="soner start", alert_dist=50),
-        ]
-    )
-    
-    root.add_children(
-        [
-            calibration,
-            start,
-            debri,
-            StopNow(name="stop"),
-            TheEnd(name="end"),
         ]
     )
 
