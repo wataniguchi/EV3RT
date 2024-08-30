@@ -25,7 +25,8 @@ from debriUtil import (
     IsEnd,
     IdentifyBottle,
     IsExecuteRemoveBottle,
-    IsExecuteCrossCircle
+    IsExecuteCrossCircle,
+    ReturnSeccess
 )
 
 EXEC_INTERVAL: float = 0.04
@@ -317,7 +318,7 @@ def build_behaviour_tree() -> BehaviourTree:
 
     remove_bottle = Sequence(name="remove bottle", memory=True)
     cross_circle = Sequence(name="cross circle", memory=True)
-    rotate = Sequence(name="rotate", memory=True)
+    end_debri = Parallel(name="mainTask01", policy=ParallelPolicy.SuccessOnOne())
 
     remove_task01 = Parallel(name="removeTask01", policy=ParallelPolicy.SuccessOnOne())
     remove_task02 = Parallel(name="removeTask02", policy=ParallelPolicy.SuccessOnOne())
@@ -372,8 +373,7 @@ def build_behaviour_tree() -> BehaviourTree:
     main_task02.add_children([
         remove_bottle,
         cross_circle,
-        #rotate,
-        #go_next_bottle,
+        end_debri,
     ])
 
     remove_bottle.add_children([
@@ -412,6 +412,11 @@ def build_behaviour_tree() -> BehaviourTree:
     cross_task01.add_children([
         RunAsInstructed(name="cross circle", pwm_r=40, pwm_l=40),
         IsDistanceEarned(name="check distance", delta_dist=70),
+    ])
+
+    end_debri.add_children([
+        RunAsInstructed(name="end debri", pwm_r=0, pwm_l=0),
+        ReturnSeccess(name="return seccess")
     ])
 
     return root

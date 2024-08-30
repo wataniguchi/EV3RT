@@ -122,3 +122,10 @@ class IsExecuteCrossCircle(Behaviour):
             return Status.SUCCESS
         else:
             return Status.FAILURE
+    
+class ReturnSeccess(Behaviour):
+    def __init__(self, name: str):
+        super(ReturnSeccess, self).__init__(name)
+
+    def update(self) -> Status:
+        return Status.SUCCESS
