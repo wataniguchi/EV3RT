@@ -108,7 +108,8 @@ class IsExecuteRemoveBottle(Behaviour):
         self.debri_status = debri_status
 
     def update(self) -> Status:
-        if(self.debri_status.getBottle()==Bottle.BLUE or self.debri_status.getBottle()==Bottle.RED):
+        if((self.debri_status.getBottle()==Bottle.BLUE) or 
+           (self.debri_status.getBottle()==Bottle.RED)):
             return Status.SUCCESS
         else:
             return Status.FAILURE

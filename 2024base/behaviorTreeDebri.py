@@ -156,7 +156,7 @@ class IsRotated(Behaviour):
         rDiff = abs(g_right_motor.get_count() - self.rStart)
         lDiff = abs(g_left_motor.get_count() - self.lStart)
 
-        if(rDiff>self.delta or lDiff>self.delta):
+        if((rDiff>self.delta) or (lDiff>self.delta)):
             self.running = False
             return Status.SUCCESS
         else:
