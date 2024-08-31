@@ -18,7 +18,7 @@ from py_trees import (
     display as display_tree,
     logging as log_tree
 )
-from py_etrobo_util import Video, TraceSide, Plotter
+from py_etrobo_util import Video, TraceSide, Plotter, TracePoint
 
 from debriUtil import (
     DebriStatus,
@@ -216,19 +216,21 @@ class RunAsInstructed(Behaviour):
 
 class TraceLineCam(Behaviour):
     def __init__(self, name: str, power: int, pid_p: float, pid_i: float, pid_d: float,
-                 gs_min: int, gs_max: int, trace_side: TraceSide) -> None:
+                 gs_min: int, gs_max: int, trace_side: TraceSide, trace_point: TracePoint) -> None:
         super(TraceLineCam, self).__init__(name)
         self.power = power
         self.pid = PID(pid_p, pid_i, pid_d, setpoint=0, sample_time=EXEC_INTERVAL, output_limits=(-power, power))
         self.gs_min = gs_min
         self.gs_max = gs_max
         self.trace_side = trace_side
+        self.trace_point = trace_point
         self.running = False
 
     def update(self) -> Status:
         if not self.running:
             self.running = True
             g_video.set_thresholds(self.gs_min, self.gs_max)
+            g_video.set_trace_point(self.trace_point)
             if self.trace_side == TraceSide.NORMAL:
                 if g_course == -1: # right course
                     g_video.set_trace_side(TraceSide.RIGHT)
@@ -407,14 +409,14 @@ def build_behaviour_tree() -> BehaviourTree:
         #cross_task01,
         cross_task02,
     ])
-    #cross_task01.add_children([
-    #    TraceLineCam(name="trace normal edge", power=33, pid_p=0.5, pid_i=0.1, pid_d=0,
-    #                     gs_min=0, gs_max=80, trace_side=TraceSide.CENTER, trace_point=TracePoint.FRONT),
-    #    IsDistanceEarned(name="check distance", delta_dist=250),
-    #])
+    cross_task01.add_children([
+        TraceLineCam(name="trace normal edge", power=33, pid_p=0.3, pid_i=0, pid_d=0,
+                         gs_min=0, gs_max=80, trace_side=TraceSide.CENTER, trace_point=TracePoint.FRONT),
+        IsDistanceEarned(name="check distance", delta_dist=250),
+    ])
     cross_task02.add_children([
         RunAsInstructed(name="cross circle", pwm_r=35, pwm_l=35),
-        IsDistanceEarned(name="check distance", delta_dist=450),
+        IsDistanceEarned(name="check distance", delta_dist=200),
     ])
 
     rotate.add_children([

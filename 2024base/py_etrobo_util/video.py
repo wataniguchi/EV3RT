@@ -33,8 +33,8 @@ MORPH_KERNEL_SIZE = round_up_to_odd(int(FRAME_WIDTH/48))
 ROI_BOUNDARY   = int(FRAME_WIDTH/10)
 LINE_THICKNESS = int(FRAME_WIDTH/80)
 CIRCLE_RADIUS  = int(FRAME_WIDTH/40)
-SCAN_V_POS = int(12*FRAME_HEIGHT/16 - LINE_THICKNESS) # for full angle
-#SCAN_V_POS  = int(16*FRAME_HEIGHT/16 - LINE_THICKNESS)
+SCAN_V_POS_FRONT = int(12*FRAME_HEIGHT/16 - LINE_THICKNESS) # for full angle
+SCAN_V_POS_BACK  = int(16*FRAME_HEIGHT/16 - LINE_THICKNESS)
 
 # frame size for X11 painting
 OUT_FRAME_WIDTH  = 160
@@ -72,12 +72,13 @@ class Video(object):
         self.kernel = np.ones((MORPH_KERNEL_SIZE,MORPH_KERNEL_SIZE), np.uint8)
         # initial trace target
         self.cx = int(FRAME_WIDTH/2)
-        self.cy = SCAN_V_POS
+        self.cy = SCAN_V_POS_FRONT
         self.mx = self.cx
         # default values
         self.gsmin = 0
         self.gsmax = 100
         self.trace_side = TraceSide.NORMAL
+        self.trace_point = SCAN_V_POS_FRONT
         self.range_of_edges = 0
         self.theta:float = 0.0
         self.target_insight = False
@@ -260,7 +261,7 @@ class Video(object):
             self.roi = (CROP_L_LIMIT, CROP_U_LIMIT, CROP_WIDTH, CROP_HEIGHT)
             # keep mx in order to maintain the current move of robot
             self.cx = int(FRAME_WIDTH/2)
-            self.cy = SCAN_V_POS
+            self.cy = self.trace_point
             self.target_insight = False
             
 
@@ -323,6 +324,12 @@ class Video(object):
 
     def set_trace_side(self, trace_side: TraceSide) -> None:
         self.trace_side = trace_side
+
+    def set_trace_point(self, trace_point: TracePoint) -> None:
+        if(trace_point==TracePoint.BACK):
+            self.trace_point=SCAN_V_POS_BACK
+        elif(trace_point==TracePoint.FRONT):
+            self.trace_point=SCAN_V_POS_FRONT
 
     def is_target_insight(self) -> bool:
         return self.target_insight
