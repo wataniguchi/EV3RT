@@ -326,6 +326,7 @@ def build_behaviour_tree() -> BehaviourTree:
     remove_task04 = Parallel(name="removeTask04", policy=ParallelPolicy.SuccessOnOne())
 
     cross_task01 = Parallel(name="crossTask01", policy=ParallelPolicy.SuccessOnOne())
+    cross_task02 = Parallel(name="crossTask01", policy=ParallelPolicy.SuccessOnOne())
 
     run1 = Parallel(name="run1", policy=ParallelPolicy.SuccessOnOne())
     run2 = Parallel(name="run2", policy=ParallelPolicy.SuccessOnOne())
@@ -407,11 +408,18 @@ def build_behaviour_tree() -> BehaviourTree:
     cross_circle.add_children([
         IsExecuteCrossCircle(name="isExecuteCrossCirle", debri_status=g_debri_status),
         cross_task01,
+        cross_task02,
     ])
 
     cross_task01.add_children([
+        TraceLineCam(name="trace normal edge", power=35, pid_p=0.7, pid_i=0.1, pid_d=0,
+                         gs_min=0, gs_max=80, trace_side=TraceSide.CENTER),
+        IsDistanceEarned(name="check distance", delta_dist=250),
+    ])
+
+    cross_task02.add_children([
         RunAsInstructed(name="cross circle", pwm_r=38, pwm_l=38),
-        IsDistanceEarned(name="check distance", delta_dist=480),
+        IsDistanceEarned(name="check distance", delta_dist=200),
     ])
 
     end_debri.add_children([
