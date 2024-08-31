@@ -360,7 +360,9 @@ def build_behaviour_tree() -> BehaviourTree:
     )
 
     main.add_children([
-        main_task01,
+        #main_task01,
+        StopNow,
+        IdentifyBottle(name="identify bottle", video=g_video, debri_status=g_debri_status),
         g_debri_status,
         main_task02,
     ])
@@ -401,7 +403,7 @@ def build_behaviour_tree() -> BehaviourTree:
 
     remove_task04.add_children([
         RunAsInstructed(name="go next", pwm_r=38, pwm_l=38),
-        IsDistanceEarned(name="check distance", delta_dist=350),
+        IsDistanceEarned(name="check distance", delta_dist=300),
     ])
 
     cross_circle.add_children([
