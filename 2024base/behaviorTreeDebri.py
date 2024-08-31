@@ -410,7 +410,7 @@ def build_behaviour_tree() -> BehaviourTree:
     ])
 
     cross_task01.add_children([
-        RunAsInstructed(name="cross circle", pwm_r=38, pwm_l=38),
+        RunAsInstructed(name="cross circle", pwm_r=40, pwm_l=40),
         IsDistanceEarned(name="check distance", delta_dist=350),
     ])
 
