@@ -18,7 +18,7 @@ from py_trees import (
     display as display_tree,
     logging as log_tree
 )
-from py_etrobo_util import Video, TraceSide, Plotter, TracePoint
+from py_etrobo_util import Video, TraceSide, Plotter
 
 from debriUtil import (
     DebriStatus,
@@ -216,14 +216,13 @@ class RunAsInstructed(Behaviour):
 
 class TraceLineCam(Behaviour):
     def __init__(self, name: str, power: int, pid_p: float, pid_i: float, pid_d: float,
-                 gs_min: int, gs_max: int, trace_side: TraceSide, trace_point: TracePoint) -> None:
+                 gs_min: int, gs_max: int, trace_side: TraceSide) -> None:
         super(TraceLineCam, self).__init__(name)
         self.power = power
         self.pid = PID(pid_p, pid_i, pid_d, setpoint=0, sample_time=EXEC_INTERVAL, output_limits=(-power, power))
         self.gs_min = gs_min
         self.gs_max = gs_max
         self.trace_side = trace_side
-        self.trace_point = trace_point
         self.running = False
 
     def update(self) -> Status:
