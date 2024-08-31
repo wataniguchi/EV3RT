@@ -22,8 +22,8 @@ class DebriStatus(Behaviour):
     def update(self) -> Status:
         if(self.target==[0,0]):
             self.target_list.append([0,1])
-        #elif(self.target==[0,1]):
-        #    self.target_list.append([1,1])
+        elif(self.target==[0,1]):
+            self.target_list.append([1,1])
         
         self.now = self.target
         if(self.i+1<len(self.target_list)):
