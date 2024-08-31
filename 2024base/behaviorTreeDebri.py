@@ -18,7 +18,7 @@ from py_trees import (
     display as display_tree,
     logging as log_tree
 )
-from py_etrobo_util import Video, TraceSide, Plotter, TracePoint
+from py_etrobo_util import Video, TraceSide, Plotter
 
 from debriUtil import (
     DebriStatus,
@@ -216,14 +216,13 @@ class RunAsInstructed(Behaviour):
 
 class TraceLineCam(Behaviour):
     def __init__(self, name: str, power: int, pid_p: float, pid_i: float, pid_d: float,
-                 gs_min: int, gs_max: int, trace_side: TraceSide, trace_point: TracePoint) -> None:
+                 gs_min: int, gs_max: int, trace_side: TraceSide) -> None:
         super(TraceLineCam, self).__init__(name)
         self.power = power
         self.pid = PID(pid_p, pid_i, pid_d, setpoint=0, sample_time=EXEC_INTERVAL, output_limits=(-power, power))
         self.gs_min = gs_min
         self.gs_max = gs_max
         self.trace_side = trace_side
-        self.trace_point = trace_point
         self.running = False
 
     def update(self) -> Status:
@@ -411,7 +410,7 @@ def build_behaviour_tree() -> BehaviourTree:
     ])
     cross_task01.add_children([
         TraceLineCam(name="trace normal edge", power=35, pid_p=0.3, pid_i=0.2, pid_d=0,
-                         gs_min=0, gs_max=80, trace_side=TraceSide.CENTER, trace_point=TracePoint.FRONT),
+                         gs_min=0, gs_max=80, trace_side=TraceSide.CENTER),
         IsDistanceEarned(name="check distance", delta_dist=250),
     ])
     cross_task02.add_children([
