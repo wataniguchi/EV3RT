@@ -392,7 +392,7 @@ def build_behaviour_tree() -> BehaviourTree:
 
     remove_task02.add_children([
         RunAsInstructed(name="go back", pwm_r=-38, pwm_l=-38),
-        IsDistanceEarned(name="check distance", delta_dist=120),
+        IsDistanceEarned(name="check distance", delta_dist=140),
     ])
 
     remove_task03.add_children([
@@ -402,7 +402,7 @@ def build_behaviour_tree() -> BehaviourTree:
 
     remove_task04.add_children([
         RunAsInstructed(name="go next", pwm_r=38, pwm_l=38),
-        IsDistanceEarned(name="check distance", delta_dist=150),
+        IsDistanceEarned(name="check distance", delta_dist=140),
     ])
 
     cross_circle.add_children([
