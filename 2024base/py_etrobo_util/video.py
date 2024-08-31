@@ -33,8 +33,8 @@ MORPH_KERNEL_SIZE = round_up_to_odd(int(FRAME_WIDTH/48))
 ROI_BOUNDARY   = int(FRAME_WIDTH/10)
 LINE_THICKNESS = int(FRAME_WIDTH/80)
 CIRCLE_RADIUS  = int(FRAME_WIDTH/40)
-SCAN_V_POS     = int(12*FRAME_HEIGHT/16 - LINE_THICKNESS) # for full angle
-#SCAN_V_POS     = int(16*FRAME_HEIGHT/16 - LINE_THICKNESS)
+SCAN_V_POS_FRONT = int(12*FRAME_HEIGHT/16 - LINE_THICKNESS) # for full angle
+SCAN_V_POS_BACK  = int(16*FRAME_HEIGHT/16 - LINE_THICKNESS)
 
 # frame size for X11 painting
 OUT_FRAME_WIDTH  = 160
@@ -47,6 +47,11 @@ class TraceSide(Enum):
     RIGHT = "Right"
     LEFT = "Left"
     CENTER = "Center"
+
+
+class TracePoint(Enum):
+    FRONT = "Front"
+    BACK = "Back"
 
 
 class Video(object):
@@ -67,12 +72,13 @@ class Video(object):
         self.kernel = np.ones((MORPH_KERNEL_SIZE,MORPH_KERNEL_SIZE), np.uint8)
         # initial trace target
         self.cx = int(FRAME_WIDTH/2)
-        self.cy = SCAN_V_POS
+        self.cy = SCAN_V_POS_FRONT
         self.mx = self.cx
         # default values
         self.gsmin = 0
         self.gsmax = 100
         self.trace_side = TraceSide.NORMAL
+        self.trace_point = SCAN_V_POS_FRONT
         self.range_of_edges = 0
         self.theta:float = 0.0
         self.target_insight = False
@@ -234,7 +240,7 @@ class Video(object):
             img_cnt = cv2.drawContours(img_cnt, [contours[i_target]], 0, (0,255,0), 1)
             img_cnt_gray = cv2.cvtColor(img_cnt, cv2.COLOR_BGR2GRAY)
             # scan the line at SCAN_V_POS to find edges
-            scan_line = img_cnt_gray[SCAN_V_POS]
+            scan_line = img_cnt_gray[self.trace_point]
             edges = np.flatnonzero(scan_line)
             # calculate the trace target using the edges
             if len(edges) >= 2:
@@ -255,7 +261,7 @@ class Video(object):
             self.roi = (CROP_L_LIMIT, CROP_U_LIMIT, CROP_WIDTH, CROP_HEIGHT)
             # keep mx in order to maintain the current move of robot
             self.cx = int(FRAME_WIDTH/2)
-            self.cy = SCAN_V_POS
+            self.cy = self.trace_point
             self.target_insight = False
             
 
@@ -266,7 +272,7 @@ class Video(object):
         else:
             cv2.rectangle(img_orig, (x,y), (x+w,y+h), (0,0,255), LINE_THICKNESS)
         # draw the trace target on the image
-        cv2.circle(img_orig, (self.mx, SCAN_V_POS), CIRCLE_RADIUS, (0,0,255), -1)
+        cv2.circle(img_orig, (self.mx, self.trace_point), CIRCLE_RADIUS, (0,0,255), -1)
         # calculate variance of mx from the center in pixel
         vxp = self.mx - int(FRAME_WIDTH/2)
         # convert the variance from pixel to milimeters
@@ -318,6 +324,12 @@ class Video(object):
 
     def set_trace_side(self, trace_side: TraceSide) -> None:
         self.trace_side = trace_side
+
+    def set_trace_side(self, trace_point: TracePoint) -> None:
+        if(trace_point==TracePoint.BACK):
+            self.trace_point=SCAN_V_POS_BACK
+        elif(trace_point==TracePoint.FRONT):
+            self.trace_point=SCAN_V_POS_FRONT
 
     def is_target_insight(self) -> bool:
         return self.target_insight

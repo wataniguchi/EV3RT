@@ -9,6 +9,7 @@ class Bottle(Enum):
     NONE = auto()
     END = auto()
 
+
 class DebriStatus(Behaviour):
     def __init__(self, name: str):
         super(DebriStatus, self).__init__(name)
@@ -48,7 +49,8 @@ class DebriStatus(Behaviour):
     
     def setBottle(self, bottle) -> None:
         self.bottle = bottle
-    
+
+
 class IsEnd(Behaviour):
     def __init__(self, name: str, debri_status: DebriStatus):
         super(IsEnd, self).__init__(name)
@@ -63,6 +65,7 @@ class IsEnd(Behaviour):
             return Status.SUCCESS
         else:
             return Status.RUNNING
+
 
 class IdentifyBottle(Behaviour):
     def __init__(self, name: str, video: Video, debri_status: DebriStatus):
@@ -102,6 +105,7 @@ class IdentifyBottle(Behaviour):
 
         return Status.RUNNING
 
+
 class IsExecuteRemoveBottle(Behaviour):
     def __init__(self, name: str, debri_status: DebriStatus):
         super(IsExecuteRemoveBottle, self).__init__(name)
@@ -124,7 +128,18 @@ class IsExecuteCrossCircle(Behaviour):
             return Status.SUCCESS
         else:
             return Status.FAILURE
-    
+
+class IsExecuteRotate(Behaviour):
+    def __init__(self, name: str, debri_status: DebriStatus):
+        super(IsExecuteRotate, self).__init__(name)
+
+    def update(self) -> Status:
+        if(self.debri_status.getBottle()==Bottle.NONE):
+            return Status.SUCCESS
+        else:
+            return Status.FAILURE
+
+
 class ReturnSeccess(Behaviour):
     def __init__(self, name: str):
         super(ReturnSeccess, self).__init__(name)

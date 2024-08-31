@@ -18,7 +18,7 @@ from py_trees import (
     display as display_tree,
     logging as log_tree
 )
-from py_etrobo_util import Video, TraceSide, Plotter
+from py_etrobo_util import Video, TraceSide, Plotter, TracePoint
 
 from debriUtil import (
     DebriStatus,
@@ -215,13 +215,14 @@ class RunAsInstructed(Behaviour):
 
 class TraceLineCam(Behaviour):
     def __init__(self, name: str, power: int, pid_p: float, pid_i: float, pid_d: float,
-                 gs_min: int, gs_max: int, trace_side: TraceSide) -> None:
+                 gs_min: int, gs_max: int, trace_side: TraceSide, trace_point: TracePoint) -> None:
         super(TraceLineCam, self).__init__(name)
         self.power = power
         self.pid = PID(pid_p, pid_i, pid_d, setpoint=0, sample_time=EXEC_INTERVAL, output_limits=(-power, power))
         self.gs_min = gs_min
         self.gs_max = gs_max
         self.trace_side = trace_side
+        self.trace_point = trace_point
         self.running = False
 
     def update(self) -> Status:
@@ -318,6 +319,7 @@ def build_behaviour_tree() -> BehaviourTree:
 
     remove_bottle = Sequence(name="remove bottle", memory=True)
     cross_circle = Sequence(name="cross circle", memory=True)
+    rotate = Sequence(name="rotate", memory=True)
     end_debri = Parallel(name="mainTask01", policy=ParallelPolicy.SuccessOnOne())
 
     remove_task01 = Parallel(name="removeTask01", policy=ParallelPolicy.SuccessOnOne())
@@ -326,10 +328,10 @@ def build_behaviour_tree() -> BehaviourTree:
     remove_task04 = Parallel(name="removeTask04", policy=ParallelPolicy.SuccessOnOne())
 
     cross_task01 = Parallel(name="crossTask01", policy=ParallelPolicy.SuccessOnOne())
-    cross_task02 = Parallel(name="crossTask01", policy=ParallelPolicy.SuccessOnOne())
+    cross_task02 = Parallel(name="crossTask02", policy=ParallelPolicy.SuccessOnOne())
 
-    run1 = Parallel(name="run1", policy=ParallelPolicy.SuccessOnOne())
-    run2 = Parallel(name="run2", policy=ParallelPolicy.SuccessOnOne())
+    rotate_task01 = Parallel(name="rotateTask01", policy=ParallelPolicy.SuccessOnOne())
+    rotate_task02 = Parallel(name="rotateTask02", policy=ParallelPolicy.SuccessOnOne())
     
     root.add_children(
         [
@@ -365,15 +367,14 @@ def build_behaviour_tree() -> BehaviourTree:
         g_debri_status,
         main_task02,
     ])
-
     main_task01.add_children([
         RunAsInstructed(name="stop for identify bottle", pwm_r=0, pwm_l=0),
         IdentifyBottle(name="identify bottle", video=g_video, debri_status=g_debri_status),
     ])
-
     main_task02.add_children([
         remove_bottle,
         cross_circle,
+        rotate,
         end_debri,
     ])
 
@@ -384,22 +385,18 @@ def build_behaviour_tree() -> BehaviourTree:
         remove_task03,
         remove_task04,
     ])
-
     remove_task01.add_children([
         RunAsInstructed(name="removeBottle", pwm_r=38, pwm_l=38),
         IsDistanceEarned(name="check distance", delta_dist=270),
     ])
-
     remove_task02.add_children([
         RunAsInstructed(name="go back", pwm_r=-38, pwm_l=-38),
         IsDistanceEarned(name="check distance", delta_dist=140),
     ])
-
     remove_task03.add_children([
         RunAsInstructed(name="go back", pwm_r=48, pwm_l=0),
         IsRotated(name="check rotate")
     ])
-
     remove_task04.add_children([
         RunAsInstructed(name="go next", pwm_r=38, pwm_l=38),
         IsDistanceEarned(name="check distance", delta_dist=140),
@@ -410,21 +407,32 @@ def build_behaviour_tree() -> BehaviourTree:
         cross_task01,
         cross_task02,
     ])
-
     cross_task01.add_children([
         TraceLineCam(name="trace normal edge", power=35, pid_p=0.7, pid_i=0.1, pid_d=0,
-                         gs_min=0, gs_max=80, trace_side=TraceSide.CENTER),
+                         gs_min=0, gs_max=80, trace_side=TraceSide.CENTER, trace_point=TracePoint.FRONT),
         IsDistanceEarned(name="check distance", delta_dist=250),
     ])
-
     cross_task02.add_children([
         RunAsInstructed(name="cross circle", pwm_r=38, pwm_l=38),
         IsDistanceEarned(name="check distance", delta_dist=200),
     ])
 
+    rotate.add_children([
+        rotate_task01,
+        rotate_task02,
+    ])
+    rotate_task01.add_children([
+        RunAsInstructed(name="go back", pwm_r=48, pwm_l=0),
+        IsRotated(name="check rotate")
+    ])
+    rotate_task02.add_children([
+        RunAsInstructed(name="go next", pwm_r=38, pwm_l=38),
+        IsDistanceEarned(name="check distance", delta_dist=140),
+    ])
+
     end_debri.add_children([
-        RunAsInstructed(name="end debri", pwm_r=0, pwm_l=0),
-        ReturnSeccess(name="return seccess")
+        RunAsInstructed(name="stop", pwm_r=0, pwm_l=0),
+        ReturnSeccess(name="end debri")
     ])
 
     return root
