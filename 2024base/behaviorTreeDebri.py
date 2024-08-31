@@ -406,7 +406,7 @@ def build_behaviour_tree() -> BehaviourTree:
 
     cross_circle.add_children([
         IsExecuteCrossCircle(name="isExecuteCrossCirle", debri_status=g_debri_status),
-        #cross_task01,
+        cross_task01,
         cross_task02,
     ])
     cross_task01.add_children([
