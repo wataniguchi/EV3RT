@@ -306,96 +306,6 @@ class TraceLineCam(Behaviour):
         g_left_motor.set_power(self.power + turn)
         return Status.RUNNING
 
-class TraceLineCamLR(Behaviour):
-    def __init__(self, name: str, powerR: int, powerL: int, pid_p: float, pid_i: float, pid_d: float,
-                 gs_min: int, gs_max: int, trace_side: TraceSide) -> None:
-        super(TraceLineCam, self).__init__(name)
-        self.powerR = powerR
-        self.powerL = powerL
-        self.pid = PID(pid_p, pid_i, pid_d, setpoint=0, sample_time=EXEC_INTERVAL, output_limits=(-powerL, powerL))
-        self.gs_min = gs_min
-        self.gs_max = gs_max
-        self.trace_side = trace_side
-        self.running = False
-
-    def update(self) -> Status:
-        if not self.running:
-            self.running = True
-            g_video.set_thresholds(self.gs_min, self.gs_max)
-            if self.trace_side == TraceSide.NORMAL:
-                if g_course == -1: # right course
-                    g_video.set_trace_side(TraceSide.RIGHT)
-                else:
-                    g_video.set_trace_side(TraceSide.LEFT)
-            elif self.trace_side == TraceSide.OPPOSITE: 
-                if g_course == -1: # right course
-                    g_video.set_trace_side(TraceSide.LEFT)
-                else:
-                    g_video.set_trace_side(TraceSide.RIGHT)
-            else: # TraceSide.CENTER
-                g_video.set_trace_side(TraceSide.CENTER)
-            self.logger.info("%+06d %s.trace started with TS=%s" % (g_plotter.get_distance(), self.__class__.__name__, self.trace_side.name))
-        turn = (-1) * int(self.pid(g_video.get_theta()))
-        g_right_motor.set_power(self.powerR - turn)
-        g_left_motor.set_power(self.powerL + turn)
-        return Status.RUNNING
-    
-class MoveStraight(Behaviour):
-    def __init__(self, name: str, power: int, target_distance: int) -> None:
-        super(MoveStraight, self).__init__(name)
-        self.power = power
-        self.target_distance = target_distance
-        self.start_distance = None
-        self.running = False
-
-    def update(self) -> Status:
-        if not self.running:
-            self.running = True
-            self.start_distance = g_plotter.get_distance()
-            g_right_motor.set_power(self.power)
-            g_left_motor.set_power(self.power)
-            self.logger.info("%+06d %s.開始、パワー=%d、目標距離=%d" % 
-                            (self.start_distance, self.__class__.__name__, self.power, self.target_distance))
-        
-        current_distance = g_plotter.get_distance()
-        traveled_distance = current_distance - self.start_distance
-        
-        if traveled_distance >= self.target_distance:
-            g_right_motor.set_power(0)
-            g_left_motor.set_power(0)
-            self.logger.info("%+06d %s.目標距離に到達" % (current_distance, self.__class__.__name__))
-            return Status.SUCCESS
-        else:
-            return Status.RUNNING
-
-class MoveStraightLR(Behaviour):
-    def __init__(self, name: str, right_power: int, left_power: int, target_distance: int) -> None:
-        super(MoveStraightLR, self).__init__(name)
-        self.right_power = right_power
-        self.left_power = left_power
-        self.target_distance = target_distance
-        self.start_distance = None
-        self.running = False
-
-    def update(self) -> Status:
-        if not self.running:
-            self.running = True
-            self.start_distance = g_plotter.get_distance()
-            g_right_motor.set_power(self.right_power)
-            g_left_motor.set_power(self.left_power)
-            self.logger.info("%+06d %s.開始、右パワー=%d、左パワー=%d、目標距離=%d" % 
-                             (self.start_distance, self.__class__.__name__, self.right_power, self.left_power, self.target_distance))
-        
-        current_distance = g_plotter.get_distance()
-        traveled_distance = current_distance - self.start_distance
-        
-        if traveled_distance >= self.target_distance:
-            g_right_motor.set_power(0)
-            g_left_motor.set_power(0)
-            self.logger.info("%+06d %s.目標距離に到達" % (current_distance, self.__class__.__name__))
-            return Status.SUCCESS
-        else:
-            return Status.RUNNING
 
 class TraverseBehaviourTree(object):
     def __init__(self, tree: BehaviourTree) -> None:
@@ -460,16 +370,17 @@ def build_behaviour_tree() -> BehaviourTree:
     calibration = Sequence(name="calibration", memory=True)
     start = Parallel(name="start", policy=ParallelPolicy.SuccessOnOne())
     loop_01 = Parallel(name="loop 01", policy=ParallelPolicy.SuccessOnOne())
+    loop_01_1 = Parallel(name="loop 01", policy=ParallelPolicy.SuccessOnOne())
+    loop_01_2 = Parallel(name="loop 01", policy=ParallelPolicy.SuccessOnOne())
+    loop_01_3 = Parallel(name="loop 01", policy=ParallelPolicy.SuccessOnOne())
     loop_02 = Parallel(name="loop 02", policy=ParallelPolicy.SuccessOnOne())
     loop_03 = Parallel(name="loop 03", policy=ParallelPolicy.SuccessOnOne())
     loop_04 = Parallel(name="loop 04", policy=ParallelPolicy.SuccessOnOne())
     loop_05 = Parallel(name="loop 05", policy=ParallelPolicy.SuccessOnOne())
+    loop_05_2 = Parallel(name="loop 05", policy=ParallelPolicy.SuccessOnOne())
+    loop_05_3 = Parallel(name="loop 05", policy=ParallelPolicy.SuccessOnOne())
     loop_06 = Parallel(name="loop 06", policy=ParallelPolicy.SuccessOnOne())
     loop_07 = Parallel(name="loop 07", policy=ParallelPolicy.SuccessOnOne())
-    loop_08 = Parallel(name="loop 07", policy=ParallelPolicy.SuccessOnOne())
-    loop_09 = Parallel(name="loop 07", policy=ParallelPolicy.SuccessOnOne())
-    loop_10 = Parallel(name="loop 07", policy=ParallelPolicy.SuccessOnOne())
-    loop_11 = Parallel(name="loop 07", policy=ParallelPolicy.SuccessOnOne())
     calibration.add_children(
         [
             ArmUpDownFull(name="arm down", direction=ArmDirection.DOWN),
@@ -484,102 +395,112 @@ def build_behaviour_tree() -> BehaviourTree:
     )
     loop_01.add_children(
         [
-            TraceLineCam(name="trace normal edge", power=40, pid_p=2.5, pid_i=0.0015, pid_d=0.1,
+            TraceLineCam(name="trace normal edge", power=70, pid_p=1.5, pid_i=0.0015, pid_d=0.4,
+                         gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
+            IsDistanceEarned(name="check distance", delta_dist = 2500),
+        ]
+    )
+
+    loop_01_1.add_children(
+        [
+            TraceLineCam(name="trace normal edge", power=60, pid_p=1.5, pid_i=0.0015, pid_d=0.4,
+                         gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
+            IsDistanceEarned(name="check distance", delta_dist = 1000),
+        ]
+    )
+
+    loop_01_2.add_children(
+        [
+            TraceLineCam(name="trace normal edge", power=50, pid_p=2.0, pid_i=0.0015, pid_d=0.3,
                          gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
             IsDistanceEarned(name="check distance", delta_dist = 2000),
         ]
     )
+    loop_01_3.add_children(
+        [
+            TraceLineCam(name="trace normal edge", power=65, pid_p=1.5, pid_i=0.0015, pid_d=0.4,
+                         gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
+            IsDistanceEarned(name="check distance", delta_dist = 1500),
+        ]
+    )
+    #コンタクトⅠ直前
     loop_02.add_children(
         [
-            TraceLineCam(name="trace normal edge", power=40, pid_p=2.5, pid_i=0.001, pid_d=0.15,
+            TraceLineCam(name="trace normal edge", power=45, pid_p=2.0, pid_i=0.001, pid_d=0.35,
                          gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
             IsJunction(name="scan joined junction", target_state = JState.JOINED),
         ]
     )
+    #コンタクトⅠ通過後、コンタクトⅡまで
     loop_03.add_children(
         [
-            TraceLineCam(name="trace opposite edge", power=40, pid_p=2.5, pid_i=0.0011, pid_d=0.15,
+            TraceLineCam(name="trace opposite edge", power=43, pid_p=2.0, pid_i=0.0011, pid_d=0.35,
                          gs_min=0, gs_max=80, trace_side=TraceSide.OPPOSITE),
             IsJunction(name="scan joined junction", target_state = JState.JOINED),
         ]
     )
+    #コンタクトⅡ通過後、指定距離走行
     loop_04.add_children(
         [
-            TraceLineCam(name="trace normal edge", power=40, pid_p=2.5, pid_i=0.0015, pid_d=0.1,
+            TraceLineCam(name="trace normal edge", power=45, pid_p=2.0, pid_i=0.0015, pid_d=0.35,
                          gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
-            IsDistanceEarned(name="check distance", delta_dist = 2000),
+            IsDistanceEarned(name="check distance", delta_dist = 2300),
         ]
     )
+    #コンタクトⅢからコンタクトⅡまで
     loop_05.add_children(
         [
-            TraceLineCam(name="trace normal edge", power=40, pid_p=2.5, pid_i=0.0011, pid_d=0.15,
+            TraceLineCam(name="trace normal edge", power=43, pid_p=2.0, pid_i=0.0011, pid_d=0.35,
                          gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
             IsJunction(name="scan joined junction", target_state = JState.JOINED),
         ]
     )
+    # loop_05_2.add_children2( 
+    #     [
+    #         TraceLineCam(name="trace normal edge", power=45, pid_p=2.0, pid_i=0.0015, pid_d=0.35,
+    #                      gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
+    #         IsDistanceEarned(name="check distance", delta_dist = 300),
+    #     ]
+    # )
+    # loop_05_3.add_children(
+    #     [
+    #         TraceLineCam(name="trace normal edge", power=45, pid_p=2.0, pid_i=0.0011, pid_d=0.35,
+    #                      gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
+    #         IsJunction(name="scan joined junction", target_state = JState.JOINED),
+    #     ]
+    # )
+    #コンタクトⅡ通過後、コンタクトⅠまで
     loop_06.add_children(
         [
-            TraceLineCam(name="trace opposite edge", power=40, pid_p=2.5, pid_i=0.0011, pid_d=0.15,
+            TraceLineCam(name="trace opposite edge", power=45, pid_p=2.0, pid_i=0.0011, pid_d=0.35,
                          gs_min=0, gs_max=80, trace_side=TraceSide.OPPOSITE),
             IsJunction(name="scan joined junction", target_state = JState.JOINED),
         ]
     )
+    #コンタクトⅠ通過後、指定距離走行（Nextデブリ）
     loop_07.add_children(
         [
-            TraceLineCam(name="trace normal edge", power=40, pid_p=2.5, pid_i=0.0015, pid_d=0.1,
+            TraceLineCam(name="trace normal edge", power=45, pid_p=2.0, pid_i=0.0015, pid_d=0.3,
                          gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
-            IsDistanceEarned(name="check distance", delta_dist = 600),
+            IsDistanceEarned(name="check distance", delta_dist = 3000),
         ]
     )
-    loop_08.add_children(
-        [
-            TraceLineCam(name="trace normal edge", power=40, pid_p=2.5, pid_i=0.0015, pid_d=0.1,
-                         gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
-            IsDistanceEarned(name="check distance", delta_dist = 10),
-        ]
-    )
-    loop_09.add_children(
-        [
-             MoveStraight(name="move straight 3", power=55, target_distance=2000),
-            IsDistanceEarned(name="check distance", delta_dist = 1300),
-        ]
-    )
-    # loop_09.add_children(
-    #     [
-    #         TraceLineCam(name="trace normal edge", power=-40, pid_p=2.5, pid_i=0.0015, pid_d=0.1,
-    #                      gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
-    #         IsDistanceEarned(name="check distance", delta_dist = 150),
-    #     ]
-    # )
-    loop_10.add_children(
-        [
-            MoveStraightLR(name="move straight 4", right_power=0, left_power=80, target_distance=444),
-            IsDistanceEarned(name="check distance", delta_dist = 190),
-        ]
-    )
-    # loop_11.add_children(
-    #     [
-    #         TraceLineCam(name="trace normal edge", power=40, pid_p=2.5, pid_i=0.0015, pid_d=0.1,
-    #                      gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
-    #         IsDistanceEarned(name="check distance", delta_dist = 1000),
-    #     ]
-    # )
     root.add_children(
         [
             calibration,
             start,
-            # loop_01,
-            # loop_02,
-            # loop_03,
-            # loop_04,
-            # loop_05,
-            # loop_06,
-            # loop_07,
-            #W-loop_end
-            loop_08,
-            loop_09,
-            loop_10,
-            # loop_11,
+            loop_01,
+            loop_01_1,
+            loop_01_2,
+            loop_01_3,
+            loop_02,
+            loop_03,
+            loop_04,
+            loop_05,
+            # loop_05_2,
+            # loop_05_3,
+            loop_06,
+            loop_07,
             StopNow(name="stop"),
             TheEnd(name="end"),
         ]
