@@ -409,7 +409,7 @@ def build_behaviour_tree() -> BehaviourTree:
         cross_task02,
     ])
     cross_task01.add_children([
-        TraceLineCam(name="trace normal edge", power=30, pid_p=0.5, pid_i=0.1, pid_d=0,
+        TraceLineCam(name="trace normal edge", power=33, pid_p=0.5, pid_i=0.1, pid_d=0,
                          gs_min=0, gs_max=80, trace_side=TraceSide.CENTER, trace_point=TracePoint.FRONT),
         IsDistanceEarned(name="check distance", delta_dist=250),
     ])
