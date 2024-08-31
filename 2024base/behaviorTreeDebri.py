@@ -409,12 +409,12 @@ def build_behaviour_tree() -> BehaviourTree:
         cross_task02,
     ])
     cross_task01.add_children([
-        TraceLineCam(name="trace normal edge", power=35, pid_p=0.5, pid_i=0.1, pid_d=0,
+        TraceLineCam(name="trace normal edge", power=30, pid_p=0.5, pid_i=0.1, pid_d=0,
                          gs_min=0, gs_max=80, trace_side=TraceSide.CENTER, trace_point=TracePoint.FRONT),
         IsDistanceEarned(name="check distance", delta_dist=250),
     ])
     cross_task02.add_children([
-        RunAsInstructed(name="cross circle", pwm_r=38, pwm_l=38),
+        RunAsInstructed(name="cross circle", pwm_r=35, pwm_l=35),
         IsDistanceEarned(name="check distance", delta_dist=200),
     ])
 
@@ -424,7 +424,7 @@ def build_behaviour_tree() -> BehaviourTree:
         rotate_task02,
     ])
     rotate_task01.add_children([
-        RunAsInstructed(name="go back", pwm_r=48, pwm_l=0),
+        RunAsInstructed(name="go back", pwm_r=45, pwm_l=0),
         IsRotated(name="check rotate")
     ])
     rotate_task02.add_children([
