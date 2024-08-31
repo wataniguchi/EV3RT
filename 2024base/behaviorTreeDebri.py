@@ -405,17 +405,17 @@ def build_behaviour_tree() -> BehaviourTree:
 
     cross_circle.add_children([
         IsExecuteCrossCircle(name="isExecuteCrossCirle", debri_status=g_debri_status),
-        cross_task01,
+        #cross_task01,
         cross_task02,
     ])
-    cross_task01.add_children([
-        TraceLineCam(name="trace normal edge", power=33, pid_p=0.5, pid_i=0.1, pid_d=0,
-                         gs_min=0, gs_max=80, trace_side=TraceSide.CENTER, trace_point=TracePoint.FRONT),
-        IsDistanceEarned(name="check distance", delta_dist=250),
-    ])
+    #cross_task01.add_children([
+    #    TraceLineCam(name="trace normal edge", power=33, pid_p=0.5, pid_i=0.1, pid_d=0,
+    #                     gs_min=0, gs_max=80, trace_side=TraceSide.CENTER, trace_point=TracePoint.FRONT),
+    #    IsDistanceEarned(name="check distance", delta_dist=250),
+    #])
     cross_task02.add_children([
         RunAsInstructed(name="cross circle", pwm_r=35, pwm_l=35),
-        IsDistanceEarned(name="check distance", delta_dist=200),
+        IsDistanceEarned(name="check distance", delta_dist=450),
     ])
 
     rotate.add_children([
