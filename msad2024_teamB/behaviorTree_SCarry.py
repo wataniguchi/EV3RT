@@ -3,6 +3,7 @@ import time
 import math
 import threading
 import signal
+import sys
 from enum import Enum, IntEnum, auto
 from etrobo_python import ETRobo, Hub, Motor, ColorSensor, TouchSensor, SonarSensor, GyroSensor
 from simple_pid import PID
@@ -237,7 +238,7 @@ class IsJunction(Behaviour):
 
 class RunAsInstructed(Behaviour):
     def __init__(self, name: str, pwm_l: int, pwm_r: int) -> None:
-        super(RunAsInstucted, self).__init__(name)
+        super(RunAsInstructed, self).__init__(name)
         self.pwm_l = g_course * pwm_l
         self.pwm_r = g_course * pwm_r
         self.running = False
@@ -366,14 +367,15 @@ class VideoThread(threading.Thread):
 
 
 def build_behaviour_tree() -> BehaviourTree:
-    # if g_course == -1: # right cource mode
+    # if g_course == -1:
+    # 右用と左用の作成が必要（下記は右用）
     root = Sequence(name="competition", memory=True)
     calibration = Sequence(name="calibration", memory=True)
     start = Parallel(name="start", policy=ParallelPolicy.SuccessOnOne())
-    step_01 = Parallel(name="step 01", policy=ParallelPolicy.SuccessOnOne()) # デブリからボトル取得
-    step_02 = Parallel(name="step 02", policy=ParallelPolicy.SuccessOnOne()) # ボトル取得からサークルへ配置
-    step_03 = Parallel(name="step 03", policy=ParallelPolicy.SuccessOnOne()) # サークルへ配置からライン復帰
-    step_04 = Parallel(name="step 04", policy=ParallelPolicy.SuccessOnOne()) # ライン復帰からゴール
+    step_01 = Parallel(name="step 01", policy=ParallelPolicy.SuccessOnOne())
+    step_02 = Parallel(name="step 02", policy=ParallelPolicy.SuccessOnOne())
+    step_03 = Parallel(name="step 03", policy=ParallelPolicy.SuccessOnOne())
+    step_04 = Parallel(name="step 04", policy=ParallelPolicy.SuccessOnOne())
     calibration.add_children(
         [
             ArmUpDownFull(name="arm down", direction=ArmDirection.DOWN),
@@ -386,12 +388,14 @@ def build_behaviour_tree() -> BehaviourTree:
             IsTouchOn(name="touch start"),
         ]
     )
+    # デブリからボトル取得
     step_01.add_children(
         [
             RunAsInstructed(name="freerun 1", pwm_l=30, pwm_r=30),
             IsSonarOn(name="soner redbottol", alert_dist=50)
         ]
     )
+    # ボトル取得からサークルへ配置
     step_02.add_children(
         [
             RunAsInstructed(name="Turn 1", pwm_l=1, pwm_r=15),
@@ -400,6 +404,7 @@ def build_behaviour_tree() -> BehaviourTree:
             # color sensor add
         ]
     )
+    # サークルへ配置からライン復帰
     step_03.add_children(
         [
             RunAsInstructed(name="back 1", pwm_l=-10, pwm_r=-10),
@@ -409,6 +414,7 @@ def build_behaviour_tree() -> BehaviourTree:
             # color sensor add
         ]
     )
+    # ライン復帰からゴール
     step_04.add_children(
         [
             RunAsInstructed(name="Turn 1", pwm_l=15, pwm_r=1),
