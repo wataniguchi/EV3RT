@@ -26,6 +26,7 @@ from debriUtil import (
     IdentifyBottle,
     IsExecuteRemoveBottle,
     IsExecuteCrossCircle,
+    IsExecuteRotate,
     ReturnSeccess
 )
 
@@ -418,6 +419,7 @@ def build_behaviour_tree() -> BehaviourTree:
     ])
 
     rotate.add_children([
+        IsExecuteRotate(name="isExecuteRotate", debri_status=g_debri_status),
         rotate_task01,
         rotate_task02,
     ])
