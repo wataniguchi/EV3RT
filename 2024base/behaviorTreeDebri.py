@@ -385,22 +385,22 @@ def build_behaviour_tree() -> BehaviourTree:
     ])
 
     remove_task01.add_children([
-        RunAsInstructed(name="removeBottle", pwm_r=30, pwm_l=30),
-        IsDistanceEarned(name="check distance", delta_dist=50),
+        RunAsInstructed(name="removeBottle", pwm_r=38, pwm_l=38),
+        IsDistanceEarned(name="check distance", delta_dist=220),
     ])
 
     remove_task02.add_children([
-        RunAsInstructed(name="go back", pwm_r=-30, pwm_l=-30),
-        IsDistanceEarned(name="check distance", delta_dist=50),
+        RunAsInstructed(name="go back", pwm_r=-38, pwm_l=-38),
+        IsDistanceEarned(name="check distance", delta_dist=180),
     ])
 
     remove_task03.add_children([
-        RunAsInstructed(name="go back", pwm_r=0, pwm_l=30),
+        RunAsInstructed(name="go back", pwm_r=48, pwm_l=0),
         IsRotated(name="check rotate")
     ])
 
     remove_task04.add_children([
-        RunAsInstructed(name="go next", pwm_r=30, pwm_l=30),
+        RunAsInstructed(name="go next", pwm_r=38, pwm_l=38),
         IsDistanceEarned(name="check distance", delta_dist=50),
     ])
 
@@ -410,8 +410,8 @@ def build_behaviour_tree() -> BehaviourTree:
     ])
 
     cross_task01.add_children([
-        RunAsInstructed(name="cross circle", pwm_r=30, pwm_l=30),
-        IsDistanceEarned(name="check distance", delta_dist=70),
+        RunAsInstructed(name="cross circle", pwm_r=38, pwm_l=38),
+        IsDistanceEarned(name="check distance", delta_dist=350),
     ])
 
     end_debri.add_children([
