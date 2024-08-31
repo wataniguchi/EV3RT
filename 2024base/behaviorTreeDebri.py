@@ -360,9 +360,7 @@ def build_behaviour_tree() -> BehaviourTree:
     )
 
     main.add_children([
-        #main_task01,
-        StopNow,
-        IdentifyBottle(name="identify bottle", video=g_video, debri_status=g_debri_status),
+        main_task01,
         g_debri_status,
         main_task02,
     ])
