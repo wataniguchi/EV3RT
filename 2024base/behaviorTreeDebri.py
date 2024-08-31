@@ -156,7 +156,7 @@ class IsRotated(Behaviour):
         rDiff = abs(g_right_motor.get_count() - self.rStart)
         lDiff = abs(g_left_motor.get_count() - self.lStart)
 
-        if(lDiff>self.delta):
+        if(rDiff>self.delta or lDiff>self.delta):
             self.running = False
             return Status.SUCCESS
         else:
@@ -386,12 +386,12 @@ def build_behaviour_tree() -> BehaviourTree:
 
     remove_task01.add_children([
         RunAsInstructed(name="removeBottle", pwm_r=38, pwm_l=38),
-        IsDistanceEarned(name="check distance", delta_dist=220),
+        IsDistanceEarned(name="check distance", delta_dist=200),
     ])
 
     remove_task02.add_children([
         RunAsInstructed(name="go back", pwm_r=-38, pwm_l=-38),
-        IsDistanceEarned(name="check distance", delta_dist=180),
+        IsDistanceEarned(name="check distance", delta_dist=150),
     ])
 
     remove_task03.add_children([
