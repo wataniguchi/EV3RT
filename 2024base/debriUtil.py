@@ -25,7 +25,7 @@ class DebriStatus(Behaviour):
             self.target_list.append([0,1])
         elif(self.target==[0,1]):
             self.target_list.append([1,1])
-        elif(self.target==[0,0]):
+        elif(self.target==[1,1]):
             self.target_list.append([2,1])
         
         self.now = self.target
