@@ -134,9 +134,9 @@ class IsExecuteRotate(Behaviour):
         super(IsExecuteRotate, self).__init__(name)
 
     def update(self) -> Status:
-        if(self.debri_status.getBottle()==Bottle.NONE):
-            return Status.SUCCESS
-        else:
+        #if(self.debri_status.getBottle()==Bottle.NONE):
+        #    return Status.SUCCESS
+        #else:
             return Status.FAILURE
 
 
