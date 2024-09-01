@@ -503,7 +503,7 @@ def build_behaviour_tree() -> BehaviourTree:
     step_03_1.add_children(
         [
             RunAsInstructed(name="back 1", pwm_l=-50, pwm_r=-50),
-            IsDistanceEarned(name="check distance 3", delta_dist = -200)
+            IsDistanceEarned(name="check distance 3", delta_dist = 200)
         ]
     )
     # バックからラインへ方向転換
