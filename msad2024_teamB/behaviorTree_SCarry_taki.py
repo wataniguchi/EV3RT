@@ -461,7 +461,7 @@ def build_behaviour_tree() -> BehaviourTree:
     # step_04_1 = Parallel(name="step 04_1", policy=ParallelPolicy.SuccessOnOne())
     # step_04_2 = Parallel(name="step 04_2", policy=ParallelPolicy.SuccessOnOne())
     # 案２
-    step_01B = Parallel(name="step 01B", policy=ParallelPolicy.SuccessOnAll())
+    step_01B = Parallel(name="step 01B", policy=ParallelPolicy.SuccessOnOen())
     step_02B = Sequence(name="step 02B", memory=True)
     step_03B = Sequence(name="step 03B", memory=True)
     step_04B = Sequence(name="step 04B", memory=True)
@@ -540,13 +540,21 @@ def build_behaviour_tree() -> BehaviourTree:
     # )
 
     # 案２ start ##############################
+    #
     # デブリからボトル取得
     step_01B.add_children(
         [
-            MoveStraight(name="free run 1", power=50, target_distance=450)
-            # IsSonarOn(name="check bottol", alert_dist=150)
+            TraceLineCam(name="trace buleline", power=50, pid_p=2.5, pid_i=0.0015, pid_d=0.1,
+                 gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
+            IsDistanceEarned(name="check distance 1", delta_dist = 1100)
         ]
     )
+    # step_01B.add_children(
+    #     [
+    #         MoveStraight(name="free run 1", power=50, target_distance=450)
+    #         # IsSonarOn(name="check bottol", alert_dist=150)
+    #     ]
+    # )
     # ボトル取得からサークルへ配置
     step_02B.add_children(
         [
