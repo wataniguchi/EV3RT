@@ -479,8 +479,8 @@ def build_behaviour_tree() -> BehaviourTree:
     # デブリからボトル取得
     step_01.add_children(
         [
-            RunAsInstructed(name="free run 1", pwm_l=50, pwm_r=50),
-            IsSonarOn(name="check bottol", alert_dist=150)
+            RunAsInstructed(name="free run 1", pwm_l=50, pwm_r=50)
+            # IsSonarOn(name="check bottol", alert_dist=150)
         ]
     )
     # ボトル取得からサークルへ方向転換
