@@ -479,7 +479,8 @@ def build_behaviour_tree() -> BehaviourTree:
     # デブリからボトル取得
     step_01.add_children(
         [
-            RunAsInstructed(name="free run 1", pwm_l=50, pwm_r=50)
+            RunAsInstructed(name="free run 1", pwm_l=50, pwm_r=50),
+            IsDistanceEarned(name="check distance 1", delta_dist = 450)
             # IsSonarOn(name="check bottol", alert_dist=150)
         ]
     )
