@@ -339,7 +339,7 @@ class MoveStraight(Behaviour):
             self.start_distance = g_plotter.get_distance()
             g_right_motor.set_power(self.power)
             g_left_motor.set_power(self.power)
-            self.logger.info("%+06d %s.開始、パワー=%d、目標距離=%d" % 
+            self.logger.info("%+06d %s.start power=%d end distance=%d" % 
                             (self.start_distance, self.__class__.__name__, self.power, self.target_distance))
 
         current_distance = g_plotter.get_distance()
@@ -348,7 +348,7 @@ class MoveStraight(Behaviour):
         if traveled_distance >= self.target_distance:
             g_right_motor.set_power(0)
             g_left_motor.set_power(0)
-            self.logger.info("%+06d %s.目標距離に到達" % (current_distance, self.__class__.__name__))
+            self.logger.info("%+06d %s.end distance on" % (current_distance, self.__class__.__name__))
             return Status.SUCCESS
         else:
             return Status.RUNNING
@@ -373,7 +373,7 @@ class MoveStraightLR(Behaviour):
             else:
                 g_right_motor.set_power(self.left_power)
                 g_left_motor.set_power(self.right_power)
-            self.logger.info("%+06d %s.開始、右パワー=%d、左パワー=%d、目標距離=%d" % 
+            self.logger.info("%+06d %s.start rightpower=%d leftpower=%d enddistance=%d" % 
                              (self.start_distance, self.__class__.__name__, self.right_power, self.left_power, self.target_distance))
 
         current_distance = g_plotter.get_distance()
@@ -382,7 +382,7 @@ class MoveStraightLR(Behaviour):
         if traveled_distance >= self.target_distance:
             g_right_motor.set_power(0)
             g_left_motor.set_power(0)
-            self.logger.info("%+06d %s.目標距離に到達" % (current_distance, self.__class__.__name__))
+            self.logger.info("%+06d %s.enddistance on" % (current_distance, self.__class__.__name__))
             return Status.SUCCESS
         else:
             return Status.RUNNING
