@@ -487,7 +487,7 @@ def build_behaviour_tree() -> BehaviourTree:
     # ボトル取得からサークルへ方向転換
     step_02_1.add_children(
         [
-            RunAsInstructed(name="Turn 1", pwm_l=50, pwm_r=35),
+            RunAsInstructed(name="Turn 1", pwm_l=70, pwm_r=35),
             IsDistanceEarned(name="check distance 1", delta_dist = 200)
         ]
     )
@@ -503,13 +503,13 @@ def build_behaviour_tree() -> BehaviourTree:
     step_03_1.add_children(
         [
             RunAsInstructed(name="back 1", pwm_l=-50, pwm_r=-50),
-            IsDistanceEarned(name="check distance 3", delta_dist = -100)
+            IsDistanceEarned(name="check distance 3", delta_dist = -200)
         ]
     )
     # バックからラインへ方向転換
     step_03_2.add_children(
         [
-            RunAsInstructed(name="Turn 2", pwm_l=35, pwm_r=50),
+            RunAsInstructed(name="Turn 2", pwm_l=35, pwm_r=70),
             IsDistanceEarned(name="check distance 4", delta_dist = 200)
         ]
     )
@@ -523,7 +523,7 @@ def build_behaviour_tree() -> BehaviourTree:
     # ラインに移動からライン復帰
     step_04_1.add_children(
         [
-            RunAsInstructed(name="Turn 3", pwm_l=35, pwm_r=50),
+            RunAsInstructed(name="Turn 3", pwm_l=35, pwm_r=70),
             IsDistanceEarned(name="check distance 6", delta_dist = 250)
             # color sensor add?
         ]
