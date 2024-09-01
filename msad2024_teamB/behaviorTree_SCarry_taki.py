@@ -538,7 +538,7 @@ def build_behaviour_tree() -> BehaviourTree:
     # )
 
     # 案２ start ##############################
-    デブリからボトル取得
+    # デブリからボトル取得
     step_01B.add_children(
         [
             MoveStraight(name="free run 1", power=40, target_distance=450),
