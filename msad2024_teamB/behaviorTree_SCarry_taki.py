@@ -461,7 +461,7 @@ def build_behaviour_tree() -> BehaviourTree:
     # step_04_1 = Parallel(name="step 04_1", policy=ParallelPolicy.SuccessOnOne())
     # step_04_2 = Parallel(name="step 04_2", policy=ParallelPolicy.SuccessOnOne())
     # 案２
-    step_01B = Parallel(name="step 01B", policy=ParallelPolicy.SuccessOnOen())
+    step_01B = Parallel(name="step 01B", policy=ParallelPolicy.SuccessOnOne())
     step_02B = Sequence(name="step 02B", memory=True)
     step_03B = Sequence(name="step 03B", memory=True)
     step_04B = Sequence(name="step 04B", memory=True)
