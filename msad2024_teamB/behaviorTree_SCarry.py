@@ -479,14 +479,14 @@ def build_behaviour_tree() -> BehaviourTree:
     # デブリからボトル取得
     step_01.add_children(
         [
-            RunAsInstructed(name="free run 1", pwm_l=30, pwm_r=30),
+            RunAsInstructed(name="free run 1", pwm_l=70, pwm_r=70),
             IsSonarOn(name="check bottol", alert_dist=150)
         ]
     )
     # ボトル取得からサークルへ方向転換
     step_02_1.add_children(
         [
-            RunAsInstructed(name="Turn 1", pwm_l=1, pwm_r=15),
+            RunAsInstructed(name="Turn 1", pwm_l=35, pwm_r=70),
             IsDistanceEarned(name="check distance 1", delta_dist = 200)
         ]
     )
@@ -501,14 +501,14 @@ def build_behaviour_tree() -> BehaviourTree:
     # サークルへ配置からバック
     step_03_1.add_children(
         [
-            RunAsInstructed(name="back 1", pwm_l=-10, pwm_r=-10),
+            RunAsInstructed(name="back 1", pwm_l=-40, pwm_r=-40),
             IsDistanceEarned(name="check distance 3", delta_dist = -100)
         ]
     )
     # バックからラインへ方向転換
     step_03_2.add_children(
         [
-            RunAsInstructed(name="Turn 2", pwm_l=15, pwm_r=1),
+            RunAsInstructed(name="Turn 2", pwm_l=70, pwm_r=35),
             IsDistanceEarned(name="check distance 4", delta_dist = 200)
         ]
     )
@@ -522,7 +522,7 @@ def build_behaviour_tree() -> BehaviourTree:
     # ラインに移動からライン復帰
     step_04_1.add_children(
         [
-            RunAsInstructed(name="Turn 3", pwm_l=15, pwm_r=1),
+            RunAsInstructed(name="Turn 3", pwm_l=70, pwm_r=35),
             IsDistanceEarned(name="check distance 6", delta_dist = 250)
             # color sensor add?
         ]
