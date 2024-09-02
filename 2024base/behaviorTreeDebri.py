@@ -18,7 +18,7 @@ from py_trees import (
     display as display_tree,
     logging as log_tree
 )
-from py_etrobo_util import Video, TraceSide, Plotter
+from py_etrobo_util import Video, TraceSide, Plotter, VideoDebri
 
 from debriUtil import (
     DebriStatus,
@@ -37,7 +37,7 @@ JUNCT_UPPER_THRESH = 50
 JUNCT_LOWER_THRESH = 40
 
 TIRE_DIAMETER: float = 100.0
-WHEEL_TREAD: float = 120.0
+WHEEL_TREAD: float = 110.0
 
 class ArmDirection(IntEnum):
     UP = -1
@@ -52,7 +52,7 @@ g_touch_sensor: TouchSensor = None
 g_color_sensor: ColorSensor = None
 g_sonar_sensor: SonarSensor = None
 g_gyro_sensor: GyroSensor = None
-g_video: Video = None
+g_video: VideoDebri = None
 g_video_thread: threading.Thread = None
 g_course: int = 0
 
@@ -229,7 +229,6 @@ class TraceLineCam(Behaviour):
         if not self.running:
             self.running = True
             g_video.set_thresholds(self.gs_min, self.gs_max)
-            g_video.set_trace_point(self.trace_point)
             if self.trace_side == TraceSide.NORMAL:
                 if g_course == -1: # right course
                     g_video.set_trace_side(TraceSide.RIGHT)
@@ -327,6 +326,7 @@ def build_behaviour_tree() -> BehaviourTree:
     remove_task02 = Parallel(name="removeTask02", policy=ParallelPolicy.SuccessOnOne())
     remove_task03 = Parallel(name="removeTask03", policy=ParallelPolicy.SuccessOnOne())
     remove_task04 = Parallel(name="removeTask04", policy=ParallelPolicy.SuccessOnOne())
+    remove_task05 = Parallel(name="removeTask04", policy=ParallelPolicy.SuccessOnOne())
 
     cross_task01 = Parallel(name="crossTask01", policy=ParallelPolicy.SuccessOnOne())
     cross_task02 = Parallel(name="crossTask02", policy=ParallelPolicy.SuccessOnOne())
@@ -385,22 +385,28 @@ def build_behaviour_tree() -> BehaviourTree:
         remove_task02,
         remove_task03,
         remove_task04,
+        remove_task05,
     ])
     remove_task01.add_children([
         RunAsInstructed(name="removeBottle", pwm_r=35, pwm_l=35),
-        IsDistanceEarned(name="check distance", delta_dist=270),
+        IsDistanceEarned(name="check distance", delta_dist=330),
     ])
     remove_task02.add_children([
         RunAsInstructed(name="go back", pwm_r=-35, pwm_l=-35),
-        IsDistanceEarned(name="check distance", delta_dist=140),
+        IsDistanceEarned(name="check distance", delta_dist=90),
     ])
     remove_task03.add_children([
-        RunAsInstructed(name="go back", pwm_r=45, pwm_l=0),
+        RunAsInstructed(name="go back", pwm_r=0, pwm_l=-45),
         IsRotated(name="check rotate")
     ])
     remove_task04.add_children([
+        TraceLineCam(name="trace normal edge", power=35, pid_p=0.5, pid_i=0.05, pid_d=0,
+                         gs_min=10, gs_max=90, trace_side=TraceSide.CENTER),
+        IsDistanceEarned(name="check distance", delta_dist=150),
+    ])
+    remove_task05.add_children([
         RunAsInstructed(name="go next", pwm_r=35, pwm_l=35),
-        IsDistanceEarned(name="check distance", delta_dist=140),
+        IsDistanceEarned(name="check distance", delta_dist=50),
     ])
 
     cross_circle.add_children([
@@ -409,13 +415,13 @@ def build_behaviour_tree() -> BehaviourTree:
         cross_task02,
     ])
     cross_task01.add_children([
-        TraceLineCam(name="trace normal edge", power=35, pid_p=0.3, pid_i=0.2, pid_d=0,
-                         gs_min=0, gs_max=80, trace_side=TraceSide.CENTER),
-        IsDistanceEarned(name="check distance", delta_dist=250),
+        TraceLineCam(name="trace normal edge", power=35, pid_p=0.5, pid_i=0.05, pid_d=0,
+                         gs_min=0, gs_max=70, trace_side=TraceSide.CENTER),
+        IsDistanceEarned(name="check distance", delta_dist=350),
     ])
     cross_task02.add_children([
         RunAsInstructed(name="cross circle", pwm_r=35, pwm_l=35),
-        IsDistanceEarned(name="check distance", delta_dist=200),
+        IsDistanceEarned(name="check distance", delta_dist=100),
     ])
 
     rotate.add_children([
@@ -452,7 +458,7 @@ def initialize_etrobo(backend: str) -> ETRobo:
 
 def setup_thread():
     global g_video, g_video_thread
-    g_video = Video()
+    g_video = VideoDebri()
 
     print(" -- starting VideoThread...")
     g_video_thread = VideoThread()
