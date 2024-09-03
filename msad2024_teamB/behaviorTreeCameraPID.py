@@ -537,19 +537,19 @@ def build_behaviour_tree() -> BehaviourTree:
         [
             TraceLineCam(name="trace normal edge", power=40, pid_p=1.0, pid_i=0.0015, pid_d=0.1,
                          gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
-            IsDistanceEarned(name="check distance", delta_dist = 1400),
+            IsDistanceEarned(name="check distance", delta_dist = 1500),
         ]
     )
     loop_09.add_children(
         [
-            MoveStraight(name="back", power=-50, target_distance=200)
+            MoveStraight(name="back", power=-50, target_distance=400)
         ]
     )
     loop_10.add_children(
         [
         TraceLineCam(name="trace normal edge", power=30, pid_p=1.0, pid_i=0.0015, pid_d=0.1,
                          gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
-        IsDistanceEarned(name="check distance", delta_dist = 700),   
+        IsDistanceEarned(name="check distance", delta_dist = 800),   
         ]
     )
     loop_11.add_children(
