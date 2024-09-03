@@ -501,7 +501,7 @@ def build_behaviour_tree() -> BehaviourTree:
     step_02B = Sequence(name="step 02B", memory=True)
     step_03B = Sequence(name="step 03B", memory=True)
     step_04B = Sequence(name="step 04B", memory=True)
-
+ 
     calibration.add_children(
         [
             ArmUpDownFull(name="arm down", direction=ArmDirection.DOWN),
