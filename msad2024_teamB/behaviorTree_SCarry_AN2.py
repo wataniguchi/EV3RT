@@ -367,14 +367,14 @@ class MoveStraightLR(Behaviour):
         if not self.running:
             self.running = True
             self.start_distance = g_plotter.get_distance()
-            g_right_motor.set_power(self.right_power)
-            g_left_motor.set_power(self.left_power)
-            # if g_course == -1:
-            #     g_right_motor.set_power(self.right_power)
-            #     g_left_motor.set_power(self.left_power)
-            # else:
-            #     g_right_motor.set_power(self.left_power)
-            #     g_left_motor.set_power(self.right_power)
+            # g_right_motor.set_power(self.right_power)
+            # g_left_motor.set_power(self.left_power)
+            if g_course == 1:
+                g_right_motor.set_power(self.right_power)
+                g_left_motor.set_power(self.left_power)
+            else:
+                g_right_motor.set_power(self.left_power)
+                g_left_motor.set_power(self.right_power)
             self.logger.info("%+06d %s.start rightpower=%d leftpower=%d enddistance=%d" % 
                              (self.start_distance, self.__class__.__name__, self.right_power, self.left_power, self.target_distance))
 
@@ -451,16 +451,6 @@ def build_behaviour_tree() -> BehaviourTree:
     root = Sequence(name="competition", memory=True)
     calibration = Sequence(name="calibration", memory=True)
     start = Parallel(name="start", policy=ParallelPolicy.SuccessOnOne())
-    # # 案１
-    # step_01 = Parallel(name="step 01", policy=ParallelPolicy.SuccessOnOne())
-    # step_02_1 = Parallel(name="step 02_1", policy=ParallelPolicy.SuccessOnOne())
-    # step_02_2 = Parallel(name="step 02_2", policy=ParallelPolicy.SuccessOnOne())
-    # step_03_1 = Parallel(name="step 03_1", policy=ParallelPolicy.SuccessOnOne())
-    # step_03_2 = Parallel(name="step 03_2", policy=ParallelPolicy.SuccessOnOne())
-    # step_03_3 = Parallel(name="step 03_3", policy=ParallelPolicy.SuccessOnOne())
-    # step_04_1 = Parallel(name="step 04_1", policy=ParallelPolicy.SuccessOnOne())
-    # step_04_2 = Parallel(name="step 04_2", policy=ParallelPolicy.SuccessOnOne())
-    # 案２
     step_01B = Parallel(name="step 01B", policy=ParallelPolicy.SuccessOnOne())
     step_02B = Sequence(name="step 02B", memory=True)
     step_03B = Sequence(name="step 03B", memory=True)
@@ -478,74 +468,11 @@ def build_behaviour_tree() -> BehaviourTree:
             IsTouchOn(name="touch start"),
         ]
     )
-    # # デブリからボトル取得
-    # step_01.add_children(
-    #     [
-    #         RunAsInstructed(name="free run 1", pwm_l=70, pwm_r=70),
-    #         IsSonarOn(name="check bottol", alert_dist=150)
-    #     ]
-    # )
-    # # ボトル取得からサークルへ方向転換
-    # step_02_1.add_children(
-    #     [
-    #         RunAsInstructed(name="Turn 1", pwm_l=35, pwm_r=70),
-    #         IsDistanceEarned(name="check distance 1", delta_dist = 200)
-    #     ]
-    # )
-    # # 方向転換からサークルへボトル配置
-    # step_02_2.add_children(
-    #     [
-    #         RunAsInstructed(name="free run 2", pwm_l=80, pwm_r=80),
-    #         IsDistanceEarned(name="check distance 2", delta_dist = 1000)
-    #         # color sensor add
-    #     ]
-    # )
-    # # サークルへ配置からバック
-    # step_03_1.add_children(
-    #     [
-    #         RunAsInstructed(name="back 1", pwm_l=-70, pwm_r=-70),
-    #         IsDistanceEarned(name="check distance 3", delta_dist = -100)
-    #     ]
-    # )
-    # # バックからラインへ方向転換
-    # step_03_2.add_children(
-    #     [
-    #         RunAsInstructed(name="Turn 2", pwm_l=70, pwm_r=35),
-    #         IsDistanceEarned(name="check distance 4", delta_dist = 200)
-    #     ]
-    # )
-    # # ラインへ方向転換からラインに移動
-    # step_03_3.add_children(
-    #     [
-    #         RunAsInstructed(name="freerun 3", pwm_l=70, pwm_r=70),
-    #         IsDistanceEarned(name="check distance 5", delta_dist = 400)
-    #     ]
-    # )
-    # # ラインに移動からライン復帰
-    # step_04_1.add_children(
-    #     [
-    #         RunAsInstructed(name="Turn 3", pwm_l=70, pwm_r=35),
-    #         IsDistanceEarned(name="check distance 6", delta_dist = 250)
-    #         # color sensor add?
-    #     ]
-    # )
-    # # ライン復帰からゴール
-    # step_04_2.add_children(
-    #     [
-    #         TraceLineCam(name="trace center edge", power=60, pid_p=2.5, pid_i=0.0015, pid_d=0.1,
-    #                      gs_min=0, gs_max=80, trace_side=TraceSide.CENTER),
-    #         IsDistanceEarned(name="check distance 7", delta_dist = 1100)
-    #         # color sensor add?
-    #     ]
-    # )
-
-    # 案２ start ##############################
-    #
     # デブリからボトル取得
     step_01B.add_children(
         [
             TraceLineCam(name="trace buleline", power=40, pid_p=2.5, pid_i=0.0015, pid_d=0.1,
-                 gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
+                 gs_min=0, gs_max=80, trace_side=TraceSide.CENTER),
             IsDistanceEarned(name="check distance 1", delta_dist = 400)
         ]
     )
@@ -582,7 +509,6 @@ def build_behaviour_tree() -> BehaviourTree:
             # color sensor add
         ]
     )
-    # 案２ end ##############################
 
     root.add_children(
         [
