@@ -452,6 +452,7 @@ def build_behaviour_tree() -> BehaviourTree:
     calibration = Sequence(name="calibration", memory=True)
     start = Parallel(name="start", policy=ParallelPolicy.SuccessOnOne())
     step_01B = Parallel(name="step 01B", policy=ParallelPolicy.SuccessOnOne())
+    step_01B_2 = Parallel(name="step 01B", policy=ParallelPolicy.SuccessOnOne())
     step_02B = Sequence(name="step 02B", memory=True)
     step_03B = Sequence(name="step 03B", memory=True)
     step_04B = Sequence(name="step 04B", memory=True)
@@ -472,8 +473,15 @@ def build_behaviour_tree() -> BehaviourTree:
     step_01B.add_children(
         [
             TraceLineCam(name="trace buleline", power=40, pid_p=2.5, pid_i=0.0015, pid_d=0.1,
+                 gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
+            IsDistanceEarned(name="check distance 1", delta_dist = 150)
+        ]
+    )
+    step_01B_2.add_children(
+        [
+            TraceLineCam(name="trace buleline", power=40, pid_p=2.5, pid_i=0.0015, pid_d=0.1,
                  gs_min=0, gs_max=80, trace_side=TraceSide.CENTER),
-            IsDistanceEarned(name="check distance 1", delta_dist = 400)
+            IsDistanceEarned(name="check distance 1", delta_dist = 150)
         ]
     )
     # step_01B.add_children(
@@ -514,15 +522,8 @@ def build_behaviour_tree() -> BehaviourTree:
         [
             calibration,
             start,
-            # step_01,
-            # step_02_1,
-            # step_02_2,
-            # step_03_1,
-            # step_03_2,
-            # step_03_3,
-            # step_04_1,
-            # step_04_2,
             step_01B,
+            step_01B_2,
             step_02B,
             step_03B,
             step_04B,
