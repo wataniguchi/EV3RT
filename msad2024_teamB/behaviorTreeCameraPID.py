@@ -540,20 +540,37 @@ def build_behaviour_tree() -> BehaviourTree:
     )
     loop_09.add_children(
         [
-            MoveStraight(name="back", power=-70, target_distance=200)
+            MoveStraight(name="back", power=-50, target_distance=200)
         ]
     )
+    loop_10.add_children(
+        [
+        TraceLineCam(name="trace normal edge", power=40, pid_p=1.0, pid_i=0.0015, pid_d=0.1,
+                         gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
+        IsDistanceEarned(name="check distance", delta_dist = 400),   
+        ]
+    )
+    loop_11.add_children(
+        [
+            MoveStraightLR(name="move straight 4", right_power=0, left_power=80, target_distance=444),
+            TraceLineCam(name="trace normal edge", power=40, pid_p=1.0, pid_i=0.0015, pid_d=0.1,
+                         gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
+            IsDistanceEarned(name="check distance", delta_dist = 400),   
+        ]
+    )
+    # loop_11.add_children(
+    #     [
+    #         MoveStraightLR(name="move straight 4", right_power=0, left_power=80, target_distance=444),
+    #         TraceLineCam(name="trace normal edge", power=40, pid_p=1.0, pid_i=0.0015, pid_d=0.1,
+    #                      gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
+    #         IsDistanceEarned(name="check distance", delta_dist = 400),   
+    #     ]
+    # )
     # loop_09.add_children(
     #     [
     #         TraceLineCam(name="trace normal edge", power=-40, pid_p=2.5, pid_i=0.0015, pid_d=0.1,
     #                      gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
     #         IsDistanceEarned(name="check distance", delta_dist = 150),
-    #     ]
-    # )
-    # loop_10.add_children(
-    #     [
-    #         MoveStraightLR(name="move straight 4", right_power=0, left_power=80, target_distance=444),
-    #         IsDistanceEarned(name="check distance", delta_dist = 190),
     #     ]
     # )
     # loop_11.add_children(
@@ -577,8 +594,8 @@ def build_behaviour_tree() -> BehaviourTree:
             #W-loop_end
             loop_08,
             loop_09,
-            # loop_10,
-            # loop_11,
+            loop_10,
+            loop_11,
             StopNow(name="stop"),
             TheEnd(name="end"),
         ]
