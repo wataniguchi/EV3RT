@@ -471,6 +471,7 @@ def build_behaviour_tree() -> BehaviourTree:
     loop_10 = Parallel(name="loop 07", policy=ParallelPolicy.SuccessOnOne())
     loop_11 = Parallel(name="loop 07", policy=ParallelPolicy.SuccessOnOne())
     loop_12 = Parallel(name="loop 07", policy=ParallelPolicy.SuccessOnOne())
+    loop_13 = Parallel(name="loop 07", policy=ParallelPolicy.SuccessOnOne())
     calibration.add_children(
         [
             ArmUpDownFull(name="arm down", direction=ArmDirection.DOWN),
@@ -558,6 +559,13 @@ def build_behaviour_tree() -> BehaviourTree:
     )
     loop_12.add_children(
         [
+        TraceLineCam(name="trace normal edge", power=20, pid_p=1.0, pid_i=0.0015, pid_d=0.1,
+                         gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
+        IsDistanceEarned(name="check distance", delta_dist = 200),   
+        ]
+    )
+    loop_13.add_children(
+        [
         TraceLineCam(name="trace normal edge", power=40, pid_p=1.0, pid_i=0.0015, pid_d=0.1,
                          gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
         IsDistanceEarned(name="check distance", delta_dist = 1500),   
@@ -581,6 +589,7 @@ def build_behaviour_tree() -> BehaviourTree:
             loop_10,
             loop_11,
             loop_12,
+            loop_13,
             StopNow(name="stop"),
             TheEnd(name="end"),
         ]
