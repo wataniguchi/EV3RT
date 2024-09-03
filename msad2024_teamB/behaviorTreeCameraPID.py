@@ -539,7 +539,7 @@ def build_behaviour_tree() -> BehaviourTree:
         [
             TraceLineCam(name="trace normal edge", power=40, pid_p=1.0, pid_i=0.0015, pid_d=0.1,
                          gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
-            IsDistanceEarned(name="check distance", delta_dist = 1400),
+            IsDistanceEarned(name="check distance", delta_dist = 1350),
         ]
     )
     loop_09.add_children(
@@ -549,12 +549,12 @@ def build_behaviour_tree() -> BehaviourTree:
     )
     loop_10.add_children(
         [
-            MoveStraight(name="back", power=-50, target_distance=100)
+            MoveStraight(name="back", power=-50, target_distance=50)
         ]
     )
     loop_11.add_children(
         [
-            MoveStraightLR(name="move straight 4", right_power=-80, left_power=-40, target_distance=100),
+            MoveStraightLR(name="move straight 4", right_power=-100, left_power=-10, target_distance=100),
         ]
     )
     loop_12.add_children(
