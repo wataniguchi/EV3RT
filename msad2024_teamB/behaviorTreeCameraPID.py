@@ -473,6 +473,7 @@ def build_behaviour_tree() -> BehaviourTree:
     loop_12 = Parallel(name="loop 07", policy=ParallelPolicy.SuccessOnOne())
     loop_13 = Parallel(name="loop 07", policy=ParallelPolicy.SuccessOnOne())
     loop_14 = Parallel(name="loop 07", policy=ParallelPolicy.SuccessOnOne())
+    loop_15 = Parallel(name="loop 07", policy=ParallelPolicy.SuccessOnOne())
     calibration.add_children(
         [
             ArmUpDownFull(name="arm down", direction=ArmDirection.DOWN),
@@ -548,29 +549,34 @@ def build_behaviour_tree() -> BehaviourTree:
     )
     loop_10.add_children(
         [
-            MoveStraight(name="back", power=-50, target_distance=500)
+            MoveStraight(name="back", power=-50, target_distance=250)
         ]
     )
     loop_11.add_children(
+        [
+            MoveStraightLR(name="move straight 4", right_power=-20, left_power=-100, target_distance=200),
+        ]
+    )
+    loop_12.add_children(
         [
         TraceLineCam(name="trace normal edge", power=30, pid_p=1.0, pid_i=0.0015, pid_d=0.1,
                          gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
         IsDistanceEarned(name="check distance", delta_dist = 800),   
         ]
     )
-    loop_12.add_children(
+    loop_13.add_children(
         [
             MoveStraightLR(name="move straight 4", right_power=-20, left_power=60, target_distance=115),
         ]
     )
-    loop_13.add_children(
+    loop_14.add_children(
         [
         TraceLineCam(name="trace normal edge", power=30, pid_p=1.0, pid_i=0.0015, pid_d=0.1,
                          gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
         IsDistanceEarned(name="check distance", delta_dist = 200),   
         ]
     )
-    loop_14.add_children(
+    loop_15.add_children(
         [
         TraceLineCam(name="trace normal edge", power=40, pid_p=1.0, pid_i=0.0015, pid_d=0.1,
                          gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
@@ -597,6 +603,7 @@ def build_behaviour_tree() -> BehaviourTree:
             loop_12,
             loop_13,
             loop_14,
+            loop_15,
             StopNow(name="stop"),
             TheEnd(name="end"),
         ]
