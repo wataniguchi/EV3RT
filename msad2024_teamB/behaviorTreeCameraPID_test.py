@@ -369,6 +369,7 @@ def build_behaviour_tree() -> BehaviourTree:
     root = Sequence(name="competition", memory=True)
     calibration = Sequence(name="calibration", memory=True)
     start = Parallel(name="start", policy=ParallelPolicy.SuccessOnOne())
+    loop_00 = Parallel(name="loop 01", policy=ParallelPolicy.SuccessOnOne())
     loop_01 = Parallel(name="loop 01", policy=ParallelPolicy.SuccessOnOne())
     loop_01_1 = Parallel(name="loop 01", policy=ParallelPolicy.SuccessOnOne())
     loop_01_2 = Parallel(name="loop 01", policy=ParallelPolicy.SuccessOnOne())
@@ -395,11 +396,19 @@ def build_behaviour_tree() -> BehaviourTree:
     )
 
     #最初のストレート最高速度
+    loop_00.add_children(
+        [
+            TraceLineCam(name="trace normal edge", power=30, pid_p=0.1, pid_i=0.0015, pid_d=0.1,
+                         gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
+            IsDistanceEarned(name="check distance", delta_dist = 100),
+        ]
+    )
+    #最初のストレート最高速度
     loop_01.add_children(
         [
-            TraceLineCam(name="trace normal edge", power=60, pid_p=0.1, pid_i=0.0015, pid_d=0.1,
+            TraceLineCam(name="trace normal edge", power=70, pid_p=0.1, pid_i=0.0015, pid_d=0.1,
                          gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
-            IsDistanceEarned(name="check distance", delta_dist = 1000),
+            IsDistanceEarned(name="check distance", delta_dist = 900),
         ]
     )
 
@@ -486,6 +495,7 @@ def build_behaviour_tree() -> BehaviourTree:
         [
             calibration,
             start,
+            loop_00,
             loop_01,
             loop_01_1,
             loop_01_2,
