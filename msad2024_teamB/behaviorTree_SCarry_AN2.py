@@ -24,6 +24,8 @@ VIDEO_INTERVAL: float = 0.02
 ARM_SHIFT_PWM = 30
 JUNCT_UPPER_THRESH = 50
 JUNCT_LOWER_THRESH = 30
+BOTTLE_UPPER_THRESH = 110
+BOTTLE_LOWER_THRESH = 33
 
 class ArmDirection(IntEnum):
     UP = -1
@@ -44,6 +46,12 @@ class Color(Enum):
     YELLOW = auto()
     GREEN = auto()
     WHITE = auto()
+
+class BState(Enum):
+    INITIAL = auto()
+    LINE = auto()
+    CIRCLE = auto()
+    CATCHED  = auto()
 
 g_plotter: Plotter = None
 g_hub: Hub = None
@@ -154,7 +162,7 @@ class IsSonarOn(Behaviour):
         if not self.running:
             self.running = True
             self.logger.info("%+06d %s.detection started for dist=%d" % (g_plotter.get_distance(), self.__class__.__name__, self.alert_dist))
-        
+
         dist = 10 * g_sonar_sensor.get_distance()
         if (dist <= self.alert_dist and dist > 0):
             self.logger.info("%+06d %s.alerted at dist=%d" % (g_plotter.get_distance(), self.__class__.__name__, dist))
@@ -218,7 +226,7 @@ class IsJunction(Behaviour):
                 if roe <= JUNCT_LOWER_THRESH:
                     self.logger.info("%+06d %s.the join completed" % (g_plotter.get_distance(), self.__class__.__name__))
                     self.state = JState.JOINED
-                    
+
             elif self.state == JState.FORKING:
                 if roe <= JUNCT_LOWER_THRESH and self.prev_roe >= JUNCT_UPPER_THRESH:
                     self.logger.info("%+06d %s.the fork completed" % (g_plotter.get_distance(), self.__class__.__name__))
@@ -389,6 +397,46 @@ class MoveStraightLR(Behaviour):
         else:
             return Status.RUNNING
 
+class Bottlecatch(Behaviour):
+    def __init__(self, name: str, target_state: BState) -> None:
+        super(Bottlecatch, self).__init__(name)
+        self.target_state = target_state
+        self.reached = False
+        self.prev_roe = 0
+        self.state:BState = BState.INITIAL
+        self.running = False
+
+    def update(self) -> Status:
+        if not self.running:
+            self.running = True
+            self.logger.info("%+06d %s.scan started" % (g_plotter.get_distance(), self.__class__.__name__))
+        roe = g_video.get_range_of_edges()
+        if roe != 0:
+            if self.state == BState.INITIAL:
+                if (self.target_state == BState.LINE ) and roe >= BOTTLE_LOWER_THRESH and self.prev_roe >= BOTTLE_LOWER_THRESH:
+                    self.logger.info("%+06d %s.lines are joining" % (g_plotter.get_distance(), self.__class__.__name__))
+                    self.state = BState.LINE
+
+            elif self.state == BState.LINE:
+                if roe >= BOTTLE_UPPER_THRESH and self.prev_roe >= BOTTLE_LOWER_THRESH:
+                    self.logger.info("%+06d %s.the join completed" % (g_plotter.get_distance(), self.__class__.__name__))
+                    self.state = BState.CIRCLE
+
+            elif self.state == BState.CIRCLE:
+                if roe <= JUNCT_UPPER_THRESH and self.prev_roe >= JUNCT_UPPER_THRESH:
+                    self.logger.info("%+06d %s.the fork completed" % (g_plotter.get_distance(), self.__class__.__name__))
+                    self.state = BState.CATCHED
+            else:
+                pass
+        self.prev_roe = roe
+
+        if not self.reached and self.state == self.target_state:
+            self.reached = True
+            self.logger.info("%+06d %s.target state reached" % (g_plotter.get_distance(), self.__class__.__name__))
+            return Status.SUCCESS
+        else:
+            return Status.RUNNING
+
 class TraverseBehaviourTree(object):
     def __init__(self, tree: BehaviourTree) -> None:
         self.tree = tree
@@ -408,7 +456,6 @@ class TraverseBehaviourTree(object):
         else:
             self.tree.tick_once()
             g_plotter.plot(**kwargs)
-
 
 class ExposeDevices(object):
     def __call__(
@@ -432,7 +479,6 @@ class ExposeDevices(object):
         g_sonar_sensor = sonar_sensor
         g_gyro_sensor = gyro_sensor
 
-
 class VideoThread(threading.Thread):
     def __init__(self):
         super().__init__()
@@ -445,7 +491,6 @@ class VideoThread(threading.Thread):
         while not self._stop_event.is_set():
             g_video.process(g_plotter, g_hub, g_arm_motor, g_right_motor, g_left_motor, g_touch_sensor, g_color_sensor, g_sonar_sensor, g_gyro_sensor)
             time.sleep(VIDEO_INTERVAL)
-
 
 def build_behaviour_tree() -> BehaviourTree:
     root = Sequence(name="competition", memory=True)
@@ -474,16 +519,11 @@ def build_behaviour_tree() -> BehaviourTree:
         [
             TraceLineCam(name="trace buleline", power=40, pid_p=2.5, pid_i=0.0015, pid_d=0.1,
                  gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
-            IsDistanceEarned(name="check distance 1", delta_dist = 150)
+            Bottlecatch(name="linetrace", target_state = BState.LINE)
+            #IsDistanceEarned(name="check distance 1", delta_dist = 400)
         ]
     )
-    step_01B_2.add_children(
-        [
-            TraceLineCam(name="trace buleline", power=40, pid_p=2.5, pid_i=0.0015, pid_d=0.1,
-                 gs_min=0, gs_max=80, trace_side=TraceSide.CENTER),
-            IsDistanceEarned(name="check distance 1", delta_dist = 150)
-        ]
-    )
+
     # step_01B.add_children(
     #     [
     #         MoveStraight(name="free run 1", power=50, target_distance=450)
