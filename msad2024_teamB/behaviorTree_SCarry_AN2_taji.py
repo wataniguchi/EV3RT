@@ -496,11 +496,12 @@ def build_behaviour_tree() -> BehaviourTree:
     root = Sequence(name="competition", memory=True)
     calibration = Sequence(name="calibration", memory=True)
     start = Parallel(name="start", policy=ParallelPolicy.SuccessOnOne())
-    # step_01B = Parallel(name="step 01B", policy=ParallelPolicy.SuccessOnOne())
-    # step_01B_2 = Parallel(name="step 01B", policy=ParallelPolicy.SuccessOnOne())
-    # step_02B = Sequence(name="step 02B", memory=True)
-    # step_03B = Sequence(name="step 03B", memory=True)
-    step_04B = Parallel(name="step 04B", policy=ParallelPolicy.SuccessOnOne())
+    step_01B = Parallel(name="step 01B", policy=ParallelPolicy.SuccessOnOne())
+    step_01B_2 = Parallel(name="step 01B", policy=ParallelPolicy.SuccessOnOne())
+    step_02B = Sequence(name="step 02B", memory=True)
+    step_03B = Sequence(name="step 03B", memory=True)
+    #step_04B = Parallel(name="step 04B", policy=ParallelPolicy.SuccessOnOne())
+    step_04B = Sequence(name="step 04B", memory=True)
  
     calibration.add_children(
         [
@@ -514,38 +515,38 @@ def build_behaviour_tree() -> BehaviourTree:
             IsTouchOn(name="touch start"),
         ]
     )
-    # # デブリからボトル取得
+    # デブリからボトル取得
+    step_01B.add_children(
+        [
+            TraceLineCam(name="trace buleline", power=40, pid_p=2.5, pid_i=0.0015, pid_d=0.1,
+                 gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
+            #Bottlecatch(name="linetrace", target_state = BState.LINE)
+            IsDistanceEarned(name="check distance 1", delta_dist = 400)
+        ]
+    )
+
     # step_01B.add_children(
     #     [
-    #         TraceLineCam(name="trace buleline", power=40, pid_p=2.5, pid_i=0.0015, pid_d=0.1,
-    #              gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
-    #         #Bottlecatch(name="linetrace", target_state = BState.LINE)
-    #         IsDistanceEarned(name="check distance 1", delta_dist = 400)
+    #         MoveStraight(name="free run 1", power=50, target_distance=450)
+    #         # IsSonarOn(name="check bottol", alert_dist=150)
     #     ]
     # )
-
-    # # step_01B.add_children(
-    # #     [
-    # #         MoveStraight(name="free run 1", power=50, target_distance=450)
-    # #         # IsSonarOn(name="check bottol", alert_dist=150)
-    # #     ]
-    # # )
-    # # ボトル取得からサークルへ配置
-    # step_02B.add_children(
-    #     [
-    #         MoveStraightLR(name="Turn 1", right_power=0, left_power=70, target_distance=200),
-    #         MoveStraight(name="free run 2", power=50, target_distance=1200)
-    #         # color sensor add
-    #     ]
-    # )
-    # # サークルへ配置からライン復帰
-    # step_03B.add_children(
-    #     [
-    #         MoveStraight(name="back", power=-70, target_distance=200),
-    #         MoveStraightLR(name="Turn 2", right_power=70, left_power=0, target_distance=200),
-    #         MoveStraight(name="free run 3", power=50, target_distance=400)
-    #     ]
-    # )
+    # ボトル取得からサークルへ配置
+    step_02B.add_children(
+        [
+            MoveStraightLR(name="Turn 1", right_power=0, left_power=70, target_distance=200),
+            MoveStraight(name="free run 2", power=50, target_distance=1200)
+            # color sensor add
+        ]
+    )
+    # サークルへ配置からライン復帰
+    step_03B.add_children(
+        [
+            MoveStraight(name="back", power=-50, target_distance=200),
+            MoveStraightLR(name="Turn 2", right_power=70, left_power=0, target_distance=200),
+            MoveStraight(name="free run 3", power=50, target_distance=400)
+        ]
+    )
 
     # ライン復帰からゴール
     step_04B.add_children(
@@ -555,7 +556,7 @@ def build_behaviour_tree() -> BehaviourTree:
                          gs_min=0, gs_max=80, trace_side=TraceSide.CENTER),
             IsDistanceEarned(name="check distance 1", delta_dist = 10000),
             # color sensor add
-            IsColorDetected(name="blue")
+            #IsColorDetected(name="blue")
         ]
     )
 
@@ -563,10 +564,10 @@ def build_behaviour_tree() -> BehaviourTree:
         [
             calibration,
             start,
-            # step_01B,
-            # step_01B_2,
-            # step_02B,
-            # step_03B,
+            step_01B,
+            step_01B_2,
+            step_02B,
+            step_03B,
             step_04B,
             StopNow(name="stop"),
             TheEnd(name="end"),
