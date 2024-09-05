@@ -419,13 +419,14 @@ class Bottlecatch(Behaviour):
                     self.state = BState.PRELINE
 
             elif self.state == BState.PRELINE:
-                if roe <= BOTTLE_LOWER_THRESH and self.prev_roe >= BOTTLE_LOWER_THRESH:
+                if roe <= BOTTLE_LOWER_THRESH and self.prev_roe >= BOTTLE_UPPER_THRESH:
                     self.logger.info("%+06d %s.the line completed" % (g_plotter.get_distance(), self.__class__.__name__))
                     self.state = BState.LINE
 
             #elif self.state == BState.LINE:
             #    if roe >= BOTTLE_UPPER_THRESH and self.prev_roe >= BOTTLE_LOWER_THRESH:
-            #        self.logger.info("%+06d %s.the join completed" % (g_plotter.get_distance(), self.__class__.__name__))
+            #        s
+            # elf.logger.info("%+06d %s.the join completed" % (g_plotter.get_distance(), self.__class__.__name__))
             #        self.state = BState.CIRCLE
 
             elif self.state == BState.LINE:
