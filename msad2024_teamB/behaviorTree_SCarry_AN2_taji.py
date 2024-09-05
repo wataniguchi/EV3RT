@@ -472,54 +472,54 @@ def build_behaviour_tree() -> BehaviourTree:
             IsTouchOn(name="touch start"),
         ]
     )
-    # デブリからボトル取得
-    step_01B.add_children(
-        [
-            TraceLineCam(name="trace buleline", power=40, pid_p=2.5, pid_i=0.0015, pid_d=0.1,
-                 gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
-            IsDistanceEarned(name="check distance 1", delta_dist = 150)
-        ]
-    )
-    step_01B_2.add_children(
-        [
-            TraceLineCam(name="trace buleline", power=40, pid_p=2.5, pid_i=0.0015, pid_d=0.1,
-                 gs_min=0, gs_max=80, trace_side=TraceSide.CENTER),
-            IsDistanceEarned(name="check distance 1", delta_dist = 150)
-        ]
-    )
+    # # デブリからボトル取得
+    # step_01B.add_children(
+    #     [
+    #         TraceLineCam(name="trace buleline", power=40, pid_p=2.5, pid_i=0.0015, pid_d=0.1,
+    #              gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
+    #         IsDistanceEarned(name="check distance 1", delta_dist = 150)
+    #     ]
+    # )
+    # step_01B_2.add_children(
+    #     [
+    #         TraceLineCam(name="trace buleline", power=40, pid_p=2.5, pid_i=0.0015, pid_d=0.1,
+    #              gs_min=0, gs_max=80, trace_side=TraceSide.CENTER),
+    #         IsDistanceEarned(name="check distance 1", delta_dist = 150)
+    #     ]
+    # )
     # step_01B.add_children(
     #     [
     #         MoveStraight(name="free run 1", power=50, target_distance=450)
     #         # IsSonarOn(name="check bottol", alert_dist=150)
     #     ]
     # )
-    # ボトル取得からサークルへ配置
-    step_02B.add_children(
-        [
-            MoveStraightLR(name="Turn 1", right_power=0, left_power=70, target_distance=200),
-            MoveStraight(name="free run 2", power=50, target_distance=1200)
-            # color sensor add
-        ]
-    )
-    # サークルへ配置からライン復帰
-    step_03B.add_children(
-        [
-            MoveStraight(name="back", power=-70, target_distance=200),
-            MoveStraightLR(name="Turn 2", right_power=70, left_power=0, target_distance=200),
-            MoveStraight(name="free run 3", power=50, target_distance=400)
-        ]
-    )
+    # # ボトル取得からサークルへ配置
+    # step_02B.add_children(
+    #     [
+    #         MoveStraightLR(name="Turn 1", right_power=0, left_power=70, target_distance=200),
+    #         MoveStraight(name="free run 2", power=50, target_distance=1200)
+    #         # color sensor add
+    #     ]
+    # )
+    # # サークルへ配置からライン復帰
+    # step_03B.add_children(
+    #     [
+    #         MoveStraight(name="back", power=-70, target_distance=200),
+    #         MoveStraightLR(name="Turn 2", right_power=70, left_power=0, target_distance=200),
+    #         MoveStraight(name="free run 3", power=50, target_distance=400)
+    #     ]
+    # )
 
-    # ライン復帰後左折
-    step_04B.add_children(
-        [
-            MoveStraightLR(name="Turn 3", right_power=70, left_power=35, target_distance=200)
-            # TraceLineCam(name="run", power=50, pid_p=2.5, pid_i=0.0015, pid_d=0.1,
-            #             gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
-            # IsColorDetected(name="blue")
-          #  MoveStraightLR(name="Turn 4", right_power=70, left_power=35, target_distance=150)
-        ]
-    )
+    # # ライン復帰後左折
+    # step_04B.add_children(
+    #     [
+    #         MoveStraightLR(name="Turn 3", right_power=70, left_power=35, target_distance=200),
+    #         TraceLineCam(name="run", power=50, pid_p=2.5, pid_i=0.0015, pid_d=0.1,
+    #                      gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
+    #          IsColorDetected(name="blue"),
+    #         MoveStraightLR(name="Turn 4", right_power=70, left_power=35, target_distance=150)
+    #     ]
+    # )
 
      # ライントレース→ゴール
     step_04B_2.add_children(
