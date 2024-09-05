@@ -485,6 +485,8 @@ class ExposeDevices(object):
         g_sonar_sensor = sonar_sensor
         g_gyro_sensor = gyro_sensor
 
+
+
 class VideoThread(threading.Thread):
     def __init__(self):
         super().__init__()
@@ -502,9 +504,9 @@ def build_behaviour_tree() -> BehaviourTree:
     root = Sequence(name="competition", memory=True)
     calibration = Sequence(name="calibration", memory=True)
     start = Parallel(name="start", policy=ParallelPolicy.SuccessOnOne())
+    step_01B = Parallel(name="step 01B", policy=ParallelPolicy.SuccessOnSelected,children=[step_01B_1,step_01B_2]())
     step_01B_1 = Parallel(name="step 01B_1", policy=ParallelPolicy.SuccessOnOne())
     step_01B_2 = Parallel(name="step 01B_2", policy=ParallelPolicy.SuccessOnOne())
-    step_01B = Parallel(name="step 01B", policy=ParallelPolicy.SuccessOnSelected(children=[step_01B_1,step_01B_2],synchronise=True))
     step_01C = Parallel(name="step 01C", policy=ParallelPolicy.SuccessOnOne())
     step_02B = Sequence(name="step 02B", memory=True)
     step_03B = Sequence(name="step 03B", memory=True)
@@ -561,7 +563,7 @@ def build_behaviour_tree() -> BehaviourTree:
                  gs_min=0, gs_max=80, trace_side=TraceSide.CENTER),
             #IsDistanceEarned(name="check distance 1", delta_dist = 200),
             #Bottlecatch(name="linetrace pre", target_state = BState.PRELINE),
-            Bottlecatch(name="linetrace", target_state = BState.CIRCLE)
+            Bottlecatch(name="linetrace 3", target_state = BState.CIRCLE)
             #IsDistanceEarned(name="check distance 1", delta_dist = 400)
         ]
     )
@@ -596,7 +598,7 @@ def build_behaviour_tree() -> BehaviourTree:
             TraceLineCam(name="trace center edge", power=40, pid_p=2.5, pid_i=0.0015, pid_d=0.1,
                          gs_min=0, gs_max=80, trace_side=TraceSide.CENTER),
             IsDistanceEarned(name="check distance 1", delta_dist = 1100),
-            MoveStraightLR(name="Turn 4", right_power=70, left_power=35, target_distance=150)
+            #MoveStraightLR(name="Turn 4", right_power=70, left_power=35, target_distance=150)
             # color sensor add
         ]
     )
