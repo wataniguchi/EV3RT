@@ -24,7 +24,7 @@ VIDEO_INTERVAL: float = 0.02
 ARM_SHIFT_PWM = 30
 JUNCT_UPPER_THRESH = 50
 JUNCT_LOWER_THRESH = 30
-BOTTLE_UPPER_THRESH = 110
+BOTTLE_UPPER_THRESH = 80
 BOTTLE_LOWER_THRESH = 40
 
 class ArmDirection(IntEnum):
@@ -414,12 +414,12 @@ class Bottlecatch(Behaviour):
         roe = g_video.get_range_of_edges()
         if roe != 0:
             if self.state == BState.INITIAL:
-                if roe >= BOTTLE_UPPER_THRESH :
+                if roe >= BOTTLE_LOWER_THRESH :
                     self.logger.info("%+06d %s.lines are joining" % (g_plotter.get_distance(), self.__class__.__name__))
                     self.state = BState.PRELINE
 
             elif self.state == BState.PRELINE:
-                if roe >= BOTTLE_UPPER_THRESH and self.prev_roe >= BOTTLE_LOWER_THRESH:
+                if roe <= BOTTLE_LOWER_THRESH and self.prev_roe >= BOTTLE_LOWER_THRESH:
                     self.logger.info("%+06d %s.the join completed" % (g_plotter.get_distance(), self.__class__.__name__))
                     self.state = BState.LINE
 
@@ -429,7 +429,7 @@ class Bottlecatch(Behaviour):
                     self.state = BState.CIRCLE
 
             elif self.state == BState.CIRCLE:
-                if roe <= JUNCT_UPPER_THRESH and self.prev_roe >= JUNCT_UPPER_THRESH:
+                if roe >= JUNCT_UPPER_THRESH and self.prev_roe >= JUNCT_UPPER_THRESH:
                     self.logger.info("%+06d %s.the fork completed" % (g_plotter.get_distance(), self.__class__.__name__))
                     self.state = BState.CATCHED
             else:
@@ -504,9 +504,13 @@ def build_behaviour_tree() -> BehaviourTree:
     root = Sequence(name="competition", memory=True)
     calibration = Sequence(name="calibration", memory=True)
     start = Parallel(name="start", policy=ParallelPolicy.SuccessOnOne())
-    step_01B_1 = Parallel(name="step 01B_1", policy=ParallelPolicy.SuccessOnOne())
-    step_01B_2 = Parallel(name="step 01B_2", policy=ParallelPolicy.SuccessOnOne())
-    step_01B = Parallel(name="step 01B", policy=ParallelPolicy.SuccessOnSelected(children=[step_01B_1,step_01B_2]),children=[step_01B_1,step_01B_2])
+    step_01A_1 = Parallel(name="step 01A_1", policy=ParallelPolicy.SuccessOnOne())
+    step_01A_2 = Parallel(name="step 01A_2", policy=ParallelPolicy.SuccessOnOne())
+    step_01A_3 = Parallel(name="step 01A_3", policy=ParallelPolicy.SuccessOnOne())
+    step_01A_4 = Parallel(name="step 01A_4", policy=ParallelPolicy.SuccessOnOne())
+    #step_01B_1 = Parallel(name="step 01B_1", policy=ParallelPolicy.SuccessOnOne())
+    #step_01B_2 = Parallel(name="step 01B_2", policy=ParallelPolicy.SuccessOnOne())
+    #step_01B = Parallel(name="step 01B", policy=ParallelPolicy.SuccessOnSelected(children=[step_01B_1,step_01B_2]),children=[step_01B_1,step_01B_2])
     step_01C = Parallel(name="step 01C", policy=ParallelPolicy.SuccessOnOne())
     step_02B = Sequence(name="step 02B", memory=True)
     step_03B = Sequence(name="step 03B", memory=True)
@@ -524,38 +528,79 @@ def build_behaviour_tree() -> BehaviourTree:
             IsTouchOn(name="touch start"),
         ]
     )
-    # デブリからボトル取得
-    step_01B.add_children(
+    step_01A_1.add_children(
         [
             TraceLineCam(name="trace buleline", power=39, pid_p=2.5, pid_i=0.0015, pid_d=0.1,
                  gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
             #IsDistanceEarned(name="check distance 1", delta_dist = 200),
-            #Bottlecatch(name="linetrace pre", target_state = BState.PRELINE),
+            Bottlecatch(name="trace PRE", target_state = BState.PRELINE)
+            #Bottlecatch(name="linetrace", target_state = BState.LINE)
+            #IsDistanceEarned(name="check distance 1", delta_dist = 400)
+        ]
+    )
+    step_01A_2.add_children(
+        [
+            TraceLineCam(name="trace buleline", power=39, pid_p=2.5, pid_i=0.0015, pid_d=0.1,
+                 gs_min=0, gs_max=80, trace_side=TraceSide.CENTER),
+            #IsDistanceEarned(name="check distance 1", delta_dist = 200),
+            Bottlecatch(name="trace LINE", target_state = BState.LINE)
+            #Bottlecatch(name="linetrace", target_state = BState.LINE)
+            #IsDistanceEarned(name="check distance 1", delta_dist = 400)
+        ]
+    )
+    step_01A_3.add_children(
+        [
+            TraceLineCam(name="trace buleline", power=39, pid_p=2.5, pid_i=0.0015, pid_d=0.1,
+                 gs_min=0, gs_max=80, trace_side=TraceSide.CENTER),
+            #IsDistanceEarned(name="check distance 1", delta_dist = 200),
+            Bottlecatch(name="linetrace pre", target_state = BState.CIRCLE)
+            #Bottlecatch(name="linetrace", target_state = BState.LINE)
+            #IsDistanceEarned(name="check distance 1", delta_dist = 400)
+        ]
+    )
+    step_01A_4.add_children(
+        [
+            TraceLineCam(name="trace buleline", power=39, pid_p=2.5, pid_i=0.0015, pid_d=0.1,
+                 gs_min=0, gs_max=80, trace_side=TraceSide.CENTER),
+            #IsDistanceEarned(name="check distance 1", delta_dist = 200),
+            Bottlecatch(name="linetrace pre", target_state = BState.CATCHED)
             #Bottlecatch(name="linetrace", target_state = BState.LINE)
             #IsDistanceEarned(name="check distance 1", delta_dist = 400)
         ]
     )
 
-    step_01B_1.add_children(
-        [
-            #TraceLineCam(name="trace buleline", power=39, pid_p=2.5, pid_i=0.0015, pid_d=0.1,
-            #     gs_min=0, gs_max=80, trace_side=TraceSide.CENTER),
-            IsDistanceEarned(name="check distance 1", delta_dist = 200),
-            Bottlecatch(name="linetrace pre", target_state = BState.PRELINE),
-            #Bottlecatch(name="linetrace", target_state = BState.LINE)
-            #IsDistanceEarned(name="check distance 1", delta_dist = 400)
-        ]
-    )
-    step_01B_2.add_children(
-        [
-            #TraceLineCam(name="trace buleline", power=39, pid_p=2.5, pid_i=0.0015, pid_d=0.1,
-            #     gs_min=0, gs_max=80, trace_side=TraceSide.CENTER),
-            #IsDistanceEarned(name="check distance 1", delta_dist = 200),
-            #Bottlecatch(name="linetrace pre", target_state = BState.PRELINE),
-            Bottlecatch(name="linetrace", target_state = BState.LINE)
-            #IsDistanceEarned(name="check distance 1", delta_dist = 400)
-        ]
-    )
+    # デブリからボトル取得
+    #step_01B.add_children(
+    #    [
+    #        TraceLineCam(name="trace buleline", power=39, pid_p=2.5, pid_i=0.0015, pid_d=0.1,
+    #             gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
+    #        #IsDistanceEarned(name="check distance 1", delta_dist = 200),
+    #        #Bottlecatch(name="linetrace pre", target_state = BState.PRELINE),
+    #        #Bottlecatch(name="linetrace", target_state = BState.LINE)
+    #        #IsDistanceEarned(name="check distance 1", delta_dist = 400)
+    #    ]
+    #)
+
+    #step_01B_1.add_children(
+    #    [
+    #        #TraceLineCam(name="trace buleline", power=39, pid_p=2.5, pid_i=0.0015, pid_d=0.1,
+    #        #     gs_min=0, gs_max=80, trace_side=TraceSide.CENTER),
+    #        IsDistanceEarned(name="check distance 1", delta_dist = 200),
+    #        Bottlecatch(name="linetrace pre", target_state = BState.PRELINE),
+    #        #Bottlecatch(name="linetrace", target_state = BState.LINE)
+    #        #IsDistanceEarned(name="check distance 1", delta_dist = 400)
+    #    ]
+    #)
+    #step_01B_2.add_children(
+    #    [
+    #        #TraceLineCam(name="trace buleline", power=39, pid_p=2.5, pid_i=0.0015, pid_d=0.1,
+    #        #     gs_min=0, gs_max=80, trace_side=TraceSide.CENTER),
+    #        #IsDistanceEarned(name="check distance 1", delta_dist = 200),
+    #        #Bottlecatch(name="linetrace pre", target_state = BState.PRELINE),
+    #        Bottlecatch(name="linetrace", target_state = BState.LINE)
+    #        #IsDistanceEarned(name="check distance 1", delta_dist = 400)
+    #    ]
+    #)
 
     step_01C.add_children(
         [
@@ -607,7 +652,11 @@ def build_behaviour_tree() -> BehaviourTree:
         [
             calibration,
             start,
-            step_01B,
+            step_01A_1,
+            step_01A_2,
+            step_01A_3,
+            step_01A_4,
+            #step_01B,
             #step_01B_1,
             #step_01B_2,
             step_01C,
