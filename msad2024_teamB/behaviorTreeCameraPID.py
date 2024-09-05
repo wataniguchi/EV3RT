@@ -440,6 +440,7 @@ class ExposeDevices(object):
         g_sonar_sensor = sonar_sensor
         g_gyro_sensor = gyro_sensor
 
+
 class VideoThread(threading.Thread):
     def __init__(self):
         super().__init__()
@@ -453,6 +454,7 @@ class VideoThread(threading.Thread):
             g_video.process(g_plotter, g_hub, g_arm_motor, g_right_motor, g_left_motor, g_touch_sensor, g_color_sensor, g_sonar_sensor, g_gyro_sensor)
             time.sleep(VIDEO_INTERVAL)
 
+
 def build_behaviour_tree() -> BehaviourTree:
     root = Sequence(name="competition", memory=True)
     calibration = Sequence(name="calibration", memory=True)
@@ -464,15 +466,14 @@ def build_behaviour_tree() -> BehaviourTree:
     loop_05 = Parallel(name="loop 05", policy=ParallelPolicy.SuccessOnOne())
     loop_06 = Parallel(name="loop 06", policy=ParallelPolicy.SuccessOnOne())
     loop_07 = Parallel(name="loop 07", policy=ParallelPolicy.SuccessOnOne())
-    loop_08 = Parallel(name="loop 08", policy=ParallelPolicy.SuccessOnOne())
-    loop_09 = Parallel(name="loop 09", policy=ParallelPolicy.SuccessOnOne())
-    loop_10 = Parallel(name="loop 10", policy=ParallelPolicy.SuccessOnOne())
-    loop_11 = Parallel(name="loop 11", policy=ParallelPolicy.SuccessOnOne())
-    loop_12 = Parallel(name="loop 12", policy=ParallelPolicy.SuccessOnOne())
-    loop_13 = Parallel(name="loop 13", policy=ParallelPolicy.SuccessOnOne())
-    loop_14 = Parallel(name="loop 14", policy=ParallelPolicy.SuccessOnOne())
-    loop_15 = Parallel(name="loop 15", policy=ParallelPolicy.SuccessOnOne())
-    loop_16 = Parallel(name="loop 16", policy=ParallelPolicy.SuccessOnOne())
+    loop_08 = Parallel(name="loop 07", policy=ParallelPolicy.SuccessOnOne())
+    loop_09 = Parallel(name="loop 07", policy=ParallelPolicy.SuccessOnOne())
+    loop_10 = Parallel(name="loop 07", policy=ParallelPolicy.SuccessOnOne())
+    loop_11 = Parallel(name="loop 07", policy=ParallelPolicy.SuccessOnOne())
+    loop_12 = Parallel(name="loop 07", policy=ParallelPolicy.SuccessOnOne())
+    loop_13 = Parallel(name="loop 07", policy=ParallelPolicy.SuccessOnOne())
+    loop_14 = Parallel(name="loop 07", policy=ParallelPolicy.SuccessOnOne())
+    loop_15 = Parallel(name="loop 07", policy=ParallelPolicy.SuccessOnOne())
     calibration.add_children(
         [
             ArmUpDownFull(name="arm down", direction=ArmDirection.DOWN),
@@ -582,14 +583,7 @@ def build_behaviour_tree() -> BehaviourTree:
         IsDistanceEarned(name="check distance", delta_dist = 1450),   
         ]
     )
-    loop_16.add_children(
-        [
-        TraceLineCam(name="trace normal edge", power=40, pid_p=1.0, pid_i=0.0015, pid_d=0.1,
-                         gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
-        IsDistanceEarned(name="check distance", delta_dist = 1450), 
-        ]
-    )
- 
+
     root.add_children(
         [
             calibration,
@@ -602,15 +596,14 @@ def build_behaviour_tree() -> BehaviourTree:
             # loop_06,
             # loop_07,
             #W-loop_end
-            # loop_08,
-            # loop_09,
-            # loop_10,
-            # loop_11,
-            # loop_12,
-            # loop_13,
-            # loop_14,
-            # loop_15,
-            loop_16,
+            loop_08,
+            loop_09,
+            loop_10,
+            loop_11,
+            loop_12,
+            loop_13,
+            loop_14,
+            loop_15,
             StopNow(name="stop"),
             TheEnd(name="end"),
         ]
