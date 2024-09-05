@@ -443,7 +443,7 @@ def build_behaviour_tree() -> BehaviourTree:
     #コンタクトⅠ直前
     loop_02.add_children(
         [
-            TraceLineCam(name="trace normal edge", power=35, pid_p=2.0, pid_i=0.001, pid_d=0.35,
+            TraceLineCam(name="trace normal edge", power=50, pid_p=2.0, pid_i=0.001, pid_d=0.35,
                          gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
             IsJunction(name="scan joined junction", target_state = JState.JOINED),
         ]
