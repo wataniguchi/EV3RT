@@ -317,7 +317,7 @@ class IsColorDetected(Behaviour):
         #RGBの値を取得
         color = g_color_sensor.get_raw_color
         #Blue判定
-        #if(wk_color[2] - wk_color[0]>45 & wk_color[2] <=255 & wk_color[0] <=255):
+        #if(color[2] - color[0]>45 & color[2] <=255 & color[0] <=255):
         if ((color(2) - color(0) > 45) and (color(2) <= 255) and (color(0) <= 255)):
             self.logger.info("%+06d %s.detected blue" % (g_plotter.get_distance(), self.__class__.__name__))
             return Status.SUCCESS
@@ -527,7 +527,8 @@ def build_behaviour_tree() -> BehaviourTree:
         [
             TraceLineCam(name="run", power=50, pid_p=2.5, pid_i=0.0015, pid_d=0.1,
                         gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
-            IsColorDetected(name="blue")
+           # IsColorDetected(name="blue")
+            MoveStraightLR(name="Turn 4", right_power=70, left_power=35, target_distance=150)
         ]
     )
 
