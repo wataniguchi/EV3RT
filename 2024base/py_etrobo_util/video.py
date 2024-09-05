@@ -19,7 +19,7 @@ IN_FRAME_HEIGHT = 480
 #FRAME_HEIGHT = 120
 FRAME_WIDTH  = 320
 FRAME_HEIGHT_ORIGIN = 240
-FRAME_HEIGHT = 200
+FRAME_HEIGHT = 190
 
 CROP_WIDTH     = int(13*FRAME_WIDTH/16) # for full angle
 #CROP_WIDTH     = int(9*FRAME_WIDTH/16)
@@ -110,14 +110,14 @@ class Video(object):
         img_orig = img_orig[0:FRAME_HEIGHT, 0:FRAME_WIDTH]
 
         hsv = cv2.cvtColor(img_orig, cv2.COLOR_BGR2HSV)
-        hsv_min = np.array([0, 64, 0])
-        hsv_max = np.array([30, 255, 255])
+        hsv_min = np.array([0, 64, 64])
+        hsv_max = np.array([30, 255, 200])
         red1 = cv2.inRange(hsv, hsv_min, hsv_max)
-        hsv_min = np.array([150, 64, 0])
-        hsv_max = np.array([179, 255, 255])
+        hsv_min = np.array([150, 64, 64])
+        hsv_max = np.array([179, 255, 200])
         red2 = cv2.inRange(hsv, hsv_min, hsv_max)
-        hsv_min = np.array([90, 64, 0])
-        hsv_max = np.array([150, 255, 255])
+        hsv_min = np.array([90, 64, 64])
+        hsv_max = np.array([150, 255, 200])
         blue = cv2.inRange(hsv, hsv_min, hsv_max)
 
         red = red1 + red2
