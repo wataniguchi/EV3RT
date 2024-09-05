@@ -502,7 +502,8 @@ def build_behaviour_tree() -> BehaviourTree:
     root = Sequence(name="competition", memory=True)
     calibration = Sequence(name="calibration", memory=True)
     start = Parallel(name="start", policy=ParallelPolicy.SuccessOnOne())
-    step_01B = Parallel(name="step 01B", policy=ParallelPolicy.SuccessOnAll())
+    step_01B = Parallel(name="step 01B", policy=ParallelPolicy.SuccessOnOne())
+    step_01B_1 = Parallel(name="step 01B", policy=ParallelPolicy.SuccessOnOne())
     step_01B_2 = Parallel(name="step 01B", policy=ParallelPolicy.SuccessOnOne())
     step_02B = Sequence(name="step 02B", memory=True)
     step_03B = Sequence(name="step 03B", memory=True)
@@ -527,7 +528,18 @@ def build_behaviour_tree() -> BehaviourTree:
                  gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
             #IsDistanceEarned(name="check distance 1", delta_dist = 200),
             Bottlecatch(name="linetrace pre", target_state = BState.PRELINE),
-            Bottlecatch(name="linetrace", target_state = BState.LINE)
+            #Bottlecatch(name="linetrace", target_state = BState.LINE)
+            #IsDistanceEarned(name="check distance 1", delta_dist = 400)
+        ]
+    )
+
+    step_01B_1.add_children(
+        [
+            TraceLineCam(name="trace buleline", power=39, pid_p=2.5, pid_i=0.0015, pid_d=0.1,
+                 gs_min=0, gs_max=80, trace_side=TraceSide.center),
+            #IsDistanceEarned(name="check distance 1", delta_dist = 200),
+            #Bottlecatch(name="linetrace pre", target_state = BState.PRELINE),
+            Bottlecatch(name="linetrace", target_state = BState.CIRCLE)
             #IsDistanceEarned(name="check distance 1", delta_dist = 400)
         ]
     )
@@ -572,6 +584,7 @@ def build_behaviour_tree() -> BehaviourTree:
             calibration,
             start,
             step_01B,
+            step_01B_1,
             step_01B_2,
             step_02B,
             step_03B,
