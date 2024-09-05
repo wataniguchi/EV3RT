@@ -536,7 +536,7 @@ def build_behaviour_tree() -> BehaviourTree:
     step_01B_1.add_children(
         [
             TraceLineCam(name="trace buleline", power=39, pid_p=2.5, pid_i=0.0015, pid_d=0.1,
-                 gs_min=0, gs_max=80, trace_side=TraceSide.center),
+                 gs_min=0, gs_max=80, trace_side=TraceSide.CENTER),
             #IsDistanceEarned(name="check distance 1", delta_dist = 200),
             #Bottlecatch(name="linetrace pre", target_state = BState.PRELINE),
             Bottlecatch(name="linetrace", target_state = BState.CIRCLE)
