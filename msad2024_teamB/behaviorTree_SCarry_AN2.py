@@ -506,7 +506,7 @@ def build_behaviour_tree() -> BehaviourTree:
     start = Parallel(name="start", policy=ParallelPolicy.SuccessOnOne())
     step_01B_1 = Parallel(name="step 01B_1", policy=ParallelPolicy.SuccessOnOne())
     step_01B_2 = Parallel(name="step 01B_2", policy=ParallelPolicy.SuccessOnOne())
-    step_01B = Parallel(name="step 01B", policy=ParallelPolicy.SuccessOnSelected(children=[step_01B_1,step_01B_2]))
+    step_01B = Parallel(name="step 01B", policy=ParallelPolicy.SuccessOnSelected(children=[step_01B_1,step_01B_2]),children=[step_01B_1,step_01B_2])
     step_01C = Parallel(name="step 01C", policy=ParallelPolicy.SuccessOnOne())
     step_02B = Sequence(name="step 02B", memory=True)
     step_03B = Sequence(name="step 03B", memory=True)
