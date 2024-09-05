@@ -454,6 +454,24 @@ class VideoThread(threading.Thread):
             g_video.process(g_plotter, g_hub, g_arm_motor, g_right_motor, g_left_motor, g_touch_sensor, g_color_sensor, g_sonar_sensor, g_gyro_sensor)
             time.sleep(VIDEO_INTERVAL)
 
+class IsRedColorDetected(Behaviour):
+    def __init__(self, name: str, threshold: float):
+        super(IsRedColorDetected, self).__init__(name)
+        self.threshold = threshold
+        self.running = False
+
+    def update(self) -> Status:
+        if not self.running:
+            self.running = True
+            self.logger.info("%+06d %s.checking red color ratio with threshold=%f" % (g_plotter.get_distance(), self.__class__.__name__, self.threshold))
+
+        red_percentage = g_video.get_red_ratio() * 100
+        if red_percentage > self.threshold:
+            self.logger.info("%+06d %s.red color ratio exceeds threshold: %f" % (g_plotter.get_distance(), self.__class__.__name__, red_percentage))
+            return Status.SUCCESS
+        else:
+            return Status.RUNNING
+
 
 def build_behaviour_tree() -> BehaviourTree:
     root = Sequence(name="competition", memory=True)
@@ -580,7 +598,8 @@ def build_behaviour_tree() -> BehaviourTree:
         [
         TraceLineCam(name="trace normal edge", power=40, pid_p=1.0, pid_i=0.0015, pid_d=0.1,
                          gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
-        IsDistanceEarned(name="check distance", delta_dist = 1450),   
+        IsDistanceEarned(name="check distance", delta_dist = 1450),
+        IsRedColorDetected(name="check red color", threshold=20.0), 
         ]
     )
 
