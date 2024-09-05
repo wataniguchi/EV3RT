@@ -454,6 +454,27 @@ class VideoThread(threading.Thread):
             g_video.process(g_plotter, g_hub, g_arm_motor, g_right_motor, g_left_motor, g_touch_sensor, g_color_sensor, g_sonar_sensor, g_gyro_sensor)
             time.sleep(VIDEO_INTERVAL)
 
+class ObstacleDetection(Behaviour):
+    def __init__(self, name: str, red_threshold: float) -> None:
+        super(ObstacleDetection, self).__init__(name)
+        self.red_threshold = red_threshold
+        self.running = False
+
+    def update(self) -> Status:
+        if not self.running:
+            self.running = True
+            self.logger.info("%s.obstacle detection started with red_threshold=%f" % (self.__class__.__name__, self.red_threshold))
+        
+        # カメラからの赤色割合を取得
+        red_ratio = g_video.get_red_ratio()
+        
+        # 赤色の割合が閾値を超えた場合
+        if red_ratio >= self.red_threshold:
+            self.logger.info("%s.obstacle detected with red_ratio=%f" % (self.__class__.__name__, red_ratio))
+            return Status.SUCCESS  # 障害物が検出された場合の状態
+        else:
+            return Status.RUNNING  # 障害物が検出されない場合の状態
+
 
 def build_behaviour_tree() -> BehaviourTree:
     root = Sequence(name="competition", memory=True)
@@ -466,14 +487,15 @@ def build_behaviour_tree() -> BehaviourTree:
     loop_05 = Parallel(name="loop 05", policy=ParallelPolicy.SuccessOnOne())
     loop_06 = Parallel(name="loop 06", policy=ParallelPolicy.SuccessOnOne())
     loop_07 = Parallel(name="loop 07", policy=ParallelPolicy.SuccessOnOne())
-    loop_08 = Parallel(name="loop 07", policy=ParallelPolicy.SuccessOnOne())
-    loop_09 = Parallel(name="loop 07", policy=ParallelPolicy.SuccessOnOne())
-    loop_10 = Parallel(name="loop 07", policy=ParallelPolicy.SuccessOnOne())
-    loop_11 = Parallel(name="loop 07", policy=ParallelPolicy.SuccessOnOne())
-    loop_12 = Parallel(name="loop 07", policy=ParallelPolicy.SuccessOnOne())
-    loop_13 = Parallel(name="loop 07", policy=ParallelPolicy.SuccessOnOne())
-    loop_14 = Parallel(name="loop 07", policy=ParallelPolicy.SuccessOnOne())
-    loop_15 = Parallel(name="loop 07", policy=ParallelPolicy.SuccessOnOne())
+    loop_08 = Parallel(name="loop 08", policy=ParallelPolicy.SuccessOnOne())
+    loop_09 = Parallel(name="loop 09", policy=ParallelPolicy.SuccessOnOne())
+    loop_10 = Parallel(name="loop 10", policy=ParallelPolicy.SuccessOnOne())
+    loop_11 = Parallel(name="loop 11", policy=ParallelPolicy.SuccessOnOne())
+    loop_12 = Parallel(name="loop 12", policy=ParallelPolicy.SuccessOnOne())
+    loop_13 = Parallel(name="loop 13", policy=ParallelPolicy.SuccessOnOne())
+    loop_14 = Parallel(name="loop 14", policy=ParallelPolicy.SuccessOnOne())
+    loop_15 = Parallel(name="loop 15", policy=ParallelPolicy.SuccessOnOne())
+    loop_16 = Parallel(name="loop 16", policy=ParallelPolicy.SuccessOnOne())
     calibration.add_children(
         [
             ArmUpDownFull(name="arm down", direction=ArmDirection.DOWN),
@@ -583,7 +605,15 @@ def build_behaviour_tree() -> BehaviourTree:
         IsDistanceEarned(name="check distance", delta_dist = 1450),   
         ]
     )
-
+    loop_16.add_children(
+        [
+        TraceLineCam(name="trace normal edge", power=40, pid_p=1.0, pid_i=0.0015, pid_d=0.1,
+                         gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
+        IsDistanceEarned(name="check distance", delta_dist = 1450),  
+        ObstacleDetection(name="detect obstacle", red_threshold=0.80), 
+        ]
+    )
+ 
     root.add_children(
         [
             calibration,
@@ -596,14 +626,15 @@ def build_behaviour_tree() -> BehaviourTree:
             # loop_06,
             # loop_07,
             #W-loop_end
-            loop_08,
-            loop_09,
-            loop_10,
-            loop_11,
-            loop_12,
-            loop_13,
-            loop_14,
-            loop_15,
+            # loop_08,
+            # loop_09,
+            # loop_10,
+            # loop_11,
+            # loop_12,
+            # loop_13,
+            # loop_14,
+            # loop_15,
+            loop_16,
             StopNow(name="stop"),
             TheEnd(name="end"),
         ]
