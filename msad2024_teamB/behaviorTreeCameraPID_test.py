@@ -375,6 +375,7 @@ def build_behaviour_tree() -> BehaviourTree:
     loop_01_2 = Parallel(name="loop 01", policy=ParallelPolicy.SuccessOnOne())
     loop_01_3 = Parallel(name="loop 01", policy=ParallelPolicy.SuccessOnOne())
     loop_02 = Parallel(name="loop 02", policy=ParallelPolicy.SuccessOnOne())
+    loop_02_1 = Parallel(name="loop 02", policy=ParallelPolicy.SuccessOnOne())
     loop_03 = Parallel(name="loop 03", policy=ParallelPolicy.SuccessOnOne())
     loop_04 = Parallel(name="loop 04", policy=ParallelPolicy.SuccessOnOne())
     loop_05 = Parallel(name="loop 05", policy=ParallelPolicy.SuccessOnOne())
@@ -445,6 +446,14 @@ def build_behaviour_tree() -> BehaviourTree:
         [
             TraceLineCam(name="trace normal edge", power=50, pid_p=1.5, pid_i=0.001, pid_d=0.30,
                          gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
+            IsDistanceEarned(name="check distance", delta_dist = 300),
+        ]
+    )
+    #コンタクトⅠ直前
+    loop_02_1.add_children(
+        [
+            TraceLineCam(name="trace normal edge", power=20, pid_p=1.5, pid_i=0.001, pid_d=0.30,
+                         gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
             IsJunction(name="scan joined junction", target_state = JState.JOINED),
         ]
     )
@@ -502,6 +511,7 @@ def build_behaviour_tree() -> BehaviourTree:
             loop_01_2,
             loop_01_3,
             loop_02,
+            loop_02_1,
             loop_03,
             loop_04,
             loop_05,
