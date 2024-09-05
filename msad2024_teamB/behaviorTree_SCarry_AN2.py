@@ -423,10 +423,10 @@ class Bottlecatch(Behaviour):
                     self.logger.info("%+06d %s.the join completed" % (g_plotter.get_distance(), self.__class__.__name__))
                     self.state = BState.LINE
 
-            elif self.state == BState.LINE:
-                if roe >= BOTTLE_UPPER_THRESH and self.prev_roe >= BOTTLE_LOWER_THRESH:
-                    self.logger.info("%+06d %s.the join completed" % (g_plotter.get_distance(), self.__class__.__name__))
-                    self.state = BState.CIRCLE
+            #elif self.state == BState.LINE:
+            #    if roe >= BOTTLE_UPPER_THRESH and self.prev_roe >= BOTTLE_LOWER_THRESH:
+            #        self.logger.info("%+06d %s.the join completed" % (g_plotter.get_distance(), self.__class__.__name__))
+            #        self.state = BState.CIRCLE
 
             elif self.state == BState.LINE:
                 if roe >= JUNCT_UPPER_THRESH and self.prev_roe >= JUNCT_UPPER_THRESH:
@@ -559,7 +559,7 @@ def build_behaviour_tree() -> BehaviourTree:
     #)
     step_01A_4.add_children(
         [
-            TraceLineCam(name="trace buleline4", power=34, pid_p=2.5, pid_i=0.0015, pid_d=0.1,
+            TraceLineCam(name="trace buleline4", power=32, pid_p=2.5, pid_i=0.0015, pid_d=0.1,
                  gs_min=0, gs_max=80, trace_side=TraceSide.CENTER),
             #IsDistanceEarned(name="check distance 1", delta_dist = 200),
             Bottlecatch(name="trace CATCHED", target_state = BState.CATCHED)
