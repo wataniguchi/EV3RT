@@ -539,7 +539,7 @@ def build_behaviour_tree() -> BehaviourTree:
             # step_01B_2,
             # step_02B,
             # step_03B,
-            step_04B,
+            #step_04B,
             step_04B_2,
             StopNow(name="stop"),
             TheEnd(name="end"),
