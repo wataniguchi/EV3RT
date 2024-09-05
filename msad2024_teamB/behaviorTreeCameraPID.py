@@ -440,24 +440,6 @@ class ExposeDevices(object):
         g_sonar_sensor = sonar_sensor
         g_gyro_sensor = gyro_sensor
 
-class IsRedColorDetected(Behaviour):
-    def __init__(self, name: str, threshold: float):
-        super(IsRedColorDetected, self).__init__(name)
-        self.threshold = threshold
-        self.running = False
-
-    def update(self) -> Status:
-        if not self.running:
-            self.running = True
-            self.logger.info("%+06d %s.checking red color ratio with threshold=%f" % (g_plotter.get_distance(), self.__class__.__name__, self.threshold))
-
-        red_percentage = g_video.get_red_ratio() * 100
-        if red_percentage > self.threshold:
-            self.logger.info("%+06d %s.red color ratio exceeds threshold: %f" % (g_plotter.get_distance(), self.__class__.__name__, red_percentage))
-            return Status.SUCCESS
-        else:
-            return Status.RUNNING
-
 class VideoThread(threading.Thread):
     def __init__(self):
         super().__init__()
@@ -604,8 +586,7 @@ def build_behaviour_tree() -> BehaviourTree:
         [
         TraceLineCam(name="trace normal edge", power=40, pid_p=1.0, pid_i=0.0015, pid_d=0.1,
                          gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
-        IsDistanceEarned(name="check distance", delta_dist = 1450),
-        IsRedColorDetected(name="check red color", threshold=50.0),   
+        IsDistanceEarned(name="check distance", delta_dist = 1450), 
         ]
     )
  
