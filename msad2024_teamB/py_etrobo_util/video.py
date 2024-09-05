@@ -280,8 +280,8 @@ class Video(object):
         hsv_image = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
         
         # Define the red color range in HSV
-        lower_red1 = np.array([0, 100, 100])
-        upper_red1 = np.array([10, 255, 255])
+        lower_red1 = np.array([0, 0, 0])
+        upper_red1 = np.array([255, 255, 255])
         lower_red2 = np.array([160, 100, 100])
         upper_red2 = np.array([180, 255, 255])
         
