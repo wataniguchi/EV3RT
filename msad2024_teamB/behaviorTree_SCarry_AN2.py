@@ -415,12 +415,12 @@ class Bottlecatch(Behaviour):
         if roe != 0:
             if self.state == BState.INITIAL:
                 if roe >= BOTTLE_LOWER_THRESH :
-                    self.logger.info("%+06d %s.lines are joining" % (g_plotter.get_distance(), self.__class__.__name__))
+                    self.logger.info("%+06d %s.preline" % (g_plotter.get_distance(), self.__class__.__name__))
                     self.state = BState.PRELINE
 
             elif self.state == BState.PRELINE:
                 if roe <= BOTTLE_LOWER_THRESH and self.prev_roe >= BOTTLE_LOWER_THRESH:
-                    self.logger.info("%+06d %s.the join completed" % (g_plotter.get_distance(), self.__class__.__name__))
+                    self.logger.info("%+06d %s.the line completed" % (g_plotter.get_distance(), self.__class__.__name__))
                     self.state = BState.LINE
 
             #elif self.state == BState.LINE:
@@ -430,7 +430,7 @@ class Bottlecatch(Behaviour):
 
             elif self.state == BState.LINE:
                 if roe >= JUNCT_UPPER_THRESH and self.prev_roe >= JUNCT_UPPER_THRESH:
-                    self.logger.info("%+06d %s.the fork completed" % (g_plotter.get_distance(), self.__class__.__name__))
+                    self.logger.info("%+06d %s.the catch completed" % (g_plotter.get_distance(), self.__class__.__name__))
                     self.state = BState.CATCHED
             else:
                 pass
@@ -540,7 +540,7 @@ def build_behaviour_tree() -> BehaviourTree:
     step_01A_2.add_children(
         [
             TraceLineCam(name="trace buleline2", power=39, pid_p=2.5, pid_i=0.0015, pid_d=0.1,
-                 gs_min=0, gs_max=80, trace_side=TraceSide.CENTER),
+                 gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
             #IsDistanceEarned(name="check distance 1", delta_dist = 200),
             Bottlecatch(name="trace LINE", target_state = BState.LINE)
             #Bottlecatch(name="linetrace", target_state = BState.LINE)
