@@ -487,7 +487,7 @@ def sig_handler(signum, frame) -> None:
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('course', choices=['right', 'left'], help='Course to run')
-    parser.add_argument('--port', default='/dev/ttyAMA1', help='Serial port')
+    parser.add_argument('--port', default='/dev/ttyS0', help='Serial port')
     parser.add_argument('--logfile', type=str, default=None, help='Path to log file')
     args = parser.parse_args()
 
