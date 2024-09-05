@@ -49,6 +49,7 @@ class Color(Enum):
 
 class BState(Enum):
     INITIAL = auto()
+    PRELINE = auto()
     LINE = auto()
     CIRCLE = auto()
     CATCHED  = auto()
@@ -413,9 +414,14 @@ class Bottlecatch(Behaviour):
         roe = g_video.get_range_of_edges()
         if roe != 0:
             if self.state == BState.INITIAL:
-                if (self.target_state == BState.LINE ) and roe >= BOTTLE_LOWER_THRESH and self.prev_roe >= BOTTLE_LOWER_THRESH:
+                if  roe >= BOTTLE_UPPER_THRESH :
                     self.logger.info("%+06d %s.lines are joining" % (g_plotter.get_distance(), self.__class__.__name__))
-                    self.state = BState.LINE
+                    self.state = BState.PRELINE
+ 
+            elif self.state == BState.PRELINE:
+                if  roe >= BOTTLE_UPPER_THRESH and self.prev_roe >= BOTTLE_LOWER_THRESH :
+                    self.logger.info("%+06d %s.the join completed" % (g_plotter.get_distance(), self.__class__.__name__))
+                    self.state = BState.CIRCLE            
 
             elif self.state == BState.LINE:
                 if roe >= BOTTLE_UPPER_THRESH and self.prev_roe >= BOTTLE_LOWER_THRESH:
@@ -517,10 +523,11 @@ def build_behaviour_tree() -> BehaviourTree:
     # デブリからボトル取得
     step_01B.add_children(
         [
-            TraceLineCam(name="trace buleline", power=30, pid_p=2.5, pid_i=0.0015, pid_d=0.1,
+            TraceLineCam(name="trace buleline", power=39, pid_p=2.5, pid_i=0.0015, pid_d=0.1,
                  gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
-            IsDistanceEarned(name="check distance 1", delta_dist = 200),
-            Bottlecatch(name="linetrace", target_state = BState.LINE)
+            IsDistanceEarned(name="check distance blue", delta_dist = 200),
+            Bottlecatch(name="linetrace pre", target_state = BState.PRELINE),
+            Bottlecatch(name="linetrace pre", target_state = BState.LINE)
             #IsDistanceEarned(name="check distance 1", delta_dist = 400)
         ]
     )
