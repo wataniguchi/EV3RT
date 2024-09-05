@@ -316,8 +316,9 @@ class TraceLineCam(Behaviour):
 
 # 旧Wループプログラムから流用
 class IsColorDetected(Behaviour):
-    def __init__(self, name: str, target_color: Color) :
+    def __init__(self, name: str, target_color: Color):
         super(IsColorDetected, self).__init__(name)
+        self.target_color = target_color
         self.status:Color = Color.BLACK
         self.logger.debug("%s.__init__()" % (self.__class__.__name__))
 
@@ -559,7 +560,7 @@ def build_behaviour_tree() -> BehaviourTree:
             TraceLineCam(name="trace center edge", power=40, pid_p=2.5, pid_i=0.0015, pid_d=0.1,
                          gs_min=0, gs_max=80, trace_side=TraceSide.CENTER),
             IsDistanceEarned(name="check distance 1", delta_dist = 1100),
-            IsColorDetected(name="color",color=Color.BLUE),
+            IsColorDetected(name="color",target_color=Color.BLUE),
             # color sensor add
             # IsColorDetected(name="blue")
         ]
