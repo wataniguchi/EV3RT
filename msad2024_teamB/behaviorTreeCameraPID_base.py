@@ -369,7 +369,6 @@ def build_behaviour_tree() -> BehaviourTree:
     root = Sequence(name="competition", memory=True)
     calibration = Sequence(name="calibration", memory=True)
     start = Parallel(name="start", policy=ParallelPolicy.SuccessOnOne())
-    loop_00 = Parallel(name="loop 01", policy=ParallelPolicy.SuccessOnOne())
     loop_01 = Parallel(name="loop 01", policy=ParallelPolicy.SuccessOnOne())
     loop_01_2 = Parallel(name="loop 01", policy=ParallelPolicy.SuccessOnOne())
     loop_01_3 = Parallel(name="loop 01", policy=ParallelPolicy.SuccessOnOne())
@@ -393,16 +392,6 @@ def build_behaviour_tree() -> BehaviourTree:
             IsTouchOn(name="touch start"),
         ]
     )
-
-    #最初のストレート
-    loop_00.add_children(
-        [
-            TraceLineCam(name="trace normal edge", power=30, pid_p=1.5, pid_i=0.0015, pid_d=0.4,
-                         gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
-            IsDistanceEarned(name="check distance", delta_dist = 200),
-        ]
-    )
-    #最初のストレート最高速度
     loop_01.add_children(
         [
             TraceLineCam(name="trace normal edge", power=100, pid_p=1.5, pid_i=0.0015, pid_d=0.4,
@@ -412,13 +401,11 @@ def build_behaviour_tree() -> BehaviourTree:
     )
     loop_01_2.add_children(
         [
-            TraceLineCam(name="trace normal edge", power=45, pid_p=1.5, pid_i=0.0015, pid_d=0.3,
+            TraceLineCam(name="trace normal edge", power=50, pid_p=2.0, pid_i=0.0015, pid_d=0.3,
                          gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
             IsDistanceEarned(name="check distance", delta_dist = 2000),
         ]
     )
-
-    #カーブ後の短い直線
     loop_01_3.add_children(
         [
             TraceLineCam(name="trace normal edge", power=70, pid_p=1.5, pid_i=0.0015, pid_d=0.4,
@@ -426,7 +413,6 @@ def build_behaviour_tree() -> BehaviourTree:
             IsDistanceEarned(name="check distance", delta_dist = 1000),
         ]
     )
-
     #コンタクトⅠ直前
     loop_02.add_children(
         [
@@ -435,7 +421,6 @@ def build_behaviour_tree() -> BehaviourTree:
             IsJunction(name="scan joined junction", target_state = JState.JOINED),
         ]
     )
-
     #コンタクトⅠ通過後、コンタクトⅡまで
     loop_03.add_children(
         [
@@ -444,7 +429,6 @@ def build_behaviour_tree() -> BehaviourTree:
             IsJunction(name="scan joined junction", target_state = JState.JOINED),
         ]
     )
-
     #コンタクトⅡ通過後、指定距離走行
     loop_04.add_children(
         [
@@ -453,7 +437,6 @@ def build_behaviour_tree() -> BehaviourTree:
             IsDistanceEarned(name="check distance", delta_dist = 2300),
         ]
     )
-
     #コンタクトⅢからコンタクトⅡまで
     loop_05.add_children(
         [
@@ -462,7 +445,20 @@ def build_behaviour_tree() -> BehaviourTree:
             IsJunction(name="scan joined junction", target_state = JState.JOINED),
         ]
     )
-
+    # loop_05_2.add_children2( 
+    #     [
+    #         TraceLineCam(name="trace normal edge", power=45, pid_p=2.0, pid_i=0.0015, pid_d=0.35,
+    #                      gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
+    #         IsDistanceEarned(name="check distance", delta_dist = 300),
+    #     ]
+    # )
+    # loop_05_3.add_children(
+    #     [
+    #         TraceLineCam(name="trace normal edge", power=45, pid_p=2.0, pid_i=0.0011, pid_d=0.35,
+    #                      gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
+    #         IsJunction(name="scan joined junction", target_state = JState.JOINED),
+    #     ]
+    # )
     #コンタクトⅡ通過後、コンタクトⅠまで
     loop_06.add_children(
         [
@@ -483,7 +479,6 @@ def build_behaviour_tree() -> BehaviourTree:
         [
             calibration,
             start,
-            # loop_00,
             loop_01,
             loop_01_2,
             loop_01_3,
@@ -491,6 +486,8 @@ def build_behaviour_tree() -> BehaviourTree:
             loop_03,
             loop_04,
             loop_05,
+            # loop_05_2,
+            # loop_05_3,
             loop_06,
             loop_07,
             StopNow(name="stop"),
