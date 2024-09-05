@@ -455,7 +455,8 @@ def build_behaviour_tree() -> BehaviourTree:
     step_01B_2 = Parallel(name="step 01B", policy=ParallelPolicy.SuccessOnOne())
     step_02B = Sequence(name="step 02B", memory=True)
     step_03B = Sequence(name="step 03B", memory=True)
-    step_04B = Sequence(name="step 04B", memory=True)
+    #step_04B = Sequence(name="step 04B", memory=True)
+    step_04B = Parallel(name="step 04B", policy=ParallelPolicy.SuccessOnOne())
 
     calibration.add_children(
         [
