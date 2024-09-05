@@ -527,7 +527,7 @@ def build_behaviour_tree() -> BehaviourTree:
                  gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
             IsDistanceEarned(name="check distance 1", delta_dist = 200),
             Bottlecatch(name="linetrace pre", target_state = BState.PRELINE),
-            Bottlecatch(name="linetrace", target_state = BState.LINE),
+            Bottlecatch(name="linetrace", target_state = BState.LINE)
             #IsDistanceEarned(name="check distance 1", delta_dist = 400)
         ]
     )
