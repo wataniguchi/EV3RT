@@ -457,8 +457,8 @@ def build_behaviour_tree() -> BehaviourTree:
     # step_02B = Sequence(name="step 02B", memory=True)
     # step_03B = Sequence(name="step 03B", memory=True)
     # step_04B = Sequence(name="step 04B", memory=True)
-    #step_04B = Parallel(name="step 04B", policy=ParallelPolicy.SuccessOnOne())
-    step_04B_2 = Parallel(name="step 04B_2", policy=ParallelPolicy.SuccessOnOne())
+    step_04B = Parallel(name="step 04B", policy=ParallelPolicy.SuccessOnOne())
+    #step_04B_2 = Parallel(name="step 04B_2", policy=ParallelPolicy.SuccessOnOne())
 
     calibration.add_children(
         [
@@ -511,26 +511,26 @@ def build_behaviour_tree() -> BehaviourTree:
     #     ]
     # )
 
-    # # ライン復帰後左折
-    # step_04B.add_children(
+    # ライン復帰後左折
+    step_04B.add_children(
+        [
+            MoveStraightLR(name="Turn 3", right_power=70, left_power=35, target_distance=200),
+            TraceLineCam(name="run", power=50, pid_p=2.5, pid_i=0.0015, pid_d=0.1,
+                         gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
+             IsColorDetected(name="blue"),
+            #MoveStraightLR(name="Turn 4", right_power=70, left_power=35, target_distance=150)
+        ]
+    )
+
+    #  # ライントレース→ゴール
+    # step_04B_2.add_children(
     #     [
-    #         MoveStraightLR(name="Turn 3", right_power=70, left_power=35, target_distance=200),
     #         TraceLineCam(name="run", power=50, pid_p=2.5, pid_i=0.0015, pid_d=0.1,
-    #                      gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
-    #          IsColorDetected(name="blue"),
+    #                     gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
+    #        # IsColorDetected(name="blue")
     #         MoveStraightLR(name="Turn 4", right_power=70, left_power=35, target_distance=150)
     #     ]
     # )
-
-     # ライントレース→ゴール
-    step_04B_2.add_children(
-        [
-            TraceLineCam(name="run", power=50, pid_p=2.5, pid_i=0.0015, pid_d=0.1,
-                        gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
-           # IsColorDetected(name="blue")
-            MoveStraightLR(name="Turn 4", right_power=70, left_power=35, target_distance=150)
-        ]
-    )
 
     root.add_children(
         [
@@ -540,8 +540,8 @@ def build_behaviour_tree() -> BehaviourTree:
             # step_01B_2,
             # step_02B,
             # step_03B,
-            #step_04B,
-            step_04B_2,
+            step_04B,
+            #step_04B_2,
             StopNow(name="stop"),
             TheEnd(name="end"),
         ]
