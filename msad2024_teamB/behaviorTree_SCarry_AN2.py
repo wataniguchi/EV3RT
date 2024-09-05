@@ -428,7 +428,7 @@ class Bottlecatch(Behaviour):
                     self.logger.info("%+06d %s.the join completed" % (g_plotter.get_distance(), self.__class__.__name__))
                     self.state = BState.CIRCLE
 
-            elif self.state == BState.CIRCLE:
+            elif self.state == BState.LINE:
                 if roe >= JUNCT_UPPER_THRESH and self.prev_roe >= JUNCT_UPPER_THRESH:
                     self.logger.info("%+06d %s.the fork completed" % (g_plotter.get_distance(), self.__class__.__name__))
                     self.state = BState.CATCHED
