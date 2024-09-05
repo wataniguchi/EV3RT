@@ -530,7 +530,7 @@ def build_behaviour_tree() -> BehaviourTree:
     )
     step_01A_1.add_children(
         [
-            TraceLineCam(name="trace buleline", power=39, pid_p=2.5, pid_i=0.0015, pid_d=0.1,
+            TraceLineCam(name="trace buleline1", power=39, pid_p=2.5, pid_i=0.0015, pid_d=0.1,
                  gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
             #IsDistanceEarned(name="check distance 1", delta_dist = 200),
             Bottlecatch(name="trace PRE", target_state = BState.PRELINE)
@@ -540,7 +540,7 @@ def build_behaviour_tree() -> BehaviourTree:
     )
     step_01A_2.add_children(
         [
-            TraceLineCam(name="trace buleline", power=39, pid_p=2.5, pid_i=0.0015, pid_d=0.1,
+            TraceLineCam(name="trace buleline2", power=39, pid_p=2.5, pid_i=0.0015, pid_d=0.1,
                  gs_min=0, gs_max=80, trace_side=TraceSide.CENTER),
             #IsDistanceEarned(name="check distance 1", delta_dist = 200),
             Bottlecatch(name="trace LINE", target_state = BState.LINE)
@@ -550,20 +550,20 @@ def build_behaviour_tree() -> BehaviourTree:
     )
     step_01A_3.add_children(
         [
-            TraceLineCam(name="trace buleline", power=39, pid_p=2.5, pid_i=0.0015, pid_d=0.1,
+            TraceLineCam(name="trace buleline3", power=34, pid_p=2.5, pid_i=0.0015, pid_d=0.1,
                  gs_min=0, gs_max=80, trace_side=TraceSide.CENTER),
             #IsDistanceEarned(name="check distance 1", delta_dist = 200),
-            Bottlecatch(name="linetrace pre", target_state = BState.CIRCLE)
+            Bottlecatch(name="trace CIRCLE", target_state = BState.CIRCLE)
             #Bottlecatch(name="linetrace", target_state = BState.LINE)
             #IsDistanceEarned(name="check distance 1", delta_dist = 400)
         ]
     )
     step_01A_4.add_children(
         [
-            TraceLineCam(name="trace buleline", power=39, pid_p=2.5, pid_i=0.0015, pid_d=0.1,
+            TraceLineCam(name="trace buleline4", power=34, pid_p=2.5, pid_i=0.0015, pid_d=0.1,
                  gs_min=0, gs_max=80, trace_side=TraceSide.CENTER),
             #IsDistanceEarned(name="check distance 1", delta_dist = 200),
-            Bottlecatch(name="linetrace pre", target_state = BState.CATCHED)
+            Bottlecatch(name="trace CATCHED", target_state = BState.CATCHED)
             #Bottlecatch(name="linetrace", target_state = BState.LINE)
             #IsDistanceEarned(name="check distance 1", delta_dist = 400)
         ]
