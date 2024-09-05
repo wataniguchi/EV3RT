@@ -500,7 +500,7 @@ def build_behaviour_tree() -> BehaviourTree:
     step_01B_2 = Parallel(name="step 01B", policy=ParallelPolicy.SuccessOnOne())
     step_02B = Sequence(name="step 02B", memory=True)
     step_03B = Sequence(name="step 03B", memory=True)
-    step_04B = Sequence(name="step 04B", memory=True)
+    step_04B = Parallel(name="step 04B", policy=ParallelPolicy.SuccessOnOne())
  
     calibration.add_children(
         [
@@ -519,8 +519,8 @@ def build_behaviour_tree() -> BehaviourTree:
         [
             TraceLineCam(name="trace buleline", power=40, pid_p=2.5, pid_i=0.0015, pid_d=0.1,
                  gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
-            Bottlecatch(name="linetrace", target_state = BState.LINE)
-            #IsDistanceEarned(name="check distance 1", delta_dist = 400)
+            #Bottlecatch(name="linetrace", target_state = BState.LINE)
+            IsDistanceEarned(name="check distance 1", delta_dist = 400)
         ]
     )
 
@@ -550,11 +550,12 @@ def build_behaviour_tree() -> BehaviourTree:
     # ライン復帰からゴール
     step_04B.add_children(
         [
-            MoveStraightLR(name="Turn 3", right_power=70, left_power=35, target_distance=200),
+            #MoveStraightLR(name="Turn 3", right_power=70, left_power=35, target_distance=200),
             TraceLineCam(name="trace center edge", power=40, pid_p=2.5, pid_i=0.0015, pid_d=0.1,
                          gs_min=0, gs_max=80, trace_side=TraceSide.CENTER),
-            IsDistanceEarned(name="check distance 1", delta_dist = 1100)
+            IsDistanceEarned(name="check distance 1", delta_dist = 10000),
             # color sensor add
+            IsColorDetected(name="blue")
         ]
     )
 
