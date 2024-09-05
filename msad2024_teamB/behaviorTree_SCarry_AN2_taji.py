@@ -523,11 +523,9 @@ def build_behaviour_tree() -> BehaviourTree:
      # ライントレース→ゴール
     step_04B_2.add_children(
         [
-            # MoveStraightLR(name="Turn 3", right_power=70, left_power=35, target_distance=200),
             TraceLineCam(name="run", power=50, pid_p=2.5, pid_i=0.0015, pid_d=0.1,
                         gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
             IsColorDetected(name="blue")
-          #  MoveStraightLR(name="Turn 4", right_power=70, left_power=35, target_distance=150)
         ]
     )
 
