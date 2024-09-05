@@ -472,6 +472,7 @@ def build_behaviour_tree() -> BehaviourTree:
             IsTouchOn(name="touch start"),
         ]
     )
+
     # # デブリからボトル取得
     # step_01B.add_children(
     #     [
