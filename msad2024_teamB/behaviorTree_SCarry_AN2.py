@@ -418,10 +418,10 @@ class Bottlecatch(Behaviour):
                     self.logger.info("%+06d %s.preline" % (g_plotter.get_distance(), self.__class__.__name__))
                     self.state = BState.PRELINE
 
-            elif self.state == BState.PRELINE:
-                if roe <= BOTTLE_LOWER_THRESH and self.prev_roe >= BOTTLE_UPPER_THRESH:
-                    self.logger.info("%+06d %s.the line completed" % (g_plotter.get_distance(), self.__class__.__name__))
-                    self.state = BState.LINE
+            #elif self.state == BState.PRELINE:
+            #    if roe <= BOTTLE_LOWER_THRESH and self.prev_roe >= BOTTLE_UPPER_THRESH:
+            #        self.logger.info("%+06d %s.the line completed" % (g_plotter.get_distance(), self.__class__.__name__))
+            #        self.state = BState.LINE
 
             #elif self.state == BState.LINE:
             #    if roe >= BOTTLE_UPPER_THRESH and self.prev_roe >= BOTTLE_LOWER_THRESH:
@@ -429,7 +429,7 @@ class Bottlecatch(Behaviour):
             # elf.logger.info("%+06d %s.the join completed" % (g_plotter.get_distance(), self.__class__.__name__))
             #        self.state = BState.CIRCLE
 
-            elif self.state == BState.LINE:
+            elif self.state == BState.PRELINE:
                 if roe >= JUNCT_UPPER_THRESH and self.prev_roe >= JUNCT_UPPER_THRESH:
                     self.logger.info("%+06d %s.the catch completed" % (g_plotter.get_distance(), self.__class__.__name__))
                     self.state = BState.CATCHED
@@ -506,7 +506,7 @@ def build_behaviour_tree() -> BehaviourTree:
     calibration = Sequence(name="calibration", memory=True)
     start = Parallel(name="start", policy=ParallelPolicy.SuccessOnOne())
     step_01A_1 = Parallel(name="step 01A_1", policy=ParallelPolicy.SuccessOnOne())
-    step_01A_2 = Parallel(name="step 01A_2", policy=ParallelPolicy.SuccessOnOne())
+    #step_01A_2 = Parallel(name="step 01A_2", policy=ParallelPolicy.SuccessOnOne())
     #step_01A_3 = Parallel(name="step 01A_3", policy=ParallelPolicy.SuccessOnOne())
     step_01A_4 = Parallel(name="step 01A_4", policy=ParallelPolicy.SuccessOnOne())
     #step_01B_1 = Parallel(name="step 01B_1", policy=ParallelPolicy.SuccessOnOne())
@@ -538,16 +538,16 @@ def build_behaviour_tree() -> BehaviourTree:
             #IsDistanceEarned(name="check distance 1", delta_dist = 400)
         ]
     )
-    step_01A_2.add_children(
-        [
-            TraceLineCam(name="trace buleline2", power=39, pid_p=2.5, pid_i=0.0015, pid_d=0.1,
-                 gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
-            #IsDistanceEarned(name="check distance 1", delta_dist = 200),
-            Bottlecatch(name="trace LINE", target_state = BState.LINE)
-            #Bottlecatch(name="linetrace", target_state = BState.LINE)
-            #IsDistanceEarned(name="check distance 1", delta_dist = 400)
-        ]
-    )
+    #step_01A_2.add_children(
+    #    [
+    #        TraceLineCam(name="trace buleline2", power=39, pid_p=2.5, pid_i=0.0015, pid_d=0.1,
+    #             gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
+    #        #IsDistanceEarned(name="check distance 1", delta_dist = 200),
+    #        Bottlecatch(name="trace LINE", target_state = BState.LINE)
+    #        #Bottlecatch(name="linetrace", target_state = BState.LINE)
+    #        #IsDistanceEarned(name="check distance 1", delta_dist = 400)
+    #    ]
+    #)
     #step_01A_3.add_children(
     #    [
     #        TraceLineCam(name="trace buleline3", power=34, pid_p=2.5, pid_i=0.0015, pid_d=0.1,
@@ -642,7 +642,7 @@ def build_behaviour_tree() -> BehaviourTree:
             calibration,
             start,
             step_01A_1,
-            step_01A_2,
+            #step_01A_2,
             #step_01A_3,
             step_01A_4,
             #step_01B,
