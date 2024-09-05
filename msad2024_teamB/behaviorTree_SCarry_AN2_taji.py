@@ -323,7 +323,7 @@ class IsColorDetected(Behaviour):
     def update(self) -> Status:
         #global g_color_sensor
         #RGBの値を取得
-        color = g_color_sensor.get_raw_color
+        color = g_color_sensor.get_raw_color()
         #Blue判定
         #if(color[2] - color[0]>45 & color[2] <=255 & color[0] <=255):
         if color(2) - color(0) > 45 and color(2) <= 255 and color(0) <= 255:
