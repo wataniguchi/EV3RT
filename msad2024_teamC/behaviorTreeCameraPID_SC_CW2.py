@@ -504,10 +504,10 @@ def build_behaviour_tree() -> BehaviourTree:
         ]
     )
 
-    # 右に120度回転させる
+    # 右に90度回転させる
     loop_05.add_children(
         [
-            RotateDegrees(name="rotate 110 degrees right", power=50, target_angle=120)
+            RotateDegrees(name="rotate 110 degrees right", power=50, target_angle=90)
         ]
     )
 
