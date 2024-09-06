@@ -278,11 +278,12 @@ class CheckColor(Behaviour):
         h_degrees = h * 360
 
         # 黒色の範囲をチェック
-        if v <= 0.2 and s <= 0.3:
-            self.logger.info("Black")
-            return Status.SUCCESS
-        else:
-            return Status.RUNNING
+        #if v <= 0.2 and s <= 0.3:
+        #    self.logger.info("Black")
+        #    return Status.SUCCESS
+        #else:
+        self.logger.info(str(h)+str(s)+str(v))
+        return Status.RUNNING
 
 class RotateDegrees(Behaviour):
     def __init__(self, name: str, power: int, target_angle: int):
@@ -497,7 +498,7 @@ def build_behaviour_tree() -> BehaviourTree:
     # 黒検知まで走らせる
     loop_03.add_children(
         [
-            RunAsInstructed(name="move to SC",pwm_l= 50,pwm_r=50),
+            #RunAsInstructed(name="move to SC",pwm_l= 50,pwm_r=50),
             CheckColor(name="black check"),
         ]
     )
@@ -519,11 +520,11 @@ def build_behaviour_tree() -> BehaviourTree:
         [
             calibration,
             start,
-            loop_01,
-            loop_02,
+            #loop_01,
+            #loop_02,
             loop_03,
-            loop_04,
-            loop_05,
+            #loop_04,
+            #loop_05,
             StopNow(name="stop"),
             TheEnd(name="end"),
         ]
