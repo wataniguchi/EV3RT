@@ -500,14 +500,14 @@ def build_behaviour_tree() -> BehaviourTree:
     loop_04.add_children(
         [
             RunAsInstructed(name="move to SC",pwm_l= 50,pwm_r=50),
-            IsDistanceEarned(name="check distance", delta_dist = 1600),
+            IsDistanceEarned(name="check distance", delta_dist = 3200),
         ]
     )
 
-    # 右に110度回転させる
+    # 右に120度回転させる
     loop_05.add_children(
         [
-            RotateDegrees(name="rotate 110 degrees right", power=50, target_angle=110)
+            RotateDegrees(name="rotate 110 degrees right", power=50, target_angle=120)
         ]
     )
 
@@ -515,7 +515,7 @@ def build_behaviour_tree() -> BehaviourTree:
     loop_06.add_children(
         [
             RunAsInstructed(name="move to SC",pwm_l= 50,pwm_r=50),
-            IsDistanceEarned(name="check distance", delta_dist = 1600),
+            IsDistanceEarned(name="check distance", delta_dist = 5000),
         ]
     )
     # カメラ走行でゴールに向かう
