@@ -534,7 +534,7 @@ def build_behaviour_tree() -> BehaviourTree:
             #TraceLineCam(name="trace buleline1", power=39, pid_p=2.5, pid_i=0.0015, pid_d=0.1,
             #     gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
             #IsDistanceEarned(name="check distance 1", delta_dist = 200),
-            MoveStraight(name="free run 1", power=39, target_distance=90)
+            MoveStraight(name="free run 1", power=39, target_distance=110)
             #Bottlecatch(name="trace PRE", target_state = BState.PRELINE)
             #Bottlecatch(name="linetrace", target_state = BState.LINE)
             #IsDistanceEarned(name="check distance 1", delta_dist = 100)
