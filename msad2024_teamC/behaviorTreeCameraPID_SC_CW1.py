@@ -503,7 +503,7 @@ def build_behaviour_tree() -> BehaviourTree:
     # カメラ走行でゴールに向かう
     loop_04.add_children(
         [
-            TraceLineCam(name="trace normal edge", power=40, pid_p=2.5, pid_i=0.0015, pid_d=0.1, gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
+            TraceLineCam(name="trace normal edge", power=40, pid_p=1.5, pid_i=0.0015, pid_d=0.1, gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
         ]
     )
     root.add_children(
