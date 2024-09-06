@@ -24,8 +24,9 @@ VIDEO_INTERVAL: float = 0.02
 ARM_SHIFT_PWM = 30
 JUNCT_UPPER_THRESH = 50
 JUNCT_LOWER_THRESH = 30
-BOTTLE_UPPER_THRESH = 120
+BOTTLE_UPPER_THRESH = 105
 BOTTLE_LOWER_THRESH = 40
+BOTTLE_CATCH_THRESH = 90
 
 class ArmDirection(IntEnum):
     UP = -1
@@ -430,7 +431,7 @@ class Bottlecatch(Behaviour):
                     self.state = BState.CIRCLE
 
             elif self.state == BState.CIRCLE:
-                if roe <= BOTTLE_UPPER_THRESH and self.prev_roe >= BOTTLE_UPPER_THRESH:
+                if roe <= BOTTLE_UPPER_THRESH and self.prev_roe >= BOTTLE_CATCH_THRESH:
                     self.logger.info("%+06d %s.the catch completed" % (g_plotter.get_distance(), self.__class__.__name__))
                     self.state = BState.CATCHED
             else:
@@ -533,7 +534,7 @@ def build_behaviour_tree() -> BehaviourTree:
             #TraceLineCam(name="trace buleline1", power=39, pid_p=2.5, pid_i=0.0015, pid_d=0.1,
             #     gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
             #IsDistanceEarned(name="check distance 1", delta_dist = 200),
-            MoveStraight(name="free run 1", power=39, target_distance=90)
+            MoveStraight(name="free run 1", power=39, target_distance=50)
             #Bottlecatch(name="trace PRE", target_state = BState.PRELINE)
             #Bottlecatch(name="linetrace", target_state = BState.LINE)
             #IsDistanceEarned(name="check distance 1", delta_dist = 100)
