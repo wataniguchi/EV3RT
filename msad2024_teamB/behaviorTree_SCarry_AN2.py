@@ -613,7 +613,7 @@ def build_behaviour_tree() -> BehaviourTree:
     step_02B.add_children(
         [
             MoveStraightLR(name="Turn 1", right_power=0, left_power=70, target_distance=200),
-            MoveStraight(name="free run 2", power=50, target_distance=1200)
+            MoveStraight(name="free run 2", power=70, target_distance=1200)
             # color sensor add
         ]
     )
