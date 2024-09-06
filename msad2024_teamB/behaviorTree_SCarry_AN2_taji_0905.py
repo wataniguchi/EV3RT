@@ -324,18 +324,11 @@ class IsColorDetected(Behaviour):
         #global g_color_sensor
         #RGBの値を取得
         color = g_color_sensor.get_raw_color()
-        hansya = g_color_sensor.get_brightness()
-        kankyo = g_color_sensor.get_ambient()
 
         #Blue判定
         if((color[2] - color[0]>45) & (color[2] <=255) & (color[0] <=255)):
         #if color(2) - color(0) > 45 and color(2) <= 255 and color(0) <= 255:
-            # self.logger.info("%+06d %s.detected blue" % (g_plotter.get_distance(), self.__class__.__name__))
-            self.logger.info("%+06d %s.detected hansya=%d kankyo=%d" % 
-                             (g_plotter.get_distance(), self.__class__.__name__, g_color_sensor.get_brightness(), self.__class__.__name__,
-                              g_color_sensor.get_ambient(),self.__class__.__name__))
-            # self.logger.info("%+06d %s.detected color=%d hansya=%d kankyo=%d" % 
-                            #  (g_plotter.get_distance(), self.__class__.__name__,color, hansya, kankyo))
+            self.logger.info("%+06d %s.detected blue" % (g_plotter.get_distance(), self.__class__.__name__))
 
             return Status.SUCCESS
         else:
