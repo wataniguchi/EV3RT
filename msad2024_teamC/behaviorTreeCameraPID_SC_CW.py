@@ -492,7 +492,7 @@ def build_behaviour_tree() -> BehaviourTree:
     # 左に60度回転させる
     loop_03.add_children(
         [
-            RotateDegrees(name="rotate 70 degrees left", power=50, target_angle=-50)
+            RotateDegrees(name="rotate 70 degrees left", power=50, target_angle=-45)
         ]
     )
 
@@ -500,14 +500,14 @@ def build_behaviour_tree() -> BehaviourTree:
     loop_04.add_children(
         [
             RunAsInstructed(name="move to SC",pwm_l= 50,pwm_r=50),
-            IsDistanceEarned(name="check distance", delta_dist = 1400),
+            IsDistanceEarned(name="check distance", delta_dist = 1500),
         ]
     )
 
     # 右に90度回転させる
     loop_05.add_children(
         [
-            RotateDegrees(name="rotate 110 degrees right", power=50, target_angle=90)
+            RotateDegrees(name="rotate 110 degrees right", power=50, target_angle=100)
         ]
     )
 
