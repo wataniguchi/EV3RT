@@ -483,19 +483,11 @@ def build_behaviour_tree() -> BehaviourTree:
     # スマートキャリーの青枠に到達
     loop_01.add_children(
         [
-            RunAsInstructed(name="move to SC",pwm_l= 50,pwm_r=50),
+            TraceLineCam(name="trace normal edge", power=40, pid_p=2.5, pid_i=0.0015, pid_d=0.1, gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
             CheckColor(name="blue check"),
         ]
     )
     
-    # 左トレース走行を開始する
-    # ソナーが反応したら終了
-    loop_02.add_children(
-        [
-            TraceLineCam(name="trace normal edge", power=40, pid_p=2.5, pid_i=0.0015, pid_d=0.1, gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
-            IsSonarOn(name="soner start", alert_dist=30),
-        ]
-    )
 
     # 左に90度回転させる
     loop_03.add_children(
@@ -537,7 +529,6 @@ def build_behaviour_tree() -> BehaviourTree:
             calibration,
             start,
             loop_01,
-            loop_02,
             loop_03,
             loop_04,
             loop_05,
