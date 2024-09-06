@@ -431,7 +431,7 @@ class Bottlecatch(Behaviour):
                     self.state = BState.CIRCLE
 
             elif self.state == BState.CIRCLE:
-                if roe => BOTTLE_CATCH_THRESH and self.prev_roe >= BOTTLE_CATCH_THRESH:
+                if roe >= BOTTLE_CATCH_THRESH and self.prev_roe >= BOTTLE_CATCH_THRESH:
                     self.logger.info("%+06d %s.the catch completed" % (g_plotter.get_distance(), self.__class__.__name__))
                     self.state = BState.CATCHED
             else:
