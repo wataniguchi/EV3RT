@@ -351,6 +351,9 @@ class MoveStraight(Behaviour):
             g_left_motor.set_power(self.power)
             self.logger.info("%+06d %s.start power=%d end distance=%d" % 
                             (self.start_distance, self.__class__.__name__, self.power, self.target_distance))
+            self.logger.info("%+06d %s.start_azi" % (g_plotter.get_loc_x(), self.__class__.__name__)) 
+            self.logger.info("%+06d %s.start_azi" % (g_plotter.get_loc_y(), self.__class__.__name__))
+
 
         current_distance = g_plotter.get_distance()
         traveled_distance = current_distance - self.start_distance
@@ -359,6 +362,7 @@ class MoveStraight(Behaviour):
             g_right_motor.set_power(0)
             g_left_motor.set_power(0)
             self.logger.info("%+06d %s.end distance on" % (current_distance, self.__class__.__name__))
+            
             return Status.SUCCESS
         else:
             return Status.RUNNING
@@ -418,22 +422,29 @@ class Bottlecatch(Behaviour):
             if self.state == BState.INITIAL:
                 if roe >= BOTTLE_LOWER_THRESH :
                     self.logger.info("%+06d %s.preline" % (g_plotter.get_distance(), self.__class__.__name__))
-                    self.logger.info("%+06d %s.preline_azi" % (g_plotter.get_azimuth(), self.__class__.__name__))
+                    self.logger.info("%+06d %s.preline_azi" % (g_plotter.get_loc_x(), self.__class__.__name__))
+                    self.logger.info("%+06d %s.preline_azi" % (g_plotter.get_loc_y(), self.__class__.__name__))
                     self.state = BState.PRELINE
 
             elif self.state == BState.PRELINE:
                 if roe <= BOTTLE_LOWER_THRESH and self.prev_roe >= BOTTLE_UPPER_THRESH:
                     self.logger.info("%+06d %s.the line completed" % (g_plotter.get_distance(), self.__class__.__name__))
+                    self.logger.info("%+06d %s.the line completed_azi" % (g_plotter.get_loc_x(), self.__class__.__name__))
+                    self.logger.info("%+06d %s.the line completed_azi" % (g_plotter.get_loc_y(), self.__class__.__name__))
                     self.state = BState.LINE
 
             elif self.state == BState.LINE:
                 if roe >= BOTTLE_UPPER_THRESH and self.prev_roe >= BOTTLE_LOWER_THRESH:
                     self.logger.info("%+06d %s.the join completed" % (g_plotter.get_distance(), self.__class__.__name__))
+                    self.logger.info("%+06d %s.the join completed_azi" % (g_plotter.get_loc_x(), self.__class__.__name__)) 
+                    self.logger.info("%+06d %s.the join completed_azi" % (g_plotter.get_loc_y(), self.__class__.__name__)) 
                     self.state = BState.CIRCLE
 
             elif self.state == BState.CIRCLE:
                 if roe >= BOTTLE_CATCH_THRESH and self.prev_roe >= BOTTLE_CATCH_THRESH:
                     self.logger.info("%+06d %s.the catch completed" % (g_plotter.get_distance(), self.__class__.__name__))
+                    self.logger.info("%+06d %s.the catch completed_azi" % (g_plotter.get_loc_x(), self.__class__.__name__)) 
+                    self.logger.info("%+06d %s.the catch completed_azi" % (g_plotter.get_loc_y(), self.__class__.__name__))
                     self.state = BState.CATCHED
             else:
                 pass
@@ -442,6 +453,8 @@ class Bottlecatch(Behaviour):
         if not self.reached and self.state == self.target_state:
             self.reached = True
             self.logger.info("%+06d %s.target state reached" % (g_plotter.get_distance(), self.__class__.__name__))
+            self.logger.info("%+06d %s.target state reached_azi" % (g_plotter.get_loc_x(), self.__class__.__name__)) 
+            self.logger.info("%+06d %s.target state reached_azi" % (g_plotter.get_loc_y(), self.__class__.__name__))
             return Status.SUCCESS
         else:
             return Status.RUNNING
