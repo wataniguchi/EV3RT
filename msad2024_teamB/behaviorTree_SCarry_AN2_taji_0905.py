@@ -332,7 +332,8 @@ class IsColorDetected(Behaviour):
         #if color(2) - color(0) > 45 and color(2) <= 255 and color(0) <= 255:
             # self.logger.info("%+06d %s.detected blue" % (g_plotter.get_distance(), self.__class__.__name__))
             self.logger.info("%+06d %s.detected hansya=%d kankyo=%d" % 
-                             (g_plotter.get_distance(), self.__class__.__name__, hansya, kankyo))
+                             (g_plotter.get_distance(), self.__class__.__name__, g_color_sensor.get_brightness(), self.__class__.__name__,
+                              g_color_sensor.get_ambient(),self.__class__.__name__))
             # self.logger.info("%+06d %s.detected color=%d hansya=%d kankyo=%d" % 
                             #  (g_plotter.get_distance(), self.__class__.__name__,color, hansya, kankyo))
 
