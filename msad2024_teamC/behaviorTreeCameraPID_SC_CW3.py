@@ -515,7 +515,7 @@ def build_behaviour_tree() -> BehaviourTree:
     loop_05.add_children(
         [
             RunAsInstructed(name="move to SC",pwm_l= 50,pwm_r=50),
-            IsDistanceEarned(name="check distance", delta_dist = 1050),
+            IsDistanceEarned(name="check distance", delta_dist = 1010),
         ]
     )
     
