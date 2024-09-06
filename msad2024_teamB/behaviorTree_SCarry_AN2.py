@@ -24,7 +24,7 @@ VIDEO_INTERVAL: float = 0.02
 ARM_SHIFT_PWM = 30
 JUNCT_UPPER_THRESH = 50
 JUNCT_LOWER_THRESH = 30
-BOTTLE_UPPER_THRESH = 60
+BOTTLE_UPPER_THRESH = 80
 BOTTLE_LOWER_THRESH = 40
 
 class ArmDirection(IntEnum):
@@ -429,7 +429,7 @@ class Bottlecatch(Behaviour):
             #        self.logger.info("%+06d %s.the join completed" % (g_plotter.get_distance(), self.__class__.__name__))
             #        self.state = BState.CIRCLE
 
-            elif self.state == BState.CIRCLE:
+            elif self.state == BState.PRELINE:
                 if roe >= BOTTLE_UPPER_THRESH and self.prev_roe >= BOTTLE_UPPER_THRESH:
                     self.logger.info("%+06d %s.the catch completed" % (g_plotter.get_distance(), self.__class__.__name__))
                     self.state = BState.CATCHED
