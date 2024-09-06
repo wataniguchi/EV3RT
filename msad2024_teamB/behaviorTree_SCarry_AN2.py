@@ -26,7 +26,7 @@ JUNCT_UPPER_THRESH = 50
 JUNCT_LOWER_THRESH = 30
 BOTTLE_UPPER_THRESH = 105
 BOTTLE_LOWER_THRESH = 40
-BOTTLE_CATCH_THRESH = 90
+BOTTLE_CATCH_THRESH = 80
 
 class ArmDirection(IntEnum):
     UP = -1
@@ -431,7 +431,7 @@ class Bottlecatch(Behaviour):
                     self.state = BState.CIRCLE
 
             elif self.state == BState.CIRCLE:
-                if roe <= BOTTLE_CATCH_THRESH and self.prev_roe >= BOTTLE_CATCH_THRESH:
+                if roe => BOTTLE_CATCH_THRESH and self.prev_roe >= BOTTLE_CATCH_THRESH:
                     self.logger.info("%+06d %s.the catch completed" % (g_plotter.get_distance(), self.__class__.__name__))
                     self.state = BState.CATCHED
             else:
