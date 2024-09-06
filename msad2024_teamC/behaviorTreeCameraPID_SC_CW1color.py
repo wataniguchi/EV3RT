@@ -279,6 +279,7 @@ class CheckColor(Behaviour):
 
         # 黒色の範囲をチェック
         if v <= 0.2 and s <= 0.3:
+            self.logger.info("Black")
             return Status.SUCCESS
         else:
             return Status.RUNNING
