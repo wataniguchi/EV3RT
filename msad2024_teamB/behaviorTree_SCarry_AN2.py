@@ -418,6 +418,7 @@ class Bottlecatch(Behaviour):
             if self.state == BState.INITIAL:
                 if roe >= BOTTLE_LOWER_THRESH :
                     self.logger.info("%+06d %s.preline" % (g_plotter.get_distance(), self.__class__.__name__))
+                    self.logger.info("%+06d %s.preline_azi" % (g_plotter.get_azimuth(), self.__class__.__name__))
                     self.state = BState.PRELINE
 
             elif self.state == BState.PRELINE:
