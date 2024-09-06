@@ -500,7 +500,7 @@ def build_behaviour_tree() -> BehaviourTree:
     loop_04.add_children(
         [
             RunAsInstructed(name="move to SC",pwm_l= 50,pwm_r=50),
-            IsDistanceEarned(name="check distance", delta_dist = 1700),
+            IsDistanceEarned(name="check distance", delta_dist = 1400),
         ]
     )
 
@@ -515,7 +515,7 @@ def build_behaviour_tree() -> BehaviourTree:
     loop_06.add_children(
         [
             RunAsInstructed(name="move to SC",pwm_l= 50,pwm_r=50),
-            IsDistanceEarned(name="check distance", delta_dist = 1600),
+            IsDistanceEarned(name="check distance", delta_dist = 1400),
         ]
     )
     # カメラ走行でゴールに向かう
