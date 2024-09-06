@@ -442,7 +442,7 @@ def build_behaviour_tree() -> BehaviourTree:
     #コンタクトⅠ直前
     loop_02.add_children(
         [
-            TraceLineCam(name="trace normal edge", power=50, pid_p=1.5, pid_i=0.001, pid_d=0.30,
+            TraceLineCam(name="trace normal edge", power=45, pid_p=1.5, pid_i=0.001, pid_d=0.30,
                          gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
             IsDistanceEarned(name="check distance", delta_dist = 1000),
         ]
