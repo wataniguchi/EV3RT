@@ -622,7 +622,7 @@ def build_behaviour_tree() -> BehaviourTree:
         [
             MoveStraight(name="back", power=-70, target_distance=200),
             MoveStraightLR(name="Turn 2", right_power=70, left_power=0, target_distance=200),
-            MoveStraight(name="free run 3", power=50, target_distance=400)
+            MoveStraight(name="free run 3", power=40, target_distance=400)
         ]
     )
 
