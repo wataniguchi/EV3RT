@@ -24,6 +24,8 @@ VIDEO_INTERVAL: float = 0.02
 ARM_SHIFT_PWM = 30
 JUNCT_UPPER_THRESH = 50
 JUNCT_LOWER_THRESH = 30
+BOTTLE_UPPER_THRESH = 110
+BOTTLE_LOWER_THRESH = 33
 
 class ArmDirection(IntEnum):
     UP = -1
@@ -44,6 +46,12 @@ class Color(Enum):
     YELLOW = auto()
     GREEN = auto()
     WHITE = auto()
+
+class BState(Enum):
+    INITIAL = auto()
+    LINE = auto()
+    CIRCLE = auto()
+    CATCHED  = auto()
 
 g_plotter: Plotter = None
 g_hub: Hub = None
@@ -154,7 +162,7 @@ class IsSonarOn(Behaviour):
         if not self.running:
             self.running = True
             self.logger.info("%+06d %s.detection started for dist=%d" % (g_plotter.get_distance(), self.__class__.__name__, self.alert_dist))
-        
+
         dist = 10 * g_sonar_sensor.get_distance()
         if (dist <= self.alert_dist and dist > 0):
             self.logger.info("%+06d %s.alerted at dist=%d" % (g_plotter.get_distance(), self.__class__.__name__, dist))
@@ -218,7 +226,7 @@ class IsJunction(Behaviour):
                 if roe <= JUNCT_LOWER_THRESH:
                     self.logger.info("%+06d %s.the join completed" % (g_plotter.get_distance(), self.__class__.__name__))
                     self.state = JState.JOINED
-                    
+
             elif self.state == JState.FORKING:
                 if roe <= JUNCT_LOWER_THRESH and self.prev_roe >= JUNCT_UPPER_THRESH:
                     self.logger.info("%+06d %s.the fork completed" % (g_plotter.get_distance(), self.__class__.__name__))
@@ -313,11 +321,12 @@ class IsColorDetected(Behaviour):
         self.logger.debug("%s.__init__()" % (self.__class__.__name__))
 
     def update(self) -> Status:
-        global g_color_sensor
+        #global g_color_sensor
         #RGBの値を取得
-        color = g_color_sensor.get_raw_color
+        color = g_color_sensor.get_raw_color()
         #Blue判定
-        if(color[2] - color[0]>45 & color[2] <=255 & color[0] <=255):
+        if((color[2] - color[0]>45) & (color[2] <=255) & (color[0] <=255)):
+        #if color(2) - color(0) > 45 and color(2) <= 255 and color(0) <= 255:
             self.logger.info("%+06d %s.detected blue" % (g_plotter.get_distance(), self.__class__.__name__))
             return Status.SUCCESS
         else:
@@ -389,6 +398,46 @@ class MoveStraightLR(Behaviour):
         else:
             return Status.RUNNING
 
+class Bottlecatch(Behaviour):
+    def __init__(self, name: str, target_state: BState) -> None:
+        super(Bottlecatch, self).__init__(name)
+        self.target_state = target_state
+        self.reached = False
+        self.prev_roe = 0
+        self.state:BState = BState.INITIAL
+        self.running = False
+
+    def update(self) -> Status:
+        if not self.running:
+            self.running = True
+            self.logger.info("%+06d %s.scan started" % (g_plotter.get_distance(), self.__class__.__name__))
+        roe = g_video.get_range_of_edges()
+        if roe != 0:
+            if self.state == BState.INITIAL:
+                if (self.target_state == BState.LINE ) and roe >= BOTTLE_LOWER_THRESH and self.prev_roe >= BOTTLE_LOWER_THRESH:
+                    self.logger.info("%+06d %s.lines are joining" % (g_plotter.get_distance(), self.__class__.__name__))
+                    self.state = BState.LINE
+
+            elif self.state == BState.LINE:
+                if roe >= BOTTLE_UPPER_THRESH and self.prev_roe >= BOTTLE_LOWER_THRESH:
+                    self.logger.info("%+06d %s.the join completed" % (g_plotter.get_distance(), self.__class__.__name__))
+                    self.state = BState.CIRCLE
+
+            elif self.state == BState.CIRCLE:
+                if roe <= JUNCT_UPPER_THRESH and self.prev_roe >= JUNCT_UPPER_THRESH:
+                    self.logger.info("%+06d %s.the fork completed" % (g_plotter.get_distance(), self.__class__.__name__))
+                    self.state = BState.CATCHED
+            else:
+                pass
+        self.prev_roe = roe
+
+        if not self.reached and self.state == self.target_state:
+            self.reached = True
+            self.logger.info("%+06d %s.target state reached" % (g_plotter.get_distance(), self.__class__.__name__))
+            return Status.SUCCESS
+        else:
+            return Status.RUNNING
+
 class TraverseBehaviourTree(object):
     def __init__(self, tree: BehaviourTree) -> None:
         self.tree = tree
@@ -408,7 +457,6 @@ class TraverseBehaviourTree(object):
         else:
             self.tree.tick_once()
             g_plotter.plot(**kwargs)
-
 
 class ExposeDevices(object):
     def __call__(
@@ -432,7 +480,6 @@ class ExposeDevices(object):
         g_sonar_sensor = sonar_sensor
         g_gyro_sensor = gyro_sensor
 
-
 class VideoThread(threading.Thread):
     def __init__(self):
         super().__init__()
@@ -446,17 +493,17 @@ class VideoThread(threading.Thread):
             g_video.process(g_plotter, g_hub, g_arm_motor, g_right_motor, g_left_motor, g_touch_sensor, g_color_sensor, g_sonar_sensor, g_gyro_sensor)
             time.sleep(VIDEO_INTERVAL)
 
-
 def build_behaviour_tree() -> BehaviourTree:
     root = Sequence(name="competition", memory=True)
     calibration = Sequence(name="calibration", memory=True)
     start = Parallel(name="start", policy=ParallelPolicy.SuccessOnOne())
-    step_01B = Parallel(name="step 01B", policy=ParallelPolicy.SuccessOnOne())
-    step_01B_2 = Parallel(name="step 01B", policy=ParallelPolicy.SuccessOnOne())
-    step_02B = Sequence(name="step 02B", memory=True)
-    step_03B = Sequence(name="step 03B", memory=True)
-    step_04B = Sequence(name="step 04B", memory=True)
-
+    # step_01B = Parallel(name="step 01B", policy=ParallelPolicy.SuccessOnOne())
+    # step_01B_2 = Parallel(name="step 01B", policy=ParallelPolicy.SuccessOnOne())
+    # step_02B = Sequence(name="step 02B", memory=True)
+    # step_03B = Sequence(name="step 03B", memory=True)
+    step_04B = Parallel(name="step 04B", policy=ParallelPolicy.SuccessOnOne())
+    #step_04B = Sequence(name="step 04B", memory=True)
+ 
     calibration.add_children(
         [
             ArmUpDownFull(name="arm down", direction=ArmDirection.DOWN),
@@ -469,52 +516,48 @@ def build_behaviour_tree() -> BehaviourTree:
             IsTouchOn(name="touch start"),
         ]
     )
-    # デブリからボトル取得
-    step_01B.add_children(
-        [
-            TraceLineCam(name="trace buleline", power=40, pid_p=2.5, pid_i=0.0015, pid_d=0.1,
-                 gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
-            IsDistanceEarned(name="check distance 1", delta_dist = 150)
-        ]
-    )
-    step_01B_2.add_children(
-        [
-            TraceLineCam(name="trace buleline", power=40, pid_p=2.5, pid_i=0.0015, pid_d=0.1,
-                 gs_min=0, gs_max=80, trace_side=TraceSide.CENTER),
-            IsDistanceEarned(name="check distance 1", delta_dist = 1500)
-        ]
-    )
+    # # デブリからボトル取得
     # step_01B.add_children(
     #     [
-    #         MoveStraight(name="free run 1", power=50, target_distance=450)
-    #         # IsSonarOn(name="check bottol", alert_dist=150)
+    #         TraceLineCam(name="trace buleline", power=40, pid_p=2.5, pid_i=0.0015, pid_d=0.1,
+    #              gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
+    #         #Bottlecatch(name="linetrace", target_state = BState.LINE)
+    #         IsDistanceEarned(name="check distance 1", delta_dist = 400)
     #     ]
     # )
-    # ボトル取得からサークルへ配置
-    step_02B.add_children(
-        [
-            MoveStraightLR(name="Turn 1", right_power=0, left_power=70, target_distance=200),
-            MoveStraight(name="free run 2", power=50, target_distance=1200)
-            # color sensor add
-        ]
-    )
-    # サークルへ配置からライン復帰
-    step_03B.add_children(
-        [
-            MoveStraight(name="back", power=-70, target_distance=200),
-            MoveStraightLR(name="Turn 2", right_power=70, left_power=0, target_distance=200),
-            MoveStraight(name="free run 3", power=50, target_distance=400)
-        ]
-    )
+
+    # # step_01B.add_children(
+    # #     [
+    # #         MoveStraight(name="free run 1", power=50, target_distance=450)
+    # #         # IsSonarOn(name="check bottol", alert_dist=150)
+    # #     ]
+    # # )
+    # # ボトル取得からサークルへ配置
+    # step_02B.add_children(
+    #     [
+    #         MoveStraightLR(name="Turn 1", right_power=0, left_power=70, target_distance=200),
+    #         MoveStraight(name="free run 2", power=50, target_distance=1200)
+    #         # color sensor add
+    #     ]
+    # )
+    # # サークルへ配置からライン復帰
+    # step_03B.add_children(
+    #     [
+    #         MoveStraight(name="back", power=-50, target_distance=200),
+    #         MoveStraightLR(name="Turn 2", right_power=70, left_power=0, target_distance=200),
+    #         MoveStraight(name="free run 3", power=50, target_distance=400)
+    #     ]
+    # )
 
     # ライン復帰からゴール
     step_04B.add_children(
         [
-            MoveStraightLR(name="Turn 3", right_power=70, left_power=35, target_distance=200),
+            #MoveStraightLR(name="Turn 3", right_power=70, left_power=35, target_distance=200),
             TraceLineCam(name="trace center edge", power=40, pid_p=2.5, pid_i=0.0015, pid_d=0.1,
                          gs_min=0, gs_max=80, trace_side=TraceSide.CENTER),
-            IsDistanceEarned(name="check distance 1", delta_dist = 1100),
-            MoveStraightLR(name="Turn 4", right_power=70, left_power=35, target_distance=150)
+            IsDistanceEarned(name="check distance 1", delta_dist = 10000),
+            # color sensor add
+            IsColorDetected(name="blue")
         ]
     )
 
@@ -522,10 +565,10 @@ def build_behaviour_tree() -> BehaviourTree:
         [
             calibration,
             start,
-            step_01B,
-            step_01B_2,
-            step_02B,
-            step_03B,
+            # step_01B,
+            # step_01B_2,
+            # step_02B,
+            # step_03B,
             step_04B,
             StopNow(name="stop"),
             TheEnd(name="end"),
