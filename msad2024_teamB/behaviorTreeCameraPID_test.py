@@ -408,7 +408,7 @@ def build_behaviour_tree() -> BehaviourTree:
     #最初のストレート最高速度
     loop_01_0.add_children(
         [
-            TraceLineCam(name="trace normal edge", power=70, pid_p=0.5, pid_i=0.0015, pid_d=0.5,
+            TraceLineCam(name="trace normal edge", power=70, pid_p=0.5, pid_i=0.0015, pid_d=0.8,
                          gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
             IsDistanceEarned(name="check distance", delta_dist = 2300),
         ]
