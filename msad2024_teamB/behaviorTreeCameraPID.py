@@ -627,6 +627,16 @@ def build_behaviour_tree() -> BehaviourTree:
         IsDistanceEarned_after(name="check distance"),
         ]
     )
+    loop_07.add_children(
+        [
+            MoveStraight(name="move straight", power=40, target_distance=90),
+        ]
+    )
+    loop_08.add_children(
+        [
+            MoveStraight(name="back", power=-50, target_distance=90)
+        ]
+    )
     root.add_children(
         [
             calibration,
@@ -637,9 +647,9 @@ def build_behaviour_tree() -> BehaviourTree:
             loop_04,
             loop_05,
             loop_06,
-            # loop_07,
+            loop_07,
             #W-loop_end
-            # loop_08,
+            loop_08,
             # loop_09,
             # loop_10,
             # loop_11,
