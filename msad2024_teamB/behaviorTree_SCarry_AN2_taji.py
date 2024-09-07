@@ -643,7 +643,7 @@ def build_behaviour_tree() -> BehaviourTree:
     # ボトル取得からサークルへ配置
     step_02B.add_children(
         [
-            MoveStraightLR(name="Turn 1", right_power=15, left_power=84, target_distance=180),
+            MoveStraightLR(name="Turn 1", right_power=15, left_power=83, target_distance=180),
             MoveStraight(name="free run 2", power=70, target_distance=1250)
             # color sensor add
         ]
@@ -652,7 +652,7 @@ def build_behaviour_tree() -> BehaviourTree:
     step_03B_1.add_children(
         [
             MoveStraight(name="back", power=-40, target_distance=600),
-            MoveStraightLR(name="Turn 2", right_power=80, left_power=0, target_distance=200),
+            MoveStraightLR(name="Turn 2", right_power=78, left_power=0, target_distance=200),
             #MoveStraight(name="free run 3", power=40, target_distance=10000),
             #IsColorDetected(name="black")
         ]
