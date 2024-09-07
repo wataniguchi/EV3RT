@@ -1183,7 +1183,7 @@ def build_behaviour_tree() -> BehaviourTree:
     )
     loop_06.add_children(
         [
-            RunAsInstructed(name="go straight",pwm_l=40,pwm_r=40),
+            RunAsInstructed(name="go straight",pwm_l=30,pwm_r=30),
             CheckBrackColor(name="checkBrackColor")
         ]
     )
