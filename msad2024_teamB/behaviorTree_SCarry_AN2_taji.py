@@ -326,6 +326,7 @@ class IsColorDetected(Behaviour):
 
     def update(self) -> Status:
         global g_color_sensor
+        global g_count
         #RGBの値を取得
         color = g_color_sensor.get_raw_color()
         self.logger.info("%+06d %s.nowcolor r=%d g=%d b=%d" % (g_plotter.get_distance(), self.__class__.__name__, color[0], color[1], color[2]))
