@@ -320,7 +320,7 @@ class TraceLineCam(Behaviour):
             self.logger.info("%+06d %s.trace started with TS=%s" % (g_plotter.get_distance(), self.__class__.__name__, self.trace_side.name))
         turn = (-1) * int(self.pid(g_video.get_theta()))
         g_right_motor.set_power(self.power - turn)
-        g_left_motor.set_power(self.power + turn-3)
+        g_left_motor.set_power(self.power + turn-(self.power/20))
         return Status.RUNNING
 
 
@@ -446,7 +446,7 @@ def build_behaviour_tree() -> BehaviourTree:
     )
     loop_05.add_children(
         [
-            TraceLineCam(name="curve 03", power=POWER_SLOW,                    
+            TraceLineCam(name="curve 02", power=POWER_SLOW,                    
                          pid_p=PID_P_SLOW, pid_i=PID_I_SLOW, pid_d=PID_D_SLOW,
                          gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
             IsDistanceEarned(name="check distance", delta_dist = 1200),
@@ -454,7 +454,7 @@ def build_behaviour_tree() -> BehaviourTree:
     )
     loop_06.add_children(
         [
-            TraceLineCam(name="curve 03", power=POWER_SLOW,                    
+            TraceLineCam(name="straight 03", power=POWER_SLOW,                    
                          pid_p=PID_P_SLOW, pid_i=PID_I_SLOW, pid_d=PID_D_SLOW,
                          gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
             IsDistanceEarned(name="check distance", delta_dist = 500),
@@ -534,7 +534,7 @@ def build_behaviour_tree() -> BehaviourTree:
     )
     loop_16.add_children(
         [
-            TraceLineCam(name="junction 05", power=POWER_SLOW,                    
+            TraceLineCam(name="straight 04", power=POWER_SLOW,                    
                          pid_p=PID_P_SLOW, pid_i=PID_I_SLOW, pid_d=PID_D_SLOW,
                          gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
             IsDistanceEarned(name="check distance", delta_dist = 1500),

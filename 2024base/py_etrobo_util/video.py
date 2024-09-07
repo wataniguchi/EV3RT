@@ -2,10 +2,10 @@ import os
 import cv2
 import math
 import numpy as np
-from enum import Enum
 from picamera2 import Picamera2, Preview
 from .plotter import Plotter
 from etrobo_python import Hub, Motor, ColorSensor, TouchSensor, SonarSensor, GyroSensor
+from const import TraceSide
 
 def round_up_to_odd(f) -> int:
     return int(np.ceil(f / 2.) * 2 + 1)
@@ -39,14 +39,6 @@ SCAN_V_POS     = int(12*FRAME_HEIGHT/16 - LINE_THICKNESS) # for full angle
 # frame size for X11 painting
 OUT_FRAME_WIDTH  = 160
 OUT_FRAME_HEIGHT = 120
-
-
-class TraceSide(Enum):
-    NORMAL = "Normal"
-    OPPOSITE = "Opposite"
-    RIGHT = "Right"
-    LEFT = "Left"
-    CENTER = "Center"
 
 
 class Video(object):
@@ -109,48 +101,48 @@ class Video(object):
         # crop
         img_orig = img_orig[0:FRAME_HEIGHT, 0:FRAME_WIDTH]
 
-        # hsv = cv2.cvtColor(img_orig, cv2.COLOR_BGR2HSV)
-        # hsv_min = np.array([0, 64, 64])
-        # hsv_max = np.array([30, 255, 200])
-        # red1 = cv2.inRange(hsv, hsv_min, hsv_max)
-        # hsv_min = np.array([150, 64, 64])
-        # hsv_max = np.array([179, 255, 200])
-        # red2 = cv2.inRange(hsv, hsv_min, hsv_max)
-        # hsv_min = np.array([90, 64, 64])
-        # hsv_max = np.array([150, 255, 200])
-        # blue = cv2.inRange(hsv, hsv_min, hsv_max)
+        hsv = cv2.cvtColor(img_orig, cv2.COLOR_BGR2HSV)
+        hsv_min = np.array([0, 64, 64])
+        hsv_max = np.array([25, 255, 200])
+        red1 = cv2.inRange(hsv, hsv_min, hsv_max)
+        hsv_min = np.array([150, 64, 64])
+        hsv_max = np.array([179, 255, 200])
+        red2 = cv2.inRange(hsv, hsv_min, hsv_max)
+        hsv_min = np.array([90, 64, 64])
+        hsv_max = np.array([150, 255, 200])
+        blue = cv2.inRange(hsv, hsv_min, hsv_max)
 
-        # red = red1 + red2
-        # img_bin_red = np.zeros((FRAME_HEIGHT, FRAME_WIDTH), np.uint8)
-        # img_bin_red = red
-        # img_bin_mor_red = cv2.morphologyEx(img_bin_red, cv2.MORPH_CLOSE, self.kernel)
-        # contours_red, hierarchy_red = cv2.findContours(img_bin_mor_red, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        red = red1 + red2
+        img_bin_red = np.zeros((FRAME_HEIGHT, FRAME_WIDTH), np.uint8)
+        img_bin_red = red
+        img_bin_mor_red = cv2.morphologyEx(img_bin_red, cv2.MORPH_CLOSE, self.kernel)
+        contours_red, hierarchy_red = cv2.findContours(img_bin_mor_red, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         
-        # area_red = 0
-        # target_red = 0
-        # if(len(contours_red)>0):
-        #     for i, cnt in enumerate(contours_red):
-        #             area = cv2.contourArea(cnt)
-        #             if(area>area_red):
-        #                 area_red = area
-        #                 target_red = i
-        # self.range_of_red = area_red
+        area_red = 0
+        target_red = 0
+        if(len(contours_red)>0):
+            for i, cnt in enumerate(contours_red):
+                    area = cv2.contourArea(cnt)
+                    if(area>area_red):
+                        area_red = area
+                        target_red = i
+        self.range_of_red = area_red
 
 
-        # img_bin_blue = np.zeros((FRAME_HEIGHT, FRAME_WIDTH), np.uint8)
-        # img_bin_blue = blue
-        # img_bin_mor_blue = cv2.morphologyEx(img_bin_blue, cv2.MORPH_CLOSE, self.kernel)
-        # contours_blue, hierarchy_blue = cv2.findContours(img_bin_mor_blue, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        img_bin_blue = np.zeros((FRAME_HEIGHT, FRAME_WIDTH), np.uint8)
+        img_bin_blue = blue
+        img_bin_mor_blue = cv2.morphologyEx(img_bin_blue, cv2.MORPH_CLOSE, self.kernel)
+        contours_blue, hierarchy_blue = cv2.findContours(img_bin_mor_blue, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         
-        # area_blue = 0
-        # target_blue = 0
-        # if(len(contours_blue)>0):
-        #     for i, cnt in enumerate(contours_blue):
-        #             area = cv2.contourArea(cnt)
-        #             if(area>area_blue):
-        #                 area_blue = area
-        #                 target_blue = i
-        # self.range_of_blue = area_blue
+        area_blue = 0
+        target_blue = 0
+        if(len(contours_blue)>0):
+            for i, cnt in enumerate(contours_blue):
+                    area = cv2.contourArea(cnt)
+                    if(area>area_blue):
+                        area_blue = area
+                        target_blue = i
+        self.range_of_blue = area_blue
 
         # convert the image from BGR to grayscale
         img_gray = cv2.cvtColor(img_orig, cv2.COLOR_BGR2GRAY)
