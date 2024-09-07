@@ -57,8 +57,7 @@ g_gyro_sensor: GyroSensor = None
 g_video: Video = None
 g_video_thread: threading.Thread = None
 g_course: int = 0
-global g_dist
-g_dist = 1000
+g_dist: int = 1000
 g_earned_dist: int = 0
 
 class TheEnd(Behaviour):
@@ -534,6 +533,8 @@ class IsDistanceEarned_after(Behaviour):
         self.delta_dist = delta_dist
         self.running = False
         self.earned = False
+        global g_dist
+        print(g_dist)
 
     def update(self) -> Status:
         if not self.running:
