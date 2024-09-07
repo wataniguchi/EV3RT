@@ -471,7 +471,24 @@ class IsRedColorDetected(Behaviour):
             return Status.SUCCESS
         else:
             return Status.RUNNING
+        
+class IsBlueColorDetected(Behaviour):
+    def __init__(self, name: str, threshold: float):
+        super(IsBlueColorDetected, self).__init__(name)
+        self.threshold = threshold
+        self.running = False
 
+    def update(self) -> Status:
+        if not self.running:
+            self.running = True
+            self.logger.info("%+06d %s.checking blue color ratio with threshold=%f" % (g_plotter.get_distance(), self.__class__.__name__, self.threshold))
+
+        blue_percentage = g_video.get_blue_ratio() * 100
+        if blue_percentage > self.threshold:
+            self.logger.info("%+06d %s.blue color ratio exceeds threshold: %f" % (g_plotter.get_distance(), self.__class__.__name__, blue_percentage))
+            return Status.SUCCESS
+        else:
+            return Status.RUNNING
 
 def build_behaviour_tree() -> BehaviourTree:
     root = Sequence(name="competition", memory=True)
@@ -493,6 +510,7 @@ def build_behaviour_tree() -> BehaviourTree:
     loop_14 = Parallel(name="loop 14", policy=ParallelPolicy.SuccessOnOne())
     loop_15 = Parallel(name="loop 15", policy=ParallelPolicy.SuccessOnOne())
     loop_16 = Parallel(name="loop 16", policy=ParallelPolicy.SuccessOnOne())
+    loop_17 = Parallel(name="loop 17", policy=ParallelPolicy.SuccessOnOne())
     calibration.add_children(
         [
             ArmUpDownFull(name="arm down", direction=ArmDirection.DOWN),
@@ -608,6 +626,14 @@ def build_behaviour_tree() -> BehaviourTree:
                          gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
         IsDistanceEarned(name="check distance", delta_dist = 3000),
         IsRedColorDetected(name="check red color", threshold=14.0), 
+        ]
+    )
+    loop_17.add_children(
+        [
+        TraceLineCam(name="trace normal edge", power=40, pid_p=1.0, pid_i=0.0015, pid_d=0.1,
+                         gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
+        IsDistanceEarned(name="check distance", delta_dist = 3000),
+        IsBlueColorDetected(name="check red color", threshold=14.0), 
         ]
     )
     root.add_children(
