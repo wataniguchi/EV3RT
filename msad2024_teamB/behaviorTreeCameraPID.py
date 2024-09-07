@@ -638,7 +638,7 @@ def build_behaviour_tree() -> BehaviourTree:
                          gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
         IsDistanceEarned(name="check distance", delta_dist = 3000),
         IsRedColorDetected(name="check red color", threshold=12.0), 
-        IsBlueColorDetected(name="check blue color", threshold=10.0), 
+        IsBlueColorDetected(name="check blue color", threshold=12.0), 
         ]
     )
     loop_18.add_children(
