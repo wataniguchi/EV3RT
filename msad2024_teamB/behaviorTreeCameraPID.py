@@ -474,7 +474,7 @@ class IsRedColorDetected(Behaviour):
 
             g_dist = g_dist - g_earned_dist
             print("g_earned_dist:"+ int(g_earned_dist))
-            print("g_dist:"+ int(g_dist)
+            print("g_dist:"+ int(g_dist))
             return Status.SUCCESS
         else:
             return Status.RUNNING
@@ -497,7 +497,7 @@ class IsBlueColorDetected(Behaviour):
             self.logger.info("%+06d %s.blue color ratio exceeds threshold: %f" % (g_plotter.get_distance(), self.__class__.__name__, blue_percentage))
             g_dist = g_dist - g_earned_dist
             print("g_earned_dist:"+ int(g_earned_dist))
-            print("g_dist:"+ int(g_dist)
+            print("g_dist:"+ int(g_dist))
             return Status.SUCCESS
         else:
             return Status.RUNNING
