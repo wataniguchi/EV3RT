@@ -469,6 +469,8 @@ class IsRedColorDetected(Behaviour):
         if red_percentage > self.threshold:
             self.logger.info("%+06d %s.red color ratio exceeds threshold: %f" % (g_plotter.get_distance(), self.__class__.__name__, red_percentage))
             MoveStraightLR(name="move straight 4", right_power=50, left_power=-20, target_distance=200)
+            MoveStraight(name="back", power=-50, target_distance=15)
+            MoveStraightLR(name="move straight 4", right_power=-60, left_power=0, target_distance=200
         else:
             return Status.RUNNING
         
