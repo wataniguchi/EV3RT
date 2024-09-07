@@ -1118,14 +1118,26 @@ def build_behaviour_tree() -> BehaviourTree:
             IsDistanceEarned(name="check distance", delta_dist = 1000),
         ]
     )
+    loop_03.add_children(
+        [
+            RunAsInstructed(name="go straight",pwm_l=40,pwm_r=40),
+            IsDistanceEarned(name="check distance", delta_dist = 200),
+        ]
+    )
+    loop_04.add_children(
+        [
+            RunAsInstructed(name="go straight",pwm_l=-40,pwm_r=-40),
+            IsDistanceEarned(name="check distance", delta_dist = 200),
+        ]
+    )
     root.add_children(
         [
             calibration,
             start,
             loop_01,
             loop_02,
-            # loop_03,
-            # loop_04,
+            loop_03,
+            loop_04,
             StopNow(name="stop"),
             TheEnd(name="end"),
         ]
