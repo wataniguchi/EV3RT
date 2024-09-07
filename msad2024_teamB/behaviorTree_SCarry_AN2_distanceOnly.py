@@ -538,7 +538,8 @@ def build_behaviour_tree() -> BehaviourTree:
     #step_01B_2 = Parallel(name="step 01B_2", policy=ParallelPolicy.SuccessOnOne())
     #step_01B = Parallel(name="step 01B", policy=ParallelPolicy.SuccessOnSelected(children=[step_01B_1,step_01B_2]),children=[step_01B_1,step_01B_2])
     step_02B = Sequence(name="step 02B", memory=True)
-    step_03B = Sequence(name="step 03B", memory=True)
+    step_03B_1 = Sequence(name="step 03B_1", memory=True)
+    step_03B_2 = Parallel(name="step 03B_2", policy=ParallelPolicy.SuccessOnOne)
     step_04B = Sequence(name="step 04B", memory=True)
  
     calibration.add_children(
@@ -642,11 +643,21 @@ def build_behaviour_tree() -> BehaviourTree:
         ]
     )
     # サークルへ配置からライン復帰
-    step_03B.add_children(
+    step_03B_1.add_children(
         [
             MoveStraight(name="back", power=-70, target_distance=200),
             MoveStraightLR(name="Turn 2", right_power=70, left_power=0, target_distance=200),
-            MoveStraight(name="free run 3", power=40, target_distance=400)
+            #MoveStraight(name="free run 3", power=40, target_distance=10000),
+            #IsColorDetected(name="black")
+        ]
+    )
+        # サークルへ配置からライン復帰
+    step_03B_2.add_children(
+        [
+            #MoveStraight(name="back", power=-70, target_distance=200),
+            #MoveStraightLR(name="Turn 2", right_power=70, left_power=0, target_distance=200),
+            MoveStraight(name="free run 3", power=40, target_distance=10000),
+            IsColorDetected(name="black")
         ]
     )
 
@@ -674,7 +685,8 @@ def build_behaviour_tree() -> BehaviourTree:
             #step_01B_1,
             #step_01B_2,
             step_02B,
-            step_03B,
+            step_03B_1,
+            step_03B_2,
             step_04B,
             StopNow(name="stop"),
             TheEnd(name="end"),
