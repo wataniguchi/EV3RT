@@ -931,6 +931,7 @@ class CheckBrackColor(Behaviour):
         #     return Status.SUCCESS
         # else:
         #     return Status.RUNNING
+        global now_color
         if not now_color:
             now_color = [r,g,b]
         else:
