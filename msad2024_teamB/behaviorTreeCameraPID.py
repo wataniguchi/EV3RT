@@ -637,7 +637,7 @@ def build_behaviour_tree() -> BehaviourTree:
         [
         TraceLineCam(name="trace normal edge", power=40, pid_p=1.0, pid_i=0.0015, pid_d=0.1,
                          gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
-        IsDistanceEarned(name="check distance", delta_dist = 1000),
+        IsDistanceEarned(name="check distance", delta_dist = 3000),
         IsRedColorDetected(name="check red color", threshold=12.0), 
         ]
     )
