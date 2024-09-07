@@ -476,7 +476,9 @@ class IsRedColorDetected(Behaviour):
         
             current_distance = g_plotter.get_distance()
             traveled_distance = current_distance - self.start_distance
-            
+            print(self.start_distance)
+            print(current_distance)
+            print(traveled_distance)
             if traveled_distance >= 200:
                     g_right_motor.set_power(0)
                     g_left_motor.set_power(0)
