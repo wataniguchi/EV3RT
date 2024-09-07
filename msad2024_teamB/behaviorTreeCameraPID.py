@@ -525,6 +525,7 @@ class IsDistanceEarned_after(Behaviour):
 
     def update(self) -> Status:
         if not self.running:
+            print(g_dist)
             self.running = True
             self.orig_dist = g_plotter.get_distance()
             self.logger.info("%+06d %s.accumulation started for delta=%d" % (self.orig_dist, self.__class__.__name__, self.delta_dist))
