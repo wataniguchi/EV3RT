@@ -465,19 +465,19 @@ class IsRedColorDetected(Behaviour):
         if not self.running:
             self.running = True
             self.logger.info("%+06d %s.checking red color ratio with threshold=%f" % (g_plotter.get_distance(), self.__class__.__name__, self.threshold))
-            self.start_distance = g_plotter.get_distance()  
         red_percentage = g_video.get_red_ratio() * 100.0
+        current_distance = g_plotter.get_distance()
 
         if red_percentage > self.threshold:
             self.logger.info("%+06d %s.red color ratio exceeds threshold: %f" % (g_plotter.get_distance(), self.__class__.__name__, red_percentage))
+            self.start_distance = g_plotter.get_distance()  
             g_right_motor.set_power(50)
             g_left_motor.set_power(-20)
             self.logger.info("%+06d %s.開始、右パワー=%d、左パワー=%d、目標距離=%d" % (self.start_distance, self.__class__.__name__, 50, -20, 1000))
-        current_distance = g_plotter.get_distance()
-        traveled_distance = current_distance - self.start_distance
-        print(self.start_distance)
-        print(current_distance)
-        print(traveled_distance)
+            traveled_distance = current_distance - self.start_distance
+            print(self.start_distance)
+            print(current_distance)
+            print(traveled_distance)
 
         if traveled_distance >= 1000:
             g_right_motor.set_power(0)
