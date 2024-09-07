@@ -57,7 +57,7 @@ g_gyro_sensor: GyroSensor = None
 g_video: Video = None
 g_video_thread: threading.Thread = None
 g_course: int = 0
-g_dist: int = 1800
+g_dist: int = 1500
 
 
 class TheEnd(Behaviour):
@@ -526,6 +526,7 @@ class IsDistanceEarned_after(Behaviour):
         self.g_dist = g_dist
 
     def update(self) -> Status:
+        global g_dist
         if not self.running:
             self.running = True
             self.orig_dist = g_plotter.get_distance()
@@ -536,8 +537,9 @@ class IsDistanceEarned_after(Behaviour):
             if not self.earned:
                 self.earned = True
                 self.logger.info("%+06d %s.delta distance earned" % (cur_dist, self.__class__.__name__))
-            global g_dist
+            print(g_dist)
             g_dist = 1800
+            print(g_dist)
             Status.SUCCESS
         else:
             print(self.g_dist)
