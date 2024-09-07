@@ -533,7 +533,8 @@ class IsDistanceEarned_after(Behaviour):
         self.delta_dist = delta_dist
         self.running = False
         self.earned = False
-        self.g_dist = g_dist
+        global g_dist
+        print(g_dist)
 
     def update(self) -> Status:
         if not self.running:
