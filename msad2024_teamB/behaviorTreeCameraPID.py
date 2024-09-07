@@ -460,10 +460,10 @@ class IsRedColorDetected(Behaviour):
         super(IsRedColorDetected, self).__init__(name)
         self.threshold = threshold
         self.running = False
-
-    def update(self) -> Status:
         global g_dist
         global g_earned_dist
+
+    def update(self) -> Status:
         if not self.running:
             self.running = True
             self.logger.info("%+06d %s.checking red color ratio with threshold=%f" % (g_plotter.get_distance(), self.__class__.__name__, self.threshold))
@@ -481,13 +481,13 @@ class IsRedColorDetected(Behaviour):
         
 class IsBlueColorDetected(Behaviour):
     def __init__(self, name: str, threshold: float):
+        global g_dist
+        global g_earned_dist
         super(IsBlueColorDetected, self).__init__(name)
         self.threshold = threshold
         self.running = False
 
     def update(self) -> Status:
-        global g_dist
-        global g_earned_dist
         if not self.running:
             self.running = True
             self.logger.info("%+06d %s.checking blue color ratio with threshold=%f" % (g_plotter.get_distance(), self.__class__.__name__, self.threshold))
@@ -508,10 +508,9 @@ class IsDistanceEarned_before(Behaviour):
         self.logger.debug("%s.__init__()" % (self.__class__.__name__))
         self.delta_dist = delta_dist
         self.running = False
-
-    def update(self) -> Status:
         global g_earned_dist
 
+    def update(self) -> Status:
         if not self.running:
             self.running = True
             self.orig_dist = g_plotter.get_distance()
@@ -534,8 +533,6 @@ class IsDistanceEarned_after(Behaviour):
         self.delta_dist = delta_dist
         self.running = False
         self.earned = False
-        global g_dist
-        print(g_dist)
 
     def update(self) -> Status:
         if not self.running:
