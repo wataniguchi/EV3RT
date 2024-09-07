@@ -460,7 +460,7 @@ class IsRedColorDetected(Behaviour):
         self.threshold = threshold
         self.running = False
         self.start_distance = None
-        self.traveled_distance = None
+        self.traveled_distance = 0
 
     def update(self) -> Status:
         if not self.running:
