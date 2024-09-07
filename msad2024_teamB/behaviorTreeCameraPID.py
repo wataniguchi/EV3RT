@@ -509,6 +509,7 @@ class IsDistanceEarned_before(Behaviour):
         earned_dist = cur_dist - self.orig_dist
         g_dist = g_dist - earned_dist
         print(earned_dist)
+        print(g_dist)
 
         if (earned_dist >= self.delta_dist or -earned_dist <= -self.delta_dist):
             if not self.earned:
