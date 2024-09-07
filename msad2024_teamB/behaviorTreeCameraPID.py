@@ -629,12 +629,12 @@ def build_behaviour_tree() -> BehaviourTree:
     )
     loop_07.add_children(
         [
-            MoveStraight(name="move straight", power=40, target_distance=90),
+            MoveStraight(name="move straight", power=40, target_distance=200),
         ]
     )
     loop_08.add_children(
         [
-            MoveStraight(name="back", power=-50, target_distance=90)
+            MoveStraight(name="back", power=-50, target_distance=200)
         ]
     )
     root.add_children(
