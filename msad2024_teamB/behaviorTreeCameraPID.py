@@ -482,7 +482,7 @@ class IsRedColorDetected(Behaviour):
         print(current_distance)
         print(self.traveled_distance)
         
-        if self.traveled_distance >= 1000:
+        if self.traveled_distance >= 50:
             g_right_motor.set_power(0)
             g_left_motor.set_power(0)
             print(self.start_distance)
