@@ -527,112 +527,7 @@ def build_behaviour_tree() -> BehaviourTree:
             IsTouchOn(name="touch start"),
         ]
     )
-    # loop_01.add_children(
-    #     [
-    #         TraceLineCam(name="trace normal edge", power=40, pid_p=2.5, pid_i=0.0015, pid_d=0.1,
-    #                      gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
-    #         IsDistanceEarned(name="check distance", delta_dist = 2000),
-    #     ]
-    # )
-    # loop_02.add_children(
-    #     [
-    #         TraceLineCam(name="trace normal edge", power=40, pid_p=2.5, pid_i=0.001, pid_d=0.15,
-    #                      gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
-    #         IsJunction(name="scan joined junction", target_state = JState.JOINED),
-    #     ]
-    # )
-    # loop_03.add_children(
-    #     [
-    #         TraceLineCam(name="trace opposite edge", power=40, pid_p=2.5, pid_i=0.0011, pid_d=0.15,
-    #                      gs_min=0, gs_max=80, trace_side=TraceSide.OPPOSITE),
-    #         IsJunction(name="scan joined junction", target_state = JState.JOINED),
-    #     ]
-    # )
-    # loop_04.add_children(
-    #     [
-    #         TraceLineCam(name="trace normal edge", power=40, pid_p=2.5, pid_i=0.0015, pid_d=0.1,
-    #                      gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
-    #         IsDistanceEarned(name="check distance", delta_dist = 2000),
-    #     ]
-    # )
-    # loop_05.add_children(
-    #     [
-    #         TraceLineCam(name="trace normal edge", power=40, pid_p=2.5, pid_i=0.0011, pid_d=0.15,
-    #                      gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
-    #         IsJunction(name="scan joined junction", target_state = JState.JOINED),
-    #     ]
-    # )
-    # loop_06.add_children(
-    #     [
-    #         TraceLineCam(name="trace opposite edge", power=40, pid_p=2.5, pid_i=0.0011, pid_d=0.15,
-    #                      gs_min=0, gs_max=80, trace_side=TraceSide.OPPOSITE),
-    #         IsJunction(name="scan joined junction", target_state = JState.JOINED),
-    #     ]
-    # )
-    # loop_07.add_children(
-    #     [
-    #         TraceLineCam(name="trace normal edge", power=40, pid_p=2.5, pid_i=0.0015, pid_d=0.1,
-    #                      gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
-    #         IsDistanceEarned(name="check distance", delta_dist = 600),
-    #     ]
-    # )
-    loop_08.add_children(
-        [
-            TraceLineCam(name="trace normal edge", power=40, pid_p=1.0, pid_i=0.0015, pid_d=0.1,
-                         gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
-            IsDistanceEarned(name="check distance", delta_dist = 1350),
-        ]
-    )
-    loop_09.add_children(
-        [
-            MoveStraightLR(name="move straight 4", right_power=50, left_power=-20, target_distance=200),
-        ]
-    )
-    loop_10.add_children(
-        [
-            MoveStraight(name="back", power=-50, target_distance=15)
-        ]
-    )
-    loop_11.add_children(
-        [
-            MoveStraightLR(name="move straight 4", right_power=-60, left_power=0, target_distance=200),
-        ]
-    )
-    loop_12.add_children(
-        [
-        TraceLineCam(name="trace normal edge", power=30, pid_p=1.0, pid_i=0.0015, pid_d=0.1,
-                         gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
-        IsDistanceEarned(name="check distance", delta_dist = 550),   
-        ]
-    )
-    loop_13.add_children(
-        [
-            MoveStraightLR(name="move straight 4", right_power=-20, left_power=60, target_distance=115),
-        ]
-    )
-    loop_14.add_children(
-        [
-        TraceLineCam(name="trace normal edge", power=25, pid_p=1.0, pid_i=0.0015, pid_d=0.1,
-                         gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
-        IsDistanceEarned(name="check distance", delta_dist = 200),   
-        ]
-    )
-    loop_15.add_children(
-        [
-        TraceLineCam(name="trace normal edge", power=40, pid_p=1.0, pid_i=0.0015, pid_d=0.1,
-                         gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
-        IsDistanceEarned(name="check distance", delta_dist = 1450),
-        ]
-    )
-    loop_16.add_children(
-        [
-        TraceLineCam(name="trace normal edge", power=40, pid_p=1.0, pid_i=0.0015, pid_d=0.1,
-                         gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
-        IsDistanceEarned(name="check distance", delta_dist = 3000),
-        IsRedColorDetected(name="check red color", threshold=12.0), 
-        ]
-    )
-    loop_17.add_children(
+    loop_01.add_children(
         [
         TraceLineCam(name="trace normal edge", power=40, pid_p=1.0, pid_i=0.0015, pid_d=0.1,
                          gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
@@ -641,23 +536,23 @@ def build_behaviour_tree() -> BehaviourTree:
         IsBlueColorDetected(name="check blue color", threshold=12.0), 
         ]
     )
-    loop_18.add_children(
+    loop_02.add_children(
         [
             MoveStraight(name="move straight", power=40, target_distance=90),
         ]
     )
-    loop_19.add_children(
+    loop_03.add_children(
         [
             MoveStraightLR(name="move straight 4", right_power=60, left_power=10, target_distance=250),
         ]
     )
 
-    loop_20.add_children(
+    loop_04.add_children(
         [
             MoveStraight(name="back", power=-50, target_distance=20)
         ]
     )
-    loop_21.add_children(
+    loop_05.add_children(
         [
             MoveStraightLR(name="move straight 4", right_power=-60, left_power=-10, target_distance=180),
         ]
@@ -666,11 +561,11 @@ def build_behaviour_tree() -> BehaviourTree:
         [
             calibration,
             start,
-            # loop_01,
-            # loop_02,
-            # loop_03,
-            # loop_04,
-            # loop_05,
+            loop_01,
+            loop_02,
+            loop_03,
+            loop_04,
+            loop_05,
             # loop_06,
             # loop_07,
             #W-loop_end
@@ -683,11 +578,11 @@ def build_behaviour_tree() -> BehaviourTree:
             # loop_14,
             # loop_15,
             # loop_16,
-            loop_17,
-            loop_18,
-            loop_19,
-            loop_20,
-            loop_21,
+            # loop_17,
+            # loop_18,
+            # loop_19,
+            # loop_20,
+            # loop_21,
             StopNow(name="stop"),
             TheEnd(name="end"),
         ]
