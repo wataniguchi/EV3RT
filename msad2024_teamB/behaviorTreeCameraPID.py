@@ -468,7 +468,7 @@ class IsRedColorDetected(Behaviour):
         red_percentage = g_video.get_red_ratio() * 100.0
         if red_percentage > self.threshold:
             self.logger.info("%+06d %s.red color ratio exceeds threshold: %f" % (g_plotter.get_distance(), self.__class__.__name__, red_percentage))
-            return Status.SUCCESS
+            MoveStraightLR(name="move straight 4", right_power=50, left_power=-20, target_distance=200)
         else:
             return Status.RUNNING
         
