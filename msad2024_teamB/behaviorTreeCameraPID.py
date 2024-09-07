@@ -461,34 +461,35 @@ class IsRedColorDetected(Behaviour):
         self.running = False
         self.start_distance = 0
         self.traveled_distance = 0
+        self.current_distance = None
 
     def update(self) -> Status:
         if not self.running:
             self.running = True
+            self.start_distance = g_plotter.get_distance()  
             self.logger.info("%+06d %s.checking red color ratio with threshold=%f" % (g_plotter.get_distance(), self.__class__.__name__, self.threshold))
         red_percentage = g_video.get_red_ratio() * 100.0
         
-
         if red_percentage > self.threshold:
             self.logger.info("%+06d %s.red color ratio exceeds threshold: %f" % (g_plotter.get_distance(), self.__class__.__name__, red_percentage))
             self.start_distance = g_plotter.get_distance()  
             g_right_motor.set_power(50)
             g_left_motor.set_power(-20)
             self.logger.info("%+06d %s.開始、右パワー=%d、左パワー=%d、目標距離=%d" % (self.start_distance, self.__class__.__name__, 50, -20, 1000))
-
-        current_distance = g_plotter.get_distance()
-        self.traveled_distance = current_distance - self.start_distance
+            self.current_distance = g_plotter.get_distance()
+        
+        self.traveled_distance = self.current_distance - self.start_distance
         print(self.start_distance)
-        print(current_distance)
+        print(self.current_distance)
         print(self.traveled_distance)
         
         if self.traveled_distance >= 50:
             g_right_motor.set_power(0)
             g_left_motor.set_power(0)
             print(self.start_distance)
-            print(current_distance)
+            print(self.current_distance)
             print(self.traveled_distance)
-            self.logger.info("%+06d %s.目標距離に到達" % (current_distance, self.__class__.__name__))
+            self.logger.info("%+06d %s.目標距離に到達" % (self.current_distance, self.__class__.__name__))
             return Status.SUCCESS
         else:
             return Status.RUNNING
