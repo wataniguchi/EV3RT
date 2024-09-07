@@ -920,7 +920,7 @@ class CheckBrackColor(Behaviour):
         self.running = False
     def update(self) -> Status:
         # RGB値を0〜1の範囲に正規化
-        r, g, b = [x / 255.0 for x in g_color_sensor.get_raw_color()]
+        r, g, b = [g_color_sensor.get_raw_color()]
         # # RGBをHSVに変換
         # h, s, v = colorsys.rgb_to_hsv(r, g, b)
         # # Hueの値が青色の範囲（例: 180度〜250度程度）にあるかをチェック
@@ -945,7 +945,7 @@ class CheckBrackColor(Behaviour):
             diff_g = now_color[1] - g
             diff_b = now_color[2] - b
 
-            if diff_r>=0.3 and diff_g>=0.3 and diff_b>=0.3:
+            if diff_r>=100 :
                 return Status.SUCCESS
 
             now_color = [r,g,b]
