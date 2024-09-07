@@ -691,6 +691,9 @@ g_video: Video = None
 g_video_thread: threading.Thread = None
 g_course: int = 0
 
+#色を格納
+now_color = []
+
 # py_trees.behaviour.Behaviourのサブクラス
 
 # 何もせずに待機する。ビヘイビアツリーの最終ノードとして指定する。
@@ -909,6 +912,37 @@ class CheckColor(Behaviour):
             return Status.SUCCESS
         else:
             return Status.RUNNING
+        
+class CheckBrackColor(Behaviour):
+    def __init__(self, name: str):
+        super(CheckBrackColor, self).__init__(name)
+        self.logger.debug("%s.__init__()" % (self.__class__.__name__))
+    def update(self) -> Status:
+        # RGB値を0〜1の範囲に正規化
+        r, g, b = [x / 255.0 for x in g_color_sensor.get_raw_color()]
+        # # RGBをHSVに変換
+        # h, s, v = colorsys.rgb_to_hsv(r, g, b)
+        # # Hueの値が青色の範囲（例: 180度〜250度程度）にあるかをチェック
+        # # Hueは0.0〜1.0の範囲で返されるので、360度に換算する
+        # h_degrees = h * 360
+
+        # 青色の範囲をチェック
+        # if 200 <= h_degrees <= 245 and s > 0.3 and v > 0.2:
+        #     return Status.SUCCESS
+        # else:
+        #     return Status.RUNNING
+        if not now_color:
+            now_color = [r,g,b]
+        else:
+            diff_r = now_color[0] - r
+            diff_g = now_color[1] - g
+            diff_b = now_color[2] - b
+
+            if diff_r>=100 and diff_g>=100 and diff_b>=100:
+                return Status.SUCCESS
+
+        return Status.RUNNING
+
 
 class RotateDegrees(Behaviour):
     def __init__(self, name: str, power: int, target_angle: int):
@@ -1088,6 +1122,7 @@ def build_behaviour_tree() -> BehaviourTree:
     loop_03 = Parallel(name="loop 03", policy=ParallelPolicy.SuccessOnOne())
     loop_04 = Parallel(name="loop 04", policy=ParallelPolicy.SuccessOnOne())
     loop_05 = Parallel(name="loop 05", policy=ParallelPolicy.SuccessOnOne())
+    loop_06 = Parallel(name="loop 06", policy=ParallelPolicy.SuccessOnOne())
     
     # シーケンスノードとして以下の動作を順序実行する。
     # a.アームを一杯下げる
@@ -1134,6 +1169,12 @@ def build_behaviour_tree() -> BehaviourTree:
     loop_05.add_children(
         [
             RotateDegrees(name="rotate90",power=40,target_angle=90),
+        ]
+    )
+    loop_06.add_children(
+        [
+            RunAsInstructed(name="go straight",pwm_l=40,pwm_r=40),
+            CheckBrackColor(name="checkBrackColor")
         ]
     )
     root.add_children(
