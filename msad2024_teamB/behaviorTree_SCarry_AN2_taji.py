@@ -330,7 +330,7 @@ class IsColorDetected(Behaviour):
         self.logger.info("%+06d %s.nowcolor r=%d g=%d b=%d" % (g_plotter.get_distance(), self.__class__.__name__, color[0], color[1], color[2]))
         #Blue判定
         if self.name == "blue" :
-            if((color[2] - color[0]>45) & (color[0] <= 200) & (color[1] <= 200)):
+            if((color[2] - color[0]>45) & (100 <= color[0] <= 200) & (100 < color[1] <= 200) & (100 < color[1] <= 255)):
             #if((color[2] - color[0]>45) & (color[2] <=255) & (color[0] <=255)):
                 self.logger.info("%+06d %s.detected blue" % (g_plotter.get_distance(), self.__class__.__name__))
                 self.logger.info("%+06d %s.blue r=%d g=%d b=%d" % (g_plotter.get_distance(), self.__class__.__name__, color[0], color[1], color[2]))
