@@ -522,6 +522,7 @@ class IsDistanceEarned_after(Behaviour):
         self.delta_dist = delta_dist
         self.running = False
         self.earned = False
+        self.g_dist = g_dist
 
     def update(self) -> Status:
         if not self.running:
@@ -537,7 +538,7 @@ class IsDistanceEarned_after(Behaviour):
             g_dist = 1300
             Status.SUCCESS
         else:
-            print(g_dist)
+            print(self.g_dist)
             return Status.RUNNING
 def build_behaviour_tree() -> BehaviourTree:
     root = Sequence(name="competition", memory=True)
