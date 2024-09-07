@@ -527,10 +527,11 @@ class IsDistanceEarned_before(Behaviour):
             return Status.RUNNING
 
 class IsDistanceEarned_after(Behaviour):
-    def __init__(self, name: str, delta_dist: int):
+    def __init__(self, name: str):
+        global g_dist
         super(IsDistanceEarned_after, self).__init__(name)
         self.logger.debug("%s.__init__()" % (self.__class__.__name__))
-        self.delta_dist = delta_dist
+        self.delta_dist = g_dist
         self.running = False
         self.earned = False
 
@@ -541,6 +542,7 @@ class IsDistanceEarned_after(Behaviour):
             self.logger.info("%+06d %s.accumulation started for delta=%d" % (self.orig_dist, self.__class__.__name__, self.delta_dist))
         cur_dist = g_plotter.get_distance()
         earned_dist = cur_dist - self.orig_dist
+        print(self.delta_dist)
         if (earned_dist >= self.delta_dist or -earned_dist <= -self.delta_dist):
             if not self.earned:
                 self.earned = True
@@ -618,7 +620,7 @@ def build_behaviour_tree() -> BehaviourTree:
     loop_06.add_children(
         [
         TraceLineCam(name="trace normal edge", power=40, pid_p=1.0, pid_i=0.0015, pid_d=0.1,gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
-        IsDistanceEarned_after(name="check distance", delta_dist = g_dist),
+        IsDistanceEarned_after(name="check distance"),
         ]
     )
     root.add_children(
