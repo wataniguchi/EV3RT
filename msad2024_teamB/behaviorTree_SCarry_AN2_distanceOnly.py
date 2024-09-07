@@ -318,17 +318,17 @@ class TraceLineCam(Behaviour):
 
 # 旧Wループプログラムから流用　devMTajiriから拝借
 class IsColorDetected(Behaviour):
-    def __init__(self, name: str, colorname: Color):
+    def __init__(self, name: str):
         super(IsColorDetected, self).__init__(name)
         self.logger.debug("%s.__init__()" % (self.__class__.__name__))
-        self.colorname = None
+        self.name = None
 
     def update(self) -> Status:
         global g_color_sensor
         #RGBの値を取得
         color = g_color_sensor.get_raw_color
         #Blue判定
-        if self.colorname == Color.BLUE :
+        if self.name == "blue" :
             if(color[2] - color[0]>45 & color[2] <=255 & color[0] <=255):
                 self.logger.info("%+06d %s.detected blue" % (g_plotter.get_distance(), self.__class__.__name__))
                 return Status.SUCCESS
@@ -336,7 +336,7 @@ class IsColorDetected(Behaviour):
                 #指定色でないならRUNNINGを返却
                 return Status.RUNNING
         #Black判定
-        if self.colorname == Color.BLACK :
+        if self.name == "black" :
             if(color[2] < 100 & color[1] < 100 & color[0] < 100):
                 self.logger.info("%+06d %s.detected black" % (g_plotter.get_distance(), self.__class__.__name__))
                 return Status.SUCCESS
@@ -413,26 +413,6 @@ class MoveStraightLR(Behaviour):
         else:
             return Status.RUNNING
 
-# 旧Wループプログラムから流用 devMTajiri から借用
-
-class IsColorDetected(Behaviour):
-    def __init__(self, name: str):
-        super(IsColorDetected, self).__init__(name)
-        self.logger.debug("%s.__init__()" % (self.__class__.__name__))
-
-    def update(self) -> Status:
-        #global g_color_sensor
-        #RGBの値を取得
-        color = g_color_sensor.get_raw_color()
-        #Blue判定
-        if((color[2] - color[0]>45) & (color[2] <=255) & (color[0] <=255)):
-        #if color(2) - color(0) > 45 and color(2) <= 255 and color(0) <= 255:
-            self.logger.info("%+06d %s.detected blue" % (g_plotter.get_distance(), self.__class__.__name__))
-            return Status.SUCCESS
-        else:
-            #指定色でないならRUNNINGを返却
-            return Status.RUNNING
-        
 class Bottlecatch(Behaviour):
     def __init__(self, name: str, target_state: BState) -> None:
         super(Bottlecatch, self).__init__(name)
