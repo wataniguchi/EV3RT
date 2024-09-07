@@ -67,6 +67,7 @@ g_gyro_sensor: GyroSensor = None
 g_video: Video = None
 g_video_thread: threading.Thread = None
 g_course: int = 0
+g_count: int = 0
 
 
 class TheEnd(Behaviour):
@@ -330,11 +331,15 @@ class IsColorDetected(Behaviour):
         self.logger.info("%+06d %s.nowcolor r=%d g=%d b=%d" % (g_plotter.get_distance(), self.__class__.__name__, color[0], color[1], color[2]))
         #Blue判定
         if self.name == "blue" :
-            if((color[2] - color[0]>35) & (100 <= color[0] <= 256) & (100 < color[1] <= 256) & (100 < color[2] <= 256)):
+            if((color[2] - color[0]> 40) & (100 <= color[0] <= 256) & (100 < color[1] <= 256) & (100 < color[2] <= 256)):
+                g_count += 1
             #if((color[2] - color[0]>45) & (color[2] <=255) & (color[0] <=255)):
                 self.logger.info("%+06d %s.detected blue" % (g_plotter.get_distance(), self.__class__.__name__))
-                self.logger.info("%+06d %s.blue r=%d g=%d b=%d" % (g_plotter.get_distance(), self.__class__.__name__, color[0], color[1], color[2]))
-                return Status.SUCCESS
+                if g_count == 7 :
+                    self.logger.info("%+06d %s.blue r=%d g=%d b=%d" % (g_plotter.get_distance(), self.__class__.__name__, color[0], color[1], color[2]))
+                    return Status.SUCCESS
+                else:
+                    return Status.RUNNING
             else:
                 #指定色でないならRUNNINGを返却
                 return Status.RUNNING
