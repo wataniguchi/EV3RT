@@ -476,8 +476,8 @@ class IsRedColorDetected(Behaviour):
             g_right_motor.set_power(50)
             g_left_motor.set_power(-20)
             self.logger.info("%+06d %s.開始、右パワー=%d、左パワー=%d、目標距離=%d" % (self.start_distance, self.__class__.__name__, 50, -20, 1000))
-            self.current_distance = g_plotter.get_distance()
         
+        self.current_distance = g_plotter.get_distance()
         self.traveled_distance = self.current_distance - self.start_distance
         print(self.start_distance)
         print(self.current_distance)
