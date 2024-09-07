@@ -917,6 +917,7 @@ class CheckBrackColor(Behaviour):
     def __init__(self, name: str):
         super(CheckBrackColor, self).__init__(name)
         self.logger.debug("%s.__init__()" % (self.__class__.__name__))
+        self.running = False
     def update(self) -> Status:
         # RGB値を0〜1の範囲に正規化
         r, g, b = [x / 255.0 for x in g_color_sensor.get_raw_color()]
