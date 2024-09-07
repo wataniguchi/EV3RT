@@ -508,9 +508,9 @@ class IsDistanceEarned_before(Behaviour):
         self.logger.debug("%s.__init__()" % (self.__class__.__name__))
         self.delta_dist = delta_dist
         self.running = False
-        global g_earned_dist
 
     def update(self) -> Status:
+        global g_earned_dist
         if not self.running:
             self.running = True
             self.orig_dist = g_plotter.get_distance()
