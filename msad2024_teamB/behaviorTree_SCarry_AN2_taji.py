@@ -330,7 +330,7 @@ class IsColorDetected(Behaviour):
         self.logger.info("%+06d %s.nowcolor r=%d g=%d b=%d" % (g_plotter.get_distance(), self.__class__.__name__, color[0], color[1], color[2]))
         #Blue判定
         if self.name == "blue" :
-            if((color[2] - color[0]>35) & (100 <= color[0] <= 256) & (100 < color[1] <= 256) & (100 < color[2] <= 256)):
+            if((color[2] - color[0]>40) & (100 <= color[0] <= 256) & (100 < color[1] <= 256) & (100 < color[2] <= 256)):
             #if((color[2] - color[0]>45) & (color[2] <=255) & (color[0] <=255)):
                 self.logger.info("%+06d %s.detected blue" % (g_plotter.get_distance(), self.__class__.__name__))
                 self.logger.info("%+06d %s.blue r=%d g=%d b=%d" % (g_plotter.get_distance(), self.__class__.__name__, color[0], color[1], color[2]))
@@ -643,7 +643,7 @@ def build_behaviour_tree() -> BehaviourTree:
     # ボトル取得からサークルへ配置
     step_02B.add_children(
         [
-            MoveStraightLR(name="Turn 1", right_power=15, left_power=88, target_distance=180),
+            MoveStraightLR(name="Turn 1", right_power=15, left_power=90, target_distance=180),
             MoveStraight(name="free run 2", power=70, target_distance=1250)
             # color sensor add
         ]
