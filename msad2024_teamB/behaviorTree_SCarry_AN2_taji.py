@@ -67,7 +67,6 @@ g_gyro_sensor: GyroSensor = None
 g_video: Video = None
 g_video_thread: threading.Thread = None
 g_course: int = 0
-g_count: int = 0
 
 
 class TheEnd(Behaviour):
@@ -326,7 +325,6 @@ class IsColorDetected(Behaviour):
 
     def update(self) -> Status:
         global g_color_sensor
-        global g_count
         #RGBの値を取得
         color = g_color_sensor.get_raw_color()
         self.logger.info("%+06d %s.nowcolor r=%d g=%d b=%d" % (g_plotter.get_distance(), self.__class__.__name__, color[0], color[1], color[2]))
@@ -334,14 +332,9 @@ class IsColorDetected(Behaviour):
         if self.name == "blue" :
             if((color[2] - color[0]>40) & (100 <= color[0] <= 256) & (100 < color[1] <= 256) & (100 < color[2] <= 256)):
             #if((color[2] - color[0]>45) & (color[2] <=255) & (color[0] <=255)):
-                g_count += 1
-                if g_count == 7 :
-                    self.logger.info("%+06d %s.blue r=%d g=%d b=%d" % (g_plotter.get_distance(), self.__class__.__name__, color[0], color[1], color[2]))
-                    self.logger.info("%+06d %s.detected blue" % (g_plotter.get_distance(), self.__class__.__name__))
-                    return Status.SUCCESS
-                else:
-                    self.logger.info("%+06d %s.blue count:%d" % (g_plotter.get_distance(), self.__class__.__name__, g_count))
-                    return Status.RUNNING
+                self.logger.info("%+06d %s.blue r=%d g=%d b=%d" % (g_plotter.get_distance(), self.__class__.__name__, color[0], color[1], color[2]))
+                self.logger.info("%+06d %s.detected blue" % (g_plotter.get_distance(), self.__class__.__name__))
+                return Status.SUCCESS
             else:
                 #指定色でないならRUNNINGを返却
                 return Status.RUNNING
@@ -680,7 +673,7 @@ def build_behaviour_tree() -> BehaviourTree:
             #MoveStraightLR(name="Turn 3", right_power=70, left_power=35, target_distance=200),
             TraceLineCam(name="trace center edge", power=40, pid_p=2.5, pid_i=0.0015, pid_d=0.1,
                          gs_min=0, gs_max=80, trace_side=TraceSide.CENTER),
-            IsDistanceEarned(name="check distance 1", delta_dist = 1500),
+            IsDistanceEarned(name="check distance 1", delta_dist = 650),
             # color sensor add
             IsColorDetected(name="blue")
         ]
