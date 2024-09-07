@@ -660,13 +660,54 @@ def build_behaviour_tree() -> BehaviourTree:
 
     loop_12.add_children(
         [
-            MoveStraight(name="back", power=-30, target_distance=200)
+            MoveStraight(name="back", power=-30, target_distance=300)
         ]
     )
 
     loop_13.add_children(
         [
             MoveStraightLR(name="move straight 4", right_power=10, left_power=60, target_distance=200),
+        ]
+    )
+    loop_14.add_children(
+        [
+        TraceLineCam(name="trace normal edge", power=40, pid_p=1.0, pid_i=0.0015, pid_d=0.1,
+                         gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
+        IsDistanceEarned_before(name="check distance", delta_dist = 3000),
+        IsRedColorDetected(name="check red color", threshold=12.0), 
+        IsBlueColorDetected(name="check blue color", threshold=12.0), 
+        ]
+    )
+    loop_15.add_children(
+        [
+            MoveStraight(name="move straight", power=40, target_distance=90),
+        ]
+    )
+    loop_16.add_children(
+        [
+            MoveStraightLR(name="move straight 4", right_power=60, left_power=10, target_distance=250),
+        ]
+    )
+
+    loop_17.add_children(
+        [
+            MoveStraight(name="back", power=-50, target_distance=20)
+        ]
+    )
+    loop_18.add_children(
+        [
+            MoveStraightLR(name="move straight 4", right_power=-60, left_power=-10, target_distance=180),
+        ]
+    )
+    loop_19.add_children(
+        [
+            MoveStraight(name="back", power=-50, target_distance=50)
+        ]
+    )
+    loop_20.add_children(
+        [
+        TraceLineCam(name="trace normal edge", power=40, pid_p=1.0, pid_i=0.0015, pid_d=0.1,gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
+        IsDistanceEarned_after(name="check distance"),
         ]
     )
     root.add_children(
@@ -687,13 +728,13 @@ def build_behaviour_tree() -> BehaviourTree:
             loop_11,
             loop_12,
             loop_13,
-            # loop_14,
-            # loop_15,
-            # loop_16,
-            # loop_17,
-            # loop_18,
-            # loop_19,
-            # loop_20,
+            loop_14,
+            loop_15,
+            loop_16,
+            loop_17,
+            loop_18,
+            loop_19,
+            loop_20,
             # loop_21,
             StopNow(name="stop"),
             TheEnd(name="end"),
