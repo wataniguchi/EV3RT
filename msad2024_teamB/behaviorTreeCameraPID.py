@@ -528,22 +528,21 @@ class IsDistanceEarned_before(Behaviour):
 
 class IsDistanceEarned_after(Behaviour):
     def __init__(self, name: str):
-        global g_dist
         super(IsDistanceEarned_after, self).__init__(name)
         self.logger.debug("%s.__init__()" % (self.__class__.__name__))
-        self.delta_dist = g_dist
         self.running = False
         self.earned = False
 
     def update(self) -> Status:
+        global g_dist
         if not self.running:
             self.running = True
             self.orig_dist = g_plotter.get_distance()
-            self.logger.info("%+06d %s.accumulation started for delta=%d" % (self.orig_dist, self.__class__.__name__, self.delta_dist))
+            self.logger.info("%+06d %s.accumulation started for delta=%d" % (self.orig_dist, self.__class__.__name__, g_dist))
         cur_dist = g_plotter.get_distance()
         earned_dist = cur_dist - self.orig_dist
-        print(self.delta_dist)
-        if (earned_dist >= self.delta_dist or -earned_dist <= -self.delta_dist):
+        print(g_dist)
+        if (earned_dist >= g_dist or -earned_dist <= -g_dist):
             if not self.earned:
                 self.earned = True
                 self.logger.info("%+06d %s.delta distance earned" % (cur_dist, self.__class__.__name__))
