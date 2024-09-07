@@ -473,8 +473,8 @@ class IsRedColorDetected(Behaviour):
             self.logger.info("%+06d %s.red color ratio exceeds threshold: %f" % (g_plotter.get_distance(), self.__class__.__name__, red_percentage))
 
             g_dist = g_dist - g_earned_dist
-            # print(g_earned_dist)
-            # print(g_dist)
+            print("g_earned_dist:"+ g_earned_dist)
+            print("g_dist:"+ g_dist)
             return Status.SUCCESS
         else:
             return Status.RUNNING
