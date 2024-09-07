@@ -597,7 +597,7 @@ def build_behaviour_tree() -> BehaviourTree:
             #IsDistanceEarned(name="check distance 1", delta_dist = 200),
             #Bottlecatch(name="trace CATCHED", target_state = BState.CATCHED),
             #Bottlecatch(name="linetrace", target_state = BState.LINE)
-            IsDistanceEarned(name="check distance 1", delta_dist = 500)
+            IsDistanceEarned(name="check distance 1", delta_dist = 470)
         ]
     )
 
@@ -643,7 +643,7 @@ def build_behaviour_tree() -> BehaviourTree:
     # ボトル取得からサークルへ配置
     step_02B.add_children(
         [
-            MoveStraightLR(name="Turn 1", right_power=0, left_power=65, target_distance=200),
+            MoveStraightLR(name="Turn 1", right_power=0, left_power=65, target_distance=180),
             MoveStraight(name="free run 2", power=70, target_distance=1250)
             # color sensor add
         ]
