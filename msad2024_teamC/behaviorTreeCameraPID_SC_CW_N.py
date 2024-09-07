@@ -1087,6 +1087,7 @@ def build_behaviour_tree() -> BehaviourTree:
     loop_02 = Parallel(name="loop 02", policy=ParallelPolicy.SuccessOnOne())
     loop_03 = Parallel(name="loop 03", policy=ParallelPolicy.SuccessOnOne())
     loop_04 = Parallel(name="loop 04", policy=ParallelPolicy.SuccessOnOne())
+    loop_05 = Parallel(name="loop 05", policy=ParallelPolicy.SuccessOnOne())
     
     # シーケンスノードとして以下の動作を順序実行する。
     # a.アームを一杯下げる
@@ -1109,7 +1110,7 @@ def build_behaviour_tree() -> BehaviourTree:
     loop_01.add_children(
         [
             RunAsInstructed(name="go straight",pwm_l=40,pwm_r=40),
-            IsDistanceEarned(name="check distance", delta_dist = 100),
+            IsDistanceEarned(name="check distance", delta_dist = 200),
         ]
     )
     loop_02.add_children(
@@ -1130,6 +1131,11 @@ def build_behaviour_tree() -> BehaviourTree:
             IsDistanceEarned(name="check distance", delta_dist = 300),
         ]
     )
+    loop_05.add_children(
+        [
+            RotateDegrees(name="rotate90",power=40,target_angle=90),
+        ]
+    )
     root.add_children(
         [
             calibration,
@@ -1138,6 +1144,7 @@ def build_behaviour_tree() -> BehaviourTree:
             loop_02,
             loop_03,
             loop_04,
+            loop_05,
             StopNow(name="stop"),
             TheEnd(name="end"),
         ]
