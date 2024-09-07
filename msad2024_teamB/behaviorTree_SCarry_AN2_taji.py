@@ -340,7 +340,7 @@ class IsColorDetected(Behaviour):
                     self.logger.info("%+06d %s.detected blue" % (g_plotter.get_distance(), self.__class__.__name__))
                     return Status.SUCCESS
                 else:
-                    self.logger.info("%+06d %s.blue_COUNT:%d" % (g_plotter.get_distance(), self.__class__.__name__), g_count)
+                    self.logger.info("%+06d %s.blue count:%d" % (g_plotter.get_distance(), self.__class__.__name__, g_count))
                     return Status.RUNNING
             else:
                 #指定色でないならRUNNINGを返却
