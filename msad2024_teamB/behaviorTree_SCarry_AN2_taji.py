@@ -339,9 +339,10 @@ class IsColorDetected(Behaviour):
                 return Status.RUNNING
         #Black判定
         if self.name == "black" :
-            if((color[2] < 50) & (color[1] < 50) & (color[0] < 50)):
+            if((color[2] < 100) & (color[1] < 100) & (color[0] < 100)):
             #if(color[2] < 100 & color[1] < 100 & color[0] < 100):
                 self.logger.info("%+06d %s.detected black" % (g_plotter.get_distance(), self.__class__.__name__))
+                self.logger.info("%+06d %s.black r=%d g=%d b=%d" % (g_plotter.get_distance(), self.__class__.__name__, color[0], color[1], color[2]))
                 return Status.SUCCESS
             else:
                 #指定色でないならRUNNINGを返却
