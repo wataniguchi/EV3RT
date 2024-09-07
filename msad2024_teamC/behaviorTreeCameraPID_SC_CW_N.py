@@ -1186,6 +1186,7 @@ def build_behaviour_tree() -> BehaviourTree:
             loop_03,
             loop_04,
             loop_05,
+            loop_06,
             StopNow(name="stop"),
             TheEnd(name="end"),
         ]
