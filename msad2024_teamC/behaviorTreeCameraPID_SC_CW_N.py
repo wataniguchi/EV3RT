@@ -945,9 +945,10 @@ class CheckBrackColor(Behaviour):
             diff_g = now_color[1] - g
             diff_b = now_color[2] - b
 
-            if diff_r>=100 and diff_g>=100 and diff_b>=100:
+            if diff_r>=0.3 and diff_g>=0.3 and diff_b>=0.3:
                 return Status.SUCCESS
 
+            now_color = [r,g,b]
         return Status.RUNNING
 
 
