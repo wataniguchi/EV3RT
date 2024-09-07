@@ -459,41 +459,16 @@ class IsRedColorDetected(Behaviour):
         super(IsRedColorDetected, self).__init__(name)
         self.threshold = threshold
         self.running = False
-        self.start_distance = 0
-        self.traveled_distance = 0
-        self.current_distance = 0
 
     def update(self) -> Status:
         if not self.running:
             self.running = True
-            self.start_distance = g_plotter.get_distance()  
             self.logger.info("%+06d %s.checking red color ratio with threshold=%f" % (g_plotter.get_distance(), self.__class__.__name__, self.threshold))
-        red_percentage = g_video.get_red_ratio() * 100.0
-        
+
+        red_percentage = g_video.get_red_ratio() * 100
         if red_percentage > self.threshold:
             self.logger.info("%+06d %s.red color ratio exceeds threshold: %f" % (g_plotter.get_distance(), self.__class__.__name__, red_percentage))
-            self.start_distance = g_plotter.get_distance()  
-            g_right_motor.set_power(50)
-            g_left_motor.set_power(-20)
-            self.logger.info("%+06d %s.開始、右パワー=%d、左パワー=%d、目標距離=%d" % (self.start_distance, self.__class__.__name__, 50, -20, 1000))
-        
-        self.current_distance = g_plotter.get_distance()
-        self.traveled_distance = self.current_distance - self.start_distance
-        print(self.start_distance)
-        print(self.current_distance)
-        print(self.traveled_distance)
-        
-        if not self.start_distance == 0:
-            if self.traveled_distance >= 50:
-                g_right_motor.set_power(0)
-                g_left_motor.set_power(0)
-                print(self.start_distance)
-                print(self.current_distance)
-                print(self.traveled_distance)
-                self.logger.info("%+06d %s.目標距離に到達" % (self.current_distance, self.__class__.__name__))
-                return Status.SUCCESS
-            else:
-                return Status.RUNNING
+            return Status.SUCCESS
         else:
             return Status.RUNNING
         
@@ -662,6 +637,7 @@ def build_behaviour_tree() -> BehaviourTree:
         TraceLineCam(name="trace normal edge", power=40, pid_p=1.0, pid_i=0.0015, pid_d=0.1,
                          gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
         IsDistanceEarned(name="check distance", delta_dist = 3000),
+        IsRedColorDetected(name="check red color", threshold=12.0), 
         IsBlueColorDetected(name="check blue color", threshold=10.0), 
         ]
     )
