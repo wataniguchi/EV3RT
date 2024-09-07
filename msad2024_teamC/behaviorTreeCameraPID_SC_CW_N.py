@@ -1108,7 +1108,13 @@ def build_behaviour_tree() -> BehaviourTree:
     # ライントレース
     loop_01.add_children(
         [
-            TraceLineCam(name="trace normal edge", power=40, pid_p=1.5, pid_i=0.0015, pid_d=0.1, gs_min=0, gs_max=80, trace_side=TraceSide.op),
+            RunAsInstructed(name="go straight",pwm_l=40,pwm_r=40),
+            IsDistanceEarned(name="check distance", delta_dist = 100),
+        ]
+    )
+    loop_02.add_children(
+        [
+            TraceLineCam(name="trace normal edge", power=40, pid_p=1.5, pid_i=0.0015, pid_d=0.1, gs_min=0, gs_max=80, trace_side=TraceSide.OPPOSITE),
             IsDistanceEarned(name="check distance", delta_dist = 1000),
         ]
     )
@@ -1117,7 +1123,7 @@ def build_behaviour_tree() -> BehaviourTree:
             calibration,
             start,
             loop_01,
-            # loop_02,
+            loop_02,
             # loop_03,
             # loop_04,
             StopNow(name="stop"),
