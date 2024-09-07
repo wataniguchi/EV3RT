@@ -579,6 +579,8 @@ def build_behaviour_tree() -> BehaviourTree:
     loop_19 = Parallel(name="loop 19", policy=ParallelPolicy.SuccessOnOne())
     loop_20 = Parallel(name="loop 20", policy=ParallelPolicy.SuccessOnOne())
     loop_21 = Parallel(name="loop 20", policy=ParallelPolicy.SuccessOnOne())
+    loop_22 = Parallel(name="loop 20", policy=ParallelPolicy.SuccessOnOne())
+    loop_23 = Parallel(name="loop 20", policy=ParallelPolicy.SuccessOnOne())
     calibration.add_children(
         [
             ArmUpDownFull(name="arm down", direction=ArmDirection.DOWN),
@@ -710,6 +712,22 @@ def build_behaviour_tree() -> BehaviourTree:
         IsDistanceEarned_after(name="check distance"),
         ]
     )
+    loop_21.add_children(
+        [
+            MoveStraight(name="move straight", power=40, target_distance=300),
+        ]
+    )
+    loop_22.add_children(
+        [
+            MoveStraight(name="back", power=-50, target_distance=200)
+        ]
+    )
+
+    loop_23.add_children(
+        [
+            MoveStraightLR(name="move straight 4", right_power=10, left_power=60, target_distance=200),
+        ]
+    )
     root.add_children(
         [
             calibration,
@@ -735,7 +753,9 @@ def build_behaviour_tree() -> BehaviourTree:
             loop_18,
             loop_19,
             loop_20,
-            # loop_21,
+            loop_21,
+            loop_22,
+            loop_23,
             StopNow(name="stop"),
             TheEnd(name="end"),
         ]
