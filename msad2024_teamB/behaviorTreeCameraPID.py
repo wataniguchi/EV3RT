@@ -493,7 +493,7 @@ class IsBlueColorDetected(Behaviour):
 
 class IsDistanceEarned_before(Behaviour):
     def __init__(self, name: str, delta_dist: int):
-        super(IsDistanceEarned, self).__init__(name)
+        super(IsDistanceEarned_before, self).__init__(name)
         self.logger.debug("%s.__init__()" % (self.__class__.__name__))
         self.delta_dist = delta_dist
         self.running = False
@@ -517,7 +517,7 @@ class IsDistanceEarned_before(Behaviour):
 
 class IsDistanceEarned_after(Behaviour):
     def __init__(self, name: str, delta_dist: int):
-        super(IsDistanceEarned, self).__init__(name)
+        super(IsDistanceEarned_after, self).__init__(name)
         self.logger.debug("%s.__init__()" % (self.__class__.__name__))
         self.delta_dist = delta_dist
         self.running = False
