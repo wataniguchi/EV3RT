@@ -1131,6 +1131,8 @@ def build_behaviour_tree() -> BehaviourTree:
     loop_04 = Parallel(name="loop 04", policy=ParallelPolicy.SuccessOnOne())
     loop_05 = Parallel(name="loop 05", policy=ParallelPolicy.SuccessOnOne())
     loop_06 = Parallel(name="loop 06", policy=ParallelPolicy.SuccessOnOne())
+    loop_07 = Parallel(name="loop 06", policy=ParallelPolicy.SuccessOnOne())
+    loop_08 = Parallel(name="loop 06", policy=ParallelPolicy.SuccessOnOne())
     
     # シーケンスノードとして以下の動作を順序実行する。
     # a.アームを一杯下げる
@@ -1185,6 +1187,16 @@ def build_behaviour_tree() -> BehaviourTree:
             CheckBrackColor(name="checkBrackColor")
         ]
     )
+    loop_07.add_children(
+        [
+            RotateDegrees(name="rotate60",target_angle=60)
+        ]
+    )
+    loop_08.add_children(
+        [
+            TraceLineCam(name="trace normal edge", power=40, pid_p=1.5, pid_i=0.0015, pid_d=0.1, gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
+        ]
+    )
     root.add_children(
         [
             calibration,
@@ -1195,6 +1207,8 @@ def build_behaviour_tree() -> BehaviourTree:
             loop_04,
             loop_05,
             loop_06,
+            loop_07,
+            loop_08,
             StopNow(name="stop"),
             TheEnd(name="end"),
         ]
