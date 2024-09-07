@@ -637,7 +637,7 @@ def build_behaviour_tree() -> BehaviourTree:
             MoveStraight(name="back", power=-30, target_distance=200)
         ]
     )
-    loop_01.add_children(
+    loop_09.add_children(
         [
         TraceLineCam(name="trace normal edge", power=40, pid_p=1.0, pid_i=0.0015, pid_d=0.1,
                          gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
