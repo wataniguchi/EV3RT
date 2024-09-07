@@ -321,7 +321,6 @@ class IsColorDetected(Behaviour):
     def __init__(self, name: str):
         super(IsColorDetected, self).__init__(name)
         self.logger.debug("%s.__init__()" % (self.__class__.__name__))
-        self.name = None
 
     def update(self) -> Status:
         global g_color_sensor
