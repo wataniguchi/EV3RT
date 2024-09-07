@@ -945,6 +945,7 @@ class CheckBrackColor(Behaviour):
             diff_g = now_color[1] - g
             diff_b = now_color[2] - b
 
+            self.logger.debug('diff_r:{}'.format(diff_r))
             if diff_r>=60 :
                 return Status.SUCCESS
 
