@@ -543,12 +543,17 @@ class IsDistanceEarned_after(Behaviour):
         earned_dist = cur_dist - self.orig_dist
         print(g_dist)
         if (earned_dist >= g_dist or -earned_dist <= -g_dist):
+            print(1)
             if not self.earned:
+                print(2)
                 self.earned = True
                 self.logger.info("%+06d %s.delta distance earned" % (cur_dist, self.__class__.__name__))
+                print(3)
             Status.SUCCESS
         else:
+            print(4)
             return Status.RUNNING
+        
 def build_behaviour_tree() -> BehaviourTree:
     root = Sequence(name="competition", memory=True)
     calibration = Sequence(name="calibration", memory=True)
