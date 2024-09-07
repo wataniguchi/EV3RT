@@ -469,7 +469,6 @@ class IsRedColorDetected(Behaviour):
         if red_percentage > self.threshold:
             self.logger.info("%+06d %s.red color ratio exceeds threshold: %f" % (g_plotter.get_distance(), self.__class__.__name__, red_percentage))
             MoveStraightLR(name="move straight 4", right_power=50, left_power=-20, target_distance=200)
-            return Status.SUCCESS
         else:
             return Status.RUNNING
         
@@ -625,7 +624,7 @@ def build_behaviour_tree() -> BehaviourTree:
         [
         TraceLineCam(name="trace normal edge", power=40, pid_p=1.0, pid_i=0.0015, pid_d=0.1,
                          gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
-        IsDistanceEarned(name="check distance", delta_dist = 3000),
+        IsDistanceEarned(name="check distance", delta_dist = 1000),
         IsRedColorDetected(name="check red color", threshold=12.0), 
         ]
     )
