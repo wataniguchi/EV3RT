@@ -473,8 +473,8 @@ class IsRedColorDetected(Behaviour):
             self.logger.info("%+06d %s.red color ratio exceeds threshold: %f" % (g_plotter.get_distance(), self.__class__.__name__, red_percentage))
 
             g_dist = g_dist - g_earned_dist
-            print("g_earned_dist:"+ str(g_earned_dist))
-            print("g_dist:"+ str(g_dist))
+            # print("g_earned_dist:"+ str(g_earned_dist))
+            # print("g_dist:"+ str(g_dist))
             return Status.SUCCESS
         else:
             return Status.RUNNING
@@ -496,8 +496,8 @@ class IsBlueColorDetected(Behaviour):
         if blue_percentage > self.threshold:
             self.logger.info("%+06d %s.blue color ratio exceeds threshold: %f" % (g_plotter.get_distance(), self.__class__.__name__, blue_percentage))
             g_dist = g_dist - g_earned_dist
-            print("g_earned_dist:"+ str(g_earned_dist))
-            print("g_dist:"+ str(g_dist))
+            # print("g_earned_dist:"+ str(g_earned_dist))
+            # print("g_dist:"+ str(g_dist))
             return Status.SUCCESS
         else:
             return Status.RUNNING
@@ -541,7 +541,7 @@ class IsDistanceEarned_after(Behaviour):
             self.logger.info("%+06d %s.accumulation started for delta=%d" % (self.orig_dist, self.__class__.__name__, g_dist))
         cur_dist = g_plotter.get_distance()
         earned_dist = cur_dist - self.orig_dist
-        print(g_dist)
+        # print(g_dist)
         if (earned_dist >= g_dist or -earned_dist <= -g_dist):
             print(1)
             if not self.earned:
