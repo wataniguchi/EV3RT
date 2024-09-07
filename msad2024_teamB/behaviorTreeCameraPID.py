@@ -634,24 +634,24 @@ def build_behaviour_tree() -> BehaviourTree:
     )
     loop_08.add_children(
         [
-            MoveStraight(name="move straight", power=30, target_distance=300),
+            MoveStraight(name="move straight", power=40, target_distance=300),
         ]
     )
     loop_09.add_children(
         [
-            MoveStraight(name="back", power=-30, target_distance=200)
+            MoveStraight(name="back", power=-40, target_distance=200)
         ]
     )
 
     loop_10.add_children(
         [
-            MoveStraightLR(name="move straight 4", right_power=10, left_power=60, target_distance=200),
+            MoveStraightLR(name="move straight 4", right_power=10, left_power=60, target_distance=150),
         ]
     )
 
     loop_11.add_children(
         [
-        TraceLineCam(name="trace normal edge", power=40, pid_p=1.0, pid_i=0.0015, pid_d=0.1,gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
+        TraceLineCam(name="trace normal edge", power=30, pid_p=1.0, pid_i=0.0015, pid_d=0.1,gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
         IsDistanceEarned_after(name="check distance"),
         # TraceLineCam(name="trace normal edge", power=40, pid_p=1.0, pid_i=0.0015, pid_d=0.1,
         #                  gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
