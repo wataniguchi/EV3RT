@@ -57,6 +57,7 @@ g_gyro_sensor: GyroSensor = None
 g_video: Video = None
 g_video_thread: threading.Thread = None
 g_course: int = 0
+g_dist: int = 1300
 
 
 class TheEnd(Behaviour):
@@ -490,6 +491,53 @@ class IsBlueColorDetected(Behaviour):
         else:
             return Status.RUNNING
 
+class IsDistanceEarned_before(Behaviour):
+    def __init__(self, name: str, delta_dist: int):
+        super(IsDistanceEarned, self).__init__(name)
+        self.logger.debug("%s.__init__()" % (self.__class__.__name__))
+        self.delta_dist = delta_dist
+        self.running = False
+        self.earned = False
+
+    def update(self) -> Status:
+        if not self.running:
+            self.running = True
+            self.orig_dist = g_plotter.get_distance()
+            self.logger.info("%+06d %s.accumulation started for delta=%d" % (self.orig_dist, self.__class__.__name__, self.delta_dist))
+        cur_dist = g_plotter.get_distance()
+        earned_dist = cur_dist - self.orig_dist
+        if (earned_dist >= self.delta_dist or -earned_dist <= -self.delta_dist):
+            if not self.earned:
+                self.earned = True
+                self.logger.info("%+06d %s.delta distance earned" % (cur_dist, self.__class__.__name__))
+            g_dist = g_dist - earned_dist
+            return Status.SUCCESS
+        else:
+            return Status.RUNNING
+
+class IsDistanceEarned_after(Behaviour):
+    def __init__(self, name: str, delta_dist: int):
+        super(IsDistanceEarned, self).__init__(name)
+        self.logger.debug("%s.__init__()" % (self.__class__.__name__))
+        self.delta_dist = delta_dist
+        self.running = False
+        self.earned = False
+
+    def update(self) -> Status:
+        if not self.running:
+            self.running = True
+            self.orig_dist = g_plotter.get_distance()
+            self.logger.info("%+06d %s.accumulation started for delta=%d" % (self.orig_dist, self.__class__.__name__, self.delta_dist))
+        cur_dist = g_plotter.get_distance()
+        earned_dist = cur_dist - self.orig_dist
+        if (earned_dist >= self.delta_dist or -earned_dist <= -self.delta_dist):
+            if not self.earned:
+                self.earned = True
+                self.logger.info("%+06d %s.delta distance earned" % (cur_dist, self.__class__.__name__))
+            g_dist = 1300
+            Status.SUCCESS
+        else:
+            return Status.RUNNING
 def build_behaviour_tree() -> BehaviourTree:
     root = Sequence(name="competition", memory=True)
     calibration = Sequence(name="calibration", memory=True)
@@ -531,7 +579,7 @@ def build_behaviour_tree() -> BehaviourTree:
         [
         TraceLineCam(name="trace normal edge", power=40, pid_p=1.0, pid_i=0.0015, pid_d=0.1,
                          gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
-        IsDistanceEarned(name="check distance", delta_dist = 3000),
+        IsDistanceEarned_before(name="check distance", delta_dist = 3000),
         IsRedColorDetected(name="check red color", threshold=12.0), 
         IsBlueColorDetected(name="check blue color", threshold=12.0), 
         ]
@@ -557,6 +605,12 @@ def build_behaviour_tree() -> BehaviourTree:
             MoveStraightLR(name="move straight 4", right_power=-60, left_power=-10, target_distance=180),
         ]
     )
+    loop_06.add_children(
+        [
+        TraceLineCam(name="trace normal edge", power=40, pid_p=1.0, pid_i=0.0015, pid_d=0.1,gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
+        IsDistanceEarned_after(name="check distance", delta_dist = g_dist),
+        ]
+    )
     root.add_children(
         [
             calibration,
@@ -566,7 +620,7 @@ def build_behaviour_tree() -> BehaviourTree:
             loop_03,
             loop_04,
             loop_05,
-            # loop_06,
+            loop_06,
             # loop_07,
             #W-loop_end
             # loop_08,
