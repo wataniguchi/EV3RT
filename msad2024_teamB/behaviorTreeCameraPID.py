@@ -541,7 +541,7 @@ class IsDistanceEarned_after(Behaviour):
             self.logger.info("%+06d %s.accumulation started for delta=%d" % (self.orig_dist, self.__class__.__name__, g_dist))
         cur_dist = g_plotter.get_distance()
         earned_dist = cur_dist - self.orig_dist
-        # print(g_dist)
+        print(g_dist)
         if (earned_dist >= g_dist or -earned_dist <= -g_dist):
             print(1)
             if not self.earned:
