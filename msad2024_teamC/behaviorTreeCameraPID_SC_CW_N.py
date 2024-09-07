@@ -931,10 +931,15 @@ class CheckBrackColor(Behaviour):
         #     return Status.SUCCESS
         # else:
         #     return Status.RUNNING
+        if not self.running:
+            self.running = True
+            self.logger.info("%+06d %s.started" % (g_plotter.get_distance(), self.__class__.__name__))
+
         global now_color
         if not now_color:
             now_color = [r,g,b]
         else:
+            self.logger.info('now_color:{}'.format(now_color))
             diff_r = now_color[0] - r
             diff_g = now_color[1] - g
             diff_b = now_color[2] - b
