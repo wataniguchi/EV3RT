@@ -465,7 +465,7 @@ class IsRedColorDetected(Behaviour):
             self.running = True
             self.logger.info("%+06d %s.checking red color ratio with threshold=%f" % (g_plotter.get_distance(), self.__class__.__name__, self.threshold))
 
-        red_percentage = g_video.get_red_ratio() * 100
+        red_percentage = g_video.get_red_ratio() * 100.0
         if red_percentage > self.threshold:
             self.logger.info("%+06d %s.red color ratio exceeds threshold: %f" % (g_plotter.get_distance(), self.__class__.__name__, red_percentage))
             return Status.SUCCESS
@@ -633,7 +633,7 @@ def build_behaviour_tree() -> BehaviourTree:
         TraceLineCam(name="trace normal edge", power=40, pid_p=1.0, pid_i=0.0015, pid_d=0.1,
                          gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
         IsDistanceEarned(name="check distance", delta_dist = 3000),
-        IsBlueColorDetected(name="check blue color", threshold=10.0), 
+        IsBlueColorDetected(name="check blue color", threshold=10.5), 
         ]
     )
     root.add_children(
