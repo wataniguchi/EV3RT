@@ -462,6 +462,8 @@ class IsRedColorDetected(Behaviour):
         self.running = False
 
     def update(self) -> Status:
+        global g_dist
+        global g_earned_dist
         if not self.running:
             self.running = True
             self.logger.info("%+06d %s.checking red color ratio with threshold=%f" % (g_plotter.get_distance(), self.__class__.__name__, self.threshold))
@@ -469,8 +471,7 @@ class IsRedColorDetected(Behaviour):
         red_percentage = g_video.get_red_ratio() * 100
         if red_percentage > self.threshold:
             self.logger.info("%+06d %s.red color ratio exceeds threshold: %f" % (g_plotter.get_distance(), self.__class__.__name__, red_percentage))
-            global g_dist
-            global g_earned_dist
+
             g_dist = g_dist - g_earned_dist
             print(g_earned_dist)
             print(g_dist)
@@ -485,6 +486,8 @@ class IsBlueColorDetected(Behaviour):
         self.running = False
 
     def update(self) -> Status:
+        global g_dist
+        global g_earned_dist
         if not self.running:
             self.running = True
             self.logger.info("%+06d %s.checking blue color ratio with threshold=%f" % (g_plotter.get_distance(), self.__class__.__name__, self.threshold))
@@ -492,8 +495,6 @@ class IsBlueColorDetected(Behaviour):
         blue_percentage = g_video.get_blue_ratio() * 100
         if blue_percentage > self.threshold:
             self.logger.info("%+06d %s.blue color ratio exceeds threshold: %f" % (g_plotter.get_distance(), self.__class__.__name__, blue_percentage))
-            global g_dist
-            global g_earned_dist
             g_dist = g_dist - g_earned_dist
             print(g_earned_dist)
             print(g_dist)
