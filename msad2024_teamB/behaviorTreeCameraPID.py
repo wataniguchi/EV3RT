@@ -480,7 +480,7 @@ class IsRedColorDetected(Behaviour):
             print(current_distance)
             print(traveled_distance)
 
-            if traveled_distance >= 500:
+            if traveled_distance >= 1000:
                     g_right_motor.set_power(0)
                     g_left_motor.set_power(0)
                     self.logger.info("%+06d %s.目標距離に到達" % (current_distance, self.__class__.__name__))
