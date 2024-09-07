@@ -536,6 +536,9 @@ def build_behaviour_tree() -> BehaviourTree:
     loop_15 = Parallel(name="loop 15", policy=ParallelPolicy.SuccessOnOne())
     loop_16 = Parallel(name="loop 16", policy=ParallelPolicy.SuccessOnOne())
     loop_17 = Parallel(name="loop 17", policy=ParallelPolicy.SuccessOnOne())
+    loop_18 = Parallel(name="loop 18", policy=ParallelPolicy.SuccessOnOne())
+    loop_19 = Parallel(name="loop 19", policy=ParallelPolicy.SuccessOnOne())
+    loop_20 = Parallel(name="loop 20", policy=ParallelPolicy.SuccessOnOne())
     calibration.add_children(
         [
             ArmUpDownFull(name="arm down", direction=ArmDirection.DOWN),
@@ -661,6 +664,21 @@ def build_behaviour_tree() -> BehaviourTree:
         IsBlueColorDetected(name="check blue color", threshold=10.0), 
         ]
     )
+    loop_18.add_children(
+        [
+            MoveStraightLR(name="move straight 4", right_power=50, left_power=-20, target_distance=200),
+        ]
+    )
+    loop_19.add_children(
+        [
+            MoveStraight(name="back", power=-50, target_distance=15)
+        ]
+    )
+    loop_20.add_children(
+        [
+            MoveStraightLR(name="move straight 4", right_power=-60, left_power=0, target_distance=200),
+        ]
+    )
     root.add_children(
         [
             calibration,
@@ -681,8 +699,11 @@ def build_behaviour_tree() -> BehaviourTree:
             # loop_13,
             # loop_14,
             # loop_15,
-            loop_16,
-            # loop_17,
+            # loop_16,
+            loop_17,
+            loop_18,
+            loop_19,
+            loop_20,
             StopNow(name="stop"),
             TheEnd(name="end"),
         ]
