@@ -340,7 +340,7 @@ class IsColorDetected(Behaviour):
                 return Status.RUNNING
         #Black判定
         if self.name == "black" :
-            if((color[2] < 50) & (color[1] < 50) & (color[0] < 50)):
+            if((color[2] < 100) & (color[1] < 100) & (color[0] < 100)):
             #if(color[2] < 100 & color[1] < 100 & color[0] < 100):
                 self.logger.info("%+06d %s.detected black" % (g_plotter.get_distance(), self.__class__.__name__))
                 self.logger.info("%+06d %s.black r=%d g=%d b=%d" % (g_plotter.get_distance(), self.__class__.__name__, color[0], color[1], color[2]))
@@ -652,7 +652,7 @@ def build_behaviour_tree() -> BehaviourTree:
     step_03B_1.add_children(
         [
             MoveStraight(name="back", power=-70, target_distance=400),
-            MoveStraightLR(name="Turn 2", right_power=70, left_power=0, target_distance=200),
+            MoveStraightLR(name="Turn 2", right_power=75, left_power=0, target_distance=200),
             #MoveStraight(name="free run 3", power=40, target_distance=10000),
             #IsColorDetected(name="black")
         ]
