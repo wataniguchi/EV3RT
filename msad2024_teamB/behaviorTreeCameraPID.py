@@ -58,7 +58,7 @@ g_video: Video = None
 g_video_thread: threading.Thread = None
 g_course: int = 0
 g_dist: int = 1000
-
+g_earned_dist: int = 0
 
 class TheEnd(Behaviour):
     def __init__(self, name: str):
@@ -469,6 +469,11 @@ class IsRedColorDetected(Behaviour):
         red_percentage = g_video.get_red_ratio() * 100
         if red_percentage > self.threshold:
             self.logger.info("%+06d %s.red color ratio exceeds threshold: %f" % (g_plotter.get_distance(), self.__class__.__name__, red_percentage))
+            global g_dist
+            global g_earned_dist
+            g_dist = g_dist - g_earned_dist
+            print(g_earned_dist)
+            print(g_dist)
             return Status.SUCCESS
         else:
             return Status.RUNNING
@@ -487,6 +492,11 @@ class IsBlueColorDetected(Behaviour):
         blue_percentage = g_video.get_blue_ratio() * 100
         if blue_percentage > self.threshold:
             self.logger.info("%+06d %s.blue color ratio exceeds threshold: %f" % (g_plotter.get_distance(), self.__class__.__name__, blue_percentage))
+            global g_dist
+            global g_earned_dist
+            g_dist = g_dist - g_earned_dist
+            print(g_earned_dist)
+            print(g_dist)
             return Status.SUCCESS
         else:
             return Status.RUNNING
@@ -497,21 +507,19 @@ class IsDistanceEarned_before(Behaviour):
         self.logger.debug("%s.__init__()" % (self.__class__.__name__))
         self.delta_dist = delta_dist
         self.running = False
-        self.earned = False
 
     def update(self) -> Status:
         global g_dist
+        global g_earned_dist
+
         if not self.running:
             self.running = True
             self.orig_dist = g_plotter.get_distance()
             self.logger.info("%+06d %s.accumulation started for delta=%d" % (self.orig_dist, self.__class__.__name__, self.delta_dist))
         cur_dist = g_plotter.get_distance()
-        earned_dist = cur_dist - self.orig_dist
-        g_dist = g_dist - earned_dist
-        print(earned_dist)
-        print(g_dist)
+        g_earned_dist = cur_dist - self.orig_dist
 
-        if (earned_dist >= self.delta_dist or -earned_dist <= -self.delta_dist):
+        if (g_earned_dist >= self.delta_dist or -g_earned_dist <= -self.delta_dist):
             if not self.earned:
                 self.earned = True
                 self.logger.info("%+06d %s.delta distance earned" % (cur_dist, self.__class__.__name__))
