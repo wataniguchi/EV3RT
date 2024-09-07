@@ -120,28 +120,28 @@ class ArmUpDownFull(Behaviour):
         return Status.RUNNING
 
 
-class IsDistanceEarned(Behaviour):
-    def __init__(self, name: str, delta_dist: int):
-        super(IsDistanceEarned, self).__init__(name)
-        self.logger.debug("%s.__init__()" % (self.__class__.__name__))
-        self.delta_dist = delta_dist
-        self.running = False
-        self.earned = False
+# class IsDistanceEarned(Behaviour):
+#     def __init__(self, name: str, delta_dist: int):
+#         super(IsDistanceEarned, self).__init__(name)
+#         self.logger.debug("%s.__init__()" % (self.__class__.__name__))
+#         self.delta_dist = delta_dist
+#         self.running = False
+#         self.earned = False
 
-    def update(self) -> Status:
-        if not self.running:
-            self.running = True
-            self.orig_dist = g_plotter.get_distance()
-            self.logger.info("%+06d %s.accumulation started for delta=%d" % (self.orig_dist, self.__class__.__name__, self.delta_dist))
-        cur_dist = g_plotter.get_distance()
-        earned_dist = cur_dist - self.orig_dist
-        if (earned_dist >= self.delta_dist or -earned_dist <= -self.delta_dist):
-            if not self.earned:
-                self.earned = True
-                self.logger.info("%+06d %s.delta distance earned" % (cur_dist, self.__class__.__name__))
-            return Status.SUCCESS
-        else:
-            return Status.RUNNING
+#     def update(self) -> Status:
+#         if not self.running:
+#             self.running = True
+#             self.orig_dist = g_plotter.get_distance()
+#             self.logger.info("%+06d %s.accumulation started for delta=%d" % (self.orig_dist, self.__class__.__name__, self.delta_dist))
+#         cur_dist = g_plotter.get_distance()
+#         earned_dist = cur_dist - self.orig_dist
+#         if (earned_dist >= self.delta_dist or -earned_dist <= -self.delta_dist):
+#             if not self.earned:
+#                 self.earned = True
+#                 self.logger.info("%+06d %s.delta distance earned" % (cur_dist, self.__class__.__name__))
+#             return Status.SUCCESS
+#         else:
+#             return Status.RUNNING
 
 
 class IsSonarOn(Behaviour):
