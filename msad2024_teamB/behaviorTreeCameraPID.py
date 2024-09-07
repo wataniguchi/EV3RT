@@ -623,21 +623,26 @@ def build_behaviour_tree() -> BehaviourTree:
     )
     loop_06.add_children(
         [
-        TraceLineCam(name="trace normal edge", power=40, pid_p=1.0, pid_i=0.0015, pid_d=0.1,gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
-        IsDistanceEarned_after(name="check distance"),
+            MoveStraight(name="back", power=-50, target_distance=50)
         ]
     )
     loop_07.add_children(
         [
-            MoveStraight(name="move straight", power=30, target_distance=200),
+        TraceLineCam(name="trace normal edge", power=40, pid_p=1.0, pid_i=0.0015, pid_d=0.1,gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
+        IsDistanceEarned_after(name="check distance"),
         ]
     )
     loop_08.add_children(
         [
-            MoveStraight(name="back", power=-30, target_distance=200)
+            MoveStraight(name="move straight", power=30, target_distance=200),
         ]
     )
     loop_09.add_children(
+        [
+            MoveStraight(name="back", power=-30, target_distance=200)
+        ]
+    )
+    loop_10.add_children(
         [
         TraceLineCam(name="trace normal edge", power=40, pid_p=1.0, pid_i=0.0015, pid_d=0.1,
                          gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
@@ -646,12 +651,12 @@ def build_behaviour_tree() -> BehaviourTree:
         IsBlueColorDetected(name="check blue color", threshold=12.0), 
         ]
     )
-    loop_10.add_children(
+    loop_11.add_children(
         [
             MoveStraight(name="move straight", power=40, target_distance=400),
         ]
     )
-    loop_11.add_children(
+    loop_12.add_children(
         [
             MoveStraightLR(name="move straight 4", right_power=10, left_power=60, target_distance=200),
         ]
@@ -672,6 +677,7 @@ def build_behaviour_tree() -> BehaviourTree:
             loop_09,
             loop_10,
             loop_11,
+            loop_12,
             # loop_12,
             # loop_13,
             # loop_14,
