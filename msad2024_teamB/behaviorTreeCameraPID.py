@@ -57,7 +57,7 @@ g_gyro_sensor: GyroSensor = None
 g_video: Video = None
 g_video_thread: threading.Thread = None
 g_course: int = 0
-g_dist: int = 1300
+g_dist: int = 500
 
 
 class TheEnd(Behaviour):
@@ -535,6 +535,7 @@ class IsDistanceEarned_after(Behaviour):
             if not self.earned:
                 self.earned = True
                 self.logger.info("%+06d %s.delta distance earned" % (cur_dist, self.__class__.__name__))
+            g_dist = 1300
             Status.SUCCESS
         else:
             print(self.g_dist)
@@ -609,7 +610,7 @@ def build_behaviour_tree() -> BehaviourTree:
     loop_06.add_children(
         [
         TraceLineCam(name="trace normal edge", power=40, pid_p=1.0, pid_i=0.0015, pid_d=0.1,gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
-        IsDistanceEarned_after(name="check distance", delta_dist = g_dist),
+        IsDistanceEarned(name="check distance", delta_dist = g_dist),
         ]
     )
     root.add_children(
