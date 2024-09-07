@@ -316,23 +316,33 @@ class TraceLineCam(Behaviour):
         g_left_motor.set_power(self.power + turn)
         return Status.RUNNING
 
-# 旧Wループプログラムから流用
+# 旧Wループプログラムから流用　devMTajiriから拝借
 class IsColorDetected(Behaviour):
-    def __init__(self, name: str):
+    def __init__(self, name: str, colorname: Color):
         super(IsColorDetected, self).__init__(name)
         self.logger.debug("%s.__init__()" % (self.__class__.__name__))
+        self.colorname = None
 
     def update(self) -> Status:
         global g_color_sensor
         #RGBの値を取得
         color = g_color_sensor.get_raw_color
         #Blue判定
-        if(color[2] - color[0]>45 & color[2] <=255 & color[0] <=255):
-            self.logger.info("%+06d %s.detected blue" % (g_plotter.get_distance(), self.__class__.__name__))
-            return Status.SUCCESS
-        else:
-            #指定色でないならRUNNINGを返却
-            return Status.RUNNING
+        if self.colorname == Color.BLUE :
+            if(color[2] - color[0]>45 & color[2] <=255 & color[0] <=255):
+                self.logger.info("%+06d %s.detected blue" % (g_plotter.get_distance(), self.__class__.__name__))
+                return Status.SUCCESS
+            else:
+                #指定色でないならRUNNINGを返却
+                return Status.RUNNING
+        #Black判定
+        if self.colorname == Color.BLACK :
+            if(color[2] < 100 & color[1] < 100 & color[0] < 100):
+                self.logger.info("%+06d %s.detected black" % (g_plotter.get_distance(), self.__class__.__name__))
+                return Status.SUCCESS
+            else:
+                #指定色でないならRUNNINGを返却
+                return Status.RUNNING
 
 # デブリプログラムから流用
 class MoveStraight(Behaviour):
@@ -403,6 +413,26 @@ class MoveStraightLR(Behaviour):
         else:
             return Status.RUNNING
 
+# 旧Wループプログラムから流用 devMTajiri から借用
+
+class IsColorDetected(Behaviour):
+    def __init__(self, name: str):
+        super(IsColorDetected, self).__init__(name)
+        self.logger.debug("%s.__init__()" % (self.__class__.__name__))
+
+    def update(self) -> Status:
+        #global g_color_sensor
+        #RGBの値を取得
+        color = g_color_sensor.get_raw_color()
+        #Blue判定
+        if((color[2] - color[0]>45) & (color[2] <=255) & (color[0] <=255)):
+        #if color(2) - color(0) > 45 and color(2) <= 255 and color(0) <= 255:
+            self.logger.info("%+06d %s.detected blue" % (g_plotter.get_distance(), self.__class__.__name__))
+            return Status.SUCCESS
+        else:
+            #指定色でないならRUNNINGを返却
+            return Status.RUNNING
+        
 class Bottlecatch(Behaviour):
     def __init__(self, name: str, target_state: BState) -> None:
         super(Bottlecatch, self).__init__(name)
@@ -643,12 +673,12 @@ def build_behaviour_tree() -> BehaviourTree:
     # ライン復帰からゴール
     step_04B.add_children(
         [
-            MoveStraightLR(name="Turn 3", right_power=70, left_power=35, target_distance=200),
+            #MoveStraightLR(name="Turn 3", right_power=70, left_power=35, target_distance=200),
             TraceLineCam(name="trace center edge", power=40, pid_p=2.5, pid_i=0.0015, pid_d=0.1,
                          gs_min=0, gs_max=80, trace_side=TraceSide.CENTER),
-            IsDistanceEarned(name="check distance 1", delta_dist = 1100),
-            #MoveStraightLR(name="Turn 4", right_power=70, left_power=35, target_distance=150)
+            IsDistanceEarned(name="check distance 1", delta_dist = 10000),
             # color sensor add
+            IsColorDetected(name="blue")
         ]
     )
 
