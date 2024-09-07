@@ -312,7 +312,7 @@ class Video(object):
         hsv_image = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
         
         # Define the blue color range in HSV
-        lower_blue1 = np.array([100, 100, 100])
+        lower_blue1 = np.array([100, 150, 50])
         upper_blue1 = np.array([140, 255, 255])
         lower_blue2 = np.array([160, 100, 100])
         upper_blue2 = np.array([180, 255, 255])
