@@ -143,7 +143,7 @@ class IsDistanceEarnedTrace(Behaviour):
         self.earned = False
 
     def update(self) -> Status:
-        global g_earned_dist_debri
+        global g_earned_dist_debri, g_debri_end
         if not self.running:
             g_debri_end = False
             self.running = True
