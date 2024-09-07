@@ -637,6 +637,11 @@ def build_behaviour_tree() -> BehaviourTree:
             MoveStraight(name="back", power=-50, target_distance=200)
         ]
     )
+    loop_09.add_children(
+        [
+            MoveStraightLR(name="move straight 4", right_power=10, left_power=60, target_distance=500),
+        ]
+    )
     root.add_children(
         [
             calibration,
@@ -650,7 +655,7 @@ def build_behaviour_tree() -> BehaviourTree:
             loop_07,
             #W-loop_end
             loop_08,
-            # loop_09,
+            loop_09,
             # loop_10,
             # loop_11,
             # loop_12,
