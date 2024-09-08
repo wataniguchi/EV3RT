@@ -580,6 +580,7 @@ class IsDistanceEarned_before(Behaviour):
 
     def update(self) -> Status:
         global g_earned_dist
+        global g_dist
         if not self.running:
             self.running = True
             self.orig_dist = g_plotter.get_distance()
@@ -593,6 +594,7 @@ class IsDistanceEarned_before(Behaviour):
                 self.logger.info("%+06d %s.delta distance earned" % (cur_dist, self.__class__.__name__))
             global g_distFlg
             g_distFlg = True
+            g_dist = 1150
             self.logger.info("指定距離によりフラグ設定")
             return Status.SUCCESS
         else:
