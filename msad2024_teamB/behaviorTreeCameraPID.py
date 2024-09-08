@@ -376,7 +376,7 @@ class MoveStraight_dbr(Behaviour):
         if g_distFlg:
             return Status.SUCCESS
         
-        super(MoveStraight, self).__init__(name)
+        super(MoveStraight_dbr, self).__init__(name)
         self.power = power
         self.target_distance = target_distance
         self.start_distance = None
@@ -437,7 +437,7 @@ class MoveStraightLR_dbr(Behaviour):
         if g_distFlg:
             return Status.SUCCESS
         
-        super(MoveStraightLR, self).__init__(name)
+        super(MoveStraightLR_dbr, self).__init__(name)
         self.right_power = right_power
         self.left_power = left_power
         self.target_distance = target_distance
