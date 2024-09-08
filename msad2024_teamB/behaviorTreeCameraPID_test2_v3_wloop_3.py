@@ -375,6 +375,7 @@ def build_behaviour_tree() -> BehaviourTree:
     loop_01_1 = Parallel(name="loop 01", policy=ParallelPolicy.SuccessOnOne())
     loop_01_2 = Parallel(name="loop 01", policy=ParallelPolicy.SuccessOnOne())
     loop_01_3 = Parallel(name="loop 01", policy=ParallelPolicy.SuccessOnOne())
+    loop_01_4 = Parallel(name="loop 01", policy=ParallelPolicy.SuccessOnOne())
     loop_02 = Parallel(name="loop 02", policy=ParallelPolicy.SuccessOnOne())
     loop_03 = Parallel(name="loop 03", policy=ParallelPolicy.SuccessOnOne())
     loop_04 = Parallel(name="loop 04", policy=ParallelPolicy.SuccessOnOne())
@@ -462,7 +463,7 @@ def build_behaviour_tree() -> BehaviourTree:
     )
     
     #カーブ２つ目（約ＬＡＰまで_ms）
-    loop_01_3.add_children(
+    loop_01_4.add_children(
         [
             TraceLineCam(name="trace normal edge", power=45, pid_p=2.0, pid_i=0.0015, pid_d=0.3,
                          gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
@@ -535,6 +536,7 @@ def build_behaviour_tree() -> BehaviourTree:
             loop_01_1,
             loop_01_2,
             loop_01_3,
+            loop_01_4,
             loop_02,
             loop_03,
             loop_04,
