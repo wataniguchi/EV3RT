@@ -600,17 +600,17 @@ class IsDistanceEarned_before(Behaviour):
 
 class IsDistanceEarned_after(Behaviour):
     def __init__(self, name: str):
-        global g_distFlg
-        if g_distFlg:
-            g_distFlg = False
-            return Status.SUCCESS
-        
         super(IsDistanceEarned_after, self).__init__(name)
         self.logger.debug("%s.__init__()" % (self.__class__.__name__))
         self.running = False
         self.earned = False
 
     def update(self) -> Status:
+        global g_distFlg
+        if g_distFlg:
+            g_distFlg = False
+            return Status.SUCCESS
+        
         global g_dist
         global g_earned_dist
         if not self.running:
