@@ -59,6 +59,7 @@ g_video_thread: threading.Thread = None
 g_course: int = 0
 g_dist: int = 1600
 g_earned_dist: int = 0
+g_distFlg: bool = False
 
 class TheEnd(Behaviour):
     def __init__(self, name: str):
@@ -120,28 +121,28 @@ class ArmUpDownFull(Behaviour):
         return Status.RUNNING
 
 
-# class IsDistanceEarned(Behaviour):
-#     def __init__(self, name: str, delta_dist: int):
-#         super(IsDistanceEarned, self).__init__(name)
-#         self.logger.debug("%s.__init__()" % (self.__class__.__name__))
-#         self.delta_dist = delta_dist
-#         self.running = False
-#         self.earned = False
+class IsDistanceEarned(Behaviour):
+    def __init__(self, name: str, delta_dist: int):
+        super(IsDistanceEarned, self).__init__(name)
+        self.logger.debug("%s.__init__()" % (self.__class__.__name__))
+        self.delta_dist = delta_dist
+        self.running = False
+        self.earned = False
 
-#     def update(self) -> Status:
-#         if not self.running:
-#             self.running = True
-#             self.orig_dist = g_plotter.get_distance()
-#             self.logger.info("%+06d %s.accumulation started for delta=%d" % (self.orig_dist, self.__class__.__name__, self.delta_dist))
-#         cur_dist = g_plotter.get_distance()
-#         earned_dist = cur_dist - self.orig_dist
-#         if (earned_dist >= self.delta_dist or -earned_dist <= -self.delta_dist):
-#             if not self.earned:
-#                 self.earned = True
-#                 self.logger.info("%+06d %s.delta distance earned" % (cur_dist, self.__class__.__name__))
-#             return Status.SUCCESS
-#         else:
-#             return Status.RUNNING
+    def update(self) -> Status:
+        if not self.running:
+            self.running = True
+            self.orig_dist = g_plotter.get_distance()
+            self.logger.info("%+06d %s.accumulation started for delta=%d" % (self.orig_dist, self.__class__.__name__, self.delta_dist))
+        cur_dist = g_plotter.get_distance()
+        earned_dist = cur_dist - self.orig_dist
+        if (earned_dist >= self.delta_dist or -earned_dist <= -self.delta_dist):
+            if not self.earned:
+                self.earned = True
+                self.logger.info("%+06d %s.delta distance earned" % (cur_dist, self.__class__.__name__))
+            return Status.SUCCESS
+        else:
+            return Status.RUNNING
 
 
 class IsSonarOn(Behaviour):
@@ -369,8 +370,73 @@ class MoveStraight(Behaviour):
         else:
             return Status.RUNNING
 
+class MoveStraight_dbr(Behaviour):
+    def __init__(self, name: str, power: int, target_distance: int) -> None:
+        global g_distFlg
+        if g_distFlg:
+            return Status.SUCCESS
+        
+        super(MoveStraight, self).__init__(name)
+        self.power = power
+        self.target_distance = target_distance
+        self.start_distance = None
+        self.running = False
+
+    def update(self) -> Status:
+        if not self.running:
+            self.running = True
+            self.start_distance = g_plotter.get_distance()
+            g_right_motor.set_power(self.power)
+            g_left_motor.set_power(self.power)
+            self.logger.info("%+06d %s.開始、パワー=%d、目標距離=%d" % 
+                            (self.start_distance, self.__class__.__name__, self.power, self.target_distance))
+        
+        current_distance = g_plotter.get_distance()
+        traveled_distance = current_distance - self.start_distance
+        
+        if traveled_distance >= self.target_distance:
+            g_right_motor.set_power(0)
+            g_left_motor.set_power(0)
+            self.logger.info("%+06d %s.目標距離に到達" % (current_distance, self.__class__.__name__))
+            return Status.SUCCESS
+        else:
+            return Status.RUNNING
+
 class MoveStraightLR(Behaviour):
     def __init__(self, name: str, right_power: int, left_power: int, target_distance: int) -> None:
+        super(MoveStraightLR, self).__init__(name)
+        self.right_power = right_power
+        self.left_power = left_power
+        self.target_distance = target_distance
+        self.start_distance = None
+        self.running = False
+
+    def update(self) -> Status:
+        if not self.running:
+            self.running = True
+            self.start_distance = g_plotter.get_distance()
+            g_right_motor.set_power(self.right_power)
+            g_left_motor.set_power(self.left_power)
+            self.logger.info("%+06d %s.開始、右パワー=%d、左パワー=%d、目標距離=%d" % 
+                             (self.start_distance, self.__class__.__name__, self.right_power, self.left_power, self.target_distance))
+        
+        current_distance = g_plotter.get_distance()
+        traveled_distance = current_distance - self.start_distance
+        
+        if traveled_distance >= self.target_distance:
+            g_right_motor.set_power(0)
+            g_left_motor.set_power(0)
+            self.logger.info("%+06d %s.目標距離に到達" % (current_distance, self.__class__.__name__))
+            return Status.SUCCESS
+        else:
+            return Status.RUNNING
+
+class MoveStraightLR_dbr(Behaviour):
+    def __init__(self, name: str, right_power: int, left_power: int, target_distance: int) -> None:
+        global g_distFlg
+        if g_distFlg:
+            return Status.SUCCESS
+        
         super(MoveStraightLR, self).__init__(name)
         self.right_power = right_power
         self.left_power = left_power
@@ -522,12 +588,19 @@ class IsDistanceEarned_before(Behaviour):
             if not self.earned:
                 self.earned = True
                 self.logger.info("%+06d %s.delta distance earned" % (cur_dist, self.__class__.__name__))
+            global g_distFlg
+            g_distFlg = True
             return Status.SUCCESS
         else:
             return Status.RUNNING
 
 class IsDistanceEarned_after(Behaviour):
     def __init__(self, name: str):
+        global g_distFlg
+        if g_distFlg:
+            g_distFlg = False
+            return Status.SUCCESS
+        
         super(IsDistanceEarned_after, self).__init__(name)
         self.logger.debug("%s.__init__()" % (self.__class__.__name__))
         self.running = False
@@ -597,35 +670,35 @@ def build_behaviour_tree() -> BehaviourTree:
         [
         TraceLineCam(name="trace normal edge", power=40, pid_p=1.0, pid_i=0.0015, pid_d=0.1,
                          gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
-        IsDistanceEarned_before(name="check distance", delta_dist = 3000),
+        IsDistanceEarned_before(name="check distance", delta_dist = 1500),
         IsRedColorDetected(name="check red color", threshold=12.0), 
         IsBlueColorDetected(name="check blue color", threshold=12.0), 
         ]
     )
     loop_02.add_children(
         [
-            MoveStraight(name="move straight", power=40, target_distance=90),
+            MoveStraight_dbr(name="move straight", power=40, target_distance=90),
         ]
     )
     loop_03.add_children(
         [
-            MoveStraightLR(name="move straight 4", right_power=60, left_power=10, target_distance=250),
+            MoveStraightLR_dbr(name="move straight 4", right_power=60, left_power=10, target_distance=250),
         ]
     )
 
     loop_04.add_children(
         [
-            MoveStraight(name="back", power=-50, target_distance=20)
+            MoveStraight_dbr(name="back", power=-50, target_distance=20)
         ]
     )
     loop_05.add_children(
         [
-            MoveStraightLR(name="move straight 4", right_power=-60, left_power=-10, target_distance=180),
+            MoveStraightLR_dbr(name="move straight 4", right_power=-60, left_power=-10, target_distance=180),
         ]
     )
     loop_06.add_children(
         [
-            MoveStraight(name="back", power=-50, target_distance=50)
+            MoveStraight_dbr(name="back", power=-50, target_distance=50)
         ]
     )
     loop_07.add_children(
@@ -654,17 +727,17 @@ def build_behaviour_tree() -> BehaviourTree:
     loop_11.add_children(
         [
         TraceLineCam(name="trace normal edge", power=29, pid_p=1.0, pid_i=0.0015, pid_d=0.1,gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
-        IsDistanceEarned_after(name="check distance"),
+        IsDistanceEarned(name="check distance", delta_dist=300),
         # TraceLineCam(name="trace normal edge", power=40, pid_p=1.0, pid_i=0.0015, pid_d=0.1,
         #                  gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
         ]
     )
 
-    loop_12.add_children(
-        [
-            MoveStraight(name="back", power=-30, target_distance=300)
-        ]
-    )
+    # loop_12.add_children(
+    #     [
+    #         MoveStraight(name="back", power=-30, target_distance=300)
+    #     ]
+    # )
 
     loop_13.add_children(
         [
@@ -675,35 +748,35 @@ def build_behaviour_tree() -> BehaviourTree:
         [
         TraceLineCam(name="trace normal edge", power=40, pid_p=1.0, pid_i=0.0015, pid_d=0.1,
                          gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
-        IsDistanceEarned_before(name="check distance", delta_dist = 3000),
+        IsDistanceEarned_before(name="check distance", delta_dist = 1500),
         IsRedColorDetected(name="check red color", threshold=12.0), 
         IsBlueColorDetected(name="check blue color", threshold=12.0), 
         ]
     )
     loop_15.add_children(
         [
-            MoveStraight(name="move straight", power=40, target_distance=90),
+            MoveStraight_dbr(name="move straight", power=40, target_distance=90),
         ]
     )
     loop_16.add_children(
         [
-            MoveStraightLR(name="move straight 4", right_power=60, left_power=10, target_distance=250),
+            MoveStraightLR_dbr(name="move straight 4", right_power=60, left_power=10, target_distance=250),
         ]
     )
 
     loop_17.add_children(
         [
-            MoveStraight(name="back", power=-50, target_distance=20)
+            MoveStraight_dbr(name="back", power=-50, target_distance=20)
         ]
     )
     loop_18.add_children(
         [
-            MoveStraightLR(name="move straight 4", right_power=-60, left_power=-10, target_distance=120),
+            MoveStraightLR_dbr(name="move straight 4", right_power=-60, left_power=-10, target_distance=120),
         ]
     )
     loop_19.add_children(
         [
-            MoveStraight(name="back", power=-50, target_distance=50)
+            MoveStraight_dbr(name="back", power=-50, target_distance=50)
         ]
     )
     loop_20.add_children(
@@ -722,7 +795,6 @@ def build_behaviour_tree() -> BehaviourTree:
             MoveStraight(name="back", power=-50, target_distance=200)
         ]
     )
-
     loop_23.add_children(
         [
             MoveStraightLR(name="move straight 4", right_power=10, left_power=60, target_distance=200),
@@ -744,7 +816,7 @@ def build_behaviour_tree() -> BehaviourTree:
             loop_09,
             loop_10,
             loop_11,
-            loop_12,
+            # loop_12,
             loop_13,
             loop_14,
             loop_15,
