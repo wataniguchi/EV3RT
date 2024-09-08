@@ -521,7 +521,7 @@ def build_behaviour_tree() -> BehaviourTree:
             IsDistanceEarned(name="check distance", delta_dist = 500),
         ]
     )
-        root.add_children(
+    root.add_children(
         [
             calibration,
             start,
