@@ -671,6 +671,12 @@ def build_behaviour_tree() -> BehaviourTree:
     loop_28 = Parallel(name="loop 28", policy=ParallelPolicy.SuccessOnOne())
     loop_29 = Parallel(name="loop 29", policy=ParallelPolicy.SuccessOnOne())
     loop_30 = Parallel(name="loop 30", policy=ParallelPolicy.SuccessOnOne())
+    loop_31 = Parallel(name="loop 31", policy=ParallelPolicy.SuccessOnOne())
+    loop_32 = Parallel(name="loop 32", policy=ParallelPolicy.SuccessOnOne())
+    loop_33 = Parallel(name="loop 33", policy=ParallelPolicy.SuccessOnOne())
+    loop_34 = Parallel(name="loop 34", policy=ParallelPolicy.SuccessOnOne())
+    loop_35 = Parallel(name="loop 35", policy=ParallelPolicy.SuccessOnOne())
+    loop_36 = Parallel(name="loop 36", policy=ParallelPolicy.SuccessOnOne())
     calibration.add_children(
         [
             ArmUpDownFull(name="arm down", direction=ArmDirection.DOWN),
@@ -739,13 +745,11 @@ def build_behaviour_tree() -> BehaviourTree:
             MoveStraight(name="back", power=-30, target_distance=150)
         ]
     )
-
     loop_10.add_children(
         [
             MoveStraightLR(name="move straight 4", right_power=0, left_power=60, target_distance=120),
         ]
     )
-
     loop_11.add_children(
         [
         TraceLineCam(name="trace normal edge", power=30, pid_p=0.8, pid_i=0.0015, pid_d=0.1,gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
@@ -826,8 +830,6 @@ def build_behaviour_tree() -> BehaviourTree:
         [
         TraceLineCam(name="trace normal edge", power=30, pid_p=0.8, pid_i=0.0015, pid_d=0.1,gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
         IsDistanceEarned(name="check distance", delta_dist=250),
-        # TraceLineCam(name="trace normal edge", power=40, pid_p=1.0, pid_i=0.0015, pid_d=0.1,
-        #                  gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
         ]
     )
     loop_25.add_children(
@@ -856,10 +858,42 @@ def build_behaviour_tree() -> BehaviourTree:
     )
     loop_29.add_children(
         [
-            MoveStraight(name="move straight", power=45, target_distance=400),
+            MoveStraight_dbr(name="move straight", power=40, target_distance=120),
         ]
     )
     loop_30.add_children(
+        [
+            MoveStraightLR_dbr(name="move straight 4", right_power=60, left_power=10, target_distance=250),
+        ]
+    )
+
+    loop_31.add_children(
+        [
+            MoveStraight_dbr(name="back", power=-50, target_distance=20)
+        ]
+    )
+    loop_32.add_children(
+        [
+            MoveStraightLR_dbr(name="move straight 4", right_power=-60, left_power=-10, target_distance=120),
+        ]
+    )
+    loop_33.add_children(
+        [
+            MoveStraight_dbr(name="back", power=-50, target_distance=50)
+        ]
+    )
+    loop_34.add_children(
+        [
+        TraceLineCam(name="trace normal edge", power=35, pid_p=1.0, pid_i=0.0015, pid_d=0.1,gs_min=0, gs_max=80, trace_side=TraceSide.OPPOSITE),
+        IsDistanceEarned_after(name="check distance"),
+        ]
+    )
+    loop_35.add_children(
+        [
+            MoveStraight(name="move straight", power=45, target_distance=400),
+        ]
+    )
+    loop_36.add_children(
         [
             MoveStraight(name="back", power=-50, target_distance=140)
         ]
@@ -892,6 +926,7 @@ def build_behaviour_tree() -> BehaviourTree:
             loop_20,
             loop_21,
             loop_22,
+            loop_23,
             loop_24,
             loop_25,
             loop_26,
@@ -899,6 +934,12 @@ def build_behaviour_tree() -> BehaviourTree:
             loop_28,
             loop_29,
             loop_30,
+            loop_31,
+            loop_32,
+            loop_33,
+            loop_34,
+            loop_35,
+            loop_36,
             StopNow(name="stop"),
             TheEnd(name="end"),
         ]
