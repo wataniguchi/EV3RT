@@ -641,6 +641,7 @@ def build_behaviour_tree() -> BehaviourTree:
     calibration = Sequence(name="calibration", memory=True)
     start = Parallel(name="start", policy=ParallelPolicy.SuccessOnOne())
     loop_01 = Parallel(name="loop 01", policy=ParallelPolicy.SuccessOnOne())
+    loop_02_1 = Parallel(name="loop 01", policy=ParallelPolicy.SuccessOnOne())
     loop_02 = Parallel(name="loop 02", policy=ParallelPolicy.SuccessOnOne())
     loop_03 = Parallel(name="loop 03", policy=ParallelPolicy.SuccessOnOne())
     loop_04 = Parallel(name="loop 04", policy=ParallelPolicy.SuccessOnOne())
@@ -682,6 +683,11 @@ def build_behaviour_tree() -> BehaviourTree:
         IsDistanceEarned_before(name="check distance", delta_dist = 1500),
         IsRedColorDetected(name="check red color", threshold=12.0), 
         IsBlueColorDetected(name="check blue color", threshold=12.0), 
+        ]
+    )
+    loop_02_1.add_children(
+        [
+            MoveStraightLR_dbr(name="move straight 4", right_power=0, left_power=60, target_distance=20),
         ]
     )
     loop_02.add_children(
@@ -814,6 +820,7 @@ def build_behaviour_tree() -> BehaviourTree:
             calibration,
             start,
             loop_01,
+            loop_02_0,
             loop_02,
             loop_03,
             loop_04,
