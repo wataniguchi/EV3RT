@@ -712,7 +712,7 @@ def build_behaviour_tree() -> BehaviourTree:
     )
     loop_08.add_children(
         [
-            MoveStraight(name="move straight", power=30, target_distance=300),
+            MoveStraight(name="move straight", power=40, target_distance=300),
         ]
     )
     loop_09.add_children(
@@ -723,14 +723,14 @@ def build_behaviour_tree() -> BehaviourTree:
 
     loop_10.add_children(
         [
-            MoveStraightLR(name="move straight 4", right_power=0, left_power=60, target_distance=100),
+            MoveStraightLR(name="move straight 4", right_power=0, left_power=60, target_distance=120),
         ]
     )
 
     loop_11.add_children(
         [
         TraceLineCam(name="trace normal edge", power=29, pid_p=0.5, pid_i=0.0015, pid_d=0.1,gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
-        IsDistanceEarned(name="check distance", delta_dist=280),
+        IsDistanceEarned(name="check distance", delta_dist=250),
         # TraceLineCam(name="trace normal edge", power=40, pid_p=1.0, pid_i=0.0015, pid_d=0.1,
         #                  gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
         ]
@@ -744,7 +744,7 @@ def build_behaviour_tree() -> BehaviourTree:
 
     loop_13.add_children(
         [
-            MoveStraightLR(name="move straight 4", right_power=0, left_power=60, target_distance=100),
+            MoveStraightLR(name="move straight 4", right_power=0, left_power=60, target_distance=120),
         ]
     )
     loop_14.add_children(
