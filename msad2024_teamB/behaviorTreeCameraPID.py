@@ -820,7 +820,7 @@ def build_behaviour_tree() -> BehaviourTree:
             calibration,
             start,
             loop_01,
-            loop_02_0,
+            loop_02_1,
             loop_02,
             loop_03,
             loop_04,
