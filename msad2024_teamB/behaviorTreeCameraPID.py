@@ -629,7 +629,7 @@ class IsDistanceEarned_after(Behaviour):
                 self.earned = True
                 self.logger.info("%+06d %s.delta distance earned" % (cur_dist, self.__class__.__name__))
                 print(3)
-            g_dist = 1120
+            g_dist = 1150
             g_earned_dist = 0
             return Status.SUCCESS
         else:
@@ -893,7 +893,7 @@ def build_behaviour_tree() -> BehaviourTree:
     )
     loop_35.add_children(
         [
-            MoveStraight(name="move straight", power=45, target_distance=400),
+            MoveStraight(name="move straight", power=45, target_distance=350),
         ]
     )
     loop_36.add_children(
