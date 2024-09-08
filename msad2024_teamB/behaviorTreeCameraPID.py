@@ -372,10 +372,6 @@ class MoveStraight(Behaviour):
 
 class MoveStraight_dbr(Behaviour):
     def __init__(self, name: str, power: int, target_distance: int) -> None:
-        global g_distFlg
-        if g_distFlg:
-            return Status.SUCCESS
-        
         super(MoveStraight_dbr, self).__init__(name)
         self.power = power
         self.target_distance = target_distance
@@ -383,6 +379,10 @@ class MoveStraight_dbr(Behaviour):
         self.running = False
 
     def update(self) -> Status:
+        global g_distFlg
+        if g_distFlg:
+            return Status.SUCCESS
+
         if not self.running:
             self.running = True
             self.start_distance = g_plotter.get_distance()
@@ -433,10 +433,6 @@ class MoveStraightLR(Behaviour):
 
 class MoveStraightLR_dbr(Behaviour):
     def __init__(self, name: str, right_power: int, left_power: int, target_distance: int) -> None:
-        global g_distFlg
-        if g_distFlg:
-            return Status.SUCCESS
-        
         super(MoveStraightLR_dbr, self).__init__(name)
         self.right_power = right_power
         self.left_power = left_power
@@ -445,6 +441,10 @@ class MoveStraightLR_dbr(Behaviour):
         self.running = False
 
     def update(self) -> Status:
+        global g_distFlg
+        if g_distFlg:
+            return Status.SUCCESS
+        
         if not self.running:
             self.running = True
             self.start_distance = g_plotter.get_distance()
