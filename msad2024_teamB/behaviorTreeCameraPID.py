@@ -57,7 +57,7 @@ g_gyro_sensor: GyroSensor = None
 g_video: Video = None
 g_video_thread: threading.Thread = None
 g_course: int = 0
-g_dist: int = 1500
+g_dist: int = 1400
 g_earned_dist: int = 0
 g_distFlg: bool = False
 
@@ -629,7 +629,7 @@ class IsDistanceEarned_after(Behaviour):
                 self.earned = True
                 self.logger.info("%+06d %s.delta distance earned" % (cur_dist, self.__class__.__name__))
                 print(3)
-            g_dist = 1100
+            g_dist = 1150
             g_earned_dist = 0
             return Status.SUCCESS
         else:
