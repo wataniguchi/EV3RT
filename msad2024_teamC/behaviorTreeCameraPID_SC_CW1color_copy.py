@@ -498,13 +498,13 @@ def build_behaviour_tree() -> BehaviourTree:
     loop_03.add_children(
         [
             RunAsInstructed(name="move to SC",pwm_l= 50,pwm_r=50),
-            IsDistanceEarned(name="check distance", delta_dist = 1200),
+            IsDistanceEarned(name="check distance", delta_dist = 1600),
         ]
     )
-    # 右に110度回転させる
+    # 右に90度回転させる
     loop_04.add_children(
         [
-            RotateDegrees(name="rotate 110 degrees right", power=50, target_angle=140)
+            RotateDegrees(name="rotate 110 degrees right", power=50, target_angle=90)
         ]
     )
    # 黒検知まで走らせる
