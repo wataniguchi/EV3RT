@@ -465,8 +465,9 @@ def build_behaviour_tree() -> BehaviourTree:
     loop_02.add_children(
         [
 #            TraceLineCam(name="trace normal edge", power=45, pid_p=2.0, pid_i=0.001, pid_d=0.35,
+#            power=45→30→20→10
                          
-             TraceLineCam(name="trace normal edge", power=30, pid_p=1.5, pid_i=0.001, pid_d=0.35,
+             TraceLineCam(name="trace normal edge", power=20, pid_p=1.5, pid_i=0.001, pid_d=0.35,
                          gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
             IsJunction(name="scan joined junction", target_state = JState.JOINED),
         ]
