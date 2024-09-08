@@ -675,7 +675,7 @@ def build_behaviour_tree() -> BehaviourTree:
     )
     loop_01.add_children(
         [
-        TraceLineCam(name="trace normal edge", power=43, pid_p=1.0, pid_i=0.0015, pid_d=0.1,
+        TraceLineCam(name="trace normal edge", power=43, pid_p=0.8, pid_i=0.0015, pid_d=0.1,
                          gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
         IsDistanceEarned_before(name="check distance", delta_dist = 1500),
         IsRedColorDetected(name="check red color", threshold=12.0), 
@@ -733,7 +733,7 @@ def build_behaviour_tree() -> BehaviourTree:
 
     loop_11.add_children(
         [
-        TraceLineCam(name="trace normal edge", power=30, pid_p=0.5, pid_i=0.0015, pid_d=0.1,gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
+        TraceLineCam(name="trace normal edge", power=30, pid_p=0.8, pid_i=0.0015, pid_d=0.1,gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
         IsDistanceEarned(name="check distance", delta_dist=300),
         # TraceLineCam(name="trace normal edge", power=40, pid_p=1.0, pid_i=0.0015, pid_d=0.1,
         #                  gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
@@ -753,7 +753,7 @@ def build_behaviour_tree() -> BehaviourTree:
     )
     loop_14.add_children(
         [
-        TraceLineCam(name="trace normal edge", power=35, pid_p=1.0, pid_i=0.0015, pid_d=0.1,
+        TraceLineCam(name="trace normal edge", power=35, pid_p=0.8, pid_i=0.0015, pid_d=0.1,
                          gs_min=0, gs_max=80, trace_side=TraceSide.OPPOSITE),
         IsDistanceEarned_before(name="check distance", delta_dist = 1050),
         IsRedColorDetected(name="check red color", threshold=12.0), 
