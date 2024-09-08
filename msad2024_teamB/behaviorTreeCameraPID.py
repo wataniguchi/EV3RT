@@ -661,9 +661,16 @@ def build_behaviour_tree() -> BehaviourTree:
     loop_18 = Parallel(name="loop 18", policy=ParallelPolicy.SuccessOnOne())
     loop_19 = Parallel(name="loop 19", policy=ParallelPolicy.SuccessOnOne())
     loop_20 = Parallel(name="loop 20", policy=ParallelPolicy.SuccessOnOne())
-    loop_21 = Parallel(name="loop 20", policy=ParallelPolicy.SuccessOnOne())
-    loop_22 = Parallel(name="loop 20", policy=ParallelPolicy.SuccessOnOne())
-    loop_23 = Parallel(name="loop 20", policy=ParallelPolicy.SuccessOnOne())
+    loop_21 = Parallel(name="loop 21", policy=ParallelPolicy.SuccessOnOne())
+    loop_22 = Parallel(name="loop 22", policy=ParallelPolicy.SuccessOnOne())
+    loop_23 = Parallel(name="loop 23", policy=ParallelPolicy.SuccessOnOne())
+    loop_24 = Parallel(name="loop 24", policy=ParallelPolicy.SuccessOnOne())
+    loop_25 = Parallel(name="loop 25", policy=ParallelPolicy.SuccessOnOne())
+    loop_26 = Parallel(name="loop 26", policy=ParallelPolicy.SuccessOnOne())
+    loop_27 = Parallel(name="loop 27", policy=ParallelPolicy.SuccessOnOne())
+    loop_28 = Parallel(name="loop 28", policy=ParallelPolicy.SuccessOnOne())
+    loop_29 = Parallel(name="loop 29", policy=ParallelPolicy.SuccessOnOne())
+    loop_30 = Parallel(name="loop 30", policy=ParallelPolicy.SuccessOnOne())
     calibration.add_children(
         [
             ArmUpDownFull(name="arm down", direction=ArmDirection.DOWN),
@@ -815,6 +822,48 @@ def build_behaviour_tree() -> BehaviourTree:
             MoveStraightLR(name="move straight 4", right_power=60, left_power=0, target_distance=220),
         ]
     )
+    loop_24.add_children(
+        [
+        TraceLineCam(name="trace normal edge", power=30, pid_p=0.8, pid_i=0.0015, pid_d=0.1,gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
+        IsDistanceEarned(name="check distance", delta_dist=250),
+        # TraceLineCam(name="trace normal edge", power=40, pid_p=1.0, pid_i=0.0015, pid_d=0.1,
+        #                  gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
+        ]
+    )
+    loop_25.add_children(
+        [
+            MoveStraight(name="move straight", power=45, target_distance=200),
+        ]
+    )
+    loop_26.add_children(
+        [
+            MoveStraight(name="back", power=-50, target_distance=200)
+        ]
+    )
+    loop_27.add_children(
+        [
+            MoveStraightLR(name="move straight 4", right_power=60, left_power=0, target_distance=220),
+        ]
+    )
+    loop_28.add_children(
+        [
+        TraceLineCam(name="trace normal edge", power=35, pid_p=0.8, pid_i=0.0015, pid_d=0.1,
+                         gs_min=0, gs_max=80, trace_side=TraceSide.OPPOSITE),
+        IsDistanceEarned_before(name="check distance", delta_dist = 1050),
+        IsRedColorDetected(name="check red color", threshold=12.0), 
+        IsBlueColorDetected(name="check blue color", threshold=12.0), 
+        ]
+    )
+    loop_29.add_children(
+        [
+            MoveStraight(name="move straight", power=45, target_distance=400),
+        ]
+    )
+    loop_30.add_children(
+        [
+            MoveStraight(name="back", power=-50, target_distance=140)
+        ]
+    )
     root.add_children(
         [
             calibration,
@@ -843,7 +892,13 @@ def build_behaviour_tree() -> BehaviourTree:
             loop_20,
             loop_21,
             loop_22,
-            loop_23,
+            loop_24,
+            loop_25,
+            loop_26,
+            loop_27,
+            loop_28,
+            loop_29,
+            loop_30,
             StopNow(name="stop"),
             TheEnd(name="end"),
         ]
