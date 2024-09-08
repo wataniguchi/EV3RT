@@ -611,6 +611,7 @@ class IsDistanceEarned_after(Behaviour):
 
     def update(self) -> Status:
         global g_dist
+        global g_earned_dist
         if not self.running:
             self.running = True
             self.orig_dist = g_plotter.get_distance()
@@ -626,6 +627,7 @@ class IsDistanceEarned_after(Behaviour):
                 self.logger.info("%+06d %s.delta distance earned" % (cur_dist, self.__class__.__name__))
                 print(3)
             g_dist = 1600
+            g_earned_dist = 0
             return Status.SUCCESS
         else:
             print(4)
