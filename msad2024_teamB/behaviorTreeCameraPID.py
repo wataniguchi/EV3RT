@@ -594,7 +594,7 @@ class IsDistanceEarned_before(Behaviour):
                 self.logger.info("%+06d %s.delta distance earned" % (cur_dist, self.__class__.__name__))
             global g_distFlg
             g_distFlg = True
-            g_dist = 900
+            g_dist = 1000
             self.logger.info("指定距離によりフラグ設定")
             return Status.SUCCESS
         else:
@@ -629,7 +629,7 @@ class IsDistanceEarned_after(Behaviour):
                 self.earned = True
                 self.logger.info("%+06d %s.delta distance earned" % (cur_dist, self.__class__.__name__))
                 print(3)
-            g_dist = 1150
+            g_dist = 950
             g_earned_dist = 0
             return Status.SUCCESS
         else:
