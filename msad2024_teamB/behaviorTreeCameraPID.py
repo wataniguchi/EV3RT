@@ -836,7 +836,7 @@ def build_behaviour_tree() -> BehaviourTree:
     )
     loop_25.add_children(
         [
-            MoveStraight(name="move straight", power=45, target_distance=300),
+            MoveStraight(name="move straight", power=50, target_distance=300),
         ]
     )
     loop_26.add_children(
