@@ -804,7 +804,7 @@ def build_behaviour_tree() -> BehaviourTree:
     )
     loop_23.add_children(
         [
-            MoveStraightLR(name="move straight 4", right_power=60, left_power=0, target_distance=240),
+            MoveStraightLR(name="move straight 4", right_power=60, left_power=0, target_distance=220),
         ]
     )
     root.add_children(
