@@ -629,7 +629,7 @@ class IsDistanceEarned_after(Behaviour):
                 self.earned = True
                 self.logger.info("%+06d %s.delta distance earned" % (cur_dist, self.__class__.__name__))
                 print(3)
-            g_dist = 1150
+            g_dist = 1100
             g_earned_dist = 0
             return Status.SUCCESS
         else:
@@ -680,7 +680,7 @@ def build_behaviour_tree() -> BehaviourTree:
         [
         TraceLineCam(name="trace normal edge", power=43, pid_p=0.8, pid_i=0.0015, pid_d=0.1,
                          gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
-        IsDistanceEarned_before(name="check distance", delta_dist = 1450),
+        IsDistanceEarned_before(name="check distance", delta_dist = 1550),
         IsRedColorDetected(name="check red color", threshold=12.0), 
         IsBlueColorDetected(name="check blue color", threshold=12.0), 
         ]
