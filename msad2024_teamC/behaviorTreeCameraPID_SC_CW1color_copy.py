@@ -463,6 +463,7 @@ def build_behaviour_tree() -> BehaviourTree:
     loop_03 = Parallel(name="loop 03", policy=ParallelPolicy.SuccessOnOne())
     loop_04 = Parallel(name="loop 04", policy=ParallelPolicy.SuccessOnOne())
     loop_05 = Parallel(name="loop 04", policy=ParallelPolicy.SuccessOnOne())
+    loop_06 = Parallel(name="loop 04", policy=ParallelPolicy.SuccessOnOne())
     
     # シーケンスノードとして以下の動作を順序実行する。
     # a.アームを一杯下げる
@@ -480,38 +481,41 @@ def build_behaviour_tree() -> BehaviourTree:
             IsTouchOn(name="touch start"),
         ]
     )
-
-    # 左に20度回転させる
+    # スマートキャリーの青枠に到達
     loop_01.add_children(
         [
-            RotateDegrees(name="rotate 70 degrees left", power=50, target_angle=-20)
+            TraceLineCam(name="trace normal edge", power=40, pid_p=2.5, pid_i=0.0015, pid_d=0.1, gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
+            CheckColor(name="blue check"),
+        ]
+    )
+    # 左に40度回転させる
+    loop_02.add_children(
+        [
+            RotateDegrees(name="rotate 70 degrees left", power=50, target_angle=-40)
         ]
     )
     # 一定距離走らせる
-    loop_02.add_children(
+    loop_03.add_children(
         [
             RunAsInstructed(name="move to SC",pwm_l= 50,pwm_r=50),
             IsDistanceEarned(name="check distance", delta_dist = 1200),
         ]
     )
-
-    # 黒検知まで走らせる
-    loop_03.add_children(
-        [
-            #RunAsInstructed(name="move to SC",pwm_l= 50,pwm_r=50),
-            CheckColor(name="black check"),
-        ]
-    )
-
     # 右に110度回転させる
     loop_04.add_children(
         [
             RotateDegrees(name="rotate 110 degrees right", power=50, target_angle=140)
         ]
     )
-
-    # カメラ走行でゴールに向かう
+   # 黒検知まで走らせる
     loop_05.add_children(
+        [
+            #RunAsInstructed(name="move to SC",pwm_l= 50,pwm_r=50),
+            CheckColor(name="black check"),
+        ]
+    )
+    # カメラ走行でゴールに向かう
+    loop_06.add_children(
         [
             TraceLineCam(name="trace normal edge", power=40, pid_p=1.5, pid_i=0.0015, pid_d=0.1, gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
         ]
@@ -525,6 +529,7 @@ def build_behaviour_tree() -> BehaviourTree:
             loop_03,
             loop_04,
             loop_05,
+            loop_06,
             StopNow(name="stop"),
             TheEnd(name="end"),
         ]
