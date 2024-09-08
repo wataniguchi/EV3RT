@@ -541,6 +541,7 @@ class IsRedColorDetected(Behaviour):
             g_dist = g_dist - g_earned_dist
             # print("g_earned_dist:"+ str(g_earned_dist))
             # print("g_dist:"+ str(g_dist))
+            self.logger.info("赤判定")
             return Status.SUCCESS
         else:
             return Status.RUNNING
@@ -564,6 +565,7 @@ class IsBlueColorDetected(Behaviour):
             g_dist = g_dist - g_earned_dist
             # print("g_earned_dist:"+ str(g_earned_dist))
             # print("g_dist:"+ str(g_dist))
+            self.logger.info("青判定")
             return Status.SUCCESS
         else:
             return Status.RUNNING
@@ -590,6 +592,7 @@ class IsDistanceEarned_before(Behaviour):
                 self.logger.info("%+06d %s.delta distance earned" % (cur_dist, self.__class__.__name__))
             global g_distFlg
             g_distFlg = True
+            self.logger.info("指定距離によりフラグ設定")
             return Status.SUCCESS
         else:
             return Status.RUNNING
@@ -720,7 +723,7 @@ def build_behaviour_tree() -> BehaviourTree:
 
     loop_10.add_children(
         [
-            MoveStraightLR(name="move straight 4", right_power=10, left_power=60, target_distance=200),
+            MoveStraightLR(name="move straight 4", right_power=0, left_power=60, target_distance=150),
         ]
     )
 
