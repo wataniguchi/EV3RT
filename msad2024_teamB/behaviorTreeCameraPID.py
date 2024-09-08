@@ -626,7 +626,7 @@ class IsDistanceEarned_after(Behaviour):
                 self.earned = True
                 self.logger.info("%+06d %s.delta distance earned" % (cur_dist, self.__class__.__name__))
                 print(3)
-            g_dist = 1400
+            g_dist = 1200
             g_earned_dist = 0
             return Status.SUCCESS
         else:
