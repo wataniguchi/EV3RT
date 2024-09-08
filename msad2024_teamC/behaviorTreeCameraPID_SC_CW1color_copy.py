@@ -500,7 +500,7 @@ def build_behaviour_tree() -> BehaviourTree:
             RunAsInstructed(name="move to SC",pwm_l= 50,pwm_r=50),
             IsDistanceEarned(name="check distance", delta_dist = 1600),
         ]
-    )
+    )   
     # 右に90度回転させる
     loop_04.add_children(
         [
@@ -518,9 +518,10 @@ def build_behaviour_tree() -> BehaviourTree:
     loop_06.add_children(
         [
             TraceLineCam(name="trace normal edge", power=40, pid_p=1.5, pid_i=0.0015, pid_d=0.1, gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
+            IsDistanceEarned(name="check distance", delta_dist = 500),
         ]
     )
-    root.add_children(
+        root.add_children(
         [
             calibration,
             start,
@@ -528,7 +529,7 @@ def build_behaviour_tree() -> BehaviourTree:
             loop_02,
             loop_03,
             loop_04,
-            loop_05,
+            #loop_05,
             loop_06,
             StopNow(name="stop"),
             TheEnd(name="end"),
