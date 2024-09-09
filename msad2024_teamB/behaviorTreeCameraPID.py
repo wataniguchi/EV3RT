@@ -947,7 +947,7 @@ def build_behaviour_tree() -> BehaviourTree:
     # 右に90度回転
     loop_38.add_children(
         [
-            MoveStraightLR(name="move straight 4", right_power=0, left_power=60, target_distance=50),
+            MoveStraightLR(name="move straight 4", right_power=0, left_power=60, target_distance=100),
         ]
     )
 # 4列目
@@ -974,7 +974,7 @@ def build_behaviour_tree() -> BehaviourTree:
     # 180度回転
     loop_42.add_children(
         [
-            MoveStraightLR(name="move straight 4", right_power=60, left_power=-60, target_distance=100),
+            MoveStraightLR(name="move straight 4", right_power=60, left_power=-60, target_distance=40),
         ]
     )
     # 指定距離走行
