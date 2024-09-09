@@ -40,12 +40,12 @@ OUT_FRAME_WIDTH  = 160
 OUT_FRAME_HEIGHT = 120
 
 
-class TraceSide(Enum):
-    NORMAL = "Normal"
-    OPPOSITE = "Opposite"
-    RIGHT = "Right"
-    LEFT = "Left"
-    CENTER = "Center"
+# class TraceSide(Enum):
+#     NORMAL = "Normal"
+#     OPPOSITE = "Opposite"
+#     RIGHT = "Right"
+#     LEFT = "Left"
+#     CENTER = "Center"
 
 
 class Video(object):
