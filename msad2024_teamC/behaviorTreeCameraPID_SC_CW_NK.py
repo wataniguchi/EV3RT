@@ -526,12 +526,19 @@ def build_behaviour_tree() -> BehaviourTree:
     )
 
     # ライントレース
+    # loop_01.add_children(
+    #     [
+    #         RunAsInstructed(name="go straight",pwm_l=40,pwm_r=40),
+    #         IsDistanceEarned(name="check distance", delta_dist = 200),
+    #     ]
+    #)
     loop_01.add_children(
         [
-            RunAsInstructed(name="go straight",pwm_l=40,pwm_r=40),
+            TraceLineCam(name="trace normal edge", power=40, pid_p=1.5, pid_i=0.0015, pid_d=0.1, gs_min=0, gs_max=80, trace_side=TraceSide.OPPOSITE),
             IsDistanceEarned(name="check distance", delta_dist = 200),
         ]
     )
+    
     loop_02.add_children(
         [
             TraceLineCam(name="trace normal edge", power=40, pid_p=1.5, pid_i=0.0015, pid_d=0.1, gs_min=0, gs_max=80, trace_side=TraceSide.OPPOSITE),
