@@ -3,6 +3,7 @@ import time
 import math
 import threading
 import signal
+import colorsys
 from enum import Enum, IntEnum, auto
 from etrobo_python import ETRobo, Hub, Motor, ColorSensor, TouchSensor, SonarSensor, GyroSensor
 from simple_pid import PID
@@ -208,7 +209,7 @@ class IsExistBottle(Behaviour):
         if not self.running:
             self.running = True
         if(g_video.get_range_of_blue()>DebriNum.BOTTLE_RANGE_LOWER or 
-           g_video.get_range_of_red()>DebriNum.BOTTLE_RANGE_LOWER):
+        g_video.get_range_of_red()>DebriNum.BOTTLE_RANGE_LOWER):
             return Status.SUCCESS
         return Status.RUNNING
 
@@ -247,6 +248,100 @@ class IsRotated(Behaviour):
             return Status.SUCCESS
         else:
             return Status.RUNNING
+
+class RotateDegrees(Behaviour):
+    def __init__(self, name: str, power: int, target_angle: int):
+        super(RotateDegrees, self).__init__(name)
+        self.power = power
+        self.target_angle = target_angle  # 回転させたい角度（正の値で右回転、負の値で左回転）
+        self.initial_angle = None
+        self.running = False
+
+    def update(self) -> Status:
+        if not self.running:
+            self.running = True
+            self.initial_angle = g_gyro_sensor.get_angle()  # 現在の角度を取得
+            self.logger.info("%+06d %s.rotation started" % (g_plotter.get_distance(), self.__class__.__name__))
+        
+        current_angle = g_gyro_sensor.get_angle()
+        delta_angle = current_angle - self.initial_angle
+
+        # 目標角度に達したら停止
+        if (self.target_angle > 0 and delta_angle >= self.target_angle) or (self.target_angle < 0 and delta_angle <= self.target_angle):
+            g_right_motor.set_power(0)
+            g_right_motor.set_brake(True)
+            g_left_motor.set_power(0)
+            g_left_motor.set_brake(True)
+            self.logger.info("%+06d %s.rotation completed" % (g_plotter.get_distance(), self.__class__.__name__))
+            return Status.SUCCESS
+        else:
+            # 右回転の場合
+            if self.target_angle > 0:
+                g_right_motor.set_power(-self.power)
+                g_left_motor.set_power(self.power)
+            # 左回転の場合
+            else:
+                g_right_motor.set_power(self.power)
+                g_left_motor.set_power(-self.power)
+            return Status.RUNNING
+
+class CheckColor(Behaviour):
+    def __init__(self, name: str):
+        super(CheckColor, self).__init__(name)
+        self.logger.debug("%s.__init__()" % (self.__class__.__name__))
+    def update(self) -> Status:
+        # RGB値を0〜1の範囲に正規化
+        r, g, b = [x / 255.0 for x in g_color_sensor.get_raw_color()]
+        # RGBをHSVに変換
+        h, s, v = colorsys.rgb_to_hsv(r, g, b)
+        # Hueの値が青色の範囲（例: 180度〜250度程度）にあるかをチェック
+        # Hueは0.0〜1.0の範囲で返されるので、360度に換算する
+        h_degrees = h * 360
+
+        # 青色の範囲をチェック
+        if 200 <= h_degrees <= 245 and s > 0.3 and v > 0.2:
+            return Status.SUCCESS
+        else:
+            return Status.RUNNING
+        
+class CheckBrackColor(Behaviour):
+    def __init__(self, name: str):
+        super(CheckBrackColor, self).__init__(name)
+        self.logger.debug("%s.__init__()" % (self.__class__.__name__))
+        self.running = False
+    def update(self) -> Status:
+        # RGB値を0〜1の範囲に正規化
+        r, g, b = [x for x in g_color_sensor.get_raw_color()]
+        # # RGBをHSVに変換
+        # h, s, v = colorsys.rgb_to_hsv(r, g, b)
+        # # Hueの値が青色の範囲（例: 180度〜250度程度）にあるかをチェック
+        # # Hueは0.0〜1.0の範囲で返されるので、360度に換算する
+        # h_degrees = h * 360
+
+        # 青色の範囲をチェック
+        # if 200 <= h_degrees <= 245 and s > 0.3 and v > 0.2:
+        #     return Status.SUCCESS
+        # else:
+        #     return Status.RUNNING
+        if not self.running:
+            self.running = True
+            self.logger.info("%+06d %s.started" % (g_plotter.get_distance(), self.__class__.__name__))
+
+        global now_color
+        if not now_color:
+            now_color = [r,g,b]
+        else:
+            self.logger.info('now_color:{}'.format(now_color))
+            diff_r = now_color[0] - r
+            diff_g = now_color[1] - g
+            diff_b = now_color[2] - b
+
+            self.logger.debug('diff_r:{}'.format(diff_r))
+            if diff_r>=60 :
+                return Status.SUCCESS
+
+            now_color = [r,g,b]
+        return Status.RUNNING
 
 
 class StopNow(Behaviour):
@@ -329,7 +424,7 @@ class RunAsInstructed(Behaviour):
 
 class TraceLineCam(Behaviour):
     def __init__(self, name: str, power: int, pid_p: float, pid_i: float, pid_d: float,
-                 gs_min: int, gs_max: int, trace_side: TraceSide, scene: Scene) -> None:
+                gs_min: int, gs_max: int, trace_side: TraceSide, scene: Scene) -> None:
         super(TraceLineCam, self).__init__(name)
         self.power = power
         self.pid = PID(pid_p, pid_i, pid_d, setpoint=0, sample_time=EXEC_INTERVAL, output_limits=(-power, power))
@@ -465,7 +560,14 @@ def build_behaviour_tree() -> BehaviourTree:
 
     carry = Sequence(name="carry", memory=True)
     carry_01 = Parallel(name="carry 01", policy=ParallelPolicy.SuccessOnOne())
-
+    carry_02 = Parallel(name="carry 01", policy=ParallelPolicy.SuccessOnOne())
+    carry_03 = Parallel(name="carry 01", policy=ParallelPolicy.SuccessOnOne())
+    carry_04 = Parallel(name="carry 01", policy=ParallelPolicy.SuccessOnOne())
+    carry_05 = Parallel(name="carry 01", policy=ParallelPolicy.SuccessOnOne())
+    carry_06 = Parallel(name="carry 01", policy=ParallelPolicy.SuccessOnOne())
+    carry_07 = Parallel(name="carry 01", policy=ParallelPolicy.SuccessOnOne())
+    carry_08 = Parallel(name="carry 01", policy=ParallelPolicy.SuccessOnOne())
+    
     calibration.add_children(
         [
             ArmUpDownFull(name="arm down", direction=ArmDirection.DOWN),
@@ -745,6 +847,68 @@ def build_behaviour_tree() -> BehaviourTree:
             IsDistanceEarnedTrace(name="check distance04", delta_dist = DebriNum.DISTANCE_SIDE),
         ]
     )
+    
+    carry.add_children([
+        carry_01,
+        carry_02,
+        carry_03,
+        carry_04,
+        carry_05,
+        carry_06,
+        carry_07,
+        carry_08,
+    ])
+    
+    
+    
+    
+    
+    carry_01.add_children(
+        [
+            RunAsInstructed(name="go straight",pwm_l=48,pwm_r=40),
+            IsDistanceEarned(name="check distance", delta_dist = 200),
+        ]
+    )
+    
+    carry_02.add_children(
+        [
+            TraceLineCam(name="trace normal edge", power=40, pid_p=1.5, pid_i=0.0015, pid_d=0.1,scene=Scene.DEBRI, gs_min=0, gs_max=80, trace_side=TraceSide.OPPOSITE),
+            IsDistanceEarned(name="check distance", delta_dist = 1000),
+        ]
+    )
+    carry_03.add_children(
+        [
+            RunAsInstructed(name="go straight",pwm_l=40,pwm_r=40),
+            IsDistanceEarned(name="check distance", delta_dist = 800),
+        ]
+    )
+    carry_04.add_children(
+        [
+            RunAsInstructed(name="go straight",pwm_l=-40,pwm_r=-40),
+            IsDistanceEarned(name="check distance", delta_dist = 180),
+        ]
+    )
+    carry_05.add_children(
+        [
+            RotateDegrees(name="rotate90",power=50,target_angle=95),
+        ]
+    )
+    carry_06.add_children(
+        [
+            RunAsInstructed(name="go straight",pwm_l=40,pwm_r=40),
+            CheckBrackColor(name="checkBrackColor")
+        ]
+    )
+    carry_07.add_children(
+        [
+            RotateDegrees(name="rotate60",power=40,target_angle=55)
+        ]
+    )
+    carry_08.add_children(
+        [
+            TraceLineCam(name="trace normal edge", power=40, pid_p=1.5, pid_i=0.0015, pid_d=0.1,scene=Scene.DEBRI, gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
+        ]
+    )
 
     root.add_children(
         [
@@ -752,13 +916,12 @@ def build_behaviour_tree() -> BehaviourTree:
             start,
             loop,
             debri,
-            #carry,
+            carry,
             StopNow(name="stop"),
             TheEnd(name="end"),
         ]
     )
     return root
-
 
 def initialize_etrobo(backend: str) -> ETRobo:
     return (ETRobo(backend=backend)
