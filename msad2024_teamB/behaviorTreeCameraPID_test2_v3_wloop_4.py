@@ -424,8 +424,11 @@ def build_behaviour_tree() -> BehaviourTree:
     #        pid_p=1.5→2.0→1,7→1.6→1.4→1.5
 
     #        TraceLineCam(name="trace normal edge", power=60, pid_p=1.2, pid_i=0.0015, pid_d=0.4, ok
+
+    #        TraceLineCam(name="trace normal edge", power=65, pid_p=0.5, pid_i=0.0015, pid_d=0.6,
+    #        pid_p=1.5→0.5  pid_d=0.4→0.6
                                                 
-            TraceLineCam(name="trace normal edge", power=65, pid_p=1.2, pid_i=0.0015, pid_d=0.4,
+            TraceLineCam(name="trace normal edge", power=65, pid_p=0.5, pid_i=0.0015, pid_d=0.6,
                          gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
             IsDistanceEarned(name="check distance", delta_dist = 2100),
         ]
