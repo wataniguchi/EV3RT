@@ -711,11 +711,11 @@ def build_behaviour_tree() -> BehaviourTree:
         IsBlueColorDetected(name="check blue color", threshold=12.0), 
         ]
     )
-    loop_02_1.add_children(
-        [
-            MoveStraightLR_dbr(name="move straight 4", right_power=0, left_power=50, target_distance=40),
-        ]
-    )
+    # loop_02_1.add_children(
+    #     [
+    #         MoveStraightLR_dbr(name="move straight 4", right_power=0, left_power=50, target_distance=40),
+    #     ]
+    # )
     loop_02.add_children(
         [
             MoveStraight_dbr(name="move straight", power=40, target_distance=110),
@@ -975,7 +975,7 @@ def build_behaviour_tree() -> BehaviourTree:
             calibration,
             start,
             loop_01,
-            loop_02_1,
+            # loop_02_1,
             loop_02,
             loop_03,
             loop_04,
@@ -989,7 +989,7 @@ def build_behaviour_tree() -> BehaviourTree:
             loop_12,
             loop_13,
             loop_14,
-            loop_14_1,
+            # loop_14_1,
             loop_15,
             loop_16,
             loop_17,
@@ -1004,7 +1004,7 @@ def build_behaviour_tree() -> BehaviourTree:
             loop_26,
             loop_27,
             loop_28,
-            loop_28_1,
+            # loop_28_1,
             loop_29,
             loop_30,
             loop_31,
