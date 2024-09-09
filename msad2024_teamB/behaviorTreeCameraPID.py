@@ -57,7 +57,7 @@ g_gyro_sensor: GyroSensor = None
 g_video: Video = None
 g_video_thread: threading.Thread = None
 g_course: int = 0
-g_dist: int = 1500
+g_dist: int = 1550
 g_earned_dist: int = 0
 g_distFlg: bool = False
 
@@ -537,8 +537,8 @@ class IsRedColorDetected(Behaviour):
         red_percentage = g_video.get_red_ratio() * 100
         if red_percentage > self.threshold:
             self.logger.info("%+06d %s.red color ratio exceeds threshold: %f" % (g_plotter.get_distance(), self.__class__.__name__, red_percentage))
-
             g_dist = g_dist - g_earned_dist
+            self.logger.info("グローバル変数更新 g_dist = g_dist - g_earned_dist")
             # print("g_earned_dist:"+ str(g_earned_dist))
             # print("g_dist:"+ str(g_dist))
             self.logger.info("赤判定")
@@ -563,6 +563,7 @@ class IsBlueColorDetected(Behaviour):
         if blue_percentage > self.threshold:
             self.logger.info("%+06d %s.blue color ratio exceeds threshold: %f" % (g_plotter.get_distance(), self.__class__.__name__, blue_percentage))
             g_dist = g_dist - g_earned_dist
+            self.logger.info("グローバル変数更新 g_dist = g_dist - g_earned_dist")
             # print("g_earned_dist:"+ str(g_earned_dist))
             # print("g_dist:"+ str(g_dist))
             self.logger.info("青判定")
@@ -594,8 +595,8 @@ class IsDistanceEarned_before(Behaviour):
                 self.logger.info("%+06d %s.delta distance earned" % (cur_dist, self.__class__.__name__))
             global g_distFlg
             g_distFlg = True
-            g_dist = 950
-            self.logger.info("指定距離によりフラグ設定")
+            g_dist = 980
+            self.logger.info("グローバル変数更新 g_dist:980、g_earned_dist:0")
             return Status.SUCCESS
         else:
             return Status.RUNNING
@@ -620,20 +621,17 @@ class IsDistanceEarned_after(Behaviour):
             self.orig_dist = g_plotter.get_distance()
             self.logger.info("%+06d %s.accumulation started for delta=%d" % (self.orig_dist, self.__class__.__name__, g_dist))
         cur_dist = g_plotter.get_distance()
-        earned_dist = cur_dist - self.orig_dist
+        g_earned_dist = cur_dist - self.orig_dist
         # print(g_dist)
-        if (earned_dist >= g_dist or -earned_dist <= -g_dist):
-            print(1)
+        if (g_earned_dist >= g_dist or -g_earned_dist <= -g_dist):
             if not self.earned:
-                print(2)
                 self.earned = True
                 self.logger.info("%+06d %s.delta distance earned" % (cur_dist, self.__class__.__name__))
-                print(3)
             g_dist = 980
             g_earned_dist = 0
+            self.logger.info("グローバル変数更新 g_dist:980、g_earned_dist:0")
             return Status.SUCCESS
         else:
-            print(4)
             return Status.RUNNING
         
 def build_behaviour_tree() -> BehaviourTree:
@@ -641,7 +639,7 @@ def build_behaviour_tree() -> BehaviourTree:
     calibration = Sequence(name="calibration", memory=True)
     start = Parallel(name="start", policy=ParallelPolicy.SuccessOnOne())
     loop_01 = Parallel(name="loop 01", policy=ParallelPolicy.SuccessOnOne())
-    loop_02_1 = Parallel(name="loop 01", policy=ParallelPolicy.SuccessOnOne())
+    loop_02_1 = Parallel(name="loop 02_1", policy=ParallelPolicy.SuccessOnOne())
     loop_02 = Parallel(name="loop 02", policy=ParallelPolicy.SuccessOnOne())
     loop_03 = Parallel(name="loop 03", policy=ParallelPolicy.SuccessOnOne())
     loop_04 = Parallel(name="loop 04", policy=ParallelPolicy.SuccessOnOne())
@@ -655,6 +653,7 @@ def build_behaviour_tree() -> BehaviourTree:
     loop_12 = Parallel(name="loop 12", policy=ParallelPolicy.SuccessOnOne())
     loop_13 = Parallel(name="loop 13", policy=ParallelPolicy.SuccessOnOne())
     loop_14 = Parallel(name="loop 14", policy=ParallelPolicy.SuccessOnOne())
+    loop_14_1 = Parallel(name="loop 14_1", policy=ParallelPolicy.SuccessOnOne())
     loop_15 = Parallel(name="loop 15", policy=ParallelPolicy.SuccessOnOne())
     loop_16 = Parallel(name="loop 16", policy=ParallelPolicy.SuccessOnOne())
     loop_17 = Parallel(name="loop 17", policy=ParallelPolicy.SuccessOnOne())
@@ -669,6 +668,7 @@ def build_behaviour_tree() -> BehaviourTree:
     loop_26 = Parallel(name="loop 26", policy=ParallelPolicy.SuccessOnOne())
     loop_27 = Parallel(name="loop 27", policy=ParallelPolicy.SuccessOnOne())
     loop_28 = Parallel(name="loop 28", policy=ParallelPolicy.SuccessOnOne())
+    loop_28_1 = Parallel(name="loop 28_1", policy=ParallelPolicy.SuccessOnOne())
     loop_29 = Parallel(name="loop 29", policy=ParallelPolicy.SuccessOnOne())
     loop_30 = Parallel(name="loop 30", policy=ParallelPolicy.SuccessOnOne())
     loop_31 = Parallel(name="loop 31", policy=ParallelPolicy.SuccessOnOne())
@@ -677,6 +677,7 @@ def build_behaviour_tree() -> BehaviourTree:
     loop_34 = Parallel(name="loop 34", policy=ParallelPolicy.SuccessOnOne())
     loop_35 = Parallel(name="loop 35", policy=ParallelPolicy.SuccessOnOne())
     loop_36 = Parallel(name="loop 36", policy=ParallelPolicy.SuccessOnOne())
+    loop_37 = Parallel(name="loop 37", policy=ParallelPolicy.SuccessOnOne())
     calibration.add_children(
         [
             ArmUpDownFull(name="arm down", direction=ArmDirection.DOWN),
@@ -689,7 +690,8 @@ def build_behaviour_tree() -> BehaviourTree:
             IsTouchOn(name="touch start"),
         ]
     )
-    # 1列目
+# 1列目
+    # 指定距離走行_before、赤青判定
     loop_01.add_children(
         [
         TraceLineCam(name="trace normal edge", power=43, pid_p=0.8, pid_i=0.0015, pid_d=0.1,
@@ -714,7 +716,6 @@ def build_behaviour_tree() -> BehaviourTree:
             MoveStraightLR_dbr(name="move straight 4", right_power=60, left_power=10, target_distance=240),
         ]
     )
-
     loop_04.add_children(
         [
             MoveStraight_dbr(name="back", power=-50, target_distance=20)
@@ -730,127 +731,138 @@ def build_behaviour_tree() -> BehaviourTree:
             MoveStraight_dbr(name="back", power=-50, target_distance=70)
         ]
     )
+    # 指定距離走行_after
     loop_07.add_children(
         [
         TraceLineCam(name="trace normal edge", power=40, pid_p=1.0, pid_i=0.0015, pid_d=0.1,gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
         IsDistanceEarned_after(name="check distance"),
         ]
     )
+    # 押し出し
     loop_08.add_children(
         [
             MoveStraight(name="move straight", power=40, target_distance=400),
         ]
     )
+    # バック
     loop_09.add_children(
         [
             MoveStraight(name="back", power=-30, target_distance=150)
         ]
     )
+    # 右に90度回転
     loop_10.add_children(
         [
             MoveStraightLR(name="move straight 4", right_power=0, left_power=60, target_distance=110),
         ]
     )
+    # 指定距離走行_1列目から2列目移動
     loop_11.add_children(
         [
         TraceLineCam(name="trace normal edge", power=31, pid_p=1.0, pid_i=0.0015, pid_d=0.1,gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
         IsDistanceEarned(name="check distance", delta_dist=270),
-        # TraceLineCam(name="trace normal edge", power=40, pid_p=1.0, pid_i=0.0015, pid_d=0.1,
-        #                  gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
         ]
     )
-
-    # loop_12.add_children(
-    #     [
-    #         MoveStraight(name="back", power=-30, target_distance=300)
-    #     ]
-    # )
-
-    loop_13.add_children(
+    # 右に90度回転
+    loop_12.add_children(
         [
             MoveStraightLR(name="move straight 4", right_power=0, left_power=60, target_distance=130),
         ]
     )
-    # 2列目
-    loop_14.add_children(
+# 2列目
+    # 指定距離走行_before、赤青判定
+    loop_13.add_children(
         [
         TraceLineCam(name="trace normal edge", power=32, pid_p=1.0, pid_i=0.0015, pid_d=0.1,
                          gs_min=0, gs_max=80, trace_side=TraceSide.OPPOSITE),
-        IsDistanceEarned_before(name="check distance", delta_dist = 1000),
+        IsDistanceEarned_before(name="check distance", delta_dist = 1050),
         IsRedColorDetected(name="check red color", threshold=12.0), 
         IsBlueColorDetected(name="check blue color", threshold=12.0), 
         ]
     )
-    loop_15.add_children(
+    loop_14_1.add_children(
+        [
+            MoveStraightLR_dbr(name="move straight 4", right_power=0, left_power=60, target_distance=40),
+        ]
+    )
+    loop_14.add_children(
         [
             MoveStraight_dbr(name="move straight", power=40, target_distance=120),
         ]
     )
-    loop_16.add_children(
+    loop_15.add_children(
         [
             MoveStraightLR_dbr(name="move straight 4", right_power=60, left_power=10, target_distance=240),
         ]
     )
-
-    loop_17.add_children(
+    loop_16.add_children(
         [
             MoveStraight_dbr(name="back", power=-50, target_distance=20)
         ]
     )
-    loop_18.add_children(
+    loop_17.add_children(
         [
-            MoveStraightLR_dbr(name="move straight 4", right_power=-60, left_power=-10, target_distance=160),
+            MoveStraightLR_dbr(name="move straight 4", right_power=-60, left_power=-10, target_distance=180),
         ]
     )
-    loop_19.add_children(
+    loop_18.add_children(
         [
             MoveStraight_dbr(name="back", power=-50, target_distance=50)
         ]
     )
-    loop_20.add_children(
+    # 指定距離走行_after
+    loop_19.add_children(
         [
         TraceLineCam(name="trace normal edge", power=32, pid_p=1.0, pid_i=0.0015, pid_d=0.1,gs_min=0, gs_max=80, trace_side=TraceSide.OPPOSITE),
         IsDistanceEarned_after(name="check distance"),
         ]
     )
+    # 押し出し
+    loop_20.add_children(
+        [
+            MoveStraight(name="move straight", power=40, target_distance=400),
+        ]
+    )
+    # バック
     loop_21.add_children(
         [
-            MoveStraight(name="move straight", power=45, target_distance=400),
+            MoveStraight(name="back", power=-30, target_distance=160)
         ]
     )
+    # 左に90度回転
     loop_22.add_children(
-        [
-            MoveStraight(name="back", power=-50, target_distance=160)
-        ]
-    )
-    loop_23.add_children(
         [
             MoveStraightLR(name="move straight 4", right_power=60, left_power=0, target_distance=240),
         ]
     )
-    loop_24.add_children(
+    # 指定距離走行_2列目から3列目移動
+    loop_23.add_children(
         [
         TraceLineCam(name="trace normal edge", power=30, pid_p=0.8, pid_i=0.0015, pid_d=0.1,gs_min=0, gs_max=80, trace_side=TraceSide.OPPOSITE),
         IsDistanceEarned(name="check distance", delta_dist=230),
         ]
     )
+    # 押し出し
+    loop_24.add_children(
+        [
+            MoveStraight(name="move straight", power=40, target_distance=270),
+        ]
+    )
+    # バック
     loop_25.add_children(
         [
-            MoveStraight(name="move straight", power=50, target_distance=270),
+            MoveStraight(name="back", power=-30, target_distance=220)
         ]
     )
+    # 左に90度回転
     loop_26.add_children(
-        [
-            MoveStraight(name="back", power=-40, target_distance=220)
-        ]
-    )
-    loop_27.add_children(
         [
             MoveStraightLR(name="move straight 4", right_power=60, left_power=0, target_distance=255),
         ]
     )
-    # 3列目
-    loop_28.add_children(
+# 3列目
+    # 指定距離走行_before、赤青判定
+    loop_27.add_children(
         [
         TraceLineCam(name="trace normal edge", power=32, pid_p=0.8, pid_i=0.0015, pid_d=0.1,
                          gs_min=0, gs_max=80, trace_side=TraceSide.OPPOSITE),
@@ -859,45 +871,66 @@ def build_behaviour_tree() -> BehaviourTree:
         IsBlueColorDetected(name="check blue color", threshold=12.0), 
         ]
     )
-    loop_29.add_children(
+    loop_28_1.add_children(
+        [
+            MoveStraightLR_dbr(name="move straight 4", right_power=0, left_power=60, target_distance=40),
+        ]
+    )
+    loop_28.add_children(
         [
             MoveStraight_dbr(name="move straight", power=40, target_distance=120),
         ]
     )
-    loop_30.add_children(
+    loop_29.add_children(
         [
             MoveStraightLR_dbr(name="move straight 4", right_power=60, left_power=10, target_distance=250),
         ]
     )
-    loop_31.add_children(
+    loop_30.add_children(
         [
             MoveStraight_dbr(name="back", power=-50, target_distance=20)
         ]
     )
-    loop_32.add_children(
+    loop_31.add_children(
         [
             MoveStraightLR_dbr(name="move straight 4", right_power=-60, left_power=-10, target_distance=180),
         ]
     )
-    loop_33.add_children(
+    loop_32.add_children(
         [
             MoveStraight_dbr(name="back", power=-50, target_distance=50)
         ]
     )
-    loop_34.add_children(
+    # 指定距離走行_after
+    loop_33.add_children(
         [
         TraceLineCam(name="trace normal edge", power=35, pid_p=1.0, pid_i=0.0015, pid_d=0.1,gs_min=0, gs_max=80, trace_side=TraceSide.OPPOSITE),
         IsDistanceEarned_after(name="check distance"),
         ]
     )
-    loop_35.add_children(
+    # 押し出し
+    loop_34.add_children(
         [
-            MoveStraight(name="move straight", power=45, target_distance=370),
+            MoveStraight(name="move straight", power=40, target_distance=370),
         ]
     )
+    # バック
+    loop_35.add_children(
+        [
+            MoveStraight(name="back", power=-30, target_distance=120)
+        ]
+    )
+    # 右に90度回転
     loop_36.add_children(
         [
-            MoveStraight(name="back", power=-50, target_distance=120)
+            MoveStraightLR(name="move straight 4", right_power=0, left_power=60, target_distance=110),
+        ]
+    )
+    # 指定距離走行_3列目から4列目移動
+    loop_37.add_children(
+        [
+        TraceLineCam(name="trace normal edge", power=31, pid_p=1.0, pid_i=0.0015, pid_d=0.1,gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
+        IsDistanceEarned(name="check distance", delta_dist=270),
         ]
     )
     root.add_children(
@@ -912,14 +945,14 @@ def build_behaviour_tree() -> BehaviourTree:
             loop_05,
             loop_06,
             loop_07,
-            #W-loop_end
             loop_08,
             loop_09,
             loop_10,
             loop_11,
-            # loop_12,
+            loop_12,
             loop_13,
             loop_14,
+            loop_14_1,
             loop_15,
             loop_16,
             loop_17,
@@ -934,6 +967,7 @@ def build_behaviour_tree() -> BehaviourTree:
             loop_26,
             loop_27,
             loop_28,
+            loop_28_1,
             loop_29,
             loop_30,
             loop_31,
@@ -942,6 +976,7 @@ def build_behaviour_tree() -> BehaviourTree:
             loop_34,
             loop_35,
             loop_36,
+            loop_37,
             StopNow(name="stop"),
             TheEnd(name="end"),
         ]
