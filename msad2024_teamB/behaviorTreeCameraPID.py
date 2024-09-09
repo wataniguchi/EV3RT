@@ -771,13 +771,13 @@ def build_behaviour_tree() -> BehaviourTree:
     loop_11.add_children(
         [
         TraceLineCam(name="trace normal edge", power=31, pid_p=1.0, pid_i=0.0015, pid_d=0.1,gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
-        IsDistanceEarned(name="check distance", delta_dist=285),
+        IsDistanceEarned(name="check distance", delta_dist=280),
         ]
     )
     # 右に90度回転
     loop_12.add_children(
         [
-            MoveStraightLR(name="move straight 4", right_power=0, left_power=60, target_distance=110),
+            MoveStraightLR(name="move straight 4", right_power=0, left_power=60, target_distance=115),
         ]
     )
 # 2列目
