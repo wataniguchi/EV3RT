@@ -548,7 +548,7 @@ def build_behaviour_tree() -> BehaviourTree:
     loop_04.add_children(
         [
             RunAsInstructed(name="go straight",pwm_l=-40,pwm_r=-40),
-            IsDistanceEarned(name="check distance", delta_dist = 200),
+            IsDistanceEarned(name="check distance", delta_dist = 180),
         ]
     )
     loop_05.add_children(
