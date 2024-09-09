@@ -744,7 +744,7 @@ def build_behaviour_tree() -> BehaviourTree:
     # 指定距離走行_after
     loop_07.add_children(
         [
-        TraceLineCam(name="trace normal edge", power=32, pid_p=1.0, pid_i=0.0015, pid_d=0.1,gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
+        TraceLineCam(name="trace normal edge", power=33, pid_p=1.0, pid_i=0.0015, pid_d=0.1,gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
         IsDistanceEarned_after(name="check distance"),
         ]
     )
@@ -874,7 +874,7 @@ def build_behaviour_tree() -> BehaviourTree:
     # 指定距離走行_before、赤青判定
     loop_27.add_children(
         [
-        TraceLineCam(name="trace normal edge", power=33, pid_p=0.8, pid_i=0.0015, pid_d=0.1,
+        TraceLineCam(name="trace normal edge", power=32, pid_p=0.8, pid_i=0.0015, pid_d=0.1,
                          gs_min=0, gs_max=80, trace_side=TraceSide.OPPOSITE),
         IsDistanceEarned_before(name="check distance", delta_dist = 1050),
         IsRedColorDetected(name="check red color", threshold=12.0), 
