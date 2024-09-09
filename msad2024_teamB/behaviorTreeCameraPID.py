@@ -940,7 +940,7 @@ def build_behaviour_tree() -> BehaviourTree:
     loop_37.add_children(
         [
         TraceLineCam(name="trace normal edge", power=31, pid_p=1.0, pid_i=0.0015, pid_d=0.1,gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
-        IsDistanceEarned(name="check distance", delta_dist=250),
+        IsDistanceEarned(name="check distance", delta_dist=230),
         ]
     )
     # 右に90度回転
@@ -955,56 +955,17 @@ def build_behaviour_tree() -> BehaviourTree:
         [
         TraceLineCam(name="trace normal edge", power=32, pid_p=0.8, pid_i=0.0015, pid_d=0.1,
                          gs_min=0, gs_max=80, trace_side=TraceSide.OPPOSITE),
-        IsDistanceEarned_before(name="check distance", delta_dist = 1050),
-        IsRedColorDetected(name="check red color", threshold=12.0), 
-        IsBlueColorDetected(name="check blue color", threshold=12.0), 
-        ]
-    )
-    # loop_40_1.add_children(
-    #     [
-    #         MoveStraightLR_dbr(name="move straight 4", right_power=0, left_power=60, target_distance=40),
-    #     ]
-    # )
-    loop_40.add_children(
-        [
-            MoveStraight_dbr(name="move straight", power=40, target_distance=120),
-        ]
-    )
-    loop_41.add_children(
-        [
-            MoveStraightLR_dbr(name="move straight 4", right_power=60, left_power=10, target_distance=250),
-        ]
-    )
-    loop_42.add_children(
-        [
-            MoveStraight_dbr(name="back", power=-50, target_distance=20)
-        ]
-    )
-    loop_43.add_children(
-        [
-            MoveStraightLR_dbr(name="move straight 4", right_power=-60, left_power=-10, target_distance=180),
-        ]
-    )
-    loop_44.add_children(
-        [
-            MoveStraight_dbr(name="back", power=-50, target_distance=50)
-        ]
-    )
-    # 指定距離走行_after
-    loop_45.add_children(
-        [
-        TraceLineCam(name="trace normal edge", power=32, pid_p=1.0, pid_i=0.0015, pid_d=0.1,gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
-        IsDistanceEarned_after(name="check distance"),
+        IsDistanceEarned(name="check distance", delta_dist = 1050),
         ]
     )
     # 押し出し
-    loop_46.add_children(
+    loop_40.add_children(
         [
             MoveStraight(name="move straight", power=40, target_distance=370),
         ]
     )
     # バック
-    loop_47.add_children(
+    loop_41.add_children(
         [
             MoveStraight(name="back", power=-30, target_distance=120)
         ]
@@ -1057,12 +1018,12 @@ def build_behaviour_tree() -> BehaviourTree:
             loop_39,
             loop_40,
             loop_41,
-            loop_42,
-            loop_43,
-            loop_44,
-            loop_45,
-            loop_46,
-            loop_47,
+            # loop_42,
+            # loop_43,
+            # loop_44,
+            # loop_45,
+            # loop_46,
+            # loop_47,
             StopNow(name="stop"),
             TheEnd(name="end"),
         ]
