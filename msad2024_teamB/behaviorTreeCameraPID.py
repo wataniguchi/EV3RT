@@ -1029,7 +1029,7 @@ def build_behaviour_tree() -> BehaviourTree:
             # loop_35,
             # loop_36,
             # loop_37,
-            # loop_38,
+            loop_38,
             loop_39,
             loop_40,
             loop_41,
