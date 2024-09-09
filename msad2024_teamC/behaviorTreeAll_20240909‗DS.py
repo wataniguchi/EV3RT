@@ -865,7 +865,7 @@ def build_behaviour_tree() -> BehaviourTree:
     
     carry_01.add_children(
         [
-            RunAsInstructed(name="go straight",pwm_l=48,pwm_r=40),
+            RunAsInstructed(name="go straight",pwm_l=44,pwm_r=40),
             IsDistanceEarned(name="check distance", delta_dist = 220),
         ]
     )
