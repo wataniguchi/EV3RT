@@ -24,6 +24,7 @@ VIDEO_INTERVAL: float = 0.02
 ARM_SHIFT_PWM = 30
 JUNCT_UPPER_THRESH = 50
 JUNCT_LOWER_THRESH = 40
+#JUNCT_LOWER_THRESH = 30
 
 class ArmDirection(IntEnum):
     UP = -1
@@ -499,7 +500,7 @@ def build_behaviour_tree() -> BehaviourTree:
         [
             TraceLineCam(name="trace normal edge", power=45, pid_p=2.0, pid_i=0.0015, pid_d=0.3,
                          gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
-            IsDistanceEarned(name="check distance", delta_dist = 3000),
+            IsDistanceEarned(name="check distance", delta_dist = 1000),
         ]
     )
     root.add_children(
