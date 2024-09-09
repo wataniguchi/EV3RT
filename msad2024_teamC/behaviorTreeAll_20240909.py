@@ -901,7 +901,7 @@ def build_behaviour_tree() -> BehaviourTree:
     )
     carry_07.add_children(
         [
-            RotateDegrees(name="rotate60",power=40,target_angle=55)
+            RotateDegrees(name="rotate60",power=50,target_angle=55)
         ]
     )
     carry_08.add_children(
