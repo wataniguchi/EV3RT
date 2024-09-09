@@ -678,6 +678,7 @@ def build_behaviour_tree() -> BehaviourTree:
     loop_35 = Parallel(name="loop 35", policy=ParallelPolicy.SuccessOnOne())
     loop_36 = Parallel(name="loop 36", policy=ParallelPolicy.SuccessOnOne())
     loop_37 = Parallel(name="loop 37", policy=ParallelPolicy.SuccessOnOne())
+    loop_38 = Parallel(name="loop 37", policy=ParallelPolicy.SuccessOnOne())
     calibration.add_children(
         [
             ArmUpDownFull(name="arm down", direction=ArmDirection.DOWN),
@@ -857,7 +858,7 @@ def build_behaviour_tree() -> BehaviourTree:
     # 左に90度回転
     loop_26.add_children(
         [
-            MoveStraightLR(name="move straight 4", right_power=60, left_power=0, target_distance=240),
+            MoveStraightLR(name="move straight 4", right_power=60, left_power=0, target_distance=230),
         ]
     )
 # 3列目
@@ -930,7 +931,13 @@ def build_behaviour_tree() -> BehaviourTree:
     loop_37.add_children(
         [
         TraceLineCam(name="trace normal edge", power=31, pid_p=1.0, pid_i=0.0015, pid_d=0.1,gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
-        IsDistanceEarned(name="check distance", delta_dist=270),
+        IsDistanceEarned(name="check distance", delta_dist=250),
+        ]
+    )
+    # 右に90度回転
+    loop_38.add_children(
+        [
+            MoveStraightLR(name="move straight 4", right_power=0, left_power=60, target_distance=110),
         ]
     )
     root.add_children(
@@ -977,6 +984,7 @@ def build_behaviour_tree() -> BehaviourTree:
             loop_35,
             loop_36,
             loop_37,
+            loop_38,
             StopNow(name="stop"),
             TheEnd(name="end"),
         ]
