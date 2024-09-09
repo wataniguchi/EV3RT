@@ -564,7 +564,7 @@ def build_behaviour_tree() -> BehaviourTree:
     )
     loop_07.add_children(
         [
-            RotateDegrees(name="rotate60",power=40,target_angle=60)
+            RotateDegrees(name="rotate60",power=40,target_angle=55)
         ]
     )
     loop_08.add_children(
