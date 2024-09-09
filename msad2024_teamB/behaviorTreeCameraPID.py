@@ -951,7 +951,7 @@ def build_behaviour_tree() -> BehaviourTree:
         ]
     )
 # 4列目
-    # 指定距離走行_before、赤青判定
+    # 指定距離走行
     loop_39.add_children(
         [
         TraceLineCam(name="trace normal edge", power=38, pid_p=0.8, pid_i=0.0015, pid_d=0.1,
@@ -969,6 +969,20 @@ def build_behaviour_tree() -> BehaviourTree:
     loop_41.add_children(
         [
             MoveStraight(name="back", power=-30, target_distance=120)
+        ]
+    )
+    # 180度回転
+    loop_42.add_children(
+        [
+            MoveStraightLR(name="move straight 4", right_power=0, left_power=60, target_distance=220),
+        ]
+    )
+    # 指定距離走行
+    loop_43.add_children(
+        [
+        TraceLineCam(name="trace normal edge", power=38, pid_p=0.8, pid_i=0.0015, pid_d=0.1,
+                         gs_min=0, gs_max=80, trace_side=TraceSide.OPPOSITE),
+        IsDistanceEarned(name="check distance", delta_dist = 1050),
         ]
     )
     root.add_children(
@@ -1019,8 +1033,8 @@ def build_behaviour_tree() -> BehaviourTree:
             loop_39,
             loop_40,
             loop_41,
-            # loop_42,
-            # loop_43,
+            loop_42,
+            loop_43,
             # loop_44,
             # loop_45,
             # loop_46,
