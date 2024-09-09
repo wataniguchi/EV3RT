@@ -548,7 +548,7 @@ def build_behaviour_tree() -> BehaviourTree:
     loop_04.add_children(
         [
             RunAsInstructed(name="go straight",pwm_l=-40,pwm_r=-40),
-            IsDistanceEarned(name="check distance", delta_dist = 300),
+            IsDistanceEarned(name="check distance", delta_dist = 200),
         ]
     )
     loop_05.add_children(
@@ -558,7 +558,7 @@ def build_behaviour_tree() -> BehaviourTree:
     )
     loop_06.add_children(
         [
-            RunAsInstructed(name="go straight",pwm_l=30,pwm_r=30),
+            RunAsInstructed(name="go straight",pwm_l=40,pwm_r=40),
             CheckBrackColor(name="checkBrackColor")
         ]
     )
