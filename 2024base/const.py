@@ -50,6 +50,7 @@ class DebriNum:
     DISTANCE_CATCH = 120
     DISTANCE_REMOVE = 350
     DISTANCE_BACK = 380
+    DISTANCE_PASSED_THIRD = 1500
 
 
 class TraceSide(Enum):

@@ -49,6 +49,7 @@ g_video_thread: threading.Thread = None
 g_course: int = 0
 g_earned_dist_debri: int = 0
 g_debri_end: bool = False
+g_debri_exist_bottle: bool = False
 
 class TheEnd(Behaviour):
     def __init__(self, name: str):
@@ -201,14 +202,20 @@ class IsTouchOn(Behaviour):
 
 class IsExistBottle(Behaviour):
     def __init__(self, name: str) -> None:
+        global g_debri_exist_bottle
         super(IsExistBottle, self).__init__(name)
+
         self.running = False
+        g_debri_exist_bottle = False
 
     def update(self) -> Status:
+        global g_debri_exist_bottle
+
         if not self.running:
             self.running = True
         if(g_video.get_range_of_blue()>DebriNum.BOTTLE_RANGE_LOWER or 
            g_video.get_range_of_red()>DebriNum.BOTTLE_RANGE_LOWER):
+            g_debri_exist_bottle = True
             return Status.SUCCESS
         return Status.RUNNING
 
@@ -325,6 +332,27 @@ class RunAsInstructed(Behaviour):
         g_right_motor.set_power(self.pwm_r)
         g_left_motor.set_power(self.pwm_l)
         return Status.RUNNING
+
+
+class ReturnSuccess(Behaviour):
+    def __init__(self, name: str) -> None:
+        super(ReturnSuccess, self).__init__(name)
+
+    def update(self) -> Status:
+        return Status.SUCCESS
+
+
+class IsExecuteRemoveBottle(Behaviour):
+    def __init__(self, name: str) -> None:
+        super(IsExecuteRemoveBottle, self).__init__(name)
+
+    def update(self) -> Status:
+        global g_debri_exist_bottle
+
+        if(g_debri_exist_bottle):
+            return Status.SUCCESS
+        else:
+            return Status.FAILURE
 
 
 class TraceLineCam(Behaviour):
@@ -449,8 +477,14 @@ def build_behaviour_tree() -> BehaviourTree:
     loop_17 = Parallel(name="end loop", policy=ParallelPolicy.SuccessOnOne())
 
     debri = Sequence(name="debri", memory=True)
-    debri_01 = Parallel(name="debri 01", policy=ParallelPolicy.SuccessOnOne())
-    debri_02 = Parallel(name="debri 02", policy=ParallelPolicy.SuccessOnOne())
+    debri_01 = Parallel(name="vertical 01", policy=ParallelPolicy.SuccessOnOne())
+    debri_02 = Selector(name="remove 01", memory=True)
+    debri_02_01 = Sequence(name="remove", memory=True)
+    debri_02_01_01 = Parallel(name="is exe remove", policy=ParallelPolicy.SuccessOnOne())
+    debri_02_01_02 = Parallel(name="catch bottle", policy=ParallelPolicy.SuccessOnOne())
+    debri_02_01_03 = Parallel(name="remove", policy=ParallelPolicy.SuccessOnOne())
+    debri_02_01_04 = Parallel(name="go back", policy=ParallelPolicy.SuccessOnOne())
+    debri_02_01_05 = Parallel(name="vertical 01", policy=ParallelPolicy.SuccessOnOne())
     debri_03 = Parallel(name="debri 03", policy=ParallelPolicy.SuccessOnOne())
     debri_04 = Parallel(name="debri 04", policy=ParallelPolicy.SuccessOnOne())
     debri_05 = Parallel(name="debri 05", policy=ParallelPolicy.SuccessOnOne())
@@ -480,20 +514,20 @@ def build_behaviour_tree() -> BehaviourTree:
     )
 
     loop.add_children([
-        loop_01,
-        loop_02,
-        loop_03,
-        loop_04,
-        loop_05,
-        loop_06,
-        loop_07,
-        loop_08,
-        loop_09,
-        loop_10,
-        loop_11,
-        loop_12,
-        loop_13,
-        loop_14,
+        # loop_01,
+        # loop_02,
+        # loop_03,
+        # loop_04,
+        # loop_05,
+        # loop_06,
+        # loop_07,
+        # loop_08,
+        # loop_09,
+        # loop_10,
+        # loop_11,
+        # loop_12,
+        # loop_13,
+        # loop_14,
         loop_15,
         loop_16,
         loop_17,
@@ -661,37 +695,79 @@ def build_behaviour_tree() -> BehaviourTree:
     ])
     debri_01.add_children(
         [
-            TraceLineCam(name="trace normal edge", power=40, pid_p=1.7, pid_i=0.0015, pid_d=0.1,
-                         gs_min=0, gs_max=80, scene=Scene.LOOP, trace_side=TraceSide.CENTER),
-            IsDistanceEarnedTrace(name="check distance01", delta_dist=DebriNum.DISTANCE_VERTICAL),
+            TraceLineCam(name="run vertical", power=40, pid_p=1.7, pid_i=0.0015, pid_d=0.1,
+                         gs_min=0, gs_max=80, scene=Scene.DEBRI, trace_side=TraceSide.CENTER),
+            IsDistanceEarnedTrace(name="check distance01", delta_dist=DebriNum.DISTANCE_PASSED_THIRD),
             IsExistBottle(name="check bottle"),
         ]
     )
+
     debri_02.add_children(
+        [
+            debri_02_01,
+            ReturnSuccess(name="seccess"),
+        ]
+    )
+    debri_02_01.add_children(
+        [
+            debri_02_01_01,
+            debri_02_01_02,
+            debri_02_01_03,
+            debri_02_01_04,
+            debri_02_01_05,
+        ]
+    )
+    debri_02_01_01.add_children(
+        [
+            IsExecuteRemoveBottle(name="is execute remove"),
+        ]
+    )
+    debri_02_01_02.add_children(
         [
             RunAsInstructed(name="run", pwm_r=40,pwm_l=40),
             IsDistanceEarned(name="check distance", delta_dist = DebriNum.DISTANCE_CATCH),
         ]
     )
-    debri_03.add_children(
+    debri_02_01_03.add_children(
         [
             RunAsInstructed(name="remove", pwm_r=60,pwm_l=20),
             IsDistanceEarned(name="check distance", delta_dist = DebriNum.DISTANCE_REMOVE),
         ]
     )
-    debri_04.add_children(
+    debri_02_01_04.add_children(
         [
             RunAsInstructed(name="go back", pwm_r=-60,pwm_l=-20),
             IsDistanceEarned(name="check distance", delta_dist = DebriNum.DISTANCE_BACK),
         ]
     )
-    debri_05.add_children(
+    debri_02_01_05.add_children(
         [
-            TraceLineCam(name="trace normal edge", power=40, pid_p=1.7, pid_i=0.0015, pid_d=0.1,
-                         gs_min=0, gs_max=80, scene=Scene.LOOP, trace_side=TraceSide.CENTER),
-            IsDistanceEarnedTrace(name="check distance02", delta_dist = DebriNum.DISTANCE_VERTICAL),
+            TraceLineCam(name="run vertical", power=40, pid_p=1.7, pid_i=0.0015, pid_d=0.1,
+                         gs_min=0, gs_max=80, scene=Scene.DEBRI, trace_side=TraceSide.CENTER),
+            IsDistanceEarnedTrace(name="check distance01", delta_dist=DebriNum.DISTANCE_PASSED_THIRD),
         ]
     )
+
+    debri_03.add_children(
+        [
+            TraceLineCam(name="run vertical", power=40, pid_p=1.7, pid_i=0.0015, pid_d=0.1,
+                         gs_min=0, gs_max=80, scene=Scene.DEBRI, trace_side=TraceSide.CENTER),
+            IsDistanceEarned(name="check distance02", delta_dist=300),
+        ]
+    )
+    debri_04.add_children(
+        [
+            RunAsInstructed(name="remove", pwm_r=40,pwm_l=40),
+            IsDistanceEarned(name="check distance", delta_dist = 300),
+        ]
+    )
+    debri_05.add_children(
+        [
+            RunAsInstructed(name="go back", pwm_r=-40,pwm_l=-40),
+            IsDistanceEarned(name="check distance", delta_dist = 200),
+        ]
+    )
+
     debri_06.add_children(
         [
             RunAsInstructed(name="rotate", pwm_r=60,pwm_l=0),
@@ -700,8 +776,8 @@ def build_behaviour_tree() -> BehaviourTree:
     )
     debri_07.add_children(
         [
-            TraceLineCam(name="trace normal edge", power=40, pid_p=1.5, pid_i=0.0015, pid_d=0.1,
-                         gs_min=0, gs_max=80, scene=Scene.LOOP, trace_side=TraceSide.CENTER),
+            TraceLineCam(name="trace normal edge", power=33, pid_p=1.5, pid_i=0.0015, pid_d=0.1,
+                         gs_min=0, gs_max=80, scene=Scene.DEBRI, trace_side=TraceSide.CENTER),
             IsDistanceEarnedTrace(name="check distance04", delta_dist = DebriNum.DISTANCE_SIDE),
             IsExistBottle(name="check bottle"),
         ]
@@ -741,7 +817,7 @@ def build_behaviour_tree() -> BehaviourTree:
     debri_08_02_04.add_children(
         [
             TraceLineCam(name="trace normal edge", power=40, pid_p=1.7, pid_i=0.0015, pid_d=0.1,
-                         gs_min=0, gs_max=80, scene=Scene.LOOP, trace_side=TraceSide.CENTER),
+                         gs_min=0, gs_max=80, scene=Scene.DEBRI, trace_side=TraceSide.CENTER),
             IsDistanceEarnedTrace(name="check distance04", delta_dist = DebriNum.DISTANCE_SIDE),
         ]
     )
