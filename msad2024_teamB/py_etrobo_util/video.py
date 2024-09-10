@@ -59,6 +59,9 @@ class Video(object):
         self.pc2.configure(config)
         self.pc2.start()
 
+#解像度v3規定値（ﾌﾙ）表示？                config = self.pc2.create_preview_configuration(main={"format": 'RGB888', "size": (IN_FRAME_WIDTH, IN_FRAME_HEIGHT)}, raw={"size": (3608, 2710)})
+#解像度v2程度に下げた                config = self.pc2.create_preview_configuration(main={"format": 'RGB888', "size": (IN_FRAME_WIDTH, IN_FRAME_HEIGHT)}, raw={"size": (3608, 2710)})
+
         # initial region of interest
         self.roi = (CROP_L_LIMIT, CROP_U_LIMIT, CROP_WIDTH, CROP_HEIGHT)
         # prepare and keep kernel for morphology
