@@ -410,7 +410,7 @@ def build_behaviour_tree() -> BehaviourTree:
         [
             TraceLineCam(name="trace normal edge", power=70, pid_p=0.5, pid_i=0.0015, pid_d=0.6,
                          gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
-            IsDistanceEarned(name="check distance", delta_dist = 2500),
+            IsDistanceEarned(name="check distance", delta_dist = 3000),
         ]
     )
 
@@ -426,9 +426,9 @@ def build_behaviour_tree() -> BehaviourTree:
     #カーブ1つ目
     loop_01_2.add_children(
         [
-            TraceLineCam(name="trace normal edge", power=55, pid_p=1.5, pid_i=0.0015, pid_d=0.3,
+            TraceLineCam(name="trace normal edge", power=52, pid_p=1.5, pid_i=0.0015, pid_d=0.3,
                          gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
-            IsDistanceEarned(name="check distance", delta_dist = 2000),
+            IsDistanceEarned(name="check distance", delta_dist = 1500),
         ]
     )
 
