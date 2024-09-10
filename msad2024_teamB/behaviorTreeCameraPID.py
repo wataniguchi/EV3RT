@@ -57,7 +57,7 @@ g_gyro_sensor: GyroSensor = None
 g_video: Video = None
 g_video_thread: threading.Thread = None
 g_course: int = 0
-g_dist: int = 1500
+g_dist: int = 1550
 g_earned_dist: int = 0
 g_distFlg: bool = False
 
