@@ -353,8 +353,8 @@ class IsColorDetected(Behaviour):
        
         #Blue判定
         if self.name == "blue" :
-            #if((color[2] - color[0]>30) & (100 <= color[0] <= 256 & (color[1] <= 150)) & (200 < color[2] <= 256)):
-            if((100 < color[0] <=200) & (100 < color[1] <=200) & (100 < color[2] <=200)):
+            if((color[2] - color[0]>45) & (100 <= color[0] <= 256 & (color[1] <= 150)) & (200 < color[2] <= 256)):
+            #if((100 < color[0] <=200) & (100 < color[1] <=200) & (100 < color[2] <=200)):
                 self.logger.info("%+06d %s.blue r=%d g=%d b=%d" % (g_plotter.get_distance(), self.__class__.__name__, color[0], color[1], color[2]))
                 self.logger.info("%+06d %s.detected blue" % (g_plotter.get_distance(), self.__class__.__name__))
                 return Status.SUCCESS
@@ -693,7 +693,7 @@ def build_behaviour_tree() -> BehaviourTree:
 
     step_03B_3.add_children(
         [
-            MoveStraightLR(name="Turn 3", right_power=70, left_power=0, target_distance=100),
+            MoveStraightLR(name="Turn 3", right_power=60, left_power=-60, target_distance=22),
         ]
     )
 
