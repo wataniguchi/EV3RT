@@ -408,11 +408,11 @@ class MoveStraightLR(Behaviour):
         if g_course == 1:
             self.right_power = right_power
             self.left_power = left_power
-            self.target_distance = target_distance + 45
+            self.target_distance = target_distance
         else:
             self.right_power = left_power
             self.left_power = right_power
-            self.target_distance = target_distance
+            self.target_distance = target_distance + 45
         self.start_distance = None
         self.running = False
 
