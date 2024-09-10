@@ -781,7 +781,7 @@ def build_behaviour_tree() -> BehaviourTree:
     loop_11.add_children(
         [
         TraceLineCam(name="trace normal edge", power=31, pid_p=1.0, pid_i=0.0015, pid_d=0.1,gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
-        IsDistanceEarned(name="check distance", delta_dist=270),
+        IsDistanceEarned(name="check distance", delta_dist=265),
         ]
     )
     # 右に90度回転
