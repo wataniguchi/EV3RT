@@ -734,7 +734,7 @@ def build_behaviour_tree() -> BehaviourTree:
     )
     loop_03.add_children(
         [
-            MoveStraightLR_dbr(name="move straight 4", right_power=60, left_power=10, target_distance=240),
+            MoveStraightLR_dbr(name="move straight 4", right_power=60, left_power=10, target_distance=210),
         ]
     )
     loop_04.add_children(
@@ -813,7 +813,7 @@ def build_behaviour_tree() -> BehaviourTree:
     )
     loop_15.add_children(
         [
-            MoveStraightLR_dbr(name="move straight 4", right_power=60, left_power=10, target_distance=240),
+            MoveStraightLR_dbr(name="move straight 4", right_power=60, left_power=10, target_distance=210),
         ]
     )
     loop_16.add_children(
@@ -944,7 +944,7 @@ def build_behaviour_tree() -> BehaviourTree:
     # 右に90度回転
     loop_36.add_children(
         [
-            MoveStraightLR(name="move straight 4", right_power=0, left_power=60, target_distance=120),
+            MoveStraightLR(name="move straight 4", right_power=0, left_power=60, target_distance=115),
         ]
     )
     # 指定距離走行_3列目から4列目移動
