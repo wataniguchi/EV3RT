@@ -483,7 +483,7 @@ def build_behaviour_tree() -> BehaviourTree:
     #コンタクトⅢからコンタクトⅡまで
     loop_05.add_children(
         [
-            TraceLineCam(name="trace normal edge", power=44, pid_p=2.0, pid_i=0.0011, pid_d=0.35,
+            TraceLineCam(name="trace normal edge", power=42, pid_p=2.0, pid_i=0.0011, pid_d=0.35,
                          gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
             IsJunction(name="scan joined junction", target_state = JState.JOINED),
         ]
@@ -492,7 +492,7 @@ def build_behaviour_tree() -> BehaviourTree:
     #コンタクトⅡ通過後、コンタクトⅠまで
     loop_06.add_children(
         [
-            TraceLineCam(name="trace opposite edge", power=46, pid_p=2.0, pid_i=0.0011, pid_d=0.35,
+            TraceLineCam(name="trace opposite edge", power=44, pid_p=2.0, pid_i=0.0011, pid_d=0.35,
                          gs_min=0, gs_max=80, trace_side=TraceSide.OPPOSITE),
             IsJunction(name="scan joined junction", target_state = JState.JOINED),
         ]
