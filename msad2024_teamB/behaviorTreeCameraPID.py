@@ -405,9 +405,14 @@ class MoveStraight_dbr(Behaviour):
 class MoveStraightLR(Behaviour):
     def __init__(self, name: str, right_power: int, left_power: int, target_distance: int) -> None:
         super(MoveStraightLR, self).__init__(name)
-        self.right_power = right_power
-        self.left_power = left_power
-        self.target_distance = target_distance
+        if g_course == 1:
+            self.right_power = right_power
+            self.left_power = left_power
+            self.target_distance = target_distance
+        else:
+            self.right_power = left_power
+            self.left_power = right_power
+            self.target_distance = target_distance
         self.start_distance = None
         self.running = False
 
@@ -434,9 +439,14 @@ class MoveStraightLR(Behaviour):
 class MoveStraightLR_dbr(Behaviour):
     def __init__(self, name: str, right_power: int, left_power: int, target_distance: int) -> None:
         super(MoveStraightLR_dbr, self).__init__(name)
-        self.right_power = right_power
-        self.left_power = left_power
-        self.target_distance = target_distance
+        if g_course == 1:
+            self.right_power = right_power
+            self.left_power = left_power
+            self.target_distance = target_distance
+        else:
+            self.right_power = left_power
+            self.left_power = right_power
+            self.target_distance = target_distance
         self.start_distance = None
         self.running = False
 
