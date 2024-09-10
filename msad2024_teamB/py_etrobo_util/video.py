@@ -55,11 +55,11 @@ class Video(object):
         # prepare the camera
         self.pc2 = Picamera2()
         full_reso = self.pc2.camera_properties['PixelArraySize']
-        config = self.pc2.create_preview_configuration(main={"format": 'RGB888', "size": (IN_FRAME_WIDTH, IN_FRAME_HEIGHT)}, raw={"size": (3608, 2710)})
+        config = self.pc2.create_preview_configuration(main={"format": 'RGB888', "size": (IN_FRAME_WIDTH, IN_FRAME_HEIGHT)}, raw={"size": (full_reso)})
         self.pc2.configure(config)
         self.pc2.start()
 
-#解像度v3規定値（ﾌﾙ）表示？                config = self.pc2.create_preview_configuration(main={"format": 'RGB888', "size": (IN_FRAME_WIDTH, IN_FRAME_HEIGHT)}, raw={"size": (3608, 2710)})
+#解像度v3規定値（ﾌﾙ）                config = self.pc2.create_preview_configuration(main={"format": 'RGB888', "size": (IN_FRAME_WIDTH, IN_FRAME_HEIGHT)}, raw={"size": (full_reso)})
 #解像度v2程度に下げた                config = self.pc2.create_preview_configuration(main={"format": 'RGB888', "size": (IN_FRAME_WIDTH, IN_FRAME_HEIGHT)}, raw={"size": (3608, 2710)})
 
         # initial region of interest
