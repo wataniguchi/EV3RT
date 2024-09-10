@@ -5,6 +5,7 @@ import threading
 import signal
 from enum import Enum, IntEnum, auto
 from etrobo_python import ETRobo, Hub, Motor, ColorSensor, TouchSensor, SonarSensor, GyroSensor
+
 from simple_pid import PID
 import py_trees.common
 from py_trees.trees import BehaviourTree
@@ -67,6 +68,7 @@ g_gyro_sensor: GyroSensor = None
 g_video: Video = None
 g_video_thread: threading.Thread = None
 g_course: int = 0
+
 
 
 class TheEnd(Behaviour):
@@ -327,11 +329,32 @@ class IsColorDetected(Behaviour):
         global g_color_sensor
         #RGBの値を取得
         color = g_color_sensor.get_raw_color()
-        self.logger.info("%+06d %s.nowcolor r=%d g=%d b=%d" % (g_plotter.get_distance(), self.__class__.__name__, color[0], color[1], color[2]))
+        # #環境光の値を取得
+        # brightness = g_color_sensor.get_brightness()
+        # #反射光の値を取得
+        #ambient = g_color_sensor.get_ambient()
+
+        #self.logger.info("%+06d %s.nowcolor r=%d g=%d b=%d" % (g_plotter.get_distance(), self.__class__.__name__, color[0], color[1], color[2]))
+        #  #Blue判定
+        # if self.name == "blue" :
+        #     if ambient <= 50 :
+        #         return Status.SUCCESS
+        #     else:
+        #      #指定色でないならRUNNINGを返却
+        #         return Status.RUNNING
+
+        #  #Black判定
+        # if self.name == "black" :
+        #     if ambient >= 30  :
+        #         return Status.SUCCESS
+        #     else:
+        #      #指定色でないならRUNNINGを返却
+        #         return Status.RUNNING
+       
         #Blue判定
         if self.name == "blue" :
-            if((color[2] - color[0]>30) & (100 <= color[0] <= 256 & (color[1] <= 150)) & (200 < color[2] <= 256)):
-            #if((color[2] - color[0]>45) & (color[2] <=255) & (color[0] <=255)):
+            #if((color[2] - color[0]>30) & (100 <= color[0] <= 256 & (color[1] <= 150)) & (200 < color[2] <= 256)):
+            if((100 < color[0] <=200) & (100 < color[1] <=200) & (100 < color[2] <=200)):
                 self.logger.info("%+06d %s.blue r=%d g=%d b=%d" % (g_plotter.get_distance(), self.__class__.__name__, color[0], color[1], color[2]))
                 self.logger.info("%+06d %s.detected blue" % (g_plotter.get_distance(), self.__class__.__name__))
                 return Status.SUCCESS
