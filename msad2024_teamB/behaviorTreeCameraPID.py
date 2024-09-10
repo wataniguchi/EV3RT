@@ -446,7 +446,7 @@ class MoveStraightLR_dbr(Behaviour):
         else:
             self.right_power = left_power
             self.left_power = right_power
-            self.target_distance = target_distance
+            self.target_distance = target_distance -20
         self.start_distance = None
         self.running = False
 
