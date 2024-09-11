@@ -579,8 +579,9 @@ def build_behaviour_tree() -> BehaviourTree:
     debri_02_01_01 = Parallel(name="is exe remove", policy=ParallelPolicy.SuccessOnOne())
     debri_02_01_02 = Parallel(name="catch bottle", policy=ParallelPolicy.SuccessOnOne())
     debri_02_01_03 = Parallel(name="remove", policy=ParallelPolicy.SuccessOnOne())
-    debri_02_01_04 = Parallel(name="go back", policy=ParallelPolicy.SuccessOnOne())
-    debri_02_01_05 = Parallel(name="vertical 01", policy=ParallelPolicy.SuccessOnOne())
+    debri_02_01_04 = Parallel(name="go back 01", policy=ParallelPolicy.SuccessOnOne())
+    debri_02_01_05 = Parallel(name="go back 02", policy=ParallelPolicy.SuccessOnOne())
+    debri_02_01_06 = Parallel(name="vertical 01", policy=ParallelPolicy.SuccessOnOne())
     debri_03 = Parallel(name="debri 03", policy=ParallelPolicy.SuccessOnOne())
     debri_04 = Parallel(name="debri 04", policy=ParallelPolicy.SuccessOnOne())
     debri_05 = Parallel(name="debri 05", policy=ParallelPolicy.SuccessOnOne())
@@ -592,6 +593,7 @@ def build_behaviour_tree() -> BehaviourTree:
     debri_08_02_02 = Parallel(name="debri 08 02 02", policy=ParallelPolicy.SuccessOnOne())
     debri_08_02_03 = Parallel(name="debri 08 02 03", policy=ParallelPolicy.SuccessOnOne())
     debri_08_02_04 = Parallel(name="debri 08 02 04", policy=ParallelPolicy.SuccessOnOne())
+    debri_08_02_05 = Parallel(name="debri 08 02 05", policy=ParallelPolicy.SuccessOnOne())
 
     carry = Sequence(name="carry", memory=True)
     carry_01 = Parallel(name="carry 01", policy=ParallelPolicy.SuccessOnOne())
@@ -648,7 +650,7 @@ def build_behaviour_tree() -> BehaviourTree:
                          pid_p=TraceNum.PID_P_FAST, pid_i=TraceNum.PID_I_FAST, pid_d=TraceNum.PID_D_FAST,
                          scene=Scene.LOOP,
                          gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
-            IsDistanceEarned(name="check distance", delta_dist = 3500),
+            IsDistanceEarned(name="check distance", delta_dist = 3400),
         ]
     )
     loop_03.add_children(
@@ -666,7 +668,7 @@ def build_behaviour_tree() -> BehaviourTree:
                          pid_p=TraceNum.PID_P_FAST, pid_i=TraceNum.PID_I_FAST, pid_d=TraceNum.PID_D_FAST,
                          scene=Scene.LOOP,
                          gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
-            IsDistanceEarned(name="check distance", delta_dist = 2200),
+            IsDistanceEarned(name="check distance", delta_dist = 2100),
         ]
     )
     loop_05.add_children(
@@ -819,6 +821,7 @@ def build_behaviour_tree() -> BehaviourTree:
             debri_02_01_03,
             debri_02_01_04,
             debri_02_01_05,
+            debri_02_01_06,
         ]
     )
     debri_02_01_01.add_children(
@@ -834,17 +837,23 @@ def build_behaviour_tree() -> BehaviourTree:
     )
     debri_02_01_03.add_children(
         [
-            RunAsInstructed(name="remove", pwm_r=60,pwm_l=20),
+            RunAsInstructed(name="remove", pwm_r=DebriNum.POWER_REMOVE_RIGHT,pwm_l=DebriNum.POWER_REMOVE_LEFT),
             IsDistanceEarned(name="check distance", delta_dist = DebriNum.DISTANCE_REMOVE),
         ]
     )
     debri_02_01_04.add_children(
         [
-            RunAsInstructed(name="go back", pwm_r=-60,pwm_l=-20),
-            IsDistanceEarned(name="check distance", delta_dist = DebriNum.DISTANCE_BACK),
+            RunAsInstructed(name="remove", pwm_r=-(DebriNum.POWER_REMOVE_RIGHT),pwm_l=-(DebriNum.POWER_REMOVE_LEFT)),
+            IsDistanceEarned(name="check distance", delta_dist = DebriNum.DISTANCE_REMOVE),
         ]
     )
     debri_02_01_05.add_children(
+        [
+            RunAsInstructed(name="go back", pwm_r=-40,pwm_l=-40),
+            IsDistanceEarned(name="check distance", delta_dist = DebriNum.DISTANCE_CATCH),
+        ]
+    )
+    debri_02_01_06.add_children(
         [
             TraceLineCam(name="run vertical", power=40, pid_p=1.7, pid_i=0.0015, pid_d=0.1,
                          gs_min=0, gs_max=80, scene=Scene.DEBRI, trace_side=TraceSide.CENTER),
@@ -868,14 +877,14 @@ def build_behaviour_tree() -> BehaviourTree:
     debri_05.add_children(
         [
             RunAsInstructed(name="go back", pwm_r=-40,pwm_l=-40),
-            IsDistanceEarned(name="check distance", delta_dist = 200),
+            IsDistanceEarned(name="check distance", delta_dist = 130),
         ]
     )
 
     debri_06.add_children(
         [
             RunAsInstructed(name="rotate", pwm_r=60,pwm_l=0),
-            IsRotated(name="check rotated", delta_dire=95),
+            IsRotated(name="check rotated", delta_dire=90),
         ]
     )
     debri_07.add_children(
@@ -898,6 +907,7 @@ def build_behaviour_tree() -> BehaviourTree:
             debri_08_02_02,
             debri_08_02_03,
             debri_08_02_04,
+            debri_08_02_05,
         ]
     )
     debri_08_02_01.add_children(
@@ -908,17 +918,23 @@ def build_behaviour_tree() -> BehaviourTree:
     )
     debri_08_02_02.add_children(
         [
-            RunAsInstructed(name="remove", pwm_r=60,pwm_l=20),
+            RunAsInstructed(name="remove", pwm_r=DebriNum.POWER_REMOVE_RIGHT,pwm_l=DebriNum.POWER_REMOVE_LEFT),
             IsDistanceEarned(name="check distance", delta_dist = DebriNum.DISTANCE_REMOVE),
         ]
     )
     debri_08_02_03.add_children(
         [
-            RunAsInstructed(name="go back", pwm_r=-60,pwm_l=-20),
+            RunAsInstructed(name="remove", pwm_r=-(DebriNum.POWER_REMOVE_RIGHT),pwm_l=-(DebriNum.POWER_REMOVE_LEFT)),
             IsDistanceEarned(name="check distance", delta_dist = DebriNum.DISTANCE_REMOVE),
         ]
     )
     debri_08_02_04.add_children(
+        [
+            RunAsInstructed(name="go back", pwm_r=-40,pwm_l=-40),
+            IsDistanceEarned(name="check distance", delta_dist = DebriNum.DISTANCE_CATCH),
+        ]
+    )
+    debri_08_02_05.add_children(
         [
             TraceLineCam(name="trace normal edge", power=33, pid_p=1.7, pid_i=0.0015, pid_d=0.1,
                          gs_min=0, gs_max=80, scene=Scene.DEBRI, trace_side=TraceSide.CENTER),
@@ -940,15 +956,15 @@ def build_behaviour_tree() -> BehaviourTree:
 
     carry_01.add_children(
         [
-            RunAsInstructed(name="go straight",pwm_l=35,pwm_r=38),
-            IsDistanceEarned(name="check distance", delta_dist = 350),
+            RunAsInstructed(name="go straight",pwm_l=40,pwm_r=40),
+            IsDistanceEarned(name="check distance", delta_dist = 400),
         ]
     )
     
     carry_02.add_children(
         [
-            TraceLineCam(name="trace normal edge", power=35, pid_p=1.7, pid_i=0.0015, pid_d=0.1,scene=Scene.DEBRI, gs_min=0, gs_max=80, trace_side=TraceSide.CENTER),
-            IsDistanceEarned(name="check distance", delta_dist = 400),
+            TraceLineCam(name="trace normal edge", power=34, pid_p=1.9, pid_i=0.001, pid_d=0.1,scene=Scene.DEBRI, gs_min=0, gs_max=80, trace_side=TraceSide.CENTER),
+            IsDistanceEarned(name="check distance", delta_dist = 500),
         ]
     )
     carry_03.add_children(
@@ -959,14 +975,14 @@ def build_behaviour_tree() -> BehaviourTree:
     )
     carry_04.add_children(
         [
-            RunAsInstructed(name="go straight",pwm_l=40,pwm_r=40),
+            RunAsInstructed(name="go straight",pwm_l=38,pwm_r=38),
             IsDistanceEarned(name="check distance", delta_dist = 1100),
         ]
     )
     carry_05.add_children(
         [
             RunAsInstructed(name="go straight",pwm_l=-40,pwm_r=-40),
-            IsDistanceEarned(name="check distance", delta_dist = 180),
+            IsDistanceEarned(name="check distance", delta_dist = 250),
         ]
     )
     carry_06.add_children(
@@ -984,7 +1000,7 @@ def build_behaviour_tree() -> BehaviourTree:
     carry_08.add_children(
         [
             RunAsInstructed(name="rotate", pwm_r=0,pwm_l=60),
-            IsRotated(name="check rotated", delta_dire=70),
+            IsRotated(name="check rotated", delta_dire=800),
         ]
     )
     carry_09.add_children(
