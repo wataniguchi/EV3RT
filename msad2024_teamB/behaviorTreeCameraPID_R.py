@@ -627,7 +627,7 @@ class IsDistanceEarned_after(Behaviour):
             if not self.earned:
                 self.earned = True
                 self.logger.info("%+06d %s.delta distance earned" % (cur_dist, self.__class__.__name__))
-            g_dist = 1400
+            g_dist = 1300
             g_earned_dist = 0
             self.logger.info("グローバル変数更新 g_dist:1500、g_earned_dist:0")
             return Status.SUCCESS
@@ -775,7 +775,7 @@ def build_behaviour_tree() -> BehaviourTree:
     loop_18.add_children(
         [
         TraceLineCam(name="trace normal edge", power=35, pid_p=1.0, pid_i=0.0015, pid_d=0.1,gs_min=0, gs_max=80, trace_side=TraceSide.CENTER),
-        IsDistanceEarned(name="check distance", delta_dist=100),
+        IsDistanceEarned(name="check distance", delta_dist=200),
         ]
     )
     root.add_children(
