@@ -111,8 +111,7 @@ class Video(object):
         img_gray_part = img_gray[CROP_U_LIMIT:CROP_D_LIMIT, CROP_L_LIMIT:CROP_R_LIMIT]
         # binarize the image
         img_bin_part = cv2.inRange(img_gray_part, self.gsmin, self.gsmax)
-        # prepare an empty matrix
-        img_bin = np.zeros((FRAME_HEIGHT, FRAME_WIDTH), np.uint8)
+        # prepare an empty matrixuint8)
         # copy img_bin_part into img_bin
         img_bin[CROP_U_LIMIT:CROP_U_LIMIT+img_bin_part.shape[0], CROP_L_LIMIT:CROP_L_LIMIT+img_bin_part.shape[1]] = img_bin_part
         # remove noise
