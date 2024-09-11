@@ -966,7 +966,7 @@ def build_behaviour_tree() -> BehaviourTree:
         [
         TraceLineCam(name="trace normal edge", power=38, pid_p=0.8, pid_i=0.0015, pid_d=0.1,
                          gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
-        IsDistanceEarned(name="check distance", delta_dist = 1050),
+        IsDistanceEarned(name="check distance", delta_dist = 1060),
         ]
     )
     # 押し出し
@@ -992,7 +992,7 @@ def build_behaviour_tree() -> BehaviourTree:
         [
         TraceLineCam(name="trace normal edge", power=37, pid_p=0.8, pid_i=0.0015, pid_d=0.1,
                          gs_min=0, gs_max=80, trace_side=TraceSide.OPPOSITE),
-        IsDistanceEarned(name="check distance", delta_dist = 1315),
+        IsDistanceEarned(name="check distance", delta_dist = 1325),
         ]
     )
     # 右に90度回転
