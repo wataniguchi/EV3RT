@@ -111,6 +111,9 @@ class Video(object):
         hsv_min = np.array([90, 64, 64])
         hsv_max = np.array([150, 255, 200])
         blue = cv2.inRange(hsv, hsv_min, hsv_max)
+        hsv_min = np.array([30, 64, 64])
+        hsv_max = np.array([90, 255, 200])
+        green = cv2.inRange(hsv, hsv_min, hsv_max)
 
         red = red1 + red2
         img_bin_red = np.zeros((FRAME_HEIGHT, FRAME_WIDTH), np.uint8)
@@ -144,8 +147,12 @@ class Video(object):
                         target_blue = i
         self.range_of_blue = area_blue
 
+        mask = cv2.cvtColor(green, cv2.COLOR_GRAY2BGR)
+        img_orig = cv2.bitwise_or(img_orig, mask)
+
         # convert the image from BGR to grayscale
         img_gray = cv2.cvtColor(img_orig, cv2.COLOR_BGR2GRAY)
+        #img_gray = cv2.bitwise_or(img_gray, green)
         # crop a part of image for binarization
         img_gray_part = img_gray[CROP_U_LIMIT:CROP_D_LIMIT, CROP_L_LIMIT:CROP_R_LIMIT]
         # binarize the image
