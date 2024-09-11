@@ -762,7 +762,7 @@ def build_behaviour_tree() -> BehaviourTree:
     # 押し出し
     loop_08.add_children(
         [
-            MoveStraight(name="move straight", power=40, target_distance=400),
+            MoveStraight(name="move straight", power=40, target_distance=385),
         ]
     )
     # バック
