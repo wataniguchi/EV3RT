@@ -18,6 +18,7 @@ IN_FRAME_HEIGHT = 480
 #FRAME_HEIGHT = 120
 FRAME_WIDTH  = 320
 FRAME_HEIGHT = 240
+#FRAME_HEIGHT = 200
 
 CROP_WIDTH     = int(13*FRAME_WIDTH/16) # for full angle
 #CROP_WIDTH     = int(9*FRAME_WIDTH/16)
@@ -55,12 +56,9 @@ class Video(object):
         # prepare the camera
         self.pc2 = Picamera2()
         full_reso = self.pc2.camera_properties['PixelArraySize']
-        config = self.pc2.create_preview_configuration(main={"format": 'RGB888', "size": (IN_FRAME_WIDTH, IN_FRAME_HEIGHT)}, raw={"size": (full_reso)})
+        config = self.pc2.create_preview_configuration(main={"format": 'RGB888', "size": (IN_FRAME_WIDTH, IN_FRAME_HEIGHT)}, raw={"size": full_reso})
         self.pc2.configure(config)
         self.pc2.start()
-
-#解像度v3規定値（ﾌﾙ）                config = self.pc2.create_preview_configuration(main={"format": 'RGB888', "size": (IN_FRAME_WIDTH, IN_FRAME_HEIGHT)}, raw={"size": (full_reso)})
-#解像度v2程度に下げた                config = self.pc2.create_preview_configuration(main={"format": 'RGB888', "size": (IN_FRAME_WIDTH, IN_FRAME_HEIGHT)}, raw={"size": (3608, 2710)})
 
         # initial region of interest
         self.roi = (CROP_L_LIMIT, CROP_U_LIMIT, CROP_WIDTH, CROP_HEIGHT)
@@ -111,7 +109,8 @@ class Video(object):
         img_gray_part = img_gray[CROP_U_LIMIT:CROP_D_LIMIT, CROP_L_LIMIT:CROP_R_LIMIT]
         # binarize the image
         img_bin_part = cv2.inRange(img_gray_part, self.gsmin, self.gsmax)
-        # prepare an empty matrixuint8)
+        # prepare an empty matrix
+        img_bin = np.zeros((FRAME_HEIGHT, FRAME_WIDTH), np.uint8)
         # copy img_bin_part into img_bin
         img_bin[CROP_U_LIMIT:CROP_U_LIMIT+img_bin_part.shape[0], CROP_L_LIMIT:CROP_L_LIMIT+img_bin_part.shape[1]] = img_bin_part
         # remove noise
