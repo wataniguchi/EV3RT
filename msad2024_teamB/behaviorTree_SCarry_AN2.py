@@ -695,7 +695,7 @@ def build_behaviour_tree() -> BehaviourTree:
 
     step_03B_3.add_children(
         [
-            MoveStraightLR(name="Turn 3", right_power=70, left_power=0, target_distance=157),
+            MoveStraightLR(name="Turn 3", right_power=40, left_power=0, target_distance=150),
         ]
     )
 
