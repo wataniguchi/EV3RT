@@ -353,7 +353,7 @@ class IsColorDetected(Behaviour):
        
         #Blue判定
         if self.name == "blue" :
-            if((color[2] - color[0]>45) & (50 <= color[0] <= 256 & (color[1] <= 150)) & (200 < color[2] <= 256)):
+            if((color[2] - color[0]>30) & (100 <= color[0] <= 256 & (color[1] <= 200)) & (200 < color[2] <= 256)):
             #if((100 < color[0] <=200) & (100 < color[1] <=200) & (100 < color[2] <=200)):
                 self.logger.info("%+06d %s.blue r=%d g=%d b=%d" % (g_plotter.get_distance(), self.__class__.__name__, color[0], color[1], color[2]))
                 self.logger.info("%+06d %s.detected blue" % (g_plotter.get_distance(), self.__class__.__name__))
@@ -707,7 +707,7 @@ def build_behaviour_tree() -> BehaviourTree:
             TraceLineCam(name="last run", power=40, pid_p=2.5, pid_i=0.0015, pid_d=0.1,
                          gs_min=0, gs_max=80, trace_side=TraceSide.CENTER),
             IsColorDetected(name="blue"),
-            IsDistanceEarned(name="check distance 2", delta_dist = 900),
+            IsDistanceEarned(name="check distance 2", delta_dist = 1000),
             # IsDistanceEarned(name="check distance 2", delta_dist = 870),
             # color sensor add
         ]
