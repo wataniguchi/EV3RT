@@ -678,7 +678,7 @@ def build_behaviour_tree() -> BehaviourTree:
     # サークルへ配置からライン復帰
     step_03B_1.add_children(
         [
-            MoveStraight(name="back", power=-40, target_distance=400),
+            MoveStraight(name="back", power=-40, target_distance=500),
             MoveStraightLR(name="Turn 2", right_power=75, left_power=0, target_distance=200),
             #MoveStraight(name="free run 3", power=40, target_distance=10000),
             #IsColorDetected(name="black")
@@ -707,7 +707,7 @@ def build_behaviour_tree() -> BehaviourTree:
             TraceLineCam(name="last run", power=40, pid_p=2.5, pid_i=0.0015, pid_d=0.1,
                          gs_min=0, gs_max=80, trace_side=TraceSide.CENTER),
             IsColorDetected(name="blue"),
-            IsDistanceEarned(name="check distance 2", delta_dist = 1000),
+            IsDistanceEarned(name="check distance 2", delta_dist = 1500),
             # IsDistanceEarned(name="check distance 2", delta_dist = 870),
             # color sensor add
         ]
