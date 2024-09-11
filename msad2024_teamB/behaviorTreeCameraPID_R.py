@@ -672,7 +672,7 @@ def build_behaviour_tree() -> BehaviourTree:
     loop_01.add_children(
 
         [
-        TraceLineCam(name="trace normal edge", power=42, pid_p=0.8, pid_i=0.0015, pid_d=0.1,
+        TraceLineCam(name="trace normal edge", power=40, pid_p=0.8, pid_i=0.0015, pid_d=0.1,
                          gs_min=0, gs_max=80, trace_side=TraceSide.OPPOSITE),
         IsDistanceEarned_before(name="check distance", delta_dist = 1600),
         IsRedColorDetected(name="check red color", threshold=12.0), 
@@ -681,7 +681,7 @@ def build_behaviour_tree() -> BehaviourTree:
     )
     loop_02.add_children(
         [
-            MoveStraight_dbr(name="move straight", power=40, target_distance=110),
+            MoveStraight_dbr(name="move straight", power=40, target_distance=120),
         ]
     )
     loop_03.add_children(
@@ -701,7 +701,7 @@ def build_behaviour_tree() -> BehaviourTree:
     )
     loop_06.add_children(
         [
-            MoveStraight_dbr(name="back", power=-50, target_distance=70)
+            MoveStraight_dbr(name="back", power=-50, target_distance=80)
         ]
     )
     # 指定距離走行_after
