@@ -715,7 +715,7 @@ def build_behaviour_tree() -> BehaviourTree:
     loop_01.add_children(
 
         [
-        TraceLineCam(name="trace normal edge", power=38, pid_p=0.8, pid_i=0.0015, pid_d=0.1,
+        TraceLineCam(name="trace normal edge", power=39, pid_p=0.8, pid_i=0.0015, pid_d=0.1,
                          gs_min=0, gs_max=80, trace_side=TraceSide.OPPOSITE),
         IsDistanceEarned_before(name="check distance", delta_dist = 1600),
         IsRedColorDetected(name="check red color", threshold=12.0), 
@@ -755,7 +755,7 @@ def build_behaviour_tree() -> BehaviourTree:
     # 指定距離走行_after
     loop_07.add_children(
         [
-        TraceLineCam(name="trace normal edge", power=35, pid_p=1.0, pid_i=0.0015, pid_d=0.1,gs_min=0, gs_max=80, trace_side=TraceSide.OPPOSITE),
+        TraceLineCam(name="trace normal edge", power=36, pid_p=1.0, pid_i=0.0015, pid_d=0.1,gs_min=0, gs_max=80, trace_side=TraceSide.OPPOSITE),
         IsDistanceEarned_after(name="check distance"),
         ]
     )
@@ -780,7 +780,7 @@ def build_behaviour_tree() -> BehaviourTree:
     # 指定距離走行_1列目から2列目移動
     loop_11.add_children(
         [
-        TraceLineCam(name="trace normal edge", power=31, pid_p=1.0, pid_i=0.0015, pid_d=0.1,gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
+        TraceLineCam(name="trace normal edge", power=33, pid_p=1.0, pid_i=0.0015, pid_d=0.1,gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
         IsDistanceEarned(name="check distance", delta_dist=265),
         ]
     )
@@ -834,7 +834,7 @@ def build_behaviour_tree() -> BehaviourTree:
     # 指定距離走行_after
     loop_19.add_children(
         [
-        TraceLineCam(name="trace normal edge", power=31, pid_p=1.0, pid_i=0.0015, pid_d=0.1,gs_min=0, gs_max=80, trace_side=TraceSide.OPPOSITE),
+        TraceLineCam(name="trace normal edge", power=32, pid_p=1.0, pid_i=0.0015, pid_d=0.1,gs_min=0, gs_max=80, trace_side=TraceSide.OPPOSITE),
         IsDistanceEarned_after(name="check distance"),
         ]
     )
@@ -859,7 +859,7 @@ def build_behaviour_tree() -> BehaviourTree:
     # 指定距離走行_2列目から3列目移動
     loop_23.add_children(
         [
-        TraceLineCam(name="trace normal edge", power=31, pid_p=0.8, pid_i=0.0015, pid_d=0.1,gs_min=0, gs_max=80, trace_side=TraceSide.OPPOSITE),
+        TraceLineCam(name="trace normal edge", power=32, pid_p=0.8, pid_i=0.0015, pid_d=0.1,gs_min=0, gs_max=80, trace_side=TraceSide.OPPOSITE),
         IsDistanceEarned(name="check distance", delta_dist=230),
         ]
     )
@@ -950,7 +950,7 @@ def build_behaviour_tree() -> BehaviourTree:
     # 指定距離走行_3列目から4列目移動
     loop_37.add_children(
         [
-        TraceLineCam(name="trace normal edge", power=31, pid_p=1.0, pid_i=0.0015, pid_d=0.1,gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
+        TraceLineCam(name="trace normal edge", power=33, pid_p=1.0, pid_i=0.0015, pid_d=0.1,gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
         IsDistanceEarned(name="check distance", delta_dist=245),
         ]
     )
@@ -964,7 +964,7 @@ def build_behaviour_tree() -> BehaviourTree:
     # 指定距離走行
     loop_39.add_children(
         [
-        TraceLineCam(name="trace normal edge", power=38, pid_p=0.8, pid_i=0.0015, pid_d=0.1,
+        TraceLineCam(name="trace normal edge", power=39, pid_p=0.8, pid_i=0.0015, pid_d=0.1,
                          gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
         IsDistanceEarned(name="check distance", delta_dist = 1060),
         ]
@@ -990,7 +990,7 @@ def build_behaviour_tree() -> BehaviourTree:
     # 指定距離走行
     loop_43.add_children(
         [
-        TraceLineCam(name="trace normal edge", power=37, pid_p=0.8, pid_i=0.0015, pid_d=0.1,
+        TraceLineCam(name="trace normal edge", power=38, pid_p=0.8, pid_i=0.0015, pid_d=0.1,
                          gs_min=0, gs_max=80, trace_side=TraceSide.OPPOSITE),
         IsDistanceEarned(name="check distance", delta_dist = 1325),
         ]
