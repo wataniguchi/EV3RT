@@ -649,6 +649,12 @@ def build_behaviour_tree() -> BehaviourTree:
     loop_09 = Parallel(name="loop 09", policy=ParallelPolicy.SuccessOnOne())
     loop_10 = Parallel(name="loop 10", policy=ParallelPolicy.SuccessOnOne())
     loop_11 = Parallel(name="loop 11", policy=ParallelPolicy.SuccessOnOne())
+    loop_12 = Parallel(name="loop 12", policy=ParallelPolicy.SuccessOnOne())
+    loop_13 = Parallel(name="loop 13", policy=ParallelPolicy.SuccessOnOne())
+    loop_14 = Parallel(name="loop 14", policy=ParallelPolicy.SuccessOnOne())
+    loop_15 = Parallel(name="loop 15", policy=ParallelPolicy.SuccessOnOne())
+    loop_16 = Parallel(name="loop 16", policy=ParallelPolicy.SuccessOnOne())
+    loop_17 = Parallel(name="loop 17", policy=ParallelPolicy.SuccessOnOne())
     calibration.add_children(
         [
             ArmUpDownFull(name="arm down", direction=ArmDirection.DOWN),
@@ -680,7 +686,7 @@ def build_behaviour_tree() -> BehaviourTree:
     )
     loop_03.add_children(
         [
-            MoveStraightLR_dbr(name="move straight 4", right_power=10, left_power=60, target_distance=210),
+            MoveStraightLR_dbr(name="move straight 4", right_power=10, left_power=60, target_distance=150),
         ]
     )
     loop_04.add_children(
@@ -690,7 +696,7 @@ def build_behaviour_tree() -> BehaviourTree:
     )
     loop_05.add_children(
         [
-            MoveStraightLR_dbr(name="move straight 4", right_power=-10, left_power=-60, target_distance=180),
+            MoveStraightLR_dbr(name="move straight 4", right_power=-10, left_power=-60, target_distance=120),
         ]
     )
     loop_06.add_children(
@@ -708,13 +714,13 @@ def build_behaviour_tree() -> BehaviourTree:
     # 押し出し
     loop_08.add_children(
         [
-            MoveStraight(name="move straight", power=40, target_distance=400),
+            MoveStraight(name="move straight", power=40, target_distance=350),
         ]
     )
     # バック
     loop_09.add_children(
         [
-            MoveStraight(name="back", power=-30, target_distance=150)
+            MoveStraight(name="back", power=-35, target_distance=150)
         ]
     )
     # 左に90度回転
@@ -723,11 +729,45 @@ def build_behaviour_tree() -> BehaviourTree:
             MoveStraightLR(name="move straight 4", right_power=60, left_power=0, target_distance=110),
         ]
     )
-    # 指定距離走行_スマートキャリーの初期位置へ
     loop_11.add_children(
         [
-        TraceLineCam(name="trace normal edge", power=32, pid_p=1.0, pid_i=0.0015, pid_d=0.1,gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
-        IsDistanceEarned(name="check distance", delta_dist=1300),
+        TraceLineCam(name="trace normal edge", power=40, pid_p=0.8, pid_i=0.0015, pid_d=0.1,
+                         gs_min=0, gs_max=80, trace_side=TraceSide.OPPOSITE),
+        IsDistanceEarned_before(name="check distance", delta_dist = 1050),
+        IsRedColorDetected(name="check red color", threshold=12.0), 
+        IsBlueColorDetected(name="check blue color", threshold=12.0), 
+        ]
+    )
+    loop_12.add_children(
+        [
+            MoveStraight_dbr(name="move straight", power=40, target_distance=110),
+        ]
+    )
+    loop_13.add_children(
+        [
+            MoveStraightLR_dbr(name="move straight 4", right_power=10, left_power=60, target_distance=150),
+        ]
+    )
+    loop_14.add_children(
+        [
+            MoveStraight_dbr(name="back", power=-50, target_distance=20)
+        ]
+    )
+    loop_15.add_children(
+        [
+            MoveStraightLR_dbr(name="move straight 4", right_power=-10, left_power=-60, target_distance=120),
+        ]
+    )
+    loop_16.add_children(
+        [
+            MoveStraight_dbr(name="back", power=-50, target_distance=70)
+        ]
+    )
+    # 指定距離走行_after
+    loop_17.add_children(
+        [
+        TraceLineCam(name="trace normal edge", power=35, pid_p=1.0, pid_i=0.0015, pid_d=0.1,gs_min=0, gs_max=80, trace_side=TraceSide.OPPOSITE),
+        IsDistanceEarned_after(name="check distance"),
         ]
     )
     root.add_children(
@@ -745,6 +785,12 @@ def build_behaviour_tree() -> BehaviourTree:
             loop_09,
             loop_10,
             loop_11,
+            loop_12,
+            loop_13,
+            loop_14,
+            loop_15,
+            loop_16,
+            loop_17,
             StopNow(name="stop"),
             TheEnd(name="end"),
         ]
