@@ -595,7 +595,7 @@ class IsDistanceEarned_before(Behaviour):
                 self.logger.info("%+06d %s.delta distance earned" % (cur_dist, self.__class__.__name__))
             global g_distFlg
             g_distFlg = True
-            g_dist = 1520
+            g_dist = 1400
             self.logger.info("グローバル変数更新 g_dist:980、g_earned_dist:0")
             return Status.SUCCESS
         else:
@@ -627,7 +627,7 @@ class IsDistanceEarned_after(Behaviour):
             if not self.earned:
                 self.earned = True
                 self.logger.info("%+06d %s.delta distance earned" % (cur_dist, self.__class__.__name__))
-            g_dist = 1500
+            g_dist = 1400
             g_earned_dist = 0
             self.logger.info("グローバル変数更新 g_dist:1500、g_earned_dist:0")
             return Status.SUCCESS
@@ -655,6 +655,7 @@ def build_behaviour_tree() -> BehaviourTree:
     loop_15 = Parallel(name="loop 15", policy=ParallelPolicy.SuccessOnOne())
     loop_16 = Parallel(name="loop 16", policy=ParallelPolicy.SuccessOnOne())
     loop_17 = Parallel(name="loop 17", policy=ParallelPolicy.SuccessOnOne())
+    loop_18 = Parallel(name="loop 18", policy=ParallelPolicy.SuccessOnOne())
     calibration.add_children(
         [
             ArmUpDownFull(name="arm down", direction=ArmDirection.DOWN),
@@ -707,7 +708,7 @@ def build_behaviour_tree() -> BehaviourTree:
     # 指定距離走行_after
     loop_07.add_children(
         [
-        TraceLineCam(name="trace normal edge", power=40, pid_p=1.0, pid_i=0.0015, pid_d=0.1,gs_min=0, gs_max=80, trace_side=TraceSide.OPPOSITE),
+        TraceLineCam(name="trace normal edge", power=35, pid_p=1.0, pid_i=0.0015, pid_d=0.1,gs_min=0, gs_max=80, trace_side=TraceSide.OPPOSITE),
         IsDistanceEarned_after(name="check distance"),
         ]
     )
@@ -770,6 +771,13 @@ def build_behaviour_tree() -> BehaviourTree:
         IsDistanceEarned_after(name="check distance"),
         ]
     )
+    # 指定距離走行
+    loop_18.add_children(
+        [
+        TraceLineCam(name="trace normal edge", power=35, pid_p=1.0, pid_i=0.0015, pid_d=0.1,gs_min=0, gs_max=80, trace_side=TraceSide.CENTER),
+        IsDistanceEarned(name="check distance", delta_dist=100),
+        ]
+    )
     root.add_children(
         [
             calibration,
@@ -791,6 +799,7 @@ def build_behaviour_tree() -> BehaviourTree:
             loop_15,
             loop_16,
             loop_17,
+            loop_18,
             StopNow(name="stop"),
             TheEnd(name="end"),
         ]
