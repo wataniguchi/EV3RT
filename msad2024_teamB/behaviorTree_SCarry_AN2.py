@@ -359,6 +359,7 @@ class IsColorDetected(Behaviour):
                 self.logger.info("%+06d %s.detected blue" % (g_plotter.get_distance(), self.__class__.__name__))
                 return Status.SUCCESS
             else:
+                self.logger.info("%+06d %s.blue r=%d g=%d b=%d" % (g_plotter.get_distance(), self.__class__.__name__, color[0], color[1], color[2]))
                 #指定色でないならRUNNINGを返却
                 return Status.RUNNING
         #Black判定
@@ -670,7 +671,7 @@ def build_behaviour_tree() -> BehaviourTree:
             #MoveStraightLR(name="Turn 1", right_power=15, left_power=90, target_distance=180),
             MoveStraightLR(name="Turn 1", right_power=15, left_power=90, target_distance=157),
             MoveStraight(name="free run 2", power=70, target_distance=1000),
-            MoveStraight(name="free run 2-2", power=50, target_distance=200),
+            MoveStraight(name="free run 2-2", power=50, target_distance=250),
             # color sensor add
         ]
     )
@@ -695,7 +696,7 @@ def build_behaviour_tree() -> BehaviourTree:
 
     step_03B_3.add_children(
         [
-            MoveStraightLR(name="Turn 3", right_power=40, left_power=0, target_distance=150),
+            MoveStraightLR(name="Turn 3", right_power=40, left_power=0, target_distance=50),
         ]
     )
 
@@ -705,10 +706,10 @@ def build_behaviour_tree() -> BehaviourTree:
             #MoveStraightLR(name="Turn 3", right_power=70, left_power=35, target_distance=200),
             TraceLineCam(name="last run", power=40, pid_p=2.5, pid_i=0.0015, pid_d=0.1,
                          gs_min=0, gs_max=80, trace_side=TraceSide.CENTER),
-            IsDistanceEarned(name="check distance 2", delta_dist = 10000),
+            IsColorDetected(name="blue"),
+            IsDistanceEarned(name="check distance 2", delta_dist = 900),
             # IsDistanceEarned(name="check distance 2", delta_dist = 870),
             # color sensor add
-            IsColorDetected(name="blue"),
         ]
     )
 
