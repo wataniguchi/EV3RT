@@ -378,6 +378,7 @@ def build_behaviour_tree() -> BehaviourTree:
     loop_01_2 = Parallel(name="loop 01", policy=ParallelPolicy.SuccessOnOne())
     loop_01_3 = Parallel(name="loop 01", policy=ParallelPolicy.SuccessOnOne())
     loop_02 = Parallel(name="loop 02", policy=ParallelPolicy.SuccessOnOne())
+    loop_02_0 = Parallel(name="loop 02", policy=ParallelPolicy.SuccessOnOne())
     loop_02_1 = Parallel(name="loop 02", policy=ParallelPolicy.SuccessOnOne())
     loop_03 = Parallel(name="loop 03", policy=ParallelPolicy.SuccessOnOne())
     loop_04 = Parallel(name="loop 04", policy=ParallelPolicy.SuccessOnOne())
@@ -436,13 +437,15 @@ def build_behaviour_tree() -> BehaviourTree:
     #カーブ後の短い直線
     loop_01_3.add_children(
         [
-            TraceLineCam(name="trace normal edge", power=65, pid_p=1.0, pid_i=0.0015, pid_d=0.4,
+#           TraceLineCam(name="trace normal edge", power=65, pid_p=1.0, pid_i=0.0015, pid_d=0.4, ok
+                         
+            TraceLineCam(name="trace normal edge", power=67, pid_p=1.0, pid_i=0.0015, pid_d=0.4,
                          gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
             IsDistanceEarned(name="check distance", delta_dist = 1500),
         ]
     )
 
-    #コンタクトⅠ直前
+    #カーブ２（追加ms）
     loop_02.add_children(
         [
             TraceLineCam(name="trace normal edge", power=45, pid_p=1.5, pid_i=0.001, pid_d=0.30,
@@ -450,9 +453,18 @@ def build_behaviour_tree() -> BehaviourTree:
            IsDistanceEarned(name="check distance", delta_dist = 800),
 
         #    IsDistanceEarned(name="check distance", delta_dist = 1000),
-
         ]
     )
+    
+    #ＬＡＰまでの短い直線（追加ms）
+    loop_02_0.add_children(
+        [
+            TraceLineCam(name="trace normal edge", power=55, pid_p=1.5, pid_i=0.001, pid_d=0.30,
+                         gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
+           IsDistanceEarned(name="check distance", delta_dist = 500),
+        ]
+    )
+
     #コンタクトⅠ直前
     loop_02_1.add_children(
         [
@@ -515,6 +527,7 @@ def build_behaviour_tree() -> BehaviourTree:
             loop_01_2,
             loop_01_3,
             loop_02,
+            loop_02_0,
             loop_02_1,
             loop_03,
             loop_04,
