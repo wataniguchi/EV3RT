@@ -595,7 +595,7 @@ class IsDistanceEarned_before(Behaviour):
                 self.logger.info("%+06d %s.delta distance earned" % (cur_dist, self.__class__.__name__))
             global g_distFlg
             g_distFlg = True
-            g_dist = 1500
+            g_dist = 1530
             self.logger.info("グローバル変数更新 g_dist:980、g_earned_dist:0")
             return Status.SUCCESS
         else:
