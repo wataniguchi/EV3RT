@@ -353,13 +353,13 @@ class IsColorDetected(Behaviour):
        
         #Blue判定
         if self.name == "blue" :
-            if((color[2] - color[0]>45) & (100 <= color[0] <= 256 & (color[1] <= 150)) & (200 < color[2] <= 256)):
+            if((color[2] - color[0]>45) & (50 <= color[0] <= 256 & (color[1] <= 150)) & (200 < color[2] <= 256)):
             #if((100 < color[0] <=200) & (100 < color[1] <=200) & (100 < color[2] <=200)):
                 self.logger.info("%+06d %s.blue r=%d g=%d b=%d" % (g_plotter.get_distance(), self.__class__.__name__, color[0], color[1], color[2]))
                 self.logger.info("%+06d %s.detected blue" % (g_plotter.get_distance(), self.__class__.__name__))
                 return Status.SUCCESS
             else:
-                self.logger.info("%+06d %s.blue r=%d g=%d b=%d" % (g_plotter.get_distance(), self.__class__.__name__, color[0], color[1], color[2]))
+                self.logger.info("%+06d %s.notblue r=%d g=%d b=%d" % (g_plotter.get_distance(), self.__class__.__name__, color[0], color[1], color[2]))
                 #指定色でないならRUNNINGを返却
                 return Status.RUNNING
         #Black判定
@@ -618,7 +618,8 @@ def build_behaviour_tree() -> BehaviourTree:
     step_01A_4.add_children(
         [
             TraceLineCam(name="trace buleline4", power=40, pid_p=1.0, pid_i=0.0015, pid_d=0.5,
-                 gs_min=0, gs_max=80, trace_side=TraceSide.CENTER),
+                 gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
+                #  gs_min=0, gs_max=80, trace_side=TraceSide.CENTER),
             #IsDistanceEarned(name="check distance 1", delta_dist = 200),
             #Bottlecatch(name="trace CATCHED", target_state = BState.CATCHED),
             #Bottlecatch(name="linetrace", target_state = BState.LINE)
