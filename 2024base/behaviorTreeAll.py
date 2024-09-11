@@ -52,6 +52,8 @@ g_earned_dist_debri: int = 0
 g_debri_end: bool = False
 g_debri_exist_bottle: bool = False
 
+now_color = []
+
 class TheEnd(Behaviour):
     def __init__(self, name: str):
         super(TheEnd, self).__init__(name)
@@ -234,11 +236,11 @@ class IsEndDebri(Behaviour):
 
 
 class IsRotated(Behaviour):
-    def __init__(self, name: str):
+    def __init__(self, name: str, delta_dire: int):
         super(IsRotated, self).__init__(name)
         self.logger.debug("%s.__init__()" % (self.__class__.__name__))
         self.running = False
-        self.delta = 100*Wheel.WHEEL_TREAD/Wheel.TIRE_DIAMETER*2
+        self.delta = delta_dire*Wheel.WHEEL_TREAD/Wheel.TIRE_DIAMETER*2
         self.rStart = 0
         self.lStart = 0
 
@@ -317,7 +319,6 @@ class CheckBrackColor(Behaviour):
         self.logger.debug("%s.__init__()" % (self.__class__.__name__))
         self.running = False
     def update(self) -> Status:
-        # RGB値を0〜1の範囲に正規化
         r, g, b = [x for x in g_color_sensor.get_raw_color()]
         # # RGBをHSVに変換
         # h, s, v = colorsys.rgb_to_hsv(r, g, b)
@@ -344,7 +345,7 @@ class CheckBrackColor(Behaviour):
             diff_b = now_color[2] - b
 
             self.logger.debug('diff_r:{}'.format(diff_r))
-            if diff_r>=60 :
+            if diff_r>=40 :
                 return Status.SUCCESS
 
             now_color = [r,g,b]
@@ -601,6 +602,7 @@ def build_behaviour_tree() -> BehaviourTree:
     carry_06 = Parallel(name="carry 01", policy=ParallelPolicy.SuccessOnOne())
     carry_07 = Parallel(name="carry 01", policy=ParallelPolicy.SuccessOnOne())
     carry_08 = Parallel(name="carry 01", policy=ParallelPolicy.SuccessOnOne())
+    carry_09 = Parallel(name="carry 01", policy=ParallelPolicy.SuccessOnOne())
     
     calibration.add_children(
         [
@@ -646,7 +648,7 @@ def build_behaviour_tree() -> BehaviourTree:
                          pid_p=TraceNum.PID_P_FAST, pid_i=TraceNum.PID_I_FAST, pid_d=TraceNum.PID_D_FAST,
                          scene=Scene.LOOP,
                          gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
-            IsDistanceEarned(name="check distance", delta_dist = 3600),
+            IsDistanceEarned(name="check distance", delta_dist = 3500),
         ]
     )
     loop_03.add_children(
@@ -655,7 +657,7 @@ def build_behaviour_tree() -> BehaviourTree:
                          pid_p=TraceNum.PID_P_SLOW, pid_i=TraceNum.PID_I_SLOW, pid_d=TraceNum.PID_D_SLOW,
                          scene=Scene.LOOP,
                          gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
-            IsDistanceEarned(name="check distance", delta_dist = 1200),
+            IsDistanceEarned(name="check distance", delta_dist = 1300),
         ]
     )
     loop_04.add_children(
@@ -664,7 +666,7 @@ def build_behaviour_tree() -> BehaviourTree:
                          pid_p=TraceNum.PID_P_FAST, pid_i=TraceNum.PID_I_FAST, pid_d=TraceNum.PID_D_FAST,
                          scene=Scene.LOOP,
                          gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
-            IsDistanceEarned(name="check distance", delta_dist = 2100),
+            IsDistanceEarned(name="check distance", delta_dist = 2200),
         ]
     )
     loop_05.add_children(
@@ -682,7 +684,7 @@ def build_behaviour_tree() -> BehaviourTree:
                          pid_p=TraceNum.PID_P_SLOW, pid_i=TraceNum.PID_I_SLOW, pid_d=TraceNum.PID_D_SLOW,
                          scene=Scene.LOOP,
                          gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
-            IsDistanceEarned(name="check distance", delta_dist = 700),
+            IsDistanceEarned(name="check distance", delta_dist = 600),
         ]
     )
     loop_07.add_children(
@@ -718,7 +720,7 @@ def build_behaviour_tree() -> BehaviourTree:
                          pid_p=TraceNum.PID_P_ELLIPSE, pid_i=TraceNum.PID_I_ELLIPSE, pid_d=TraceNum.PID_D_ELLIPSE,
                          scene=Scene.LOOP,
                          gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
-            IsDistanceEarned(name="check distance", delta_dist = 1500),
+            IsDistanceEarned(name="check distance", delta_dist = 1400),
         ]
     )
     loop_11.add_children(
@@ -727,7 +729,7 @@ def build_behaviour_tree() -> BehaviourTree:
                          pid_p=TraceNum.PID_P_ELLIPSE, pid_i=TraceNum.PID_I_ELLIPSE, pid_d=TraceNum.PID_D_ELLIPSE,
                          scene=Scene.LOOP,
                          gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
-            IsDistanceEarned(name="check distance", delta_dist = 400),
+            IsDistanceEarned(name="check distance", delta_dist = 700),
         ]
     )
     loop_12.add_children(
@@ -736,7 +738,7 @@ def build_behaviour_tree() -> BehaviourTree:
                          pid_p=TraceNum.PID_P_ELLIPSE, pid_i=TraceNum.PID_I_ELLIPSE, pid_d=TraceNum.PID_D_ELLIPSE,
                          scene=Scene.LOOP,
                          gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
-            IsDistanceEarned(name="check distance", delta_dist = 1100),
+            IsDistanceEarned(name="check distance", delta_dist = 1000),
         ]
     )
     loop_13.add_children(
@@ -779,7 +781,7 @@ def build_behaviour_tree() -> BehaviourTree:
         [
             TraceLineCam(name="straight 04", power=TraceNum.POWER_SLOW,                    
                          pid_p=TraceNum.PID_P_SLOW, pid_i=TraceNum.PID_I_SLOW, pid_d=TraceNum.PID_D_SLOW,
-                         scene=Scene.LOOP,
+                         scene=Scene.DEBRI,
                          gs_min=0, gs_max=80, trace_side=TraceSide.CENTER),
             IsDistanceEarned(name="check distance", delta_dist = 700),
         ]
@@ -854,13 +856,13 @@ def build_behaviour_tree() -> BehaviourTree:
         [
             TraceLineCam(name="run vertical", power=40, pid_p=1.7, pid_i=0.0015, pid_d=0.1,
                          gs_min=0, gs_max=80, scene=Scene.DEBRI, trace_side=TraceSide.CENTER),
-            IsDistanceEarned(name="check distance02", delta_dist=300),
+            IsDistanceEarned(name="check distance02", delta_dist=290),
         ]
     )
     debri_04.add_children(
         [
             RunAsInstructed(name="remove", pwm_r=40,pwm_l=40),
-            IsDistanceEarned(name="check distance", delta_dist = 300),
+            IsDistanceEarned(name="check distance", delta_dist = 270),
         ]
     )
     debri_05.add_children(
@@ -873,12 +875,12 @@ def build_behaviour_tree() -> BehaviourTree:
     debri_06.add_children(
         [
             RunAsInstructed(name="rotate", pwm_r=60,pwm_l=0),
-            IsRotated(name="check rotated"),
+            IsRotated(name="check rotated", delta_dire=95),
         ]
     )
     debri_07.add_children(
         [
-            TraceLineCam(name="trace normal edge", power=33, pid_p=1.5, pid_i=0.0015, pid_d=0.1,
+            TraceLineCam(name="trace normal edge", power=33, pid_p=1.7, pid_i=0.0015, pid_d=0.1,
                          gs_min=0, gs_max=80, scene=Scene.DEBRI, trace_side=TraceSide.CENTER),
             IsDistanceEarnedTrace(name="check distance04", delta_dist = DebriNum.DISTANCE_SIDE),
             IsExistBottle(name="check bottle"),
@@ -918,7 +920,7 @@ def build_behaviour_tree() -> BehaviourTree:
     )
     debri_08_02_04.add_children(
         [
-            TraceLineCam(name="trace normal edge", power=40, pid_p=1.7, pid_i=0.0015, pid_d=0.1,
+            TraceLineCam(name="trace normal edge", power=33, pid_p=1.7, pid_i=0.0015, pid_d=0.1,
                          gs_min=0, gs_max=80, scene=Scene.DEBRI, trace_side=TraceSide.CENTER),
             IsDistanceEarnedTrace(name="check distance04", delta_dist = DebriNum.DISTANCE_SIDE),
         ]
@@ -933,53 +935,61 @@ def build_behaviour_tree() -> BehaviourTree:
         carry_06,
         carry_07,
         carry_08,
+        carry_09,
     ])
 
     carry_01.add_children(
         [
-            RunAsInstructed(name="go straight",pwm_l=44,pwm_r=40),
-            #　IsDistanceEarned(name="check distance", delta_dist = 200),
-            IsDistanceEarned(name="check distance", delta_dist = 800),
+            RunAsInstructed(name="go straight",pwm_l=35,pwm_r=38),
+            IsDistanceEarned(name="check distance", delta_dist = 350),
         ]
     )
     
     carry_02.add_children(
         [
-            TraceLineCam(name="trace normal edge", power=40, pid_p=1.5, pid_i=0.0015, pid_d=0.1,scene=Scene.DEBRI, gs_min=0, gs_max=80, trace_side=TraceSide.OPPOSITE),
-            IsDistanceEarned(name="check distance", delta_dist = 1000),
+            TraceLineCam(name="trace normal edge", power=35, pid_p=1.7, pid_i=0.0015, pid_d=0.1,scene=Scene.DEBRI, gs_min=0, gs_max=80, trace_side=TraceSide.CENTER),
+            IsDistanceEarned(name="check distance", delta_dist = 400),
         ]
     )
     carry_03.add_children(
         [
-            RunAsInstructed(name="go straight",pwm_l=40,pwm_r=40),
-            IsDistanceEarned(name="check distance", delta_dist = 800),
+            RunAsInstructed(name="rotate", pwm_r=60,pwm_l=20),
+            IsDistanceEarned(name="check distance", delta_dist = 600),
         ]
     )
     carry_04.add_children(
+        [
+            RunAsInstructed(name="go straight",pwm_l=40,pwm_r=40),
+            IsDistanceEarned(name="check distance", delta_dist = 1100),
+        ]
+    )
+    carry_05.add_children(
         [
             RunAsInstructed(name="go straight",pwm_l=-40,pwm_r=-40),
             IsDistanceEarned(name="check distance", delta_dist = 180),
         ]
     )
-    carry_05.add_children(
-        [
-            RotateDegrees(name="rotate90",power=50,target_angle=95),
-        ]
-    )
     carry_06.add_children(
         [
-            RunAsInstructed(name="go straight",pwm_l=40,pwm_r=40),
-            CheckBrackColor(name="checkBrackColor")
+            RunAsInstructed(name="rotate", pwm_r=0,pwm_l=60),
+            IsRotated(name="check rotated", delta_dire=90),
         ]
     )
     carry_07.add_children(
         [
-            RotateDegrees(name="rotate60",power=50,target_angle=55)
+            RunAsInstructed(name="go straight",pwm_l=38,pwm_r=38),
+            CheckBrackColor(name="checkBrackColor")
         ]
     )
     carry_08.add_children(
         [
-            TraceLineCam(name="trace normal edge", power=40, pid_p=1.5, pid_i=0.0015, pid_d=0.1,scene=Scene.DEBRI, gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
+            RunAsInstructed(name="rotate", pwm_r=0,pwm_l=60),
+            IsRotated(name="check rotated", delta_dire=70),
+        ]
+    )
+    carry_09.add_children(
+        [
+            TraceLineCam(name="trace normal edge", power=33, pid_p=1.7, pid_i=0.0015, pid_d=0.1,scene=Scene.DEBRI, gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
         ]
     )
 
