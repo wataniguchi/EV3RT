@@ -695,7 +695,7 @@ def build_behaviour_tree() -> BehaviourTree:
 
     step_03B_3.add_children(
         [
-            MoveStraightLR(name="Turn 3", right_power=70, left_power=0, target_distance=300),
+            MoveStraightLR(name="Turn 3", right_power=70, left_power=0, target_distance=200),
         ]
     )
 
@@ -705,7 +705,8 @@ def build_behaviour_tree() -> BehaviourTree:
             #MoveStraightLR(name="Turn 3", right_power=70, left_power=35, target_distance=200),
             TraceLineCam(name="last run", power=40, pid_p=2.5, pid_i=0.0015, pid_d=0.1,
                          gs_min=0, gs_max=80, trace_side=TraceSide.CENTER),
-            IsDistanceEarned(name="check distance 2", delta_dist = 870),
+            IsDistanceEarned(name="check distance 2", delta_dist = 10000),
+            # IsDistanceEarned(name="check distance 2", delta_dist = 870),
             # color sensor add
             IsColorDetected(name="blue"),
         ]
