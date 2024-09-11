@@ -378,6 +378,7 @@ def build_behaviour_tree() -> BehaviourTree:
     loop_01_1 = Parallel(name="loop 01", policy=ParallelPolicy.SuccessOnOne())
     loop_01_2 = Parallel(name="loop 01", policy=ParallelPolicy.SuccessOnOne())
     loop_01_3 = Parallel(name="loop 01", policy=ParallelPolicy.SuccessOnOne())
+    loop_01_4 = Parallel(name="loop 01", policy=ParallelPolicy.SuccessOnOne())    
     loop_02 = Parallel(name="loop 02", policy=ParallelPolicy.SuccessOnOne())
     loop_03 = Parallel(name="loop 03", policy=ParallelPolicy.SuccessOnOne())
     loop_04 = Parallel(name="loop 04", policy=ParallelPolicy.SuccessOnOne())
@@ -430,7 +431,7 @@ def build_behaviour_tree() -> BehaviourTree:
         ]
     )
 
-    #最初のストレート減速1段階目（実はカーブ1つ目　ms）
+    #最初のストレート減速1段階目（実はカーブ1つ目 ms）
     loop_01_1.add_children(
         [
     #        TraceLineCam(name="trace normal edge", power=60, pid_p=1.2, pid_i=0.0015, pid_d=0.4,
@@ -442,7 +443,7 @@ def build_behaviour_tree() -> BehaviourTree:
         ]
     )
 
-    #カーブ1つ目（ms未使用）
+    #カーブ1つ目（未使用 ms）
     loop_01_2.add_children(
         [
             TraceLineCam(name="trace normal edge", power=50, pid_p=2.0, pid_i=0.0015, pid_d=0.3,
@@ -537,6 +538,7 @@ def build_behaviour_tree() -> BehaviourTree:
             loop_01_1,
 #            loop_01_2, 　’未使用
             loop_01_3,
+#            loop_01_4,
 #            loop_02,
 #            loop_03,
 #            loop_04,
