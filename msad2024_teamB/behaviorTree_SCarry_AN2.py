@@ -589,7 +589,7 @@ def build_behaviour_tree() -> BehaviourTree:
             #TraceLineCam(name="trace buleline1", power=39, pid_p=2.5, pid_i=0.0015, pid_d=0.1,
             #     gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
             #IsDistanceEarned(name="check distance 1", delta_dist = 200),
-            MoveStraight(name="free run 1", power=37, target_distance=110)
+            MoveStraight(name="free run 1", power=37, target_distance=110),
             #Bottlecatch(name="trace PRE", target_state = BState.PRELINE)
             #Bottlecatch(name="linetrace", target_state = BState.LINE)
             #IsDistanceEarned(name="check distance 1", delta_dist = 100)
@@ -621,7 +621,7 @@ def build_behaviour_tree() -> BehaviourTree:
             #IsDistanceEarned(name="check distance 1", delta_dist = 200),
             #Bottlecatch(name="trace CATCHED", target_state = BState.CATCHED),
             #Bottlecatch(name="linetrace", target_state = BState.LINE)
-            IsDistanceEarned(name="check distance 1", delta_dist = 500)
+            IsDistanceEarned(name="check distance 1", delta_dist = 500),
         ]
     )
 
@@ -669,14 +669,15 @@ def build_behaviour_tree() -> BehaviourTree:
         [
             #MoveStraightLR(name="Turn 1", right_power=15, left_power=90, target_distance=180),
             MoveStraightLR(name="Turn 1", right_power=15, left_power=90, target_distance=157),
-            MoveStraight(name="free run 2", power=70, target_distance=1150)
+            MoveStraight(name="free run 2", power=70, target_distance=1000),
+            MoveStraight(name="free run 2-2", power=50, target_distance=200),
             # color sensor add
         ]
     )
     # サークルへ配置からライン復帰
     step_03B_1.add_children(
         [
-            MoveStraight(name="back", power=-40, target_distance=600),
+            MoveStraight(name="back", power=-40, target_distance=400),
             MoveStraightLR(name="Turn 2", right_power=75, left_power=0, target_distance=200),
             #MoveStraight(name="free run 3", power=40, target_distance=10000),
             #IsColorDetected(name="black")
@@ -694,7 +695,7 @@ def build_behaviour_tree() -> BehaviourTree:
 
     step_03B_3.add_children(
         [
-            MoveStraightLR(name="Turn 3", right_power=60, left_power=-60, target_distance=50),
+            MoveStraightLR(name="Turn 3", right_power=70, left_power=0, target_distance=300),
         ]
     )
 
@@ -706,7 +707,7 @@ def build_behaviour_tree() -> BehaviourTree:
                          gs_min=0, gs_max=80, trace_side=TraceSide.CENTER),
             IsDistanceEarned(name="check distance 2", delta_dist = 870),
             # color sensor add
-            IsColorDetected(name="blue")
+            IsColorDetected(name="blue"),
         ]
     )
 
