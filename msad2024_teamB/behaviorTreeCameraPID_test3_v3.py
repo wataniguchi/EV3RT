@@ -538,7 +538,7 @@ def build_behaviour_tree() -> BehaviourTree:
             loop_01_01,
             loop_01_02,
             loop_01_1,
-            loop_01_2, 　
+            loop_01_2, 
             loop_01_3,
 #            loop_01_4,
 #            loop_02,
