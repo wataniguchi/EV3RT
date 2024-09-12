@@ -46,12 +46,18 @@ class TraceNum:
 class DebriNum:
     BOTTLE_RANGE_LOWER = 8700
     DISTANCE_SIDE = 1100
-    DISTANCE_VERTICAL = 1800
+    DISTANCE_VERTICAL = 1900
     DISTANCE_CATCH = 120
     DISTANCE_REMOVE = 300
     DISTANCE_PASSED_THIRD = 1500
     POWER_REMOVE_RIGHT = 60
     POWER_REMOVE_LEFT = 15
+
+    PID_P: float = 1.7
+    PID_I: float = 0.0015
+    PID_D: float = 0.1
+    POWER_NORMAL: int = 40
+    POWER_SLOW: int = 33
 
 
 class TraceSide(Enum):
