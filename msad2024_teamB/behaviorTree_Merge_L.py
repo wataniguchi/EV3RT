@@ -23,7 +23,8 @@ EXEC_INTERVAL: float = 0.04
 VIDEO_INTERVAL: float = 0.02
 ARM_SHIFT_PWM = 30
 JUNCT_UPPER_THRESH = 50
-JUNCT_LOWER_THRESH = 30
+JUNCT_LOWER_THRESH = 40
+#JUNCT_LOWER_THRESH = 30
 
 class ArmDirection(IntEnum):
     UP = -1
@@ -632,6 +633,19 @@ def build_behaviour_tree() -> BehaviourTree:
     root = Sequence(name="competition", memory=True)
     calibration = Sequence(name="calibration", memory=True)
     start = Parallel(name="start", policy=ParallelPolicy.SuccessOnOne())
+    wloop_01 = Parallel(name="loop 01", policy=ParallelPolicy.SuccessOnOne())
+    wloop_02 = Parallel(name="loop 02", policy=ParallelPolicy.SuccessOnOne())
+    wloop_03 = Parallel(name="loop 03", policy=ParallelPolicy.SuccessOnOne())
+    wloop_04 = Parallel(name="loop 04", policy=ParallelPolicy.SuccessOnOne())
+    wloop_05 = Parallel(name="loop 05", policy=ParallelPolicy.SuccessOnOne())
+    wloop_06 = Parallel(name="loop 06", policy=ParallelPolicy.SuccessOnOne())
+    wloop_07 = Parallel(name="loop 07", policy=ParallelPolicy.SuccessOnOne())
+    wloop_08 = Parallel(name="loop 08", policy=ParallelPolicy.SuccessOnOne())
+    wloop_09 = Parallel(name="loop 09", policy=ParallelPolicy.SuccessOnOne())
+    wloop_10 = Parallel(name="loop 10", policy=ParallelPolicy.SuccessOnOne())
+    wloop_11 = Parallel(name="loop 11", policy=ParallelPolicy.SuccessOnOne())
+    wloop_12 = Parallel(name="loop 12", policy=ParallelPolicy.SuccessOnOne())
+    wloop_13 = Parallel(name="loop 13", policy=ParallelPolicy.SuccessOnOne())
     dbr_loop_01 = Parallel(name="loop 01", policy=ParallelPolicy.SuccessOnOne())
     dbr_loop_02 = Parallel(name="loop 02", policy=ParallelPolicy.SuccessOnOne())
     dbr_loop_03 = Parallel(name="loop 03", policy=ParallelPolicy.SuccessOnOne())
@@ -676,11 +690,13 @@ def build_behaviour_tree() -> BehaviourTree:
     dbr_loop_42 = Parallel(name="loop 42", policy=ParallelPolicy.SuccessOnOne())
     dbr_loop_43 = Parallel(name="loop 43", policy=ParallelPolicy.SuccessOnOne())
     dbr_loop_44 = Parallel(name="loop 44", policy=ParallelPolicy.SuccessOnOne())
-    step_01B = Parallel(name="step 01B", policy=ParallelPolicy.SuccessOnOne())
-    step_01B_2 = Parallel(name="step 01B", policy=ParallelPolicy.SuccessOnOne())
+    step_01A_1 = Parallel(name="step 01A_1", policy=ParallelPolicy.SuccessOnOne())
+    step_01A_4 = Parallel(name="step 01A_4", policy=ParallelPolicy.SuccessOnOne())
     step_02B = Sequence(name="step 02B", memory=True)
-    step_03B = Sequence(name="step 03B", memory=True)
-    step_04B = Sequence(name="step 04B", memory=True)
+    step_03B_1 = Sequence(name="step 03B_1", memory=True)
+    step_03B_2 = Parallel(name="step 03B_2", policy=ParallelPolicy.SuccessOnOne())
+    step_03B_3 = Sequence(name="step 03B_3", memory=False)
+    step_04B = Parallel(name="step 04B", policy=ParallelPolicy.SuccessOnOne())
 
     calibration.add_children(
         [
@@ -692,6 +708,119 @@ def build_behaviour_tree() -> BehaviourTree:
         [
             IsSonarOn(name="soner start", alert_dist=50),
             IsTouchOn(name="touch start"),
+        ]
+    )
+    #最初のストレート最高速度
+    wloop_01.add_children(
+        [
+            TraceLineCam(name="trace normal edge", power=60, pid_p=0.5, pid_i=0.0015, pid_d=0.6,
+                         gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
+            IsDistanceEarned(name="check distance", delta_dist = 3500),
+        ]
+    )
+
+    #最初のストレート減速1段階目
+    wloop_02.add_children(
+        [
+            TraceLineCam(name="trace normal edge", power=60, pid_p=0.5, pid_i=0.0015, pid_d=0.4,
+                         gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
+            IsDistanceEarned(name="check distance", delta_dist = 1000),
+        ]
+    )
+
+    #カーブ1つ目
+    wloop_03.add_children(
+        [
+            TraceLineCam(name="trace normal edge", power=50, pid_p=1.5, pid_i=0.0015, pid_d=0.3,
+                         gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
+            IsDistanceEarned(name="check distance", delta_dist = 2000),
+        ]
+    )
+
+    #カーブ後の短い直線
+    wloop_04.add_children(
+        [
+            TraceLineCam(name="trace normal edge", power=60, pid_p=1.0, pid_i=0.0015, pid_d=0.6,
+                         gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
+            IsDistanceEarned(name="check distance", delta_dist = 1500),
+        ]
+    )
+
+    #コンタクトⅠ直前
+    wloop_05.add_children(
+        [
+            TraceLineCam(name="trace normal edge", power=45, pid_p=1.5, pid_i=0.001, pid_d=0.30,
+                         gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
+           IsDistanceEarned(name="check distance", delta_dist = 800),
+
+        #    IsDistanceEarned(name="check distance", delta_dist = 1000),
+
+        ]
+    )
+    #コンタクトⅠ直前
+    wloop_06.add_children(
+        [
+            TraceLineCam(name="trace normal edge", power=50, pid_p=1.5, pid_i=0.001, pid_d=0.30,
+                         gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
+            IsJunction(name="scan joined junction", target_state = JState.JOINED),
+        ]
+    )
+
+    #コンタクトⅠ通過後、コンタクトⅡまで
+    wloop_07.add_children(
+        [
+            TraceLineCam(name="trace opposite edge", power=43, pid_p=2.0, pid_i=0.0011, pid_d=0.35,
+                         gs_min=0, gs_max=80, trace_side=TraceSide.OPPOSITE),
+            IsJunction(name="scan joined junction", target_state = JState.JOINED),
+        ]
+    )
+
+    #コンタクトⅡ通過後、指定距離走行
+    wloop_08.add_children(
+        [
+            TraceLineCam(name="trace normal edge", power=45, pid_p=2.0, pid_i=0.0015, pid_d=0.35,
+                         gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
+            IsDistanceEarned(name="check distance", delta_dist = 2300),
+        ]
+    )
+
+    #コンタクトⅢからコンタクトⅡまで
+    wloop_09.add_children(
+        [
+            TraceLineCam(name="trace normal edge", power=42, pid_p=2.0, pid_i=0.0011, pid_d=0.35,
+                         gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
+            IsJunction(name="scan joined junction", target_state = JState.JOINED),
+        ]
+    )
+
+    #コンタクトⅡ通過後、コンタクトⅠまで
+    wloop_10.add_children(
+        [
+            TraceLineCam(name="trace opposite edge", power=44, pid_p=2.0, pid_i=0.0011, pid_d=0.35,
+                         gs_min=0, gs_max=80, trace_side=TraceSide.OPPOSITE),
+            IsJunction(name="scan joined junction", target_state = JState.JOINED),
+        ]
+    )
+    wloop_11.add_children(
+        [
+            TraceLineCam(name="trace normal edge", power=44, pid_p=2.0, pid_i=0.0011, pid_d=0.35,
+                         gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
+            IsDistanceEarned(name="check distance", delta_dist = 500),
+        ]
+    )
+    #コンタクトⅠ通過後、指定距離走行（Nextデブリ）
+    wloop_12.add_children(
+        [
+            TraceLineCam(name="trace normal edge", power=46, pid_p=2.0, pid_i=0.0015, pid_d=0.3,
+                         gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
+            IsDistanceEarned(name="check distance", delta_dist = 300),
+        ]
+    )
+    wloop_13.add_children(
+        [
+            TraceLineCam(name="trace normal edge", power=46, pid_p=2.0, pid_i=0.0015, pid_d=0.3,
+                         gs_min=0, gs_max=80, trace_side=TraceSide.OPPOSITE),
+            IsDistanceEarned(name="check distance", delta_dist = 300),
         ]
     )
 # 1列目
@@ -971,51 +1100,53 @@ def build_behaviour_tree() -> BehaviourTree:
         ]
     )
     # デブリからボトル取得
-    step_01B.add_children(
+    step_01A_1.add_children(
         [
-            TraceLineCam(name="trace buleline", power=40, pid_p=2.5, pid_i=0.0015, pid_d=0.1,
-                 gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
-            IsDistanceEarned(name="check distance 1", delta_dist = 150)
+            MoveStraight(name="free run 1", power=37, target_distance=110),
         ]
     )
-    step_01B_2.add_children(
+    step_01A_4.add_children(
         [
-            TraceLineCam(name="trace buleline", power=40, pid_p=2.5, pid_i=0.0015, pid_d=0.1,
+            TraceLineCam(name="trace buleline4", power=40, pid_p=1.0, pid_i=0.0015, pid_d=0.5,
                  gs_min=0, gs_max=80, trace_side=TraceSide.CENTER),
-            IsDistanceEarned(name="check distance 1", delta_dist = 150)
+            IsDistanceEarned(name="check distance 1", delta_dist = 500),
         ]
     )
-    # step_01B.add_children(
-    #     [
-    #         MoveStraight(name="free run 1", power=50, target_distance=450)
-    #         # IsSonarOn(name="check bottol", alert_dist=150)
-    #     ]
-    # )
     # ボトル取得からサークルへ配置
     step_02B.add_children(
         [
-            MoveStraightLR(name="Turn 1", right_power=0, left_power=70, target_distance=200),
-            MoveStraight(name="free run 2", power=50, target_distance=1200)
-            # color sensor add
+            MoveStraightLR(name="Turn 1", right_power=15, left_power=90, target_distance=157),
+            MoveStraight(name="free run 2", power=70, target_distance=1000),
+            MoveStraight(name="free run 2-2", power=50, target_distance=250),
         ]
     )
     # サークルへ配置からライン復帰
-    step_03B.add_children(
+    step_03B_1.add_children(
         [
-            MoveStraight(name="back", power=-70, target_distance=200),
-            MoveStraightLR(name="Turn 2", right_power=70, left_power=0, target_distance=200),
-            MoveStraight(name="free run 3", power=50, target_distance=400)
+            MoveStraight(name="back", power=-40, target_distance=500),
+            MoveStraightLR(name="Turn 2", right_power=75, left_power=0, target_distance=200),
+        ]
+    )
+        # サークルへ配置からライン復帰
+    step_03B_2.add_children(
+        [
+            MoveStraight(name="free run 3", power=40, target_distance=10000),
+            IsColorDetected(name="black")
         ]
     )
 
+    step_03B_3.add_children(
+        [
+            MoveStraightLR(name="Turn 3", right_power=40, left_power=0, target_distance=50),
+        ]
+    )
     # ライン復帰からゴール
     step_04B.add_children(
         [
-            MoveStraightLR(name="Turn 3", right_power=70, left_power=35, target_distance=200),
-            TraceLineCam(name="trace center edge", power=40, pid_p=2.5, pid_i=0.0015, pid_d=0.1,
+            TraceLineCam(name="last run", power=40, pid_p=2.5, pid_i=0.0015, pid_d=0.1,
                          gs_min=0, gs_max=80, trace_side=TraceSide.CENTER),
-            IsDistanceEarned(name="check distance 1", delta_dist = 1100)
-            # color sensor add
+            IsColorDetected(name="blue"),
+            IsDistanceEarned(name="check distance 2", delta_dist = 1500),
         ]
     )
 
@@ -1023,6 +1154,20 @@ def build_behaviour_tree() -> BehaviourTree:
         [
             calibration,
             start,
+            # Wループ
+            wloop_01,
+            wloop_02,
+            wloop_03,
+            wloop_04,
+            wloop_05,
+            wloop_06,
+            wloop_07,
+            wloop_08,
+            wloop_09,
+            wloop_10,
+            wloop_11,
+            wloop_12,
+            wloop_13,
             # デブリ
             dbr_loop_01,
             dbr_loop_02,
@@ -1069,10 +1214,12 @@ def build_behaviour_tree() -> BehaviourTree:
             dbr_loop_43,
             dbr_loop_44,
             # スマートキャリー
-            step_01B,
-            step_01B_2,
+            step_01A_1,
+            step_01A_4,
             step_02B,
-            step_03B,
+            step_03B_1,
+            step_03B_2,
+            step_03B_3,
             step_04B,
             StopNow(name="stop"),
             TheEnd(name="end"),
