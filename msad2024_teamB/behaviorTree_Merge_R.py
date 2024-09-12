@@ -703,7 +703,7 @@ def build_behaviour_tree() -> BehaviourTree:
     #カーブ1つ目
     wloop_03.add_children(
         [
-            TraceLineCam(name="trace normal edge", power=50, pid_p=1.0, pid_i=0.0015, pid_d=0.3,
+            TraceLineCam(name="trace normal edge", power=45, pid_p=1.0, pid_i=0.0015, pid_d=0.3,
                          gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
             IsDistanceEarned(name="check distance", delta_dist = 2000),
         ]
