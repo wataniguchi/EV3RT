@@ -370,20 +370,20 @@ def build_behaviour_tree() -> BehaviourTree:
     root = Sequence(name="competition", memory=True)
     calibration = Sequence(name="calibration", memory=True)
     start = Parallel(name="start", policy=ParallelPolicy.SuccessOnOne())
-    loop_01 = Parallel(name="loop 01", policy=ParallelPolicy.SuccessOnOne())
-    loop_01_0 = Parallel(name="loop 01", policy=ParallelPolicy.SuccessOnOne())
-    loop_01_1 = Parallel(name="loop 01", policy=ParallelPolicy.SuccessOnOne())
-    loop_01_2 = Parallel(name="loop 01", policy=ParallelPolicy.SuccessOnOne())
-    loop_01_3 = Parallel(name="loop 01", policy=ParallelPolicy.SuccessOnOne())
-    loop_02 = Parallel(name="loop 02", policy=ParallelPolicy.SuccessOnOne())
-    loop_02_1 = Parallel(name="loop 02", policy=ParallelPolicy.SuccessOnOne())
-    loop_03 = Parallel(name="loop 03", policy=ParallelPolicy.SuccessOnOne())
-    loop_04 = Parallel(name="loop 04", policy=ParallelPolicy.SuccessOnOne())
-    loop_05 = Parallel(name="loop 05", policy=ParallelPolicy.SuccessOnOne())
-    loop_05_2 = Parallel(name="loop 05", policy=ParallelPolicy.SuccessOnOne())
-    loop_06 = Parallel(name="loop 06", policy=ParallelPolicy.SuccessOnOne())
-    loop_07 = Parallel(name="loop 07", policy=ParallelPolicy.SuccessOnOne())
-    loop_08 = Parallel(name="loop 07", policy=ParallelPolicy.SuccessOnOne())
+    wloop_01 = Parallel(name="loop 01", policy=ParallelPolicy.SuccessOnOne())
+    wloop_02 = Parallel(name="loop 02", policy=ParallelPolicy.SuccessOnOne())
+    wloop_03 = Parallel(name="loop 03", policy=ParallelPolicy.SuccessOnOne())
+    wloop_04 = Parallel(name="loop 04", policy=ParallelPolicy.SuccessOnOne())
+    wloop_05 = Parallel(name="loop 05", policy=ParallelPolicy.SuccessOnOne())
+    wloop_06 = Parallel(name="loop 06", policy=ParallelPolicy.SuccessOnOne())
+    wloop_07 = Parallel(name="loop 07", policy=ParallelPolicy.SuccessOnOne())
+    wloop_08 = Parallel(name="loop 08", policy=ParallelPolicy.SuccessOnOne())
+    wloop_09 = Parallel(name="loop 09", policy=ParallelPolicy.SuccessOnOne())
+    wloop_10 = Parallel(name="loop 10", policy=ParallelPolicy.SuccessOnOne())
+    wloop_11 = Parallel(name="loop 11", policy=ParallelPolicy.SuccessOnOne())
+    wloop_12 = Parallel(name="loop 12", policy=ParallelPolicy.SuccessOnOne())
+    wloop_13 = Parallel(name="loop 13", policy=ParallelPolicy.SuccessOnOne())
+
     calibration.add_children(
         [
             ArmUpDownFull(name="arm down", direction=ArmDirection.DOWN),
@@ -397,17 +397,8 @@ def build_behaviour_tree() -> BehaviourTree:
         ]
     )
 
-    #最初のストレート最高速度(助走MS)
-    # loop_01.add_children(
-    #     [
-    #         TraceLineCam(name="trace normal edge", power=40, pid_p=1.5, pid_i=0.0015, pid_d=0.4,
-    #                      gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
-    #         IsDistanceEarned(name="check distance", delta_dist = 200),
-    #     ]
-    # )
-
     #最初のストレート最高速度
-    loop_01_0.add_children(
+    wloop_01.add_children(
         [
             TraceLineCam(name="trace normal edge", power=60, pid_p=0.5, pid_i=0.0015, pid_d=0.6,
                          gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
@@ -416,7 +407,7 @@ def build_behaviour_tree() -> BehaviourTree:
     )
 
     #最初のストレート減速1段階目
-    loop_01_1.add_children(
+    wloop_02.add_children(
         [
             TraceLineCam(name="trace normal edge", power=60, pid_p=0.5, pid_i=0.0015, pid_d=0.4,
                          gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
@@ -425,7 +416,7 @@ def build_behaviour_tree() -> BehaviourTree:
     )
 
     #カーブ1つ目
-    loop_01_2.add_children(
+    wloop_03.add_children(
         [
             TraceLineCam(name="trace normal edge", power=50, pid_p=1.5, pid_i=0.0015, pid_d=0.3,
                          gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
@@ -434,7 +425,7 @@ def build_behaviour_tree() -> BehaviourTree:
     )
 
     #カーブ後の短い直線
-    loop_01_3.add_children(
+    wloop_04.add_children(
         [
             TraceLineCam(name="trace normal edge", power=60, pid_p=1.0, pid_i=0.0015, pid_d=0.6,
                          gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
@@ -443,7 +434,7 @@ def build_behaviour_tree() -> BehaviourTree:
     )
 
     #コンタクトⅠ直前
-    loop_02.add_children(
+    wloop_05.add_children(
         [
             TraceLineCam(name="trace normal edge", power=45, pid_p=1.5, pid_i=0.001, pid_d=0.30,
                          gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
@@ -454,7 +445,7 @@ def build_behaviour_tree() -> BehaviourTree:
         ]
     )
     #コンタクトⅠ直前
-    loop_02_1.add_children(
+    wloop_06.add_children(
         [
             TraceLineCam(name="trace normal edge", power=50, pid_p=1.5, pid_i=0.001, pid_d=0.30,
                          gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
@@ -463,7 +454,7 @@ def build_behaviour_tree() -> BehaviourTree:
     )
 
     #コンタクトⅠ通過後、コンタクトⅡまで
-    loop_03.add_children(
+    wloop_07.add_children(
         [
             TraceLineCam(name="trace opposite edge", power=43, pid_p=2.0, pid_i=0.0011, pid_d=0.35,
                          gs_min=0, gs_max=80, trace_side=TraceSide.OPPOSITE),
@@ -472,7 +463,7 @@ def build_behaviour_tree() -> BehaviourTree:
     )
 
     #コンタクトⅡ通過後、指定距離走行
-    loop_04.add_children(
+    wloop_08.add_children(
         [
             TraceLineCam(name="trace normal edge", power=45, pid_p=2.0, pid_i=0.0015, pid_d=0.35,
                          gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
@@ -481,7 +472,7 @@ def build_behaviour_tree() -> BehaviourTree:
     )
 
     #コンタクトⅢからコンタクトⅡまで
-    loop_05.add_children(
+    wloop_09.add_children(
         [
             TraceLineCam(name="trace normal edge", power=42, pid_p=2.0, pid_i=0.0011, pid_d=0.35,
                          gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
@@ -490,14 +481,14 @@ def build_behaviour_tree() -> BehaviourTree:
     )
 
     #コンタクトⅡ通過後、コンタクトⅠまで
-    loop_06.add_children(
+    wloop_10.add_children(
         [
             TraceLineCam(name="trace opposite edge", power=44, pid_p=2.0, pid_i=0.0011, pid_d=0.35,
                          gs_min=0, gs_max=80, trace_side=TraceSide.OPPOSITE),
             IsJunction(name="scan joined junction", target_state = JState.JOINED),
         ]
     )
-    loop_05_2.add_children(
+    wloop_11.add_children(
         [
             TraceLineCam(name="trace normal edge", power=44, pid_p=2.0, pid_i=0.0011, pid_d=0.35,
                          gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
@@ -505,14 +496,14 @@ def build_behaviour_tree() -> BehaviourTree:
         ]
     )
     #コンタクトⅠ通過後、指定距離走行（Nextデブリ）
-    loop_07.add_children(
+    wloop_12.add_children(
         [
             TraceLineCam(name="trace normal edge", power=46, pid_p=2.0, pid_i=0.0015, pid_d=0.3,
                          gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
             IsDistanceEarned(name="check distance", delta_dist = 300),
         ]
     )
-    loop_08.add_children(
+    wloop_13.add_children(
         [
             TraceLineCam(name="trace normal edge", power=46, pid_p=2.0, pid_i=0.0015, pid_d=0.3,
                          gs_min=0, gs_max=80, trace_side=TraceSide.OPPOSITE),
@@ -523,20 +514,19 @@ def build_behaviour_tree() -> BehaviourTree:
         [
             calibration,
             start,
-            # loop_01,
-            loop_01_0,
-            # loop_01_1,
-            loop_01_2,
-            loop_01_3,
-            loop_02,
-            loop_02_1,
-            loop_03,
-            loop_04,
-            loop_05,
-            loop_06,
-            loop_05_2,
-            loop_07,
-            loop_08,
+            wloop_01,
+            wloop_02,
+            wloop_03,
+            wloop_04,
+            wloop_05,
+            wloop_06,
+            wloop_07,
+            wloop_08,
+            wloop_09,
+            wloop_10,
+            wloop_11,
+            wloop_12,
+            wloop_13,
             StopNow(name="stop"),
             TheEnd(name="end"),
         ]
