@@ -5,7 +5,6 @@ import threading
 import signal
 from enum import Enum, IntEnum, auto
 from etrobo_python import ETRobo, Hub, Motor, ColorSensor, TouchSensor, SonarSensor, GyroSensor
-
 from simple_pid import PID
 import py_trees.common
 from py_trees.trees import BehaviourTree
@@ -24,10 +23,8 @@ EXEC_INTERVAL: float = 0.04
 VIDEO_INTERVAL: float = 0.02
 ARM_SHIFT_PWM = 30
 JUNCT_UPPER_THRESH = 50
-JUNCT_LOWER_THRESH = 30
-BOTTLE_UPPER_THRESH = 105
-BOTTLE_LOWER_THRESH = 40
-BOTTLE_CATCH_THRESH = 80
+JUNCT_LOWER_THRESH = 40
+#JUNCT_LOWER_THRESH = 30
 
 class ArmDirection(IntEnum):
     UP = -1
@@ -49,13 +46,6 @@ class Color(Enum):
     GREEN = auto()
     WHITE = auto()
 
-class BState(Enum):
-    INITIAL = auto()
-    PRELINE = auto()
-    LINE = auto()
-    CIRCLE = auto()
-    CATCHED  = auto()
-
 g_plotter: Plotter = None
 g_hub: Hub = None
 g_arm_motor: Motor = None
@@ -68,7 +58,6 @@ g_gyro_sensor: GyroSensor = None
 g_video: Video = None
 g_video_thread: threading.Thread = None
 g_course: int = 0
-
 
 
 class TheEnd(Behaviour):
@@ -166,7 +155,7 @@ class IsSonarOn(Behaviour):
         if not self.running:
             self.running = True
             self.logger.info("%+06d %s.detection started for dist=%d" % (g_plotter.get_distance(), self.__class__.__name__, self.alert_dist))
-
+        
         dist = 10 * g_sonar_sensor.get_distance()
         if (dist <= self.alert_dist and dist > 0):
             self.logger.info("%+06d %s.alerted at dist=%d" % (g_plotter.get_distance(), self.__class__.__name__, dist))
@@ -230,7 +219,7 @@ class IsJunction(Behaviour):
                 if roe <= JUNCT_LOWER_THRESH:
                     self.logger.info("%+06d %s.the join completed" % (g_plotter.get_distance(), self.__class__.__name__))
                     self.state = JState.JOINED
-
+                    
             elif self.state == JState.FORKING:
                 if roe <= JUNCT_LOWER_THRESH and self.prev_roe >= JUNCT_UPPER_THRESH:
                     self.logger.info("%+06d %s.the fork completed" % (g_plotter.get_distance(), self.__class__.__name__))
@@ -249,7 +238,7 @@ class IsJunction(Behaviour):
 
 class RunAsInstructed(Behaviour):
     def __init__(self, name: str, pwm_l: int, pwm_r: int) -> None:
-        super(RunAsInstructed, self).__init__(name)
+        super(RunAsInstucted, self).__init__(name)
         self.pwm_l = g_course * pwm_l
         self.pwm_r = g_course * pwm_r
         self.running = False
@@ -318,185 +307,6 @@ class TraceLineCam(Behaviour):
         g_left_motor.set_power(self.power + turn)
         return Status.RUNNING
 
-# 旧Wループプログラムから流用　devMTajiriから拝借
-class IsColorDetected(Behaviour):
-    def __init__(self, name: str):
-        super(IsColorDetected, self).__init__(name)
-        self.logger.debug("%s.__init__()" % (self.__class__.__name__))
-        self.name = name
-
-    def update(self) -> Status:
-        global g_color_sensor
-        #RGBの値を取得
-        color = g_color_sensor.get_raw_color()
-        # #環境光の値を取得
-        # brightness = g_color_sensor.get_brightness()
-        # #反射光の値を取得
-        #ambient = g_color_sensor.get_ambient()
-
-        #self.logger.info("%+06d %s.nowcolor r=%d g=%d b=%d" % (g_plotter.get_distance(), self.__class__.__name__, color[0], color[1], color[2]))
-        #  #Blue判定
-        # if self.name == "blue" :
-        #     if ambient >= 50 :
-        #         return Status.SUCCESS
-        #     else:
-        #      #指定色でないならRUNNINGを返却
-        #         return Status.RUNNING
-
-        #  #Black判定
-        # if self.name == "black" :
-        #     if ambient <= 30  :
-        #         return Status.SUCCESS
-        #     else:
-        #      #指定色でないならRUNNINGを返却
-        #         return Status.RUNNING
-       
-        #Blue判定
-        if self.name == "blue" :
-            if(((color[2] - color[0])>30) & (100 <= color[0] <= 256 & (color[1] <= 200)) & (200 < color[2] <= 256)):
-            #if((100 < color[0] <=200) & (100 < color[1] <=200) & (100 < color[2] <=200)):
-                self.logger.info("%+06d %s.blue r=%d g=%d b=%d" % (g_plotter.get_distance(), self.__class__.__name__, color[0], color[1], color[2]))
-                self.logger.info("%+06d %s.detected blue" % (g_plotter.get_distance(), self.__class__.__name__))
-                return Status.SUCCESS
-            else:
-                self.logger.info("%+06d %s.notblue r=%d g=%d b=%d" % (g_plotter.get_distance(), self.__class__.__name__, color[0], color[1], color[2]))
-                #指定色でないならRUNNINGを返却
-                return Status.RUNNING
-        #Black判定
-        if self.name == "black" :
-            if((color[2] < 100) & (color[1] < 100) & (color[0] < 100)):
-            #if(color[2] < 100 & color[1] < 100 & color[0] < 100):
-                self.logger.info("%+06d %s.detected black" % (g_plotter.get_distance(), self.__class__.__name__))
-                self.logger.info("%+06d %s.black r=%d g=%d b=%d" % (g_plotter.get_distance(), self.__class__.__name__, color[0], color[1], color[2]))
-                return Status.SUCCESS
-            else:
-                #指定色でないならRUNNINGを返却
-                return Status.RUNNING
-
-# デブリプログラムから流用
-class MoveStraight(Behaviour):
-    def __init__(self, name: str, power: int, target_distance: int) -> None:
-        super(MoveStraight, self).__init__(name)
-        self.power = power
-        self.target_distance = target_distance
-        self.start_distance = None
-        self.running = False
-
-    def update(self) -> Status:
-        if not self.running:
-            self.running = True
-            self.start_distance = g_plotter.get_distance()
-            g_right_motor.set_power(self.power)
-            g_left_motor.set_power(self.power)
-            self.logger.info("%+06d %s.start power=%d end distance=%d" % 
-                            (self.start_distance, self.__class__.__name__, self.power, self.target_distance))
-            self.logger.info("%+06d %s.start_azi" % (g_plotter.get_loc_x(), self.__class__.__name__)) 
-            self.logger.info("%+06d %s.start_azi" % (g_plotter.get_loc_y(), self.__class__.__name__))
-
-
-        current_distance = g_plotter.get_distance()
-        traveled_distance = current_distance - self.start_distance
-
-        if traveled_distance >= self.target_distance:
-            g_right_motor.set_power(0)
-            g_left_motor.set_power(0)
-            self.logger.info("%+06d %s.end distance on" % (current_distance, self.__class__.__name__))
-            
-            return Status.SUCCESS
-        else:
-            return Status.RUNNING
-
-# デブリプログラムから流用(※一部加工)
-class MoveStraightLR(Behaviour):
-    def __init__(self, name: str, right_power: int, left_power: int, target_distance: int) -> None:
-        super(MoveStraightLR, self).__init__(name)
-        self.right_power = right_power
-        self.left_power = left_power
-        self.target_distance = target_distance
-        self.start_distance = None
-        self.running = False
-
-    def update(self) -> Status:
-        if not self.running:
-            self.running = True
-            self.start_distance = g_plotter.get_distance()
-            # g_right_motor.set_power(self.right_power)
-            # g_left_motor.set_power(self.left_power)
-            if g_course == 1:
-                g_right_motor.set_power(self.right_power)
-                g_left_motor.set_power(self.left_power)
-            else:
-                g_right_motor.set_power(self.left_power)
-                g_left_motor.set_power(self.right_power-8.5)
-            self.logger.info("%+06d %s.start rightpower=%d leftpower=%d enddistance=%d" % 
-                             (self.start_distance, self.__class__.__name__, self.right_power, self.left_power, self.target_distance))
-
-        current_distance = g_plotter.get_distance()
-        traveled_distance = current_distance - self.start_distance
-
-        if traveled_distance >= self.target_distance:
-            g_right_motor.set_power(0)
-            g_left_motor.set_power(0)
-            self.logger.info("%+06d %s.enddistance on" % (current_distance, self.__class__.__name__))
-            return Status.SUCCESS
-        else:
-            return Status.RUNNING
-
-class Bottlecatch(Behaviour):
-    def __init__(self, name: str, target_state: BState) -> None:
-        super(Bottlecatch, self).__init__(name)
-        self.target_state = target_state
-        self.reached = False
-        self.prev_roe = 0
-        self.state:BState = BState.INITIAL
-        self.running = False
-
-    def update(self) -> Status:
-        if not self.running:
-            self.running = True
-            self.logger.info("%+06d %s.scan started" % (g_plotter.get_distance(), self.__class__.__name__))
-        roe = g_video.get_range_of_edges()
-        
-        if roe != 0:
-            if self.state == BState.INITIAL:
-                if roe >= BOTTLE_LOWER_THRESH :
-                    self.logger.info("%+06d %s.preline" % (g_plotter.get_distance(), self.__class__.__name__))
-                    self.logger.info("%+06d %s.preline_azi" % (g_plotter.get_loc_x(), self.__class__.__name__))
-                    self.logger.info("%+06d %s.preline_azi" % (g_plotter.get_loc_y(), self.__class__.__name__))
-                    self.state = BState.PRELINE
-
-            elif self.state == BState.PRELINE:
-                if roe <= BOTTLE_LOWER_THRESH and self.prev_roe >= BOTTLE_UPPER_THRESH:
-                    self.logger.info("%+06d %s.the line completed" % (g_plotter.get_distance(), self.__class__.__name__))
-                    self.logger.info("%+06d %s.the line completed_azi" % (g_plotter.get_loc_x(), self.__class__.__name__))
-                    self.logger.info("%+06d %s.the line completed_azi" % (g_plotter.get_loc_y(), self.__class__.__name__))
-                    self.state = BState.LINE
-
-            elif self.state == BState.LINE:
-                if roe >= BOTTLE_UPPER_THRESH and self.prev_roe >= BOTTLE_LOWER_THRESH:
-                    self.logger.info("%+06d %s.the join completed" % (g_plotter.get_distance(), self.__class__.__name__))
-                    self.logger.info("%+06d %s.the join completed_azi" % (g_plotter.get_loc_x(), self.__class__.__name__)) 
-                    self.logger.info("%+06d %s.the join completed_azi" % (g_plotter.get_loc_y(), self.__class__.__name__)) 
-                    self.state = BState.CIRCLE
-
-            elif self.state == BState.CIRCLE:
-                if roe >= BOTTLE_CATCH_THRESH and self.prev_roe >= BOTTLE_CATCH_THRESH:
-                    self.logger.info("%+06d %s.the catch completed" % (g_plotter.get_distance(), self.__class__.__name__))
-                    self.logger.info("%+06d %s.the catch completed_azi" % (g_plotter.get_loc_x(), self.__class__.__name__)) 
-                    self.logger.info("%+06d %s.the catch completed_azi" % (g_plotter.get_loc_y(), self.__class__.__name__))
-                    self.state = BState.CATCHED
-            else:
-                pass
-        self.prev_roe = roe
-
-        if not self.reached and self.state == self.target_state:
-            self.reached = True
-            self.logger.info("%+06d %s.target state reached" % (g_plotter.get_distance(), self.__class__.__name__))
-            self.logger.info("%+06d %s.target state reached_azi" % (g_plotter.get_loc_x(), self.__class__.__name__)) 
-            self.logger.info("%+06d %s.target state reached_azi" % (g_plotter.get_loc_y(), self.__class__.__name__))
-            return Status.SUCCESS
-        else:
-            return Status.RUNNING
 
 class TraverseBehaviourTree(object):
     def __init__(self, tree: BehaviourTree) -> None:
@@ -517,6 +327,7 @@ class TraverseBehaviourTree(object):
         else:
             self.tree.tick_once()
             g_plotter.plot(**kwargs)
+
 
 class ExposeDevices(object):
     def __call__(
@@ -541,7 +352,6 @@ class ExposeDevices(object):
         g_gyro_sensor = gyro_sensor
 
 
-
 class VideoThread(threading.Thread):
     def __init__(self):
         super().__init__()
@@ -555,24 +365,25 @@ class VideoThread(threading.Thread):
             g_video.process(g_plotter, g_hub, g_arm_motor, g_right_motor, g_left_motor, g_touch_sensor, g_color_sensor, g_sonar_sensor, g_gyro_sensor)
             time.sleep(VIDEO_INTERVAL)
 
+
 def build_behaviour_tree() -> BehaviourTree:
     root = Sequence(name="competition", memory=True)
     calibration = Sequence(name="calibration", memory=True)
     start = Parallel(name="start", policy=ParallelPolicy.SuccessOnOne())
-    step_01A_1 = Parallel(name="step 01A_1", policy=ParallelPolicy.SuccessOnOne())
-    #step_01A_2 = Parallel(name="step 01A_2", policy=ParallelPolicy.SuccessOnOne())
-    #step_01A_3 = Parallel(name="step 01A_3", policy=ParallelPolicy.SuccessOnOne())
-    step_01A_4 = Parallel(name="step 01A_4", policy=ParallelPolicy.SuccessOnOne())
-    #step_01B_1 = Parallel(name="step 01B_1", policy=ParallelPolicy.SuccessOnOne())
-    #step_01B_2 = Parallel(name="step 01B_2", policy=ParallelPolicy.SuccessOnOne())
-    #step_01B = Parallel(name="step 01B", policy=ParallelPolicy.SuccessOnSelected(children=[step_01B_1,step_01B_2]),children=[step_01B_1,step_01B_2])
-    step_02B = Sequence(name="step 02B", memory=True)
-    step_03B_1 = Sequence(name="step 03B_1", memory=True)
-    step_03B_2 = Parallel(name="step 03B_2", policy=ParallelPolicy.SuccessOnOne())
-    step_03B_3 = Sequence(name="step 03B_3", memory=False)
-    step_04B = Parallel(name="step 04B", policy=ParallelPolicy.SuccessOnOne())
-    #step_04B = Sequence(name="step 04B", memory=True)
- 
+    wloop_01 = Parallel(name="loop 01", policy=ParallelPolicy.SuccessOnOne())
+    wloop_02 = Parallel(name="loop 02", policy=ParallelPolicy.SuccessOnOne())
+    wloop_03 = Parallel(name="loop 03", policy=ParallelPolicy.SuccessOnOne())
+    wloop_04 = Parallel(name="loop 04", policy=ParallelPolicy.SuccessOnOne())
+    wloop_05 = Parallel(name="loop 05", policy=ParallelPolicy.SuccessOnOne())
+    wloop_06 = Parallel(name="loop 06", policy=ParallelPolicy.SuccessOnOne())
+    wloop_07 = Parallel(name="loop 07", policy=ParallelPolicy.SuccessOnOne())
+    wloop_08 = Parallel(name="loop 08", policy=ParallelPolicy.SuccessOnOne())
+    wloop_09 = Parallel(name="loop 09", policy=ParallelPolicy.SuccessOnOne())
+    wloop_10 = Parallel(name="loop 10", policy=ParallelPolicy.SuccessOnOne())
+    wloop_11 = Parallel(name="loop 11", policy=ParallelPolicy.SuccessOnOne())
+    wloop_12 = Parallel(name="loop 12", policy=ParallelPolicy.SuccessOnOne())
+    wloop_13 = Parallel(name="loop 13", policy=ParallelPolicy.SuccessOnOne())
+
     calibration.add_children(
         [
             ArmUpDownFull(name="arm down", direction=ArmDirection.DOWN),
@@ -585,150 +396,137 @@ def build_behaviour_tree() -> BehaviourTree:
             IsTouchOn(name="touch start"),
         ]
     )
-    step_01A_1.add_children(
+
+    #最初のストレート最高速度
+    wloop_01.add_children(
         [
-            #TraceLineCam(name="trace buleline1", power=39, pid_p=2.5, pid_i=0.0015, pid_d=0.1,
-            #     gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
-            #IsDistanceEarned(name="check distance 1", delta_dist = 200),
-            MoveStraight(name="free run 1", power=37, target_distance=110),
-            #Bottlecatch(name="trace PRE", target_state = BState.PRELINE)
-            #Bottlecatch(name="linetrace", target_state = BState.LINE)
-            #IsDistanceEarned(name="check distance 1", delta_dist = 100)
-        ]
-    )
-    # step_01A_2.add_children(
-    #     [
-    #         TraceLineCam(name="trace buleline2", power=34, pid_p=2.5, pid_i=0.0015, pid_d=0.1,
-    #              gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
-    #         #IsDistanceEarned(name="check distance 1", delta_dist = 200),
-    #         Bottlecatch(name="linetrace", target_state = BState.LINE)
-    #         #IsDistanceEarned(name="check distance 1", delta_dist = 400)
-    #     ]
-    # )
-    # step_01A_3.add_children(
-    #    [
-    #        TraceLineCam(name="trace buleline3", power=50, pid_p=2.5, pid_i=0.0015, pid_d=0.1,
-    #             gs_min=0, gs_max=80, trace_side=TraceSide.CENTER),
-    #        #IsDistanceEarned(name="check distance 1", delta_dist = 200),
-    #        Bottlecatch(name="trace CIRCLE", target_state = BState.CIRCLE)
-    #        #Bottlecatch(name="linetrace", target_state = BState.LINE)
-    #        #IsDistanceEarned(name="check distance 1", delta_dist = 400)
-    #    ]
-    # )
-    step_01A_4.add_children(
-        [
-            TraceLineCam(name="trace buleline4", power=40, pid_p=1.0, pid_i=0.0015, pid_d=0.5,
-                 gs_min=0, gs_max=80, trace_side=TraceSide.CENTER),
-            #IsDistanceEarned(name="check distance 1", delta_dist = 200),
-            #Bottlecatch(name="trace CATCHED", target_state = BState.CATCHED),
-            #Bottlecatch(name="linetrace", target_state = BState.LINE)
-            IsDistanceEarned(name="check distance 1", delta_dist = 500),
+            TraceLineCam(name="trace normal edge", power=60, pid_p=0.5, pid_i=0.0015, pid_d=0.6,
+                         gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
+            IsDistanceEarned(name="check distance", delta_dist = 3500),
         ]
     )
 
-    # デブリからボトル取得
-    #step_01B.add_children(
-    #    [
-    #        TraceLineCam(name="trace buleline", power=39, pid_p=2.5, pid_i=0.0015, pid_d=0.1,
-    #             gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
-    #        #IsDistanceEarned(name="check distance 1", delta_dist = 200),
-    #        #Bottlecatch(name="linetrace pre", target_state = BState.PRELINE),
-    #        #Bottlecatch(name="linetrace", target_state = BState.LINE)
-    #        #IsDistanceEarned(name="check distance 1", delta_dist = 400)
-    #    ]
-    #)
-
-    #step_01B_1.add_children(
-    #    [
-    #        #TraceLineCam(name="trace buleline", power=39, pid_p=2.5, pid_i=0.0015, pid_d=0.1,
-    #        #     gs_min=0, gs_max=80, trace_side=TraceSide.CENTER),
-    #        IsDistanceEarned(name="check distance 1", delta_dist = 200),
-    #        Bottlecatch(name="linetrace pre", target_state = BState.PRELINE),
-    #        #Bottlecatch(name="linetrace", target_state = BState.LINE)
-    #        #IsDistanceEarned(name="check distance 1", delta_dist = 400)
-    #    ]
-    #)
-    #step_01B_2.add_children(
-    #    [
-    #        #TraceLineCam(name="trace buleline", power=39, pid_p=2.5, pid_i=0.0015, pid_d=0.1,
-    #        #     gs_min=0, gs_max=80, trace_side=TraceSide.CENTER),
-    #        #IsDistanceEarned(name="check distance 1", delta_dist = 200),
-    #        #Bottlecatch(name="linetrace pre", target_state = BState.PRELINE),
-    #        Bottlecatch(name="linetrace", target_state = BState.LINE)
-    #        #IsDistanceEarned(name="check distance 1", delta_dist = 400)
-    #    ]
-    #)
-
-    # step_01B.add_children(
-    #     [
-    #         MoveStraight(name="free run 1", power=50, target_distance=450)
-    #         # IsSonarOn(name="check bottol", alert_dist=150)
-    #     ]
-    # )
-    # ボトル取得からサークルへ配置
-    step_02B.add_children(
+    #最初のストレート減速1段階目
+    wloop_02.add_children(
         [
-            #MoveStraightLR(name="Turn 1", right_power=15, left_power=90, target_distance=180),
-            MoveStraightLR(name="Turn 1", right_power=15, left_power=90, target_distance=157),
-            MoveStraight(name="free run 2", power=70, target_distance=1000),
-            MoveStraight(name="free run 2-2", power=50, target_distance=250),
-            # color sensor add
-        ]
-    )
-    # サークルへ配置からライン復帰
-    step_03B_1.add_children(
-        [
-            MoveStraight(name="back", power=-40, target_distance=500),
-            MoveStraightLR(name="Turn 2", right_power=75, left_power=0, target_distance=200),
-            #MoveStraight(name="free run 3", power=40, target_distance=10000),
-            #IsColorDetected(name="black")
-        ]
-    )
-        # サークルへ配置からライン復帰
-    step_03B_2.add_children(
-        [
-            #MoveStraight(name="back", power=-70, target_distance=200),
-            #MoveStraightLR(name="Turn 2", right_power=70, left_power=0, target_distance=200),
-            MoveStraight(name="free run 3", power=40, target_distance=10000),
-            IsColorDetected(name="black")
+            TraceLineCam(name="trace normal edge", power=60, pid_p=0.5, pid_i=0.0015, pid_d=0.4,
+                         gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
+            IsDistanceEarned(name="check distance", delta_dist = 1000),
         ]
     )
 
-    step_03B_3.add_children(
+    #カーブ1つ目
+    wloop_03.add_children(
         [
-            MoveStraightLR(name="Turn 3", right_power=40, left_power=0, target_distance=50),
+            TraceLineCam(name="trace normal edge", power=50, pid_p=1.5, pid_i=0.0015, pid_d=0.3,
+                         gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
+            IsDistanceEarned(name="check distance", delta_dist = 2000),
         ]
     )
 
-    # ライン復帰からゴール
-    step_04B.add_children(
+    #カーブ後の短い直線
+    wloop_04.add_children(
         [
-            #MoveStraightLR(name="Turn 3", right_power=70, left_power=35, target_distance=200),
-            TraceLineCam(name="last run", power=40, pid_p=2.5, pid_i=0.0015, pid_d=0.1,
-                         gs_min=0, gs_max=80, trace_side=TraceSide.CENTER),
-            IsColorDetected(name="blue"),
-            IsDistanceEarned(name="check distance 2", delta_dist = 1500),
-            # IsDistanceEarned(name="check distance 2", delta_dist = 870),
-            # color sensor add
+            TraceLineCam(name="trace normal edge", power=60, pid_p=1.0, pid_i=0.0015, pid_d=0.6,
+                         gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
+            IsDistanceEarned(name="check distance", delta_dist = 1500),
         ]
     )
 
+    #コンタクトⅠ直前
+    wloop_05.add_children(
+        [
+            TraceLineCam(name="trace normal edge", power=45, pid_p=1.5, pid_i=0.001, pid_d=0.30,
+                         gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
+           IsDistanceEarned(name="check distance", delta_dist = 800),
+
+        #    IsDistanceEarned(name="check distance", delta_dist = 1000),
+
+        ]
+    )
+    #コンタクトⅠ直前
+    wloop_06.add_children(
+        [
+            TraceLineCam(name="trace normal edge", power=50, pid_p=1.5, pid_i=0.001, pid_d=0.30,
+                         gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
+            IsJunction(name="scan joined junction", target_state = JState.JOINED),
+        ]
+    )
+
+    #コンタクトⅠ通過後、コンタクトⅡまで
+    wloop_07.add_children(
+        [
+            TraceLineCam(name="trace opposite edge", power=43, pid_p=2.0, pid_i=0.0011, pid_d=0.35,
+                         gs_min=0, gs_max=80, trace_side=TraceSide.OPPOSITE),
+            IsJunction(name="scan joined junction", target_state = JState.JOINED),
+        ]
+    )
+
+    #コンタクトⅡ通過後、指定距離走行
+    wloop_08.add_children(
+        [
+            TraceLineCam(name="trace normal edge", power=45, pid_p=2.0, pid_i=0.0015, pid_d=0.35,
+                         gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
+            IsDistanceEarned(name="check distance", delta_dist = 2300),
+        ]
+    )
+
+    #コンタクトⅢからコンタクトⅡまで
+    wloop_09.add_children(
+        [
+            TraceLineCam(name="trace normal edge", power=42, pid_p=2.0, pid_i=0.0011, pid_d=0.35,
+                         gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
+            IsJunction(name="scan joined junction", target_state = JState.JOINED),
+        ]
+    )
+
+    #コンタクトⅡ通過後、コンタクトⅠまで
+    wloop_10.add_children(
+        [
+            TraceLineCam(name="trace opposite edge", power=44, pid_p=2.0, pid_i=0.0011, pid_d=0.35,
+                         gs_min=0, gs_max=80, trace_side=TraceSide.OPPOSITE),
+            IsJunction(name="scan joined junction", target_state = JState.JOINED),
+        ]
+    )
+    wloop_11.add_children(
+        [
+            TraceLineCam(name="trace normal edge", power=44, pid_p=2.0, pid_i=0.0011, pid_d=0.35,
+                         gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
+            IsDistanceEarned(name="check distance", delta_dist = 500),
+        ]
+    )
+    #コンタクトⅠ通過後、指定距離走行（Nextデブリ）
+    wloop_12.add_children(
+        [
+            TraceLineCam(name="trace normal edge", power=46, pid_p=2.0, pid_i=0.0015, pid_d=0.3,
+                         gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
+            IsDistanceEarned(name="check distance", delta_dist = 300),
+        ]
+    )
+    wloop_13.add_children(
+        [
+            TraceLineCam(name="trace normal edge", power=46, pid_p=2.0, pid_i=0.0015, pid_d=0.3,
+                         gs_min=0, gs_max=80, trace_side=TraceSide.OPPOSITE),
+            IsDistanceEarned(name="check distance", delta_dist = 300),
+        ]
+    )
     root.add_children(
         [
             calibration,
             start,
-            step_01A_1,
-            #step_01A_2,
-            #step_01A_3,
-            step_01A_4,
-            #step_01B,
-            #step_01B_1,
-            #step_01B_2,
-            step_02B,
-            step_03B_1,
-            step_03B_2,
-            step_03B_3,
-            step_04B,
+            wloop_01,
+            wloop_02,
+            wloop_03,
+            wloop_04,
+            wloop_05,
+            wloop_06,
+            wloop_07,
+            wloop_08,
+            wloop_09,
+            wloop_10,
+            wloop_11,
+            wloop_12,
+            wloop_13,
             StopNow(name="stop"),
             TheEnd(name="end"),
         ]
