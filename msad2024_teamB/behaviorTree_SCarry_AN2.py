@@ -427,7 +427,7 @@ class MoveStraightLR(Behaviour):
                 g_left_motor.set_power(self.left_power)
             else:
                 g_right_motor.set_power(self.left_power)
-                g_left_motor.set_power(self.right_power)
+                g_left_motor.set_power(self.right_power-8.5)
             self.logger.info("%+06d %s.start rightpower=%d leftpower=%d enddistance=%d" % 
                              (self.start_distance, self.__class__.__name__, self.right_power, self.left_power, self.target_distance))
 
