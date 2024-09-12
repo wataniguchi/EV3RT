@@ -426,8 +426,8 @@ class MoveStraightLR(Behaviour):
                 g_right_motor.set_power(self.right_power)
                 g_left_motor.set_power(self.left_power)
             else:
-                g_right_motor.set_power(self.left_power-8.5)
-                g_left_motor.set_power(self.right_power)
+                g_right_motor.set_power(self.left_power) #90 0 0
+                g_left_motor.set_power(self.right_power) #15 75 40
             self.logger.info("%+06d %s.start rightpower=%d leftpower=%d enddistance=%d" % 
                              (self.start_distance, self.__class__.__name__, self.right_power, self.left_power, self.target_distance))
 
@@ -669,7 +669,8 @@ def build_behaviour_tree() -> BehaviourTree:
     step_02B.add_children(
         [
             #MoveStraightLR(name="Turn 1", right_power=15, left_power=90, target_distance=180),
-            MoveStraightLR(name="Turn 1", right_power=15, left_power=90, target_distance=157),
+            # MoveStraightLR(name="Turn 1", right_power=15, left_power=90, target_distance=157), #LEFT
+            MoveStraightLR(name="Turn 1", right_power=15, left_power=70, target_distance=157), #RIGHT
             MoveStraight(name="free run 2", power=70, target_distance=1000),
             MoveStraight(name="free run 2-2", power=50, target_distance=250),
             # color sensor add
@@ -679,7 +680,8 @@ def build_behaviour_tree() -> BehaviourTree:
     step_03B_1.add_children(
         [
             MoveStraight(name="back", power=-40, target_distance=500),
-            MoveStraightLR(name="Turn 2", right_power=75, left_power=0, target_distance=200),
+            # MoveStraightLR(name="Turn 2", right_power=75, left_power=0, target_distance=200), #LEFT
+            MoveStraightLR(name="Turn 2", right_power=40, left_power=0, target_distance=200), #RIGHT
             #MoveStraight(name="free run 3", power=40, target_distance=10000),
             #IsColorDetected(name="black")
         ]
