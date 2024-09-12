@@ -239,7 +239,7 @@ class IsJunction(Behaviour):
 
 class RunAsInstructed(Behaviour):
     def __init__(self, name: str, pwm_l: int, pwm_r: int) -> None:
-        super(RunAsInstucted, self).__init__(name)
+        super(RunAsInstructed, self).__init__(name)
         self.pwm_l = g_course * pwm_l
         self.pwm_r = g_course * pwm_r
         self.running = False
@@ -308,40 +308,25 @@ class TraceLineCam(Behaviour):
         g_left_motor.set_power(self.power + turn)
         return Status.RUNNING
 
-class TraceLineCamLR(Behaviour):
-    def __init__(self, name: str, powerR: int, powerL: int, pid_p: float, pid_i: float, pid_d: float,
-                 gs_min: int, gs_max: int, trace_side: TraceSide) -> None:
-        super(TraceLineCam, self).__init__(name)
-        self.powerR = powerR
-        self.powerL = powerL
-        self.pid = PID(pid_p, pid_i, pid_d, setpoint=0, sample_time=EXEC_INTERVAL, output_limits=(-powerL, powerL))
-        self.gs_min = gs_min
-        self.gs_max = gs_max
-        self.trace_side = trace_side
-        self.running = False
+# 旧Wループプログラムから流用
+class IsColorDetected(Behaviour):
+    def __init__(self, name: str):
+        super(IsColorDetected, self).__init__(name)
+        self.logger.debug("%s.__init__()" % (self.__class__.__name__))
 
     def update(self) -> Status:
-        if not self.running:
-            self.running = True
-            g_video.set_thresholds(self.gs_min, self.gs_max)
-            if self.trace_side == TraceSide.NORMAL:
-                if g_course == -1: # right course
-                    g_video.set_trace_side(TraceSide.RIGHT)
-                else:
-                    g_video.set_trace_side(TraceSide.LEFT)
-            elif self.trace_side == TraceSide.OPPOSITE: 
-                if g_course == -1: # right course
-                    g_video.set_trace_side(TraceSide.LEFT)
-                else:
-                    g_video.set_trace_side(TraceSide.RIGHT)
-            else: # TraceSide.CENTER
-                g_video.set_trace_side(TraceSide.CENTER)
-            self.logger.info("%+06d %s.trace started with TS=%s" % (g_plotter.get_distance(), self.__class__.__name__, self.trace_side.name))
-        turn = (-1) * int(self.pid(g_video.get_theta()))
-        g_right_motor.set_power(self.powerR - turn)
-        g_left_motor.set_power(self.powerL + turn)
-        return Status.RUNNING
-    
+        global g_color_sensor
+        #RGBの値を取得
+        color = g_color_sensor.get_raw_color
+        #Blue判定
+        if(color[2] - color[0]>45 & color[2] <=255 & color[0] <=255):
+            self.logger.info("%+06d %s.detected blue" % (g_plotter.get_distance(), self.__class__.__name__))
+            return Status.SUCCESS
+        else:
+            #指定色でないならRUNNINGを返却
+            return Status.RUNNING
+
+# デブリプログラムから流用
 class MoveStraight(Behaviour):
     def __init__(self, name: str, power: int, target_distance: int) -> None:
         super(MoveStraight, self).__init__(name)
@@ -356,52 +341,21 @@ class MoveStraight(Behaviour):
             self.start_distance = g_plotter.get_distance()
             g_right_motor.set_power(self.power)
             g_left_motor.set_power(self.power)
-            self.logger.info("%+06d %s.開始、パワー=%d、目標距離=%d" % 
+            self.logger.info("%+06d %s.start power=%d end distance=%d" % 
                             (self.start_distance, self.__class__.__name__, self.power, self.target_distance))
-        
+
         current_distance = g_plotter.get_distance()
         traveled_distance = current_distance - self.start_distance
-        
+
         if traveled_distance >= self.target_distance:
             g_right_motor.set_power(0)
             g_left_motor.set_power(0)
-            self.logger.info("%+06d %s.目標距離に到達" % (current_distance, self.__class__.__name__))
+            self.logger.info("%+06d %s.end distance on" % (current_distance, self.__class__.__name__))
             return Status.SUCCESS
         else:
             return Status.RUNNING
 
-class MoveStraight_dbr(Behaviour):
-    def __init__(self, name: str, power: int, target_distance: int) -> None:
-        super(MoveStraight_dbr, self).__init__(name)
-        self.power = power
-        self.target_distance = target_distance
-        self.start_distance = None
-        self.running = False
-
-    def update(self) -> Status:
-        global g_distFlg
-        if g_distFlg:
-            return Status.SUCCESS
-
-        if not self.running:
-            self.running = True
-            self.start_distance = g_plotter.get_distance()
-            g_right_motor.set_power(self.power)
-            g_left_motor.set_power(self.power)
-            self.logger.info("%+06d %s.開始、パワー=%d、目標距離=%d" % 
-                            (self.start_distance, self.__class__.__name__, self.power, self.target_distance))
-        
-        current_distance = g_plotter.get_distance()
-        traveled_distance = current_distance - self.start_distance
-        
-        if traveled_distance >= self.target_distance:
-            g_right_motor.set_power(0)
-            g_left_motor.set_power(0)
-            self.logger.info("%+06d %s.目標距離に到達" % (current_distance, self.__class__.__name__))
-            return Status.SUCCESS
-        else:
-            return Status.RUNNING
-
+# デブリプログラムから流用(※一部加工)
 class MoveStraightLR(Behaviour):
     def __init__(self, name: str, right_power: int, left_power: int, target_distance: int) -> None:
         super(MoveStraightLR, self).__init__(name)
@@ -415,52 +369,24 @@ class MoveStraightLR(Behaviour):
         if not self.running:
             self.running = True
             self.start_distance = g_plotter.get_distance()
-            g_right_motor.set_power(self.right_power)
-            g_left_motor.set_power(self.left_power)
-            self.logger.info("%+06d %s.開始、右パワー=%d、左パワー=%d、目標距離=%d" % 
+            # g_right_motor.set_power(self.right_power)
+            # g_left_motor.set_power(self.left_power)
+            if g_course == 1:
+                g_right_motor.set_power(self.right_power)
+                g_left_motor.set_power(self.left_power)
+            else:
+                g_right_motor.set_power(self.left_power)
+                g_left_motor.set_power(self.right_power)
+            self.logger.info("%+06d %s.start rightpower=%d leftpower=%d enddistance=%d" % 
                              (self.start_distance, self.__class__.__name__, self.right_power, self.left_power, self.target_distance))
-        
+
         current_distance = g_plotter.get_distance()
         traveled_distance = current_distance - self.start_distance
-        
+
         if traveled_distance >= self.target_distance:
             g_right_motor.set_power(0)
             g_left_motor.set_power(0)
-            self.logger.info("%+06d %s.目標距離に到達" % (current_distance, self.__class__.__name__))
-            return Status.SUCCESS
-        else:
-            return Status.RUNNING
-
-class MoveStraightLR_dbr(Behaviour):
-    def __init__(self, name: str, right_power: int, left_power: int, target_distance: int) -> None:
-        super(MoveStraightLR_dbr, self).__init__(name)
-        g_course == 1
-        self.right_power = right_power
-        self.left_power = left_power
-        self.target_distance = target_distance
-        self.start_distance = None
-        self.running = False
-
-    def update(self) -> Status:
-        global g_distFlg
-        if g_distFlg:
-            return Status.SUCCESS
-        
-        if not self.running:
-            self.running = True
-            self.start_distance = g_plotter.get_distance()
-            g_right_motor.set_power(self.right_power)
-            g_left_motor.set_power(self.left_power)
-            self.logger.info("%+06d %s.開始、右パワー=%d、左パワー=%d、目標距離=%d" % 
-                             (self.start_distance, self.__class__.__name__, self.right_power, self.left_power, self.target_distance))
-        
-        current_distance = g_plotter.get_distance()
-        traveled_distance = current_distance - self.start_distance
-        
-        if traveled_distance >= self.target_distance:
-            g_right_motor.set_power(0)
-            g_left_motor.set_power(0)
-            self.logger.info("%+06d %s.目標距離に到達" % (current_distance, self.__class__.__name__))
+            self.logger.info("%+06d %s.enddistance on" % (current_distance, self.__class__.__name__))
             return Status.SUCCESS
         else:
             return Status.RUNNING
@@ -521,6 +447,73 @@ class VideoThread(threading.Thread):
         while not self._stop_event.is_set():
             g_video.process(g_plotter, g_hub, g_arm_motor, g_right_motor, g_left_motor, g_touch_sensor, g_color_sensor, g_sonar_sensor, g_gyro_sensor)
             time.sleep(VIDEO_INTERVAL)
+
+# 以下デブリ専用クラス
+class MoveStraight_dbr(Behaviour):
+    def __init__(self, name: str, power: int, target_distance: int) -> None:
+        super(MoveStraight_dbr, self).__init__(name)
+        self.power = power
+        self.target_distance = target_distance
+        self.start_distance = None
+        self.running = False
+
+    def update(self) -> Status:
+        global g_distFlg
+        if g_distFlg:
+            return Status.SUCCESS
+
+        if not self.running:
+            self.running = True
+            self.start_distance = g_plotter.get_distance()
+            g_right_motor.set_power(self.power)
+            g_left_motor.set_power(self.power)
+            self.logger.info("%+06d %s.開始、パワー=%d、目標距離=%d" % 
+                            (self.start_distance, self.__class__.__name__, self.power, self.target_distance))
+        
+        current_distance = g_plotter.get_distance()
+        traveled_distance = current_distance - self.start_distance
+        
+        if traveled_distance >= self.target_distance:
+            g_right_motor.set_power(0)
+            g_left_motor.set_power(0)
+            self.logger.info("%+06d %s.目標距離に到達" % (current_distance, self.__class__.__name__))
+            return Status.SUCCESS
+        else:
+            return Status.RUNNING
+
+class MoveStraightLR_dbr(Behaviour):
+    def __init__(self, name: str, right_power: int, left_power: int, target_distance: int) -> None:
+        super(MoveStraightLR_dbr, self).__init__(name)
+        g_course == 1
+        self.right_power = right_power
+        self.left_power = left_power
+        self.target_distance = target_distance
+        self.start_distance = None
+        self.running = False
+
+    def update(self) -> Status:
+        global g_distFlg
+        if g_distFlg:
+            return Status.SUCCESS
+        
+        if not self.running:
+            self.running = True
+            self.start_distance = g_plotter.get_distance()
+            g_right_motor.set_power(self.right_power)
+            g_left_motor.set_power(self.left_power)
+            self.logger.info("%+06d %s.開始、右パワー=%d、左パワー=%d、目標距離=%d" % 
+                             (self.start_distance, self.__class__.__name__, self.right_power, self.left_power, self.target_distance))
+        
+        current_distance = g_plotter.get_distance()
+        traveled_distance = current_distance - self.start_distance
+        
+        if traveled_distance >= self.target_distance:
+            g_right_motor.set_power(0)
+            g_left_motor.set_power(0)
+            self.logger.info("%+06d %s.目標距離に到達" % (current_distance, self.__class__.__name__))
+            return Status.SUCCESS
+        else:
+            return Status.RUNNING
 
 class IsRedColorDetected(Behaviour):
     def __init__(self, name: str, threshold: float):
@@ -601,7 +594,7 @@ class IsDistanceEarned_before(Behaviour):
             return Status.SUCCESS
         else:
             return Status.RUNNING
-
+        
 class IsDistanceEarned_after(Behaviour):
     def __init__(self, name: str):
         super(IsDistanceEarned_after, self).__init__(name)
@@ -634,55 +627,61 @@ class IsDistanceEarned_after(Behaviour):
             return Status.SUCCESS
         else:
             return Status.RUNNING
-        
+
 def build_behaviour_tree() -> BehaviourTree:
     root = Sequence(name="competition", memory=True)
     calibration = Sequence(name="calibration", memory=True)
     start = Parallel(name="start", policy=ParallelPolicy.SuccessOnOne())
-    loop_01 = Parallel(name="loop 01", policy=ParallelPolicy.SuccessOnOne())
-    loop_02 = Parallel(name="loop 02", policy=ParallelPolicy.SuccessOnOne())
-    loop_03 = Parallel(name="loop 03", policy=ParallelPolicy.SuccessOnOne())
-    loop_04 = Parallel(name="loop 04", policy=ParallelPolicy.SuccessOnOne())
-    loop_05 = Parallel(name="loop 05", policy=ParallelPolicy.SuccessOnOne())
-    loop_06 = Parallel(name="loop 06", policy=ParallelPolicy.SuccessOnOne())
-    loop_07 = Parallel(name="loop 07", policy=ParallelPolicy.SuccessOnOne())
-    loop_08 = Parallel(name="loop 08", policy=ParallelPolicy.SuccessOnOne())
-    loop_09 = Parallel(name="loop 09", policy=ParallelPolicy.SuccessOnOne())
-    loop_10 = Parallel(name="loop 10", policy=ParallelPolicy.SuccessOnOne())
-    loop_11 = Parallel(name="loop 11", policy=ParallelPolicy.SuccessOnOne())
-    loop_12 = Parallel(name="loop 12", policy=ParallelPolicy.SuccessOnOne())
-    loop_13 = Parallel(name="loop 13", policy=ParallelPolicy.SuccessOnOne())
-    loop_14 = Parallel(name="loop 14", policy=ParallelPolicy.SuccessOnOne())
-    loop_15 = Parallel(name="loop 15", policy=ParallelPolicy.SuccessOnOne())
-    loop_16 = Parallel(name="loop 16", policy=ParallelPolicy.SuccessOnOne())
-    loop_17 = Parallel(name="loop 17", policy=ParallelPolicy.SuccessOnOne())
-    loop_18 = Parallel(name="loop 18", policy=ParallelPolicy.SuccessOnOne())
-    loop_19 = Parallel(name="loop 19", policy=ParallelPolicy.SuccessOnOne())
-    loop_20 = Parallel(name="loop 20", policy=ParallelPolicy.SuccessOnOne())
-    loop_21 = Parallel(name="loop 21", policy=ParallelPolicy.SuccessOnOne())
-    loop_22 = Parallel(name="loop 22", policy=ParallelPolicy.SuccessOnOne())
-    loop_23 = Parallel(name="loop 23", policy=ParallelPolicy.SuccessOnOne())
-    loop_24 = Parallel(name="loop 24", policy=ParallelPolicy.SuccessOnOne())
-    loop_25 = Parallel(name="loop 25", policy=ParallelPolicy.SuccessOnOne())
-    loop_26 = Parallel(name="loop 26", policy=ParallelPolicy.SuccessOnOne())
-    loop_27 = Parallel(name="loop 27", policy=ParallelPolicy.SuccessOnOne())
-    loop_28 = Parallel(name="loop 28", policy=ParallelPolicy.SuccessOnOne())
-    loop_29 = Parallel(name="loop 29", policy=ParallelPolicy.SuccessOnOne())
-    loop_30 = Parallel(name="loop 30", policy=ParallelPolicy.SuccessOnOne())
-    loop_31 = Parallel(name="loop 31", policy=ParallelPolicy.SuccessOnOne())
-    loop_32 = Parallel(name="loop 32", policy=ParallelPolicy.SuccessOnOne())
-    loop_33 = Parallel(name="loop 33", policy=ParallelPolicy.SuccessOnOne())
-    loop_34 = Parallel(name="loop 34", policy=ParallelPolicy.SuccessOnOne())
-    loop_35 = Parallel(name="loop 35", policy=ParallelPolicy.SuccessOnOne())
-    loop_36 = Parallel(name="loop 36", policy=ParallelPolicy.SuccessOnOne())
-    loop_37 = Parallel(name="loop 37", policy=ParallelPolicy.SuccessOnOne())
-    loop_38 = Parallel(name="loop 38", policy=ParallelPolicy.SuccessOnOne())
-    loop_39 = Parallel(name="loop 39", policy=ParallelPolicy.SuccessOnOne())
-    loop_40 = Parallel(name="loop 40", policy=ParallelPolicy.SuccessOnOne())
-    loop_41 = Parallel(name="loop 41", policy=ParallelPolicy.SuccessOnOne())
-    loop_42 = Parallel(name="loop 42", policy=ParallelPolicy.SuccessOnOne())
-    loop_43 = Parallel(name="loop 43", policy=ParallelPolicy.SuccessOnOne())
-    loop_44 = Parallel(name="loop 44", policy=ParallelPolicy.SuccessOnOne())
+    dbr_loop_01 = Parallel(name="loop 01", policy=ParallelPolicy.SuccessOnOne())
+    dbr_loop_02 = Parallel(name="loop 02", policy=ParallelPolicy.SuccessOnOne())
+    dbr_loop_03 = Parallel(name="loop 03", policy=ParallelPolicy.SuccessOnOne())
+    dbr_loop_04 = Parallel(name="loop 04", policy=ParallelPolicy.SuccessOnOne())
+    dbr_loop_05 = Parallel(name="loop 05", policy=ParallelPolicy.SuccessOnOne())
+    dbr_loop_06 = Parallel(name="loop 06", policy=ParallelPolicy.SuccessOnOne())
+    dbr_loop_07 = Parallel(name="loop 07", policy=ParallelPolicy.SuccessOnOne())
+    dbr_loop_08 = Parallel(name="loop 08", policy=ParallelPolicy.SuccessOnOne())
+    dbr_loop_09 = Parallel(name="loop 09", policy=ParallelPolicy.SuccessOnOne())
+    dbr_loop_10 = Parallel(name="loop 10", policy=ParallelPolicy.SuccessOnOne())
+    dbr_loop_11 = Parallel(name="loop 11", policy=ParallelPolicy.SuccessOnOne())
+    dbr_loop_12 = Parallel(name="loop 12", policy=ParallelPolicy.SuccessOnOne())
+    dbr_loop_13 = Parallel(name="loop 13", policy=ParallelPolicy.SuccessOnOne())
+    dbr_loop_14 = Parallel(name="loop 14", policy=ParallelPolicy.SuccessOnOne())
+    dbr_loop_15 = Parallel(name="loop 15", policy=ParallelPolicy.SuccessOnOne())
+    dbr_loop_16 = Parallel(name="loop 16", policy=ParallelPolicy.SuccessOnOne())
+    dbr_loop_17 = Parallel(name="loop 17", policy=ParallelPolicy.SuccessOnOne())
+    dbr_loop_18 = Parallel(name="loop 18", policy=ParallelPolicy.SuccessOnOne())
+    dbr_loop_19 = Parallel(name="loop 19", policy=ParallelPolicy.SuccessOnOne())
+    dbr_loop_20 = Parallel(name="loop 20", policy=ParallelPolicy.SuccessOnOne())
+    dbr_loop_21 = Parallel(name="loop 21", policy=ParallelPolicy.SuccessOnOne())
+    dbr_loop_22 = Parallel(name="loop 22", policy=ParallelPolicy.SuccessOnOne())
+    dbr_loop_23 = Parallel(name="loop 23", policy=ParallelPolicy.SuccessOnOne())
+    dbr_loop_24 = Parallel(name="loop 24", policy=ParallelPolicy.SuccessOnOne())
+    dbr_loop_25 = Parallel(name="loop 25", policy=ParallelPolicy.SuccessOnOne())
+    dbr_loop_26 = Parallel(name="loop 26", policy=ParallelPolicy.SuccessOnOne())
+    dbr_loop_27 = Parallel(name="loop 27", policy=ParallelPolicy.SuccessOnOne())
+    dbr_loop_28 = Parallel(name="loop 28", policy=ParallelPolicy.SuccessOnOne())
+    dbr_loop_29 = Parallel(name="loop 29", policy=ParallelPolicy.SuccessOnOne())
+    dbr_loop_30 = Parallel(name="loop 30", policy=ParallelPolicy.SuccessOnOne())
+    dbr_loop_31 = Parallel(name="loop 31", policy=ParallelPolicy.SuccessOnOne())
+    dbr_loop_32 = Parallel(name="loop 32", policy=ParallelPolicy.SuccessOnOne())
+    dbr_loop_33 = Parallel(name="loop 33", policy=ParallelPolicy.SuccessOnOne())
+    dbr_loop_34 = Parallel(name="loop 34", policy=ParallelPolicy.SuccessOnOne())
+    dbr_loop_35 = Parallel(name="loop 35", policy=ParallelPolicy.SuccessOnOne())
+    dbr_loop_36 = Parallel(name="loop 36", policy=ParallelPolicy.SuccessOnOne())
+    dbr_loop_37 = Parallel(name="loop 37", policy=ParallelPolicy.SuccessOnOne())
+    dbr_loop_38 = Parallel(name="loop 38", policy=ParallelPolicy.SuccessOnOne())
+    dbr_loop_39 = Parallel(name="loop 39", policy=ParallelPolicy.SuccessOnOne())
+    dbr_loop_40 = Parallel(name="loop 40", policy=ParallelPolicy.SuccessOnOne())
+    dbr_loop_41 = Parallel(name="loop 41", policy=ParallelPolicy.SuccessOnOne())
+    dbr_loop_42 = Parallel(name="loop 42", policy=ParallelPolicy.SuccessOnOne())
+    dbr_loop_43 = Parallel(name="loop 43", policy=ParallelPolicy.SuccessOnOne())
+    dbr_loop_44 = Parallel(name="loop 44", policy=ParallelPolicy.SuccessOnOne())
+    step_01B = Parallel(name="step 01B", policy=ParallelPolicy.SuccessOnOne())
+    step_01B_2 = Parallel(name="step 01B", policy=ParallelPolicy.SuccessOnOne())
+    step_02B = Sequence(name="step 02B", memory=True)
+    step_03B = Sequence(name="step 03B", memory=True)
+    step_04B = Sequence(name="step 04B", memory=True)
+
     calibration.add_children(
         [
             ArmUpDownFull(name="arm down", direction=ArmDirection.DOWN),
@@ -697,7 +696,7 @@ def build_behaviour_tree() -> BehaviourTree:
     )
 # 1列目
     # 指定距離走行_before、赤青判定
-    loop_01.add_children(
+    dbr_loop_01.add_children(
 
         [
         TraceLineCam(name="trace normal edge", power=39, pid_p=0.8, pid_i=0.0015, pid_d=0.1,
@@ -707,72 +706,72 @@ def build_behaviour_tree() -> BehaviourTree:
         IsBlueColorDetected(name="check blue color", threshold=12.0), 
         ]
     )
-    loop_02.add_children(
+    dbr_loop_02.add_children(
         [
             MoveStraight_dbr(name="move straight", power=40, target_distance=150),
         ]
     )
-    loop_03.add_children(
+    dbr_loop_03.add_children(
         [
             MoveStraightLR_dbr(name="move straight 4", right_power=60, left_power=10, target_distance=210),
         ]
     )
-    loop_04.add_children(
+    dbr_loop_04.add_children(
         [
             MoveStraight_dbr(name="back", power=-50, target_distance=20)
         ]
     )
-    loop_05.add_children(
+    dbr_loop_05.add_children(
         [
             MoveStraightLR_dbr(name="move straight 4", right_power=-60, left_power=-10, target_distance=160),
         ]
     )
-    loop_06.add_children(
+    dbr_loop_06.add_children(
         [
             MoveStraight_dbr(name="back", power=-50, target_distance=85)
         ]
     )
     # 指定距離走行_after
-    loop_07.add_children(
+    dbr_loop_07.add_children(
         [
         TraceLineCam(name="trace normal edge", power=36, pid_p=1.0, pid_i=0.0015, pid_d=0.1,gs_min=0, gs_max=80, trace_side=TraceSide.OPPOSITE),
         IsDistanceEarned_after(name="check distance"),
         ]
     )
     # 押し出し
-    loop_08.add_children(
+    dbr_loop_08.add_children(
         [
             MoveStraight(name="move straight", power=40, target_distance=385),
         ]
     )
     # バック
-    loop_09.add_children(
+    dbr_loop_09.add_children(
         [
             MoveStraight(name="back", power=-30, target_distance=150)
         ]
     )
     # 右に90度回転
-    loop_10.add_children(
+    dbr_loop_10.add_children(
         [
             MoveStraightLR(name="move straight 4", right_power=0, left_power=60, target_distance=115),
         ]
     )
     # 指定距離走行_1列目から2列目移動
-    loop_11.add_children(
+    dbr_loop_11.add_children(
         [
         TraceLineCam(name="trace normal edge", power=33, pid_p=1.0, pid_i=0.0015, pid_d=0.1,gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
         IsDistanceEarned(name="check distance", delta_dist=265),
         ]
     )
     # 右に90度回転
-    loop_12.add_children(
+    dbr_loop_12.add_children(
         [
             MoveStraightLR(name="move straight 4", right_power=0, left_power=60, target_distance=115),
         ]
     )
 # 2列目
     # 指定距離走行_before、赤青判定
-    loop_13.add_children(
+    dbr_loop_13.add_children(
         [
         TraceLineCam(name="trace normal edge", power=33, pid_p=0.8, pid_i=0.0015, pid_d=0.1,
                          gs_min=0, gs_max=80, trace_side=TraceSide.OPPOSITE),
@@ -781,84 +780,84 @@ def build_behaviour_tree() -> BehaviourTree:
         IsBlueColorDetected(name="check blue color", threshold=12.0), 
         ]
     )
-    loop_14.add_children(
+    dbr_loop_14.add_children(
         [
             MoveStraight_dbr(name="move straight", power=40, target_distance=140),
         ]
     )
-    loop_15.add_children(
+    dbr_loop_15.add_children(
         [
             MoveStraightLR_dbr(name="move straight 4", right_power=60, left_power=10, target_distance=210),
         ]
     )
-    loop_16.add_children(
+    dbr_loop_16.add_children(
         [
             MoveStraight_dbr(name="back", power=-50, target_distance=20)
         ]
     )
-    loop_17.add_children(
+    dbr_loop_17.add_children(
         [
             MoveStraightLR_dbr(name="move straight 4", right_power=-60, left_power=-10, target_distance=170),
         ]
     )
-    loop_18.add_children(
+    dbr_loop_18.add_children(
         [
             MoveStraight_dbr(name="back", power=-50, target_distance=65)
         ]
     )
     # 指定距離走行_after
-    loop_19.add_children(
+    dbr_loop_19.add_children(
         [
         TraceLineCam(name="trace normal edge", power=32, pid_p=1.0, pid_i=0.0015, pid_d=0.1,gs_min=0, gs_max=80, trace_side=TraceSide.OPPOSITE),
         IsDistanceEarned_after(name="check distance"),
         ]
     )
     # 押し出し
-    loop_20.add_children(
+    dbr_loop_20.add_children(
         [
             MoveStraight(name="move straight", power=40, target_distance=410),
         ]
     )
     # バック
-    loop_21.add_children(
+    dbr_loop_21.add_children(
         [
             MoveStraight(name="back", power=-30, target_distance=160)
         ]
     )
     # 左に90度回転
-    loop_22.add_children(
+    dbr_loop_22.add_children(
         [
             MoveStraightLR(name="move straight 4", right_power=60, left_power=0, target_distance=200),
         ]
     )
     # 指定距離走行_2列目から3列目移動
-    loop_23.add_children(
+    dbr_loop_23.add_children(
         [
         TraceLineCam(name="trace normal edge", power=32, pid_p=0.8, pid_i=0.0015, pid_d=0.1,gs_min=0, gs_max=80, trace_side=TraceSide.OPPOSITE),
         IsDistanceEarned(name="check distance", delta_dist=230),
         ]
     )
     # 押し出し
-    loop_24.add_children(
+    dbr_loop_24.add_children(
         [
             MoveStraight(name="move straight", power=40, target_distance=270),
         ]
     )
     # バック
-    loop_25.add_children(
+    dbr_loop_25.add_children(
         [
             MoveStraight(name="back", power=-30, target_distance=220)
         ]
     )
     # 左に90度回転
-    loop_26.add_children(
+    dbr_loop_26.add_children(
         [
             MoveStraightLR(name="move straight 4", right_power=60, left_power=0, target_distance=210),
         ]
     )
 # 3列目
     # 指定距離走行_before、赤青判定
-    loop_27.add_children(
+    dbr_loop_27.add_children(
         [
         TraceLineCam(name="trace normal edge", power=32, pid_p=0.8, pid_i=0.0015, pid_d=0.1,
                          gs_min=0, gs_max=80, trace_side=TraceSide.OPPOSITE),
@@ -867,72 +866,72 @@ def build_behaviour_tree() -> BehaviourTree:
         IsBlueColorDetected(name="check blue color", threshold=12.0), 
         ]
     )
-    loop_28.add_children(
+    dbr_loop_28.add_children(
         [
             MoveStraight_dbr(name="move straight", power=40, target_distance=130),
         ]
     )
-    loop_29.add_children(
+    dbr_loop_29.add_children(
         [
             MoveStraightLR_dbr(name="move straight 4", right_power=60, left_power=10, target_distance=210),
         ]
     )
-    loop_30.add_children(
+    dbr_loop_30.add_children(
         [
             MoveStraight_dbr(name="back", power=-50, target_distance=20)
         ]
     )
-    loop_31.add_children(
+    dbr_loop_31.add_children(
         [
             MoveStraightLR_dbr(name="move straight 4", right_power=-60, left_power=-10, target_distance=190),
         ]
     )
-    loop_32.add_children(
+    dbr_loop_32.add_children(
         [
             MoveStraight_dbr(name="back", power=-50, target_distance=60)
         ]
     )
     # 指定距離走行_after
-    loop_33.add_children(
+    dbr_loop_33.add_children(
         [
         TraceLineCam(name="trace normal edge", power=33, pid_p=1.0, pid_i=0.0015, pid_d=0.1,gs_min=0, gs_max=80, trace_side=TraceSide.OPPOSITE),
         IsDistanceEarned_after(name="check distance"),
         ]
     )
     # 押し出し
-    loop_34.add_children(
+    dbr_loop_34.add_children(
         [
             MoveStraight(name="move straight", power=40, target_distance=370),
         ]
     )
     # バック
-    loop_35.add_children(
+    dbr_loop_35.add_children(
         [
             MoveStraight(name="back", power=-30, target_distance=120)
         ]
     )
     # 右に90度回転
-    loop_36.add_children(
+    dbr_loop_36.add_children(
         [
             MoveStraightLR(name="move straight 4", right_power=0, left_power=60, target_distance=110),
         ]
     )
     # 指定距離走行_3列目から4列目移動
-    loop_37.add_children(
+    dbr_loop_37.add_children(
         [
         TraceLineCam(name="trace normal edge", power=33, pid_p=1.0, pid_i=0.0015, pid_d=0.1,gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
         IsDistanceEarned(name="check distance", delta_dist=245),
         ]
     )
     # 右に90度回転
-    loop_38.add_children(
+    dbr_loop_38.add_children(
         [
             MoveStraightLR(name="move straight 4", right_power=0, left_power=60, target_distance=125),
         ]
     )
 # 4列目
     # 指定距離走行
-    loop_39.add_children(
+    dbr_loop_39.add_children(
         [
         TraceLineCam(name="trace normal edge", power=39, pid_p=0.8, pid_i=0.0015, pid_d=0.1,
                          gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
@@ -940,25 +939,25 @@ def build_behaviour_tree() -> BehaviourTree:
         ]
     )
     # 押し出し
-    loop_40.add_children(
+    dbr_loop_40.add_children(
         [
             MoveStraight(name="move straight", power=40, target_distance=380),
         ]
     )
     # バック
-    loop_41.add_children(
+    dbr_loop_41.add_children(
         [
             MoveStraight(name="back", power=-30, target_distance=120)
         ]
     )
     # 180度回転
-    loop_42.add_children(
+    dbr_loop_42.add_children(
         [
             MoveStraightLR(name="move straight 4", right_power=60, left_power=-60, target_distance=48),
         ]
     )
     # 指定距離走行
-    loop_43.add_children(
+    dbr_loop_43.add_children(
         [
         TraceLineCam(name="trace normal edge", power=38, pid_p=0.8, pid_i=0.0015, pid_d=0.1,
                          gs_min=0, gs_max=80, trace_side=TraceSide.OPPOSITE),
@@ -966,59 +965,115 @@ def build_behaviour_tree() -> BehaviourTree:
         ]
     )
     # 右に90度回転
-    loop_44.add_children(
+    dbr_loop_44.add_children(
         [
             MoveStraightLR(name="move straight 4", right_power=0, left_power=60, target_distance=130),
         ]
     )
+    # デブリからボトル取得
+    step_01B.add_children(
+        [
+            TraceLineCam(name="trace buleline", power=40, pid_p=2.5, pid_i=0.0015, pid_d=0.1,
+                 gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
+            IsDistanceEarned(name="check distance 1", delta_dist = 150)
+        ]
+    )
+    step_01B_2.add_children(
+        [
+            TraceLineCam(name="trace buleline", power=40, pid_p=2.5, pid_i=0.0015, pid_d=0.1,
+                 gs_min=0, gs_max=80, trace_side=TraceSide.CENTER),
+            IsDistanceEarned(name="check distance 1", delta_dist = 150)
+        ]
+    )
+    # step_01B.add_children(
+    #     [
+    #         MoveStraight(name="free run 1", power=50, target_distance=450)
+    #         # IsSonarOn(name="check bottol", alert_dist=150)
+    #     ]
+    # )
+    # ボトル取得からサークルへ配置
+    step_02B.add_children(
+        [
+            MoveStraightLR(name="Turn 1", right_power=0, left_power=70, target_distance=200),
+            MoveStraight(name="free run 2", power=50, target_distance=1200)
+            # color sensor add
+        ]
+    )
+    # サークルへ配置からライン復帰
+    step_03B.add_children(
+        [
+            MoveStraight(name="back", power=-70, target_distance=200),
+            MoveStraightLR(name="Turn 2", right_power=70, left_power=0, target_distance=200),
+            MoveStraight(name="free run 3", power=50, target_distance=400)
+        ]
+    )
+
+    # ライン復帰からゴール
+    step_04B.add_children(
+        [
+            MoveStraightLR(name="Turn 3", right_power=70, left_power=35, target_distance=200),
+            TraceLineCam(name="trace center edge", power=40, pid_p=2.5, pid_i=0.0015, pid_d=0.1,
+                         gs_min=0, gs_max=80, trace_side=TraceSide.CENTER),
+            IsDistanceEarned(name="check distance 1", delta_dist = 1100)
+            # color sensor add
+        ]
+    )
+
     root.add_children(
         [
             calibration,
             start,
-            loop_01,
-            loop_02,
-            loop_03,
-            loop_04,
-            loop_05,
-            loop_06,
-            loop_07,
-            loop_08,
-            loop_09,
-            loop_10,
-            loop_11,
-            loop_12,
-            loop_13,
-            loop_14,
-            loop_15,
-            loop_16,
-            loop_17,
-            loop_18,
-            loop_19,
-            loop_20,
-            loop_21,
-            loop_22,
-            loop_23,
-            loop_24,
-            loop_25,
-            loop_26,
-            loop_27,
-            loop_28,
-            loop_29,
-            loop_30,
-            loop_31,
-            loop_32,
-            loop_33,
-            loop_34,
-            loop_35,
-            loop_36,
-            loop_37,
-            loop_38,
-            loop_39,
-            loop_40,
-            loop_41,
-            loop_42,
-            loop_43,
-            loop_44,
+            # デブリ
+            dbr_loop_01,
+            dbr_loop_02,
+            dbr_loop_03,
+            dbr_loop_04,
+            dbr_loop_05,
+            dbr_loop_06,
+            dbr_loop_07,
+            dbr_loop_08,
+            dbr_loop_09,
+            dbr_loop_10,
+            dbr_loop_11,
+            dbr_loop_12,
+            dbr_loop_13,
+            dbr_loop_14,
+            dbr_loop_15,
+            dbr_loop_16,
+            dbr_loop_17,
+            dbr_loop_18,
+            dbr_loop_19,
+            dbr_loop_20,
+            dbr_loop_21,
+            dbr_loop_22,
+            dbr_loop_23,
+            dbr_loop_24,
+            dbr_loop_25,
+            dbr_loop_26,
+            dbr_loop_27,
+            dbr_loop_28,
+            dbr_loop_29,
+            dbr_loop_30,
+            dbr_loop_31,
+            dbr_loop_32,
+            dbr_loop_33,
+            dbr_loop_34,
+            dbr_loop_35,
+            dbr_loop_36,
+            dbr_loop_37,
+            dbr_loop_38,
+            dbr_loop_39,
+            dbr_loop_40,
+            dbr_loop_41,
+            dbr_loop_42,
+            dbr_loop_43,
+            dbr_loop_44,
+            # スマートキャリー
+            step_01B,
+            step_01B_2,
+            step_02B,
+            step_03B,
+            step_04B,
             StopNow(name="stop"),
             TheEnd(name="end"),
         ]
