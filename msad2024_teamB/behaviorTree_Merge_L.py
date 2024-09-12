@@ -1156,7 +1156,7 @@ def build_behaviour_tree() -> BehaviourTree:
             start,
             # Wループ
             wloop_01,
-            wloop_02,
+            # wloop_02,
             wloop_03,
             wloop_04,
             wloop_05,
