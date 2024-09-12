@@ -423,9 +423,10 @@ def build_behaviour_tree() -> BehaviourTree:
         [
     #        TraceLineCam(name="trace normal edge", power=70, pid_p=1.5, pid_i=0.0015, pid_d=0.4,
     #        pid_p=1.5→2.0→1,7→1.6→1.4→1.5
+    #        pid_p=0→0.5→1.0→1.5→2.0→2.5→3.0  ①i=0で、pを発振しない範囲で大きくする。➁ iを発振しない範囲で大きくする。
 
                          
-            TraceLineCam(name="trace normal edge", power=70, pid_p=1.5, pid_i=0.0, pid_d=0.0,
+            TraceLineCam(name="trace normal edge", power=70, pid_p=0.0, pid_i=0.0, pid_d=0.0,
                          gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
             IsDistanceEarned(name="check distance", delta_dist = 2100),
         ]
