@@ -685,7 +685,7 @@ def build_behaviour_tree() -> BehaviourTree:
     )
     dbr_loop_03.add_children(
         [
-            MoveStraightLR_dbr(name="move straight 4", right_power=10, left_power=60, target_distance=150),
+            MoveStraightLR_dbr(name="move straight 4", right_power=10, left_power=60, target_distance=130),
         ]
     )
     dbr_loop_04.add_children(
@@ -744,7 +744,7 @@ def build_behaviour_tree() -> BehaviourTree:
     )
     dbr_loop_13.add_children(
         [
-            MoveStraightLR_dbr(name="move straight 4", right_power=10, left_power=60, target_distance=160),
+            MoveStraightLR_dbr(name="move straight 4", right_power=10, left_power=60, target_distance=130),
         ]
     )
     dbr_loop_14.add_children(
@@ -754,7 +754,7 @@ def build_behaviour_tree() -> BehaviourTree:
     )
     dbr_loop_15.add_children(
         [
-            MoveStraightLR_dbr(name="move straight 4", right_power=-10, left_power=-60, target_distance=130),
+            MoveStraightLR_dbr(name="move straight 4", right_power=-10, left_power=-60, target_distance=110),
         ]
     )
     dbr_loop_16.add_children(
