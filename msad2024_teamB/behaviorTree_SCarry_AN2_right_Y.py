@@ -528,6 +528,7 @@ class CheckMotorAngles(Behaviour):
         self.total_ang_r = total_ang_r
         self.total_ang_l = total_ang_l
         self.right_power = right_power
+        self.left_power = left_power
         
 
     def update(self) -> Status:
