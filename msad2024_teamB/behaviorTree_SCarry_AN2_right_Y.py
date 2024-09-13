@@ -520,6 +520,32 @@ class Bottlecatch(Behaviour):
             return Status.SUCCESS
         else:
             return Status.RUNNING
+        
+class CheckMotorAngles(Behaviour):
+    def __init__(self, name: str, right_power: int, left_power: int, total_ang_r: int, total_ang_l: int):
+        super(CheckMotorAngles, self).__init__(name)
+        self.running = False
+        self.total_ang_r = total_ang_r
+        self.total_ang_l = total_ang_l
+        self.right_power = right_power
+        
+
+    def update(self) -> Status:
+        if not self.running:
+            self.running = True
+            g_right_motor.set_power(self.right_power)
+            g_left_motor.set_power(self.left_power)
+            self.ang_r = g_right_motor.get_count()
+            self.ang_l = g_left_motor.get_count()
+        cur_ang_r = g_right_motor.get_count()
+        cur_ang_l = g_left_motor.get_count()
+        result_ang_r = cur_ang_r - self.ang_r
+        result_ang_l = cur_ang_l - self.ang_l
+
+        if (result_ang_r > self.total_ang_r and result_ang_l > self.total_ang_l):
+            return Status.SUCCESS
+        else:
+            return Status.RUNNING
 
 class TraverseBehaviourTree(object):
     def __init__(self, tree: BehaviourTree) -> None:
@@ -562,32 +588,6 @@ class ExposeDevices(object):
         g_color_sensor = color_sensor
         g_sonar_sensor = sonar_sensor
         g_gyro_sensor = gyro_sensor
-
-class CheckMotorAngles(Behaviour):
-    def __init__(self, name: str, right_power: int, left_power: int, total_ang_r: int, total_ang_l: int) -> None:
-        super(CheckMotorAngles, self).__init__(name)
-        self.running = False
-        self.total_ang_r = total_ang_r
-        self.total_ang_l = total_ang_l
-        self.right_power = right_power
-        self.left_power = left_power
-
-def update(self) -> Status:
-    if not self.running:
-        self.running = True
-        g_right_motor.set_power(self.right_power)
-        g_left_motor.set_power(self.left_power)
-        self.ang_r = g_right_motor.get_count()
-        self.ang_l = g_left_motor.get_count()
-    cur_ang_r = g_right_motor.get_count()
-    cur_ang_l = g_left_motor.get_count()
-    result_ang_r = cur_ang_r - self.ang_r
-    result_ang_l = cur_ang_l - self.ang_l
-
-    if (result_ang_r > self.total_ang_r and result_ang_l > self.total_ang_l):
-        return Status.SUCCESS
-    else:
-        return Status.RUNNING
 
 
 class VideoThread(threading.Thread):
