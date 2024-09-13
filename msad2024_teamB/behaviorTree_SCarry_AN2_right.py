@@ -563,6 +563,32 @@ class ExposeDevices(object):
         g_sonar_sensor = sonar_sensor
         g_gyro_sensor = gyro_sensor
 
+class CheckMotorAngles(Behaviour):
+    def init(self, name: str,right_power: int, left_power: int, total_ang_r: int, total_ang_l):
+        super(CheckMotorAngles, self).init(name)
+        self.logger.debug("%s.init()" % (self.class.name))
+        self.running = False
+        self.total_ang_r = total_ang_r
+        self.total_ang_l = total_ang_l
+        self.right_power = right_power
+        self.left_power = left_power
+
+def update(self) -> Status:
+    if not self.running:
+        self.running = True
+        g_right_motor.set_power(self.right_power)
+        g_left_motor.set_power(self.left_power)
+        self.ang_r = g_right_motor.get_count()
+        self.ang_l = g_left_motor.get_count()
+    cur_ang_r = g_right_motor.get_count()
+    cur_ang_l = g_left_motor.get_count()
+    result_ang_r = cur_ang_r - self.ang_r
+    result_ang_l = cur_ang_l - self.ang_l
+
+    if (result_ang_r > self.total_ang_r and result_ang_l > self.total_ang_l):
+        return Status.SUCCESS
+    else:
+        return Status.RUNNING
 
 
 class VideoThread(threading.Thread):
@@ -596,7 +622,8 @@ def build_behaviour_tree() -> BehaviourTree:
     # step_03B_3 = Sequence(name="step 03B_3", memory=True)
     step_04B = Parallel(name="step 04B", policy=ParallelPolicy.SuccessOnOne())
     #step_04B = Sequence(name="step 04B", memory=True)
- 
+    test = Parallel(name="step 01A_1", policy=ParallelPolicy.SuccessOnOne())
+
     calibration.add_children(
         [
             ArmUpDownFull(name="arm down", direction=ArmDirection.DOWN),
@@ -740,23 +767,31 @@ def build_behaviour_tree() -> BehaviourTree:
             # color sensor add
         ]
     )
+    test.add_children(
+        [
+            CheckMotorAngles(name="a",right_power = 60, left_power = 0, total_ang_r = 0, total_ang_r = 360)
+        ]
+    )
+    
+
 
     root.add_children(
         [
             calibration,
             start,
-            step_01A_1,
-            #step_01A_2,
-            #step_01A_3,
-            step_01A_4,
-            #step_01B,
-            #step_01B_1,
-            #step_01B_2,
-            step_02B,
-            step_03B_1,
-            step_03B_2,
-            step_03B_3,
-            step_04B,
+            # step_01A_1,
+            # #step_01A_2,
+            # #step_01A_3,
+            # step_01A_4,
+            # #step_01B,
+            # #step_01B_1,
+            # #step_01B_2,
+            # step_02B,
+            # step_03B_1,
+            # step_03B_2,
+            # step_03B_3,
+            # step_04B,
+            test,
             StopNow(name="stop"),
             TheEnd(name="end"),
         ]
