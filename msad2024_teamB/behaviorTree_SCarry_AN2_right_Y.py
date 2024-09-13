@@ -564,8 +564,8 @@ class ExposeDevices(object):
         g_gyro_sensor = gyro_sensor
 
 class CheckMotorAngles(Behaviour):
-    def init(self, name: str,right_power: int, left_power: int, total_ang_r: int, total_ang_l: int):
-        super(CheckMotorAngles, self).init(name)
+    def __init__(self, name: str,right_power: int, left_power: int, total_ang_r: float, total_ang_l: float):
+        super(CheckMotorAngles, self).__init__(name)
         self.running = False
         self.total_ang_r = total_ang_r
         self.total_ang_l = total_ang_l
@@ -768,7 +768,7 @@ def build_behaviour_tree() -> BehaviourTree:
     )
     test.add_children(
         [
-            CheckMotorAngles(name="a",right_power = 60, left_power = 0, total_ang_r = 360, total_ang_l = 0)
+            CheckMotorAngles(name="a",right_power = 60, left_power = 0, total_ang_r = 360.0, total_ang_l = 0.0)
         ]
     )
     
