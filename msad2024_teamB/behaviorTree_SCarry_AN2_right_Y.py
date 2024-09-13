@@ -564,7 +564,7 @@ class ExposeDevices(object):
         g_gyro_sensor = gyro_sensor
 
 class CheckMotorAngles(Behaviour):
-    def init(self, name: str,right_power: int, left_power: int, total_ang_r: int, total_ang_l):
+    def init(self, name: str,right_power: int, left_power: int, total_ang_r: int, total_ang_l: int):
         super(CheckMotorAngles, self).init(name)
         self.running = False
         self.total_ang_r = total_ang_r
