@@ -540,8 +540,8 @@ class CheckMotorAngles(Behaviour):
             self.ang_l = g_left_motor.get_count()
         cur_ang_r = g_right_motor.get_count()
         cur_ang_l = g_left_motor.get_count()
-        result_ang_r = cur_ang_r - self.ang_r
-        result_ang_l = cur_ang_l - self.ang_l
+        result_ang_r = math.pi * 100.0 * (cur_ang_r - self.ang_r) / 360.0
+        result_ang_l =  math.pi * 100.0 * (cur_ang_l - self.ang_l) / 360.0
 
         if (result_ang_r > self.total_ang_r and result_ang_l > self.total_ang_l):
             return Status.SUCCESS
