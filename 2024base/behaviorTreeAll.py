@@ -927,7 +927,7 @@ def build_behaviour_tree() -> BehaviourTree:
         carry_03.add_children(
                 [
                     RunAsInstructed(name="rotate", pwm_r=60,pwm_l=20),
-                    IsDistanceEarned(name="check distance", delta_dist = 600),
+                    IsDistanceEarned(name="check distance", delta_dist = 400),
                 ]
         )
     else:
