@@ -769,7 +769,7 @@ def build_behaviour_tree() -> BehaviourTree:
     )
     test.add_children(
         [
-            CheckMotorAngles(name="a",right_power = 0, left_power = 60, total_ang_r = 0, total_ang_l = 180)
+            CheckMotorAngles(name="a",right_power = 60, left_power = 0, total_ang_r = 180, total_ang_l = 0)
         ]
     )
     
