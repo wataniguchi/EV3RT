@@ -633,6 +633,29 @@ class IsDistanceEarned_after(Behaviour):
             return Status.SUCCESS
         else:
             return Status.RUNNING
+
+class CheckMotorAngles(Behaviour):
+    def __init__(self, name: str, total_ang_r: int, total_ang_l):
+        super(CheckMotorAngles, self).__init__(name)
+        self.logger.debug("%s.__init__()" % (self.__class__.__name__))
+        self.running = False
+        self.total_ang_r = total_ang_r
+        self.total_ang_l = total_ang_l
+
+    def update(self) -> Status:
+        if not self.running:
+            self.running = True
+            self.ang_r = g_right_motor.get_count()
+            self.ang_l = g_left_motor.get_count()
+        cur_ang_r = g_right_motor.get_count()
+        cur_ang_l = g_left_motor.get_count()
+        result_ang_r = cur_ang_r - self.ang_r
+        result_ang_l = cur_ang_l - self.ang_l
+
+        if (result_ang_r > self.total_ang_r and result_ang_l > self.total_ang_l):
+            return Status.SUCCESS
+        else:
+            return Status.RUNNING
         
 def build_behaviour_tree() -> BehaviourTree:
     root = Sequence(name="competition", memory=True)
