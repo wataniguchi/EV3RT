@@ -374,6 +374,549 @@ class IsColorDetected(Behaviour):
                 #指定色でないならRUNNINGを返却
                 return Status.RUNNING
 
+import argparse
+import time
+import math
+import threading
+import signal
+from enum import Enum, IntEnum, auto
+from etrobo_python import ETRobo, Hub, Motor, ColorSensor, TouchSensor, SonarSensor, GyroSensor
+from simple_pid import PID
+import py_trees.common
+from py_trees.trees import BehaviourTree
+from py_trees.behaviour import Behaviour
+from py_trees.common import Status
+from py_trees.composites import Sequence
+from py_trees.composites import Parallel
+from py_trees.common import ParallelPolicy
+from py_trees import (
+    display as display_tree,
+    logging as log_tree
+)
+from py_etrobo_util import Video, TraceSide, Plotter
+
+EXEC_INTERVAL: float = 0.04
+VIDEO_INTERVAL: float = 0.02
+ARM_SHIFT_PWM = 30
+JUNCT_UPPER_THRESH = 50
+JUNCT_LOWER_THRESH = 40
+#JUNCT_LOWER_THRESH = 30
+
+class ArmDirection(IntEnum):
+    UP = -1
+    DOWN = 1
+
+class JState(Enum):
+    INITIAL = auto()
+    JOINING = auto()
+    JOINED = auto()
+    FORKING = auto()
+    FORKED = auto()
+
+class Color(Enum):
+    JETBLACK = auto()
+    BLACK = auto()
+    BLUE = auto()
+    RED = auto()
+    YELLOW = auto()
+    GREEN = auto()
+    WHITE = auto()
+
+g_plotter: Plotter = None
+g_hub: Hub = None
+g_arm_motor: Motor = None
+g_right_motor: Motor = None
+g_left_motor: Motor = None
+g_touch_sensor: TouchSensor = None
+g_color_sensor: ColorSensor = None
+g_sonar_sensor: SonarSensor = None
+g_gyro_sensor: GyroSensor = None
+g_video: Video = None
+g_video_thread: threading.Thread = None
+g_course: int = 0
+g_dist: int = 1600
+g_earned_dist: int = 0
+g_distFlg: bool = False
+
+class TheEnd(Behaviour):
+    def __init__(self, name: str):
+        super(TheEnd, self).__init__(name)
+        self.logger.debug("%s.__init__()" % (self.__class__.__name__))
+        self.running = False
+
+    def update(self) -> Status:
+        if not self.running:
+            self.running = True
+            self.logger.info("%+06d %s.behavior tree exhausted. ctrl+C shall terminate the program" % (g_plotter.get_distance(), self.__class__.__name__))
+        return Status.RUNNING
+
+
+class ResetDevice(Behaviour):
+    def __init__(self, name: str):
+        super(ResetDevice, self).__init__(name)
+        self.logger.debug("%s.__init__()" % (self.__class__.__name__))
+        self.count = 0
+
+    def update(self) -> Status:
+        if self.count == 0:
+            g_arm_motor.reset_count()
+            g_right_motor.reset_count()
+            g_left_motor.reset_count()
+            g_gyro_sensor.reset()
+            self.logger.info("%+06d %s.resetting..." % (g_plotter.get_distance(), self.__class__.__name__))
+        elif self.count > 3:
+            self.logger.info("%+06d %s.complete" % (g_plotter.get_distance(), self.__class__.__name__))
+            return Status.SUCCESS
+        self.count += 1
+        return Status.RUNNING
+
+
+class ArmUpDownFull(Behaviour):
+    def __init__(self, name: str, direction: ArmDirection):
+        super(ArmUpDownFull, self).__init__(name)
+        self.logger.debug("%s.__init__()" % (self.__class__.__name__))
+        self.direction = direction
+        self.running = False
+
+    def update(self) -> Status:
+        if not self.running:
+            self.running = True
+            self.prev_degree = g_arm_motor.get_count()
+            self.count = 0
+        else:
+            cur_degree = g_arm_motor.get_count()
+            if cur_degree == self.prev_degree:
+                if self.count > 10:
+                    g_arm_motor.set_power(0)
+                    g_arm_motor.set_brake(True)
+                    self.logger.info("%+06d %s.position set to %d" % (g_plotter.get_distance(), self.__class__.__name__, cur_degree))
+                    return Status.SUCCESS
+                else:
+                    self.count += 1
+            self.prev_degree = cur_degree
+        g_arm_motor.set_power(ARM_SHIFT_PWM * self.direction)
+        return Status.RUNNING
+
+
+class IsDistanceEarned(Behaviour):
+    def __init__(self, name: str, delta_dist: int):
+        super(IsDistanceEarned, self).__init__(name)
+        self.logger.debug("%s.__init__()" % (self.__class__.__name__))
+        self.delta_dist = delta_dist
+        self.running = False
+        self.earned = False
+
+    def update(self) -> Status:
+        if not self.running:
+            self.running = True
+            self.orig_dist = g_plotter.get_distance()
+            self.logger.info("%+06d %s.accumulation started for delta=%d" % (self.orig_dist, self.__class__.__name__, self.delta_dist))
+        cur_dist = g_plotter.get_distance()
+        earned_dist = cur_dist - self.orig_dist
+        if (earned_dist >= self.delta_dist or -earned_dist <= -self.delta_dist):
+            if not self.earned:
+                self.earned = True
+                self.logger.info("%+06d %s.delta distance earned" % (cur_dist, self.__class__.__name__))
+            return Status.SUCCESS
+        else:
+            return Status.RUNNING
+
+
+class IsSonarOn(Behaviour):
+    def __init__(self, name: str, alert_dist: int):
+        super(IsSonarOn, self).__init__(name)
+        self.logger.debug("%s.__init__()" % (self.__class__.__name__))
+        self.alert_dist = alert_dist
+        self.running = False
+
+    def update(self) -> Status:
+        if not self.running:
+            self.running = True
+            self.logger.info("%+06d %s.detection started for dist=%d" % (g_plotter.get_distance(), self.__class__.__name__, self.alert_dist))
+        
+        dist = 10 * g_sonar_sensor.get_distance()
+        if (dist <= self.alert_dist and dist > 0):
+            self.logger.info("%+06d %s.alerted at dist=%d" % (g_plotter.get_distance(), self.__class__.__name__, dist))
+            return Status.SUCCESS
+        else:
+            return Status.RUNNING
+
+
+class IsTouchOn(Behaviour):
+    def __init__(self, name: str):
+        super(IsTouchOn, self).__init__(name)
+        self.logger.debug("%s.__init__()" % (self.__class__.__name__))
+
+    def update(self) -> Status:
+        if (g_touch_sensor.is_pressed() or
+            g_hub.is_left_button_pressed() or
+            g_hub.is_right_button_pressed()):
+            self.logger.info("%+06d %s.pressed" % (g_plotter.get_distance(), self.__class__.__name__))
+            return Status.SUCCESS
+        else:
+            return Status.RUNNING
+
+
+class StopNow(Behaviour):
+    def __init__(self, name: str):
+        super(StopNow, self).__init__(name)
+        self.logger.debug("%s.__init__()" % (self.__class__.__name__))
+
+    def update(self) -> Status:
+        g_right_motor.set_power(0)
+        g_right_motor.set_brake(True)
+        g_left_motor.set_power(0)
+        g_left_motor.set_brake(True)
+        self.logger.info("%+06d %s.motors stopped" % (g_plotter.get_distance(), self.__class__.__name__))
+        return Status.SUCCESS
+
+
+class IsJunction(Behaviour):
+    def __init__(self, name: str, target_state: JState) -> None:
+        super(IsJunction, self).__init__(name)
+        self.target_state = target_state
+        self.reached = False
+        self.prev_roe = 0
+        self.state:JState = JState.INITIAL
+        self.running = False
+
+    def update(self) -> Status:
+        if not self.running:
+            self.running = True
+            self.logger.info("%+06d %s.scan started" % (g_plotter.get_distance(), self.__class__.__name__))
+        roe = g_video.get_range_of_edges()
+        if roe != 0:
+            if self.state == JState.INITIAL:
+                if (self.target_state == JState.JOINING or self.target_state == JState.JOINED) and roe >= JUNCT_UPPER_THRESH and self.prev_roe <= JUNCT_LOWER_THRESH:
+                    self.logger.info("%+06d %s.lines are joining" % (g_plotter.get_distance(), self.__class__.__name__))
+                    self.state = JState.JOINING
+                elif (self.target_state == JState.FORKING or self.target_state == JState.FORKED) and roe >= JUNCT_LOWER_THRESH and self.prev_roe <= JUNCT_LOWER_THRESH:
+                    self.logger.info("%+06d %s.lines are forking" % (g_plotter.get_distance(), self.__class__.__name__))
+                    self.state = JState.FORKING
+            elif self.state == JState.JOINING:
+                if roe <= JUNCT_LOWER_THRESH:
+                    self.logger.info("%+06d %s.the join completed" % (g_plotter.get_distance(), self.__class__.__name__))
+                    self.state = JState.JOINED
+                    
+            elif self.state == JState.FORKING:
+                if roe <= JUNCT_LOWER_THRESH and self.prev_roe >= JUNCT_UPPER_THRESH:
+                    self.logger.info("%+06d %s.the fork completed" % (g_plotter.get_distance(), self.__class__.__name__))
+                    self.state = JState.FORKED
+            else:
+                pass
+        self.prev_roe = roe
+
+        if not self.reached and self.state == self.target_state:
+            self.reached = True
+            self.logger.info("%+06d %s.target state reached" % (g_plotter.get_distance(), self.__class__.__name__))
+            return Status.SUCCESS
+        else:
+            return Status.RUNNING
+
+
+class RunAsInstructed(Behaviour):
+    def __init__(self, name: str, pwm_l: int, pwm_r: int) -> None:
+        super(RunAsInstructed, self).__init__(name)
+        self.pwm_l = g_course * pwm_l
+        self.pwm_r = g_course * pwm_r
+        self.running = False
+
+    def update(self) -> Status:
+        if not self.running:
+            self.running = True
+            self.logger.info("%+06d %s.started with pwm=(%s, %s)" % (g_plotter.get_distance(), self.__class__.__name__, self.pwm_l, self.pwm_r))
+        g_right_motor.set_power(self.pwm_r)
+        g_left_motor.set_power(self.pwm_l)
+        return Status.RUNNING
+
+
+class TraceLine(Behaviour):
+    def __init__(self, name: str, target: int, power: int, pid_p: float, pid_i: float, pid_d: float,
+                 trace_side: TraceSide) -> None:
+        super(TraceLine, self).__init__(name)
+        self.power = power
+        self.pid = PID(pid_p, pid_i, pid_d, setpoint=target, sample_time=EXEC_INTERVAL, output_limits=(-power, power))
+        self.trace_side = trace_side
+        self.running = False
+
+    def update(self) -> Status:
+        if not self.running:
+            self.running = True
+            self.logger.info("%+06d %s.trace started with TS=%s" % (g_plotter.get_distance(), self.__class__.__name__, self.trace_side.name))
+        if self.trace_side == TraceSide.NORMAL:
+            turn = (-1) * g_course * int(self.pid(g_color_sensor.get_brightness()))
+        else: # TraceSide.OPPOSITE
+            turn = g_course * int(self.pid(g_color_sensor.get_brightness()))
+        g_right_motor.set_power(self.power - turn)
+        g_left_motor.set_power(self.power + turn)
+        return Status.RUNNING
+
+
+class TraceLineCam(Behaviour):
+    def __init__(self, name: str, power: int, pid_p: float, pid_i: float, pid_d: float,
+                 gs_min: int, gs_max: int, trace_side: TraceSide) -> None:
+        super(TraceLineCam, self).__init__(name)
+        self.power = power
+        self.pid = PID(pid_p, pid_i, pid_d, setpoint=0, sample_time=EXEC_INTERVAL, output_limits=(-power, power))
+        self.gs_min = gs_min
+        self.gs_max = gs_max
+        self.trace_side = trace_side
+        self.running = False
+
+    def update(self) -> Status:
+        if not self.running:
+            self.running = True
+            g_video.set_thresholds(self.gs_min, self.gs_max)
+            if self.trace_side == TraceSide.NORMAL:
+                if g_course == -1: # right course
+                    g_video.set_trace_side(TraceSide.RIGHT)
+                else:
+                    g_video.set_trace_side(TraceSide.LEFT)
+            elif self.trace_side == TraceSide.OPPOSITE: 
+                if g_course == -1: # right course
+                    g_video.set_trace_side(TraceSide.LEFT)
+                else:
+                    g_video.set_trace_side(TraceSide.RIGHT)
+            else: # TraceSide.CENTER
+                g_video.set_trace_side(TraceSide.CENTER)
+            self.logger.info("%+06d %s.trace started with TS=%s" % (g_plotter.get_distance(), self.__class__.__name__, self.trace_side.name))
+        turn = (-1) * int(self.pid(g_video.get_theta()))
+        g_right_motor.set_power(self.power - turn)
+        g_left_motor.set_power(self.power + turn)
+        return Status.RUNNING
+
+# 旧Wループプログラムから流用
+class IsColorDetected(Behaviour):
+    def __init__(self, name: str):
+        super(IsColorDetected, self).__init__(name)
+        self.logger.debug("%s.__init__()" % (self.__class__.__name__))
+
+    def update(self) -> Status:
+        global g_color_sensor
+        #RGBの値を取得
+        color = g_color_sensor.get_raw_color
+        #Blue判定
+        if(color[2] - color[0]>45 & color[2] <=255 & color[0] <=255):
+            self.logger.info("%+06d %s.detected blue" % (g_plotter.get_distance(), self.__class__.__name__))
+            return Status.SUCCESS
+        else:
+            #指定色でないならRUNNINGを返却
+            return Status.RUNNING
+
+# デブリプログラムから流用
+class MoveStraight(Behaviour):
+    def __init__(self, name: str, power: int, target_distance: int) -> None:
+        super(MoveStraight, self).__init__(name)
+        self.power = power
+        self.target_distance = target_distance
+        self.start_distance = None
+        self.running = False
+
+    def update(self) -> Status:
+        if not self.running:
+            self.running = True
+            self.start_distance = g_plotter.get_distance()
+            g_right_motor.set_power(self.power)
+            g_left_motor.set_power(self.power)
+            self.logger.info("%+06d %s.start power=%d end distance=%d" % 
+                            (self.start_distance, self.__class__.__name__, self.power, self.target_distance))
+
+        current_distance = g_plotter.get_distance()
+        traveled_distance = current_distance - self.start_distance
+
+        if traveled_distance >= self.target_distance:
+            g_right_motor.set_power(0)
+            g_left_motor.set_power(0)
+            self.logger.info("%+06d %s.end distance on" % (current_distance, self.__class__.__name__))
+            return Status.SUCCESS
+        else:
+            return Status.RUNNING
+
+# デブリプログラムから流用(※一部加工)
+class MoveStraightLR(Behaviour):
+    def __init__(self, name: str, right_power: int, left_power: int, target_distance: int) -> None:
+        super(MoveStraightLR, self).__init__(name)
+        self.right_power = right_power
+        self.left_power = left_power
+        self.target_distance = target_distance
+        self.start_distance = None
+        self.running = False
+
+    def update(self) -> Status:
+        if not self.running:
+            self.running = True
+            self.start_distance = g_plotter.get_distance()
+            # g_right_motor.set_power(self.right_power)
+            # g_left_motor.set_power(self.left_power)
+            if g_course == 1:
+                g_right_motor.set_power(self.right_power)
+                g_left_motor.set_power(self.left_power)
+            else:
+                g_right_motor.set_power(self.left_power)
+                g_left_motor.set_power(self.right_power)
+            self.logger.info("%+06d %s.start rightpower=%d leftpower=%d enddistance=%d" % 
+                             (self.start_distance, self.__class__.__name__, self.right_power, self.left_power, self.target_distance))
+
+        current_distance = g_plotter.get_distance()
+        traveled_distance = current_distance - self.start_distance
+
+        if traveled_distance >= self.target_distance:
+            g_right_motor.set_power(0)
+            g_left_motor.set_power(0)
+            self.logger.info("%+06d %s.enddistance on" % (current_distance, self.__class__.__name__))
+            return Status.SUCCESS
+        else:
+            return Status.RUNNING
+
+class TraverseBehaviourTree(object):
+    def __init__(self, tree: BehaviourTree) -> None:
+        self.tree = tree
+        self.running = False
+    def __call__(
+        self,
+        **kwargs,
+    ) -> None:
+        global g_plotter
+        if not self.running:
+            if g_hub is None:
+                print(" -- TraverseBehaviorTree waiting for ETrobo devices to be exposed...")
+            else:
+                self.running = True
+                g_plotter = Plotter()
+                print(" -- TraverseBehaviorTree initialization complete")
+        else:
+            self.tree.tick_once()
+            g_plotter.plot(**kwargs)
+
+
+class ExposeDevices(object):
+    def __call__(
+        self,
+        hub: Hub,
+        arm_motor: Motor,
+        right_motor: Motor,
+        left_motor: Motor,
+        touch_sensor: TouchSensor,
+        color_sensor: ColorSensor,
+        sonar_sensor: SonarSensor,
+        gyro_sensor: GyroSensor,
+    ) -> None:
+        global g_hub, g_arm_motor, g_right_motor, g_left_motor, g_touch_sensor, g_color_sensor, g_sonar_sensor, g_gyro_sensor
+        g_hub = hub
+        g_arm_motor = arm_motor
+        g_right_motor = right_motor
+        g_left_motor = left_motor
+        g_touch_sensor = touch_sensor
+        g_color_sensor = color_sensor
+        g_sonar_sensor = sonar_sensor
+        g_gyro_sensor = gyro_sensor
+
+
+class VideoThread(threading.Thread):
+    def __init__(self):
+        super().__init__()
+        self._stop_event = threading.Event()
+
+    def stop(self):
+        self._stop_event.set()
+
+    def run(self):
+        while not self._stop_event.is_set():
+            g_video.process(g_plotter, g_hub, g_arm_motor, g_right_motor, g_left_motor, g_touch_sensor, g_color_sensor, g_sonar_sensor, g_gyro_sensor)
+            time.sleep(VIDEO_INTERVAL)
+
+# 以下デブリ専用クラス
+class MoveStraight_dbr(Behaviour):
+    def __init__(self, name: str, power: int, target_distance: int) -> None:
+        super(MoveStraight_dbr, self).__init__(name)
+        self.power = power
+        self.target_distance = target_distance
+        self.start_distance = None
+        self.running = False
+
+    def update(self) -> Status:
+        global g_distFlg
+        if g_distFlg:
+            return Status.SUCCESS
+
+        if not self.running:
+            self.running = True
+            self.start_distance = g_plotter.get_distance()
+            g_right_motor.set_power(self.power)
+            g_left_motor.set_power(self.power)
+            self.logger.info("%+06d %s.開始、パワー=%d、目標距離=%d" % 
+                            (self.start_distance, self.__class__.__name__, self.power, self.target_distance))
+        
+        current_distance = g_plotter.get_distance()
+        traveled_distance = current_distance - self.start_distance
+        
+        if traveled_distance >= self.target_distance:
+            g_right_motor.set_power(0)
+            g_left_motor.set_power(0)
+            self.logger.info("%+06d %s.目標距離に到達" % (current_distance, self.__class__.__name__))
+            return Status.SUCCESS
+        else:
+            return Status.RUNNING
+
+class MoveStraightLR_dbr(Behaviour):
+    def __init__(self, name: str, right_power: int, left_power: int, target_distance: int) -> None:
+        super(MoveStraightLR_dbr, self).__init__(name)
+        g_course == 1
+        self.right_power = right_power
+        self.left_power = left_power
+        self.target_distance = target_distance
+        self.start_distance = None
+        self.running = False
+
+    def update(self) -> Status:
+        global g_distFlg
+        if g_distFlg:
+            return Status.SUCCESS
+        
+        if not self.running:
+            self.running = True
+            self.start_distance = g_plotter.get_distance()
+            g_right_motor.set_power(self.right_power)
+            g_left_motor.set_power(self.left_power)
+            self.logger.info("%+06d %s.開始、右パワー=%d、左パワー=%d、目標距離=%d" % 
+                             (self.start_distance, self.__class__.__name__, self.right_power, self.left_power, self.target_distance))
+        
+        current_distance = g_plotter.get_distance()
+        traveled_distance = current_distance - self.start_distance
+        
+        if traveled_distance >= self.target_distance:
+            g_right_motor.set_power(0)
+            g_left_motor.set_power(0)
+            self.logger.info("%+06d %s.目標距離に到達" % (current_distance, self.__class__.__name__))
+            return Status.SUCCESS
+        else:
+            return Status.RUNNING
+
+class IsRedColorDetected(Behaviour):
+    def __init__(self, name: str, threshold: float):
+        super(IsRedColorDetected, self).__init__(name)
+        self.threshold = threshold
+        self.running = False
+
+    def update(self) -> Status:
+        global g_dist
+        global g_earned_dist
+        if not self.running:
+            self.running = True
+            self.logger.info("%+06d %s.checking red color ratio with threshold=%f" % (g_plotter.get_distance(), self.__class__.__name__, self.threshold))
+
+        red_percentage = g_video.get_red_ratio() * 100
+        if red_percentage > self.threshold:
+            self.logger.info("%+06d %s.red color ratio exceeds threshold: %f" % (g_plotter.get_distance(), self.__class__.__name__, red_percentage))
+            g_dist = g_dist - g_earned_dist
+            self.logger.info("グローバル変数更新 g_dist = g_dist - g_earned_dist")
+            # print("g_earned_dist:"+ str(g_earned_dist))
+            # print("g_dist:"+ str(g_dist))
+            self.logger.info("赤判定")
+            return Status.SUCCESS
+        else:
+            return Status.RUNNING
+        
 class IsBlueColorDetected(Behaviour):
     def __init__(self, name: str, threshold: float):
         super(IsBlueColorDetected, self).__init__(name)
@@ -646,7 +1189,8 @@ def build_behaviour_tree() -> BehaviourTree:
             #IsDistanceEarned(name="check distance 1", delta_dist = 200),
             #Bottlecatch(name="trace CATCHED", target_state = BState.CATCHED),
             #Bottlecatch(name="linetrace", target_state = BState.LINE)
-            IsDistanceEarned(name="check distance 1", delta_dist = 520),
+            IsRedColorDetected(name="red",threshold=15),
+            IsDistanceEarned(name="check distance 1", delta_dist = 1000),
         ]
     )
 
@@ -752,11 +1296,11 @@ def build_behaviour_tree() -> BehaviourTree:
             #step_01B,
             #step_01B_1,
             #step_01B_2,
-            step_02B,
-            step_03B_1,
-            step_03B_2,
-            step_03B_3,
-            step_04B,
+            # step_02B,
+            # step_03B_1,
+            # step_03B_2,
+            # step_03B_3,
+            # step_04B,
             StopNow(name="stop"),
             TheEnd(name="end"),
         ]
