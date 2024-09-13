@@ -390,7 +390,7 @@ class IsBlueColorDetected(Behaviour):
             self.logger.info("%+06d %s.checking blue color ratio with threshold=%f" % (g_plotter.get_distance(), self.__class__.__name__, self.threshold))
 
         blue_percentage = g_video.get_blue_ratio() * 100
-        if blue_percentage > self.threshold:
+        if blue_percentage <= self.threshold:
             self.logger.info("%+06d %s.blue color ratio exceeds threshold: %f" % (g_plotter.get_distance(), self.__class__.__name__, blue_percentage))
             # g_dist = g_dist - g_earned_dist
 #            self.logger.info("グローバル変数更新 g_dist = g_dist - g_earned_dist")
@@ -463,7 +463,7 @@ class MoveStraightLR(Behaviour):
         current_distance = g_plotter.get_distance()
         traveled_distance = current_distance - self.start_distance
 
-        if traveled_distance >= self.target_distance:
+        if (5.0 > traveled_distance > self.target_distance):
             g_right_motor.set_power(0)
             g_left_motor.set_power(0)
             self.logger.info("%+06d %s.enddistance on" % (current_distance, self.__class__.__name__))
@@ -754,7 +754,7 @@ def build_behaviour_tree() -> BehaviourTree:
             TraceLineCam(name="last run 2", power=40, pid_p=2.5, pid_i=0.0015, pid_d=0.1,
                          gs_min=0, gs_max=80, trace_side=TraceSide.CENTER),
             IsDistanceEarned(name="check distance 3", delta_dist = 350),
-            IsBlueColorDetected(name="check blue color", threshold=1.0),
+            IsBlueColorDetected(name="check blue color", threshold=2.0),
             # IsColorDetected(name="blue"),
         ]
     )
