@@ -392,7 +392,7 @@ class IsBlueColorDetected(Behaviour):
         blue_percentage = g_video.get_blue_ratio() * 100
         if blue_percentage > self.threshold:
             self.logger.info("%+06d %s.blue color ratio exceeds threshold: %f" % (g_plotter.get_distance(), self.__class__.__name__, blue_percentage))
-            g_dist = g_dist - g_earned_dist
+            # g_dist = g_dist - g_earned_dist
             self.logger.info("グローバル変数更新 g_dist = g_dist - g_earned_dist")
             # print("g_earned_dist:"+ str(g_earned_dist))
             # print("g_dist:"+ str(g_dist))
