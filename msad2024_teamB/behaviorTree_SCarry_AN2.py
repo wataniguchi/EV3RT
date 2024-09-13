@@ -373,6 +373,32 @@ class IsColorDetected(Behaviour):
                 #指定色でないならRUNNINGを返却
                 return Status.RUNNING
 
+class IsBlueColorDetected(Behaviour):
+    def __init__(self, name: str, threshold: float):
+        super(IsBlueColorDetected, self).__init__(name)
+        self.threshold = threshold
+        self.running = False
+
+    def update(self) -> Status:
+        global g_dist
+        global g_earned_dist
+ 
+        if not self.running:
+            self.running = True
+            self.logger.info("%+06d %s.checking blue color ratio with threshold=%f" % (g_plotter.get_distance(), self.__class__.__name__, self.threshold))
+
+        blue_percentage = g_video.get_blue_ratio() * 100
+        if blue_percentage > self.threshold:
+            self.logger.info("%+06d %s.blue color ratio exceeds threshold: %f" % (g_plotter.get_distance(), self.__class__.__name__, blue_percentage))
+            g_dist = g_dist - g_earned_dist
+            self.logger.info("グローバル変数更新 g_dist = g_dist - g_earned_dist")
+            # print("g_earned_dist:"+ str(g_earned_dist))
+            # print("g_dist:"+ str(g_dist))
+            self.logger.info("青判定")
+            return Status.SUCCESS
+        else:
+            return Status.RUNNING
+        
 # デブリプログラムから流用
 class MoveStraight(Behaviour):
     def __init__(self, name: str, power: int, target_distance: int) -> None:
@@ -708,7 +734,8 @@ def build_behaviour_tree() -> BehaviourTree:
             #MoveStraightLR(name="Turn 3", right_power=70, left_power=35, target_distance=200),
             TraceLineCam(name="last run", power=40, pid_p=2.5, pid_i=0.0015, pid_d=0.1,
                          gs_min=0, gs_max=80, trace_side=TraceSide.CENTER),
-            IsColorDetected(name="blue"),
+            IsBlueColorDetected(name="check blue color", threshold=12.0),
+            # IsColorDetected(name="blue"),
             IsDistanceEarned(name="check distance 2", delta_dist = 1500),
             # IsDistanceEarned(name="check distance 2", delta_dist = 870),
             # color sensor add
