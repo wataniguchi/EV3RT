@@ -277,7 +277,7 @@ class Video(object):
             frame = cv2.resize(frame, (FRAME_WIDTH, FRAME_HEIGHT))
         
         # Convert the image from BGR to HSV color space
-        hsv_image = cv2.cvtColor()
+        hsv_image = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
         # hsv_image = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
         
         # Define the blue color range in HSV
