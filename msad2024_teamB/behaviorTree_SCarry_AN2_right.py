@@ -1132,6 +1132,7 @@ def build_behaviour_tree() -> BehaviourTree:
     #step_01B_1 = Parallel(name="step 01B_1", policy=ParallelPolicy.SuccessOnOne())
     #step_01B_2 = Parallel(name="step 01B_2", policy=ParallelPolicy.SuccessOnOne())
     #step_01B = Parallel(name="step 01B", policy=ParallelPolicy.SuccessOnSelected(children=[step_01B_1,step_01B_2]),children=[step_01B_1,step_01B_2])
+    step_01B = Parallel(name="step 03B_2", policy=ParallelPolicy.SuccessOnOne())
     step_02B = Sequence(name="step 02B", memory=True)
     step_03B_1 = Sequence(name="step 03B_1", memory=True)
     step_03B_2 = Parallel(name="step 03B_2", policy=ParallelPolicy.SuccessOnOne())
@@ -1195,16 +1196,17 @@ def build_behaviour_tree() -> BehaviourTree:
     )
 
     # デブリからボトル取得
-    #step_01B.add_children(
-    #    [
-    #        TraceLineCam(name="trace buleline", power=39, pid_p=2.5, pid_i=0.0015, pid_d=0.1,
-    #             gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
-    #        #IsDistanceEarned(name="check distance 1", delta_dist = 200),
-    #        #Bottlecatch(name="linetrace pre", target_state = BState.PRELINE),
-    #        #Bottlecatch(name="linetrace", target_state = BState.LINE)
-    #        #IsDistanceEarned(name="check distance 1", delta_dist = 400)
-    #    ]
-    #)
+    step_01B.add_children(
+       [
+        #    TraceLineCam(name="trace buleline", power=39, pid_p=2.5, pid_i=0.0015, pid_d=0.1,
+        #         gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
+        #    IsDistanceEarned(name="check distance 1", delta_dist = 200),
+            MoveStraight(name="free run 1B", power=50, target_distance=200),
+           #Bottlecatch(name="linetrace pre", target_state = BState.PRELINE),
+           #Bottlecatch(name="linetrace", target_state = BState.LINE)
+           #IsDistanceEarned(name="check distance 1", delta_dist = 400)
+       ]
+    )
 
     #step_01B_1.add_children(
     #    [
@@ -1293,7 +1295,7 @@ def build_behaviour_tree() -> BehaviourTree:
             #step_01A_2,
             #step_01A_3,
             step_01A_4,
-            # step_01B,
+            step_01B,
             # step_01B_1,
             # step_01B_2,
             step_02B,
