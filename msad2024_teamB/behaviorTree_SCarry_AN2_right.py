@@ -1189,7 +1189,7 @@ def build_behaviour_tree() -> BehaviourTree:
             #IsDistanceEarned(name="check distance 1", delta_dist = 200),
             #Bottlecatch(name="trace CATCHED", target_state = BState.CATCHED),
             #Bottlecatch(name="linetrace", target_state = BState.LINE)
-            IsRedColorDetected(name="red",threshold=15),
+            IsRedColorDetected(name="red",threshold=20),
             IsDistanceEarned(name="check distance 1", delta_dist = 1000),
         ]
     )
