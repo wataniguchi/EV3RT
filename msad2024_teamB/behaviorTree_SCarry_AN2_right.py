@@ -449,12 +449,8 @@ class MoveStraightLR(Behaviour):
             self.start_distance = g_plotter.get_distance()
             # g_right_motor.set_power(self.right_power)
             # g_left_motor.set_power(self.left_power)
-            if g_course == 1:
-                g_right_motor.set_power(self.right_power)
-                g_left_motor.set_power(self.left_power)
-            else:
-                g_right_motor.set_power(self.left_power) #90 0 0
-                g_left_motor.set_power(self.right_power) #15 75 40
+            g_right_motor.set_power(self.right_power)
+            g_left_motor.set_power(self.left_power)
             self.logger.info("%+06d %s.start rightpower=%d leftpower=%d enddistance=%d" % 
                              (self.start_distance, self.__class__.__name__, self.right_power, self.left_power, self.target_distance))
 
