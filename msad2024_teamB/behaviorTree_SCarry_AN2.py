@@ -739,7 +739,7 @@ def build_behaviour_tree() -> BehaviourTree:
                          gs_min=0, gs_max=80, trace_side=TraceSide.CENTER),
             IsDistanceEarned(name="check distance 2", delta_dist = 1500),
             # IsDistanceEarned(name="check distance 2", delta_dist = 870),
-            IsBlueColorDetected(name="check blue color", threshold=12.0),
+            # IsBlueColorDetected(name="check blue color", threshold=12.0),
             # IsColorDetected(name="blue"),
             # color sensor add
         ]
