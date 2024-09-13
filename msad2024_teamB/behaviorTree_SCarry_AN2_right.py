@@ -1185,12 +1185,12 @@ def build_behaviour_tree() -> BehaviourTree:
     # )
     step_01A_4.add_children(
         [
-            TraceLineCam(name="trace buleline4", power=35, pid_p=1.0, pid_i=0.0015, pid_d=0.5,
+            TraceLineCam(name="trace buleline4", power=34, pid_p=1.0, pid_i=0.0015, pid_d=0.5,
                  gs_min=0, gs_max=80, trace_side=TraceSide.CENTER),
             #IsDistanceEarned(name="check distance 1", delta_dist = 200),
             #Bottlecatch(name="trace CATCHED", target_state = BState.CATCHED),
             #Bottlecatch(name="linetrace", target_state = BState.LINE)
-            IsRedColorDetected(name="red",threshold=20),
+            IsRedColorDetected(name="red",threshold=18),
             #IsDistanceEarned(name="check distance 1", delta_dist = 1000),
         ]
     )
@@ -1251,7 +1251,7 @@ def build_behaviour_tree() -> BehaviourTree:
         [
             MoveStraightLR(name="back", right_power=-50, left_power=-50,target_distance=500),
             #MoveStraightLR(name="Turn 2", right_power=75, left_power=0, target_distance=200), #LEFT
-            MoveStraightLR(name="Turn 2", right_power=0, left_power=60, target_distance=200), #RIGHT
+            MoveStraightLR(name="Turn 2", right_power=0, left_power=60, target_distance=300), #RIGHT
             #MoveStraight(name="free run 3", power=40, target_distance=10000),
             #IsColorDetected(name="black")
         ]
