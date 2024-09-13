@@ -646,7 +646,7 @@ def build_behaviour_tree() -> BehaviourTree:
             #IsDistanceEarned(name="check distance 1", delta_dist = 200),
             #Bottlecatch(name="trace CATCHED", target_state = BState.CATCHED),
             #Bottlecatch(name="linetrace", target_state = BState.LINE)
-            IsDistanceEarned(name="check distance 1", delta_dist = 500),
+            IsDistanceEarned(name="check distance 1", delta_dist = 520),
         ]
     )
 
@@ -705,7 +705,7 @@ def build_behaviour_tree() -> BehaviourTree:
         [
             MoveStraight(name="back", power=-40, target_distance=500),
             #MoveStraightLR(name="Turn 2", right_power=75, left_power=0, target_distance=200), #LEFT
-            MoveStraightLR(name="Turn 2", right_power=50, left_power=0, target_distance=200), #RIGHT
+            MoveStraightLR(name="Turn 2", right_power=0, left_power=50, target_distance=200), #RIGHT
             #MoveStraight(name="free run 3", power=40, target_distance=10000),
             #IsColorDetected(name="black")
         ]
@@ -722,7 +722,7 @@ def build_behaviour_tree() -> BehaviourTree:
 
     step_03B_3.add_children(
         [
-            MoveStraightLR(name="Turn 3", right_power=40, left_power=0, target_distance=100),
+            MoveStraightLR(name="Turn 3", right_power=0, left_power=50, target_distance=100),
             # MoveStraightLR(name="back 2", right_power=-40, left_power=-30, target_distance=50),
         ]
     )
