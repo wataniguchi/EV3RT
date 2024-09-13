@@ -705,7 +705,7 @@ def build_behaviour_tree() -> BehaviourTree:
         [
             MoveStraightLR(name="back", right_power=-50, left_power=-50,target_distance=500),
             #MoveStraightLR(name="Turn 2", right_power=75, left_power=0, target_distance=200), #LEFT
-            MoveStraightLR(name="Turn 2", right_power=0, left_power=50, target_distance=200), #RIGHT
+            MoveStraightLR(name="Turn 2", right_power=0, left_power=30, target_distance=200), #RIGHT
             #MoveStraight(name="free run 3", power=40, target_distance=10000),
             #IsColorDetected(name="black")
         ]
