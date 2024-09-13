@@ -20,10 +20,10 @@ class Wheel:
 
 
 class TraceNum:
-    PID_P_FAST: float = 0.95
-    PID_I_FAST: float = 0.001
-    PID_D_FAST: float = 0.1
-    POWER_FAST: int = 60
+    PID_P_FAST: float = 0.6
+    PID_I_FAST: float = 0.0005
+    PID_D_FAST: float = 0.5
+    POWER_FAST: int = 65
 
     PID_P_SLOW: float = 1.4
     PID_I_SLOW: float = 0.0012
