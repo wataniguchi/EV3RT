@@ -399,6 +399,7 @@ class IsBlueColorDetected(Behaviour):
             self.logger.info("青判定")
             return Status.SUCCESS
         else:
+            self.logger.info("%+06d %s.blue color ratio exceeds threshold: %f" % (g_plotter.get_distance(), self.__class__.__name__, blue_percentage))
             return Status.RUNNING
         
 # デブリプログラムから流用
@@ -739,7 +740,7 @@ def build_behaviour_tree() -> BehaviourTree:
             #MoveStraightLR(name="Turn 3", right_power=70, left_power=35, target_distance=200),
             TraceLineCam(name="last run", power=40, pid_p=2.5, pid_i=0.0015, pid_d=0.1,
                          gs_min=0, gs_max=80, trace_side=TraceSide.CENTER),
-            IsDistanceEarned(name="check distance 2", delta_dist = 600),
+            IsDistanceEarned(name="check distance 2", delta_dist = 500),
             # IsDistanceEarned(name="check distance 2", delta_dist = 870),
             # IsBlueColorDetected(name="check blue color", threshold=12.0),
             IsColorDetected(name="blue"),
@@ -752,7 +753,7 @@ def build_behaviour_tree() -> BehaviourTree:
         [
             TraceLineCam(name="last run", power=40, pid_p=2.5, pid_i=0.0015, pid_d=0.1,
                          gs_min=0, gs_max=80, trace_side=TraceSide.CENTER),
-            IsDistanceEarned(name="check distance 2", delta_dist = 250),
+            IsDistanceEarned(name="check distance 2", delta_dist = 350),
             IsBlueColorDetected(name="check blue color", threshold=12.0),
             # IsColorDetected(name="blue"),
         ]
