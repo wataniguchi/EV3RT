@@ -68,6 +68,7 @@ g_gyro_sensor: GyroSensor = None
 g_video: Video = None
 g_video_thread: threading.Thread = None
 g_course: int = 0
+g_dist: int = 1600
 
 
 
@@ -725,7 +726,7 @@ def build_behaviour_tree() -> BehaviourTree:
 
     step_03B_3.add_children(
         [
-            MoveStraightLR(name="Turn 3", right_power=50, left_power=0, target_distance=100),
+            MoveStraightLR(name="Turn 3", right_power=40, left_power=0, target_distance=100),
             # MoveStraightLR(name="back 2", right_power=-40, left_power=-30, target_distance=50),
         ]
     )
