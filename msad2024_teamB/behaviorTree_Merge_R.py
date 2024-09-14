@@ -999,7 +999,7 @@ def build_behaviour_tree() -> BehaviourTree:
     step_03B_1.add_children(
         [
             MoveStraightLR(name="back", right_power=-50, left_power=-50, target_distance=500),
-            MoveStraightLR(name="Turn 2", right_power=50, left_power=0, target_distance=150), #LEFT
+            MoveStraightLR(name="Turn 2", right_power=50, left_power=0, target_distance=180), #LEFT
         ]
     )
         # サークルへ配置からライン復帰
@@ -1012,7 +1012,7 @@ def build_behaviour_tree() -> BehaviourTree:
 
     step_03B_3.add_children(
         [
-            MoveStraightLR(name="Turn 3", right_power=50, left_power=0, target_distance=150),
+            MoveStraightLR(name="Turn 3", right_power=50, left_power=0, target_distance=190),
             MoveStraight(name="back", power=-50, target_distance=100),
         ]
     )
