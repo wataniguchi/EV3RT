@@ -764,6 +764,7 @@ def build_behaviour_tree() -> BehaviourTree:
     dbr_loop_45 = Parallel(name="loop 44", policy=ParallelPolicy.SuccessOnOne())
     step_01A_1 = Parallel(name="step 01A_1", policy=ParallelPolicy.SuccessOnOne())
     step_01A_4 = Parallel(name="step 01A_4", policy=ParallelPolicy.SuccessOnOne())
+    step_01B =  Parallel(name="step 01B", policy=ParallelPolicy.SuccessOnOne())
     step_02B = Sequence(name="step 02B", memory=True)
     step_03B_1 = Sequence(name="step 03B_1", memory=True)
     step_03B_2 = Parallel(name="step 03B_2", policy=ParallelPolicy.SuccessOnOne())
@@ -1171,16 +1172,21 @@ def build_behaviour_tree() -> BehaviourTree:
         IsRedColorDetected(name="check red color", threshold=13.0), 
         ]
     )
-    step_01A_1.add_children(
-        [
-            MoveStraight(name="free run 1", power=37, target_distance=110),
-        ]
-    )
+    # step_01A_1.add_children(
+    #     [
+    #         MoveStraight(name="free run 1", power=37, target_distance=110),
+    #     ]
+    # )
     step_01A_4.add_children(
         [
             TraceLineCam(name="trace buleline4", power=40, pid_p=1.0, pid_i=0.0015, pid_d=0.5,
                  gs_min=0, gs_max=80, trace_side=TraceSide.CENTER),
-            IsDistanceEarned(name="check distance 1", delta_dist = 380),
+            IsRedColorDetected(name="red", threshold=18),
+        ]
+    )
+    step_01B.add_children(
+        [
+            MoveStraight(name="free run 1B", power=50, target_distance=110)
         ]
     )
     # ボトル取得からサークルへ配置
@@ -1305,6 +1311,7 @@ def build_behaviour_tree() -> BehaviourTree:
             # スマートキャリー
             step_01A_1,
             step_01A_4,
+            step_01B,
             step_02B,
             step_03B_1,
             step_03B_2,
