@@ -394,7 +394,7 @@ class IsRedColorDetected(Behaviour):
 
         red_percentage = g_video.get_red_ratio() * 100
         if red_percentage <= self.threshold:
-            self.logger.info("%+06d %s.red color ratio exceeds threshold: %f" % (g_plotter.get_distance(), self.__class__.__name__, blue_percentage))
+            self.logger.info("%+06d %s.red color ratio exceeds threshold: %f" % (g_plotter.get_distance(), self.__class__.__name__, red_percentage))
             #g_dist = g_dist - g_earned_dist
             #self.logger.info("グローバル変数更新 g_dist = g_dist - g_earned_dist")
             # print("g_earned_dist:"+ str(g_earned_dist))
@@ -402,7 +402,7 @@ class IsRedColorDetected(Behaviour):
             #self.logger.info("青判定")
             return Status.SUCCESS
         else:
-            self.logger.info("%+06d %s.not red color ratio exceeds threshold: %f" % (g_plotter.get_distance(), self.__class__.__name__, blue_percentage))
+            self.logger.info("%+06d %s.not red color ratio exceeds threshold: %f" % (g_plotter.get_distance(), self.__class__.__name__, red_percentage))
             return Status.RUNNING
 
 
