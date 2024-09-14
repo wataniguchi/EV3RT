@@ -1168,7 +1168,7 @@ def build_behaviour_tree() -> BehaviourTree:
     #スマートキャリーのボトルまで
     dbr_loop_45.add_children(
         [
-        TraceLineCam(name="trace normal edge", power=32, pid_p=0.8, pid_i=0.0015, pid_d=0.1,gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
+        TraceLineCam(name="trace normal edge", power=34, pid_p=0.8, pid_i=0.0015, pid_d=0.1,gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
         IsRedColorDetected(name="check red color", threshold=13.0), 
         ]
     )
@@ -1192,7 +1192,7 @@ def build_behaviour_tree() -> BehaviourTree:
     # ボトル取得からサークルへ配置
     step_02B.add_children(
         [
-            MoveStraightLR(name="Turn 1", right_power=15, left_power=90, target_distance=195), #LEFT
+            MoveStraightLR(name="Turn 1", right_power=15, left_power=90, target_distance=205), #LEFT
             MoveStraight(name="free run 2", power=70, target_distance=1000),
             MoveStraight(name="free run 2-2", power=50, target_distance=250),
         ]
