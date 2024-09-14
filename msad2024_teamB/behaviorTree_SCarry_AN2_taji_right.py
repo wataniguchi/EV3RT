@@ -393,7 +393,7 @@ class IsRedColorDetected(Behaviour):
             self.logger.info("%+06d %s.checking red color ratio with threshold=%f" % (g_plotter.get_distance(), self.__class__.__name__, self.threshold))
 
         red_percentage = g_video.get_red_ratio() * 100
-        if red_percentage <= self.threshold:
+        if red_percentage > self.threshold:
             self.logger.info("%+06d %s.red color ratio exceeds threshold: %f" % (g_plotter.get_distance(), self.__class__.__name__, red_percentage))
             #g_dist = g_dist - g_earned_dist
             #self.logger.info("グローバル変数更新 g_dist = g_dist - g_earned_dist")
@@ -680,7 +680,7 @@ def build_behaviour_tree() -> BehaviourTree:
             #IsDistanceEarned(name="check distance 1", delta_dist = 200),
             #Bottlecatch(name="trace CATCHED", target_state = BState.CATCHED),
             #Bottlecatch(name="linetrace", target_state = BState.LINE)
-            IsRedColorDetected(name="red", threshold=12),
+            IsRedColorDetected(name="red", threshold=17),
             #IsDistanceEarned(name="check distance 1", delta_dist = 500),
         ]
     )
