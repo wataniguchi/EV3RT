@@ -982,14 +982,14 @@ def build_behaviour_tree() -> BehaviourTree:
     # 左に90度回転
     dbr_loop_26.add_children(
         [
-            MoveStraightLR(name="move straight 4", right_power=60, left_power=0, target_distance=210),
+            MoveStraightLR(name="move straight 4", right_power=60, left_power=0, target_distance=200),
         ]
     )
 # 3列目
     # 指定距離走行_before、赤青判定
     dbr_loop_27.add_children(
         [
-        TraceLineCam(name="trace normal edge", power=33, pid_p=0.8, pid_i=0.0015, pid_d=0.1,
+        TraceLineCam(name="trace normal edge", power=32, pid_p=0.8, pid_i=0.0015, pid_d=0.1,
                          gs_min=0, gs_max=80, trace_side=TraceSide.CENTER),
         IsDistanceEarned_before(name="check distance", delta_dist = 1050),
         IsRedColorDetected(name="check red color", threshold=11.0), 
