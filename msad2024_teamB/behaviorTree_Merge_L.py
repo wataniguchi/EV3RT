@@ -1054,7 +1054,7 @@ def build_behaviour_tree() -> BehaviourTree:
     # 指定距離走行_before、赤青判定
     dbr_loop_27.add_children(
         [
-        TraceLineCam(name="trace normal edge", power=32, pid_p=0.8, pid_i=0.0015, pid_d=0.1,
+        TraceLineCam(name="trace normal edge", power=33, pid_p=0.8, pid_i=0.0015, pid_d=0.1,
                          gs_min=0, gs_max=80, trace_side=TraceSide.CENTER),
         IsDistanceEarned_before(name="check distance", delta_dist = 1050),
         IsRedColorDetected(name="check red color", threshold=11.0), 
@@ -1192,7 +1192,7 @@ def build_behaviour_tree() -> BehaviourTree:
     # ボトル取得からサークルへ配置
     step_02B.add_children(
         [
-            MoveStraightLR(name="Turn 1", right_power=15, left_power=90, target_distance=180), #LEFT
+            MoveStraightLR(name="Turn 1", right_power=15, left_power=90, target_distance=195), #LEFT
             MoveStraight(name="free run 2", power=70, target_distance=1000),
             MoveStraight(name="free run 2-2", power=50, target_distance=250),
         ]
@@ -1201,7 +1201,7 @@ def build_behaviour_tree() -> BehaviourTree:
     step_03B_1.add_children(
         [
             MoveStraight(name="back", power=-40, target_distance=500),
-            MoveStraightLR(name="Turn 2", right_power=75, left_power=0, target_distance=200), #LEFT
+            MoveStraightLR(name="Turn 2", right_power=75, left_power=0, target_distance=180), #LEFT
         ]
     )
         # サークルへ配置からライン復帰
