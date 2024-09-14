@@ -1220,7 +1220,7 @@ def build_behaviour_tree() -> BehaviourTree:
             dbr_loop_41,
             dbr_loop_42,
             dbr_loop_43,
-            dbr_loop_44
+            dbr_loop_44,
             dbr_loop_45,
             # スマートキャリー
             # step_01A_1,
