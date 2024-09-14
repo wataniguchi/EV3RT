@@ -720,7 +720,8 @@ def build_behaviour_tree() -> BehaviourTree:
 
     step_01B.add_children(
          [
-             MoveStraight(name="free run 1B", power=50, target_distance=200)
+             MoveStraight(name="free run 1B", power=50, target_distance=100)
+             #MoveStraight(name="free run 1B", power=50, target_distance=200)
              # IsSonarOn(name="check bottol", alert_dist=150)
          ]
      )
