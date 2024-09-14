@@ -809,7 +809,7 @@ def build_behaviour_tree() -> BehaviourTree:
     )
     dbr_loop_02.add_children(
         [
-            MoveStraight_dbr(name="move straight", power=40, target_distance=150),
+            MoveStraight_dbr(name="move straight", power=40, target_distance=180),
         ]
     )
     dbr_loop_03.add_children(
@@ -859,8 +859,8 @@ def build_behaviour_tree() -> BehaviourTree:
     )
     dbr_loop_11.add_children(
         [
-        TraceLineCam(name="trace normal edge", power=34, pid_p=0.8, pid_i=0.0015, pid_d=0.1,
-                         gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
+        TraceLineCam(name="trace normal edge", power=33, pid_p=0.8, pid_i=0.0015, pid_d=0.1,
+                         gs_min=0, gs_max=80, trace_side=TraceSide.OPPOSITE),
         IsDistanceEarned_before(name="check distance", delta_dist = 1200),
         IsRedColorDetected(name="check red color", threshold=12.0), 
         IsBlueColorDetected(name="check blue color", threshold=12.0), 
