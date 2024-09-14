@@ -631,19 +631,19 @@ def build_behaviour_tree() -> BehaviourTree:
     root = Sequence(name="competition", memory=True)
     calibration = Sequence(name="calibration", memory=True)
     start = Parallel(name="start", policy=ParallelPolicy.SuccessOnOne())
-    # wloop_01 = Parallel(name="loop 01", policy=ParallelPolicy.SuccessOnOne())
-    # wloop_02 = Parallel(name="loop 02", policy=ParallelPolicy.SuccessOnOne())
-    # wloop_03 = Parallel(name="loop 03", policy=ParallelPolicy.SuccessOnOne())
-    # wloop_04 = Parallel(name="loop 04", policy=ParallelPolicy.SuccessOnOne())
-    # wloop_05 = Parallel(name="loop 05", policy=ParallelPolicy.SuccessOnOne())
-    # wloop_06 = Parallel(name="loop 06", policy=ParallelPolicy.SuccessOnOne())
-    # wloop_07 = Parallel(name="loop 07", policy=ParallelPolicy.SuccessOnOne())
-    # wloop_08 = Parallel(name="loop 08", policy=ParallelPolicy.SuccessOnOne())
-    # wloop_09 = Parallel(name="loop 09", policy=ParallelPolicy.SuccessOnOne())
-    # wloop_10 = Parallel(name="loop 10", policy=ParallelPolicy.SuccessOnOne())
-    # wloop_11 = Parallel(name="loop 11", policy=ParallelPolicy.SuccessOnOne())
-    # wloop_12 = Parallel(name="loop 12", policy=ParallelPolicy.SuccessOnOne())
-    # wloop_13 = Parallel(name="loop 13", policy=ParallelPolicy.SuccessOnOne())
+    wloop_01 = Parallel(name="loop 01", policy=ParallelPolicy.SuccessOnOne())
+    wloop_02 = Parallel(name="loop 02", policy=ParallelPolicy.SuccessOnOne())
+    wloop_03 = Parallel(name="loop 03", policy=ParallelPolicy.SuccessOnOne())
+    wloop_04 = Parallel(name="loop 04", policy=ParallelPolicy.SuccessOnOne())
+    wloop_05 = Parallel(name="loop 05", policy=ParallelPolicy.SuccessOnOne())
+    wloop_06 = Parallel(name="loop 06", policy=ParallelPolicy.SuccessOnOne())
+    wloop_07 = Parallel(name="loop 07", policy=ParallelPolicy.SuccessOnOne())
+    wloop_08 = Parallel(name="loop 08", policy=ParallelPolicy.SuccessOnOne())
+    wloop_09 = Parallel(name="loop 09", policy=ParallelPolicy.SuccessOnOne())
+    wloop_10 = Parallel(name="loop 10", policy=ParallelPolicy.SuccessOnOne())
+    wloop_11 = Parallel(name="loop 11", policy=ParallelPolicy.SuccessOnOne())
+    wloop_12 = Parallel(name="loop 12", policy=ParallelPolicy.SuccessOnOne())
+    wloop_13 = Parallel(name="loop 13", policy=ParallelPolicy.SuccessOnOne())
     dbr_loop_01 = Parallel(name="loop 01", policy=ParallelPolicy.SuccessOnOne())
     dbr_loop_02 = Parallel(name="loop 02", policy=ParallelPolicy.SuccessOnOne())
     dbr_loop_03 = Parallel(name="loop 03", policy=ParallelPolicy.SuccessOnOne())
@@ -662,13 +662,13 @@ def build_behaviour_tree() -> BehaviourTree:
     dbr_loop_16 = Parallel(name="loop 16", policy=ParallelPolicy.SuccessOnOne())
     dbr_loop_17 = Parallel(name="loop 17", policy=ParallelPolicy.SuccessOnOne())
     dbr_loop_18 = Parallel(name="loop 18", policy=ParallelPolicy.SuccessOnOne())
-    # step_01A_1 = Parallel(name="step 01A_1", policy=ParallelPolicy.SuccessOnOne())
-    # step_01A_4 = Parallel(name="step 01A_4", policy=ParallelPolicy.SuccessOnOne())
-    # step_02B = Sequence(name="step 02B", memory=True)
-    # step_03B_1 = Sequence(name="step 03B_1", memory=True)
-    # step_03B_2 = Parallel(name="step 03B_2", policy=ParallelPolicy.SuccessOnOne())
-    # step_03B_3 = Sequence(name="step 03B_3", memory=False)
-    # step_04B = Parallel(name="step 04B", policy=ParallelPolicy.SuccessOnOne())
+    step_01A_1 = Parallel(name="step 01A_1", policy=ParallelPolicy.SuccessOnOne())
+    step_01A_4 = Parallel(name="step 01A_4", policy=ParallelPolicy.SuccessOnOne())
+    step_02B = Sequence(name="step 02B", memory=True)
+    step_03B_1 = Sequence(name="step 03B_1", memory=True)
+    step_03B_2 = Parallel(name="step 03B_2", policy=ParallelPolicy.SuccessOnOne())
+    step_03B_3 = Sequence(name="step 03B_3", memory=False)
+    step_04B = Parallel(name="step 04B", policy=ParallelPolicy.SuccessOnOne())
 
     calibration.add_children(
         [
@@ -961,19 +961,19 @@ def build_behaviour_tree() -> BehaviourTree:
             calibration,
             start,
             # Wループ
-            wloop_01,
-            # wloop_02,
-            wloop_03,
-            wloop_04,
-            wloop_05,
-            wloop_06,
-            wloop_07,
-            wloop_08,
-            wloop_09,
-            wloop_10,
-            wloop_11,
-            wloop_12,
-            wloop_13,
+            # wloop_01,
+            # # wloop_02,
+            # wloop_03,
+            # wloop_04,
+            # wloop_05,
+            # wloop_06,
+            # wloop_07,
+            # wloop_08,
+            # wloop_09,
+            # wloop_10,
+            # wloop_11,
+            # wloop_12,
+            # wloop_13,
             # デブリ
             dbr_loop_01,
             dbr_loop_02,
@@ -994,13 +994,13 @@ def build_behaviour_tree() -> BehaviourTree:
             dbr_loop_17,
             dbr_loop_18,
             # スマートキャリー
-            step_01A_1,
-            step_01A_4,
-            step_02B,
-            step_03B_1,
-            step_03B_2,
-            step_03B_3,
-            step_04B,
+            # step_01A_1,
+            # step_01A_4,
+            # step_02B,
+            # step_03B_1,
+            # step_03B_2,
+            # step_03B_3,
+            # step_04B,
             StopNow(name="stop"),
             TheEnd(name="end"),
         ]
