@@ -976,7 +976,7 @@ def build_behaviour_tree() -> BehaviourTree:
     )
     dbr_loop_14.add_children(
         [
-            MoveStraight_dbr(name="move straight", power=40, target_distance=150),
+            MoveStraight_dbr(name="move straight", power=40, target_distance=180),
         ]
     )
     dbr_loop_15.add_children(
@@ -996,7 +996,7 @@ def build_behaviour_tree() -> BehaviourTree:
     )
     dbr_loop_18.add_children(
         [
-            MoveStraight_dbr(name="back", power=-50, target_distance=75)
+            MoveStraight_dbr(name="back", power=-50, target_distance=105)
         ]
     )
     # 指定距離走行_after
