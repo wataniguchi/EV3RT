@@ -737,7 +737,7 @@ def build_behaviour_tree() -> BehaviourTree:
     step_01B = Sequence(name="step 01B", memory=True)
     step_02B = Sequence(name="step 02B", memory=True)
     step_03B_1 = Sequence(name="step 03B_1", memory=True)
-    step_03B_2 = Parallel(name="step 03B_2", policy=ParallelPolicy.SuccessOnOne())
+    step_03B_2 = Parallel(name="step 03B_2", policy=Parall  elPolicy.SuccessOnOne())
     step_03B_3 = Sequence(name="step 03B_3", memory=True)
     step_04B = Parallel(name="step 04B", policy=ParallelPolicy.SuccessOnOne())
     step_04B_2= Parallel(name="step 04B_2", policy=ParallelPolicy.SuccessOnOne())
@@ -1039,7 +1039,7 @@ def build_behaviour_tree() -> BehaviourTree:
         [
             TraceLineCam(name="last run 2", power=40, pid_p=2.5, pid_i=0.0015, pid_d=0.1,
                          gs_min=0, gs_max=80, trace_side=TraceSide.CENTER),
-            IsDistanceEarned(name="check distance 3", delta_dist = 150),
+            IsDistanceEarned(name="check distance 3", delta_dist = 300),
         ]
     )
 
