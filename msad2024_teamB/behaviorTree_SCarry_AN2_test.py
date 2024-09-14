@@ -589,18 +589,18 @@ def build_behaviour_tree() -> BehaviourTree:
     root = Sequence(name="competition", memory=True)
     calibration = Sequence(name="calibration", memory=True)
     start = Parallel(name="start", policy=ParallelPolicy.SuccessOnOne())
-    # step_01A_1 = Parallel(name="step 01A_1", policy=ParallelPolicy.SuccessOnOne())
-    # #step_01A_2 = Parallel(name="step 01A_2", policy=ParallelPolicy.SuccessOnOne())
-    # #step_01A_3 = Parallel(name="step 01A_3", policy=ParallelPolicy.SuccessOnOne())
-    # step_01A_4 = Parallel(name="step 01A_4", policy=ParallelPolicy.SuccessOnOne())
-    # #step_01B_1 = Parallel(name="step 01B_1", policy=ParallelPolicy.SuccessOnOne())
-    # #step_01B_2 = Parallel(name="step 01B_2", policy=ParallelPolicy.SuccessOnOne())
-    # #step_01B = Parallel(name="step 01B", policy=ParallelPolicy.SuccessOnSelected(children=[step_01B_1,step_01B_2]),children=[step_01B_1,step_01B_2])
-    # step_02B = Sequence(name="step 02B", memory=True)
-    # step_03B_1 = Sequence(name="step 03B_1", memory=True)
-    # step_03B_2 = Parallel(name="step 03B_2", policy=ParallelPolicy.SuccessOnOne())
-    # step_03B_3 = Parallel(name="step 03B_3", policy=ParallelPolicy.SuccessOnOne())
-    # step_03B_3 = Sequence(name="step 03B_3", memory=True)
+    step_01A_1 = Parallel(name="step 01A_1", policy=ParallelPolicy.SuccessOnOne())
+    #step_01A_2 = Parallel(name="step 01A_2", policy=ParallelPolicy.SuccessOnOne())
+    #step_01A_3 = Parallel(name="step 01A_3", policy=ParallelPolicy.SuccessOnOne())
+    step_01A_4 = Parallel(name="step 01A_4", policy=ParallelPolicy.SuccessOnOne())
+    #step_01B_1 = Parallel(name="step 01B_1", policy=ParallelPolicy.SuccessOnOne())
+    #step_01B_2 = Parallel(name="step 01B_2", policy=ParallelPolicy.SuccessOnOne())
+    #step_01B = Parallel(name="step 01B", policy=ParallelPolicy.SuccessOnSelected(children=[step_01B_1,step_01B_2]),children=[step_01B_1,step_01B_2])
+    step_02B = Sequence(name="step 02B", memory=True)
+    step_03B_1 = Sequence(name="step 03B_1", memory=True)
+    step_03B_2 = Parallel(name="step 03B_2", policy=ParallelPolicy.SuccessOnOne())
+    step_03B_3 = Parallel(name="step 03B_3", policy=ParallelPolicy.SuccessOnOne())
+    step_03B_3 = Sequence(name="step 03B_3", memory=True)
     step_04B = Parallel(name="step 04B", policy=ParallelPolicy.SuccessOnOne())
     step_04B_2 = Parallel(name="step 04B_2", policy=ParallelPolicy.SuccessOnOne())
     #step_04B = Sequence(name="step 04B", memory=True)
@@ -617,123 +617,123 @@ def build_behaviour_tree() -> BehaviourTree:
             IsTouchOn(name="touch start"),
         ]
     )
-    # step_01A_1.add_children(
+    step_01A_1.add_children(
+        [
+            #TraceLineCam(name="trace buleline1", power=39, pid_p=2.5, pid_i=0.0015, pid_d=0.1,
+            #     gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
+            #IsDistanceEarned(name="check distance 1", delta_dist = 200),
+            MoveStraight(name="free run 1", power=37, target_distance=110),
+            #Bottlecatch(name="trace PRE", target_state = BState.PRELINE)
+            #Bottlecatch(name="linetrace", target_state = BState.LINE)
+            #IsDistanceEarned(name="check distance 1", delta_dist = 100)
+        ]
+    )
+    # step_01A_2.add_children(
     #     [
-    #         #TraceLineCam(name="trace buleline1", power=39, pid_p=2.5, pid_i=0.0015, pid_d=0.1,
-    #         #     gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
+    #         TraceLineCam(name="trace buleline2", power=34, pid_p=2.5, pid_i=0.0015, pid_d=0.1,
+    #              gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
     #         #IsDistanceEarned(name="check distance 1", delta_dist = 200),
-    #         MoveStraight(name="free run 1", power=37, target_distance=110),
-    #         #Bottlecatch(name="trace PRE", target_state = BState.PRELINE)
-    #         #Bottlecatch(name="linetrace", target_state = BState.LINE)
-    #         #IsDistanceEarned(name="check distance 1", delta_dist = 100)
+    #         Bottlecatch(name="linetrace", target_state = BState.LINE)
+    #         #IsDistanceEarned(name="check distance 1", delta_dist = 400)
     #     ]
     # )
-    # # step_01A_2.add_children(
-    # #     [
-    # #         TraceLineCam(name="trace buleline2", power=34, pid_p=2.5, pid_i=0.0015, pid_d=0.1,
-    # #              gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
-    # #         #IsDistanceEarned(name="check distance 1", delta_dist = 200),
-    # #         Bottlecatch(name="linetrace", target_state = BState.LINE)
-    # #         #IsDistanceEarned(name="check distance 1", delta_dist = 400)
-    # #     ]
-    # # )
-    # # step_01A_3.add_children(
-    # #    [
-    # #        TraceLineCam(name="trace buleline3", power=50, pid_p=2.5, pid_i=0.0015, pid_d=0.1,
-    # #             gs_min=0, gs_max=80, trace_side=TraceSide.CENTER),
-    # #        #IsDistanceEarned(name="check distance 1", delta_dist = 200),
-    # #        Bottlecatch(name="trace CIRCLE", target_state = BState.CIRCLE)
-    # #        #Bottlecatch(name="linetrace", target_state = BState.LINE)
-    # #        #IsDistanceEarned(name="check distance 1", delta_dist = 400)
-    # #    ]
-    # # )
-    # step_01A_4.add_children(
-    #     [
-    #         TraceLineCam(name="trace buleline4", power=40, pid_p=1.0, pid_i=0.0015, pid_d=0.5,
-    #              gs_min=0, gs_max=80, trace_side=TraceSide.CENTER),
-    #         #IsDistanceEarned(name="check distance 1", delta_dist = 200),
-    #         #Bottlecatch(name="trace CATCHED", target_state = BState.CATCHED),
-    #         #Bottlecatch(name="linetrace", target_state = BState.LINE)
-    #         IsDistanceEarned(name="check distance 1", delta_dist = 500),
-    #     ]
+    # step_01A_3.add_children(
+    #    [
+    #        TraceLineCam(name="trace buleline3", power=50, pid_p=2.5, pid_i=0.0015, pid_d=0.1,
+    #             gs_min=0, gs_max=80, trace_side=TraceSide.CENTER),
+    #        #IsDistanceEarned(name="check distance 1", delta_dist = 200),
+    #        Bottlecatch(name="trace CIRCLE", target_state = BState.CIRCLE)
+    #        #Bottlecatch(name="linetrace", target_state = BState.LINE)
+    #        #IsDistanceEarned(name="check distance 1", delta_dist = 400)
+    #    ]
     # )
+    step_01A_4.add_children(
+        [
+            TraceLineCam(name="trace buleline4", power=40, pid_p=1.0, pid_i=0.0015, pid_d=0.5,
+                 gs_min=0, gs_max=80, trace_side=TraceSide.CENTER),
+            #IsDistanceEarned(name="check distance 1", delta_dist = 200),
+            #Bottlecatch(name="trace CATCHED", target_state = BState.CATCHED),
+            #Bottlecatch(name="linetrace", target_state = BState.LINE)
+            IsDistanceEarned(name="check distance 1", delta_dist = 500),
+        ]
+    )
 
-    # # デブリからボトル取得
-    # #step_01B.add_children(
-    # #    [
-    # #        TraceLineCam(name="trace buleline", power=39, pid_p=2.5, pid_i=0.0015, pid_d=0.1,
-    # #             gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
-    # #        #IsDistanceEarned(name="check distance 1", delta_dist = 200),
-    # #        #Bottlecatch(name="linetrace pre", target_state = BState.PRELINE),
-    # #        #Bottlecatch(name="linetrace", target_state = BState.LINE)
-    # #        #IsDistanceEarned(name="check distance 1", delta_dist = 400)
-    # #    ]
-    # #)
+    # デブリからボトル取得
+    #step_01B.add_children(
+    #    [
+    #        TraceLineCam(name="trace buleline", power=39, pid_p=2.5, pid_i=0.0015, pid_d=0.1,
+    #             gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
+    #        #IsDistanceEarned(name="check distance 1", delta_dist = 200),
+    #        #Bottlecatch(name="linetrace pre", target_state = BState.PRELINE),
+    #        #Bottlecatch(name="linetrace", target_state = BState.LINE)
+    #        #IsDistanceEarned(name="check distance 1", delta_dist = 400)
+    #    ]
+    #)
 
-    # #step_01B_1.add_children(
-    # #    [
-    # #        #TraceLineCam(name="trace buleline", power=39, pid_p=2.5, pid_i=0.0015, pid_d=0.1,
-    # #        #     gs_min=0, gs_max=80, trace_side=TraceSide.CENTER),
-    # #        IsDistanceEarned(name="check distance 1", delta_dist = 200),
-    # #        Bottlecatch(name="linetrace pre", target_state = BState.PRELINE),
-    # #        #Bottlecatch(name="linetrace", target_state = BState.LINE)
-    # #        #IsDistanceEarned(name="check distance 1", delta_dist = 400)
-    # #    ]
-    # #)
-    # #step_01B_2.add_children(
-    # #    [
-    # #        #TraceLineCam(name="trace buleline", power=39, pid_p=2.5, pid_i=0.0015, pid_d=0.1,
-    # #        #     gs_min=0, gs_max=80, trace_side=TraceSide.CENTER),
-    # #        #IsDistanceEarned(name="check distance 1", delta_dist = 200),
-    # #        #Bottlecatch(name="linetrace pre", target_state = BState.PRELINE),
-    # #        Bottlecatch(name="linetrace", target_state = BState.LINE)
-    # #        #IsDistanceEarned(name="check distance 1", delta_dist = 400)
-    # #    ]
-    # #)
+    #step_01B_1.add_children(
+    #    [
+    #        #TraceLineCam(name="trace buleline", power=39, pid_p=2.5, pid_i=0.0015, pid_d=0.1,
+    #        #     gs_min=0, gs_max=80, trace_side=TraceSide.CENTER),
+    #        IsDistanceEarned(name="check distance 1", delta_dist = 200),
+    #        Bottlecatch(name="linetrace pre", target_state = BState.PRELINE),
+    #        #Bottlecatch(name="linetrace", target_state = BState.LINE)
+    #        #IsDistanceEarned(name="check distance 1", delta_dist = 400)
+    #    ]
+    #)
+    #step_01B_2.add_children(
+    #    [
+    #        #TraceLineCam(name="trace buleline", power=39, pid_p=2.5, pid_i=0.0015, pid_d=0.1,
+    #        #     gs_min=0, gs_max=80, trace_side=TraceSide.CENTER),
+    #        #IsDistanceEarned(name="check distance 1", delta_dist = 200),
+    #        #Bottlecatch(name="linetrace pre", target_state = BState.PRELINE),
+    #        Bottlecatch(name="linetrace", target_state = BState.LINE)
+    #        #IsDistanceEarned(name="check distance 1", delta_dist = 400)
+    #    ]
+    #)
 
-    # # step_01B.add_children(
-    # #     [
-    # #         MoveStraight(name="free run 1", power=50, target_distance=450)
-    # #         # IsSonarOn(name="check bottol", alert_dist=150)
-    # #     ]
-    # # )
-    # # ボトル取得からサークルへ配置
-    # step_02B.add_children(
+    # step_01B.add_children(
     #     [
-    #         #MoveStraightLR(name="Turn 1", right_power=15, left_power=90, target_distance=180),
-    #         MoveStraightLR(name="Turn 1", right_power=15, left_power=90, target_distance=157), #LEFT
-    #         # MoveStraightLR(name="Turn 1", right_power=15, left_power=70, target_distance=157), #RIGHT
-    #         MoveStraight(name="free run 2", power=70, target_distance=1000),
-    #         MoveStraight(name="free run 2-2", power=50, target_distance=250),
-    #         # color sensor add
+    #         MoveStraight(name="free run 1", power=50, target_distance=450)
+    #         # IsSonarOn(name="check bottol", alert_dist=150)
     #     ]
     # )
-    # # サークルへ配置からライン復帰
-    # step_03B_1.add_children(
-    #     [
-    #         MoveStraight(name="back", power=-40, target_distance=500),
-    #         MoveStraightLR(name="Turn 2", right_power=75, left_power=0, target_distance=200), #LEFT
-    #         # MoveStraightLR(name="Turn 2", right_power=40, left_power=0, target_distance=200), #RIGHT
-    #         #MoveStraight(name="free run 3", power=40, target_distance=10000),
-    #         #IsColorDetected(name="black")
-    #     ]
-    # )
-    #     # サークルへ配置からライン復帰
-    # step_03B_2.add_children(
-    #     [
-    #         #MoveStraight(name="back", power=-70, target_distance=200),
-    #         #MoveStraightLR(name="Turn 2", right_power=70, left_power=0, target_distance=200),
-    #         MoveStraight(name="free run 3", power=40, target_distance=10000),
-    #         IsColorDetected(name="black")
-    #     ]
-    # )
+    # ボトル取得からサークルへ配置
+    step_02B.add_children(
+        [
+            #MoveStraightLR(name="Turn 1", right_power=15, left_power=90, target_distance=180),
+            MoveStraightLR(name="Turn 1", right_power=15, left_power=90, target_distance=157), #LEFT
+            # MoveStraightLR(name="Turn 1", right_power=15, left_power=70, target_distance=157), #RIGHT
+            MoveStraight(name="free run 2", power=70, target_distance=1000),
+            MoveStraight(name="free run 2-2", power=50, target_distance=250),
+            # color sensor add
+        ]
+    )
+    # サークルへ配置からライン復帰
+    step_03B_1.add_children(
+        [
+            MoveStraight(name="back", power=-40, target_distance=500),
+            MoveStraightLR(name="Turn 2", right_power=75, left_power=0, target_distance=200), #LEFT
+            # MoveStraightLR(name="Turn 2", right_power=40, left_power=0, target_distance=200), #RIGHT
+            #MoveStraight(name="free run 3", power=40, target_distance=10000),
+            #IsColorDetected(name="black")
+        ]
+    )
+        # サークルへ配置からライン復帰
+    step_03B_2.add_children(
+        [
+            #MoveStraight(name="back", power=-70, target_distance=200),
+            #MoveStraightLR(name="Turn 2", right_power=70, left_power=0, target_distance=200),
+            MoveStraight(name="free run 3", power=40, target_distance=10000),
+            IsColorDetected(name="black")
+        ]
+    )
 
-    # step_03B_3.add_children(
-    #     [
-    #         MoveStraightLR(name="Turn 3", right_power=50, left_power=0, target_distance=100),
-    #         # MoveStraightLR(name="back 2", right_power=-40, left_power=-30, target_distance=50),
-    #     ]
-    # )
+    step_03B_3.add_children(
+        [
+            MoveStraightLR(name="Turn 3", right_power=50, left_power=0, target_distance=100),
+            # MoveStraightLR(name="back 2", right_power=-40, left_power=-30, target_distance=50),
+        ]
+    )
 
     # ライン復帰からゴール
     step_04B.add_children(
@@ -764,17 +764,17 @@ def build_behaviour_tree() -> BehaviourTree:
         [
             calibration,
             start,
-            # step_01A_1,
-            # #step_01A_2,
-            # #step_01A_3,
-            # step_01A_4,
-            # #step_01B,
-            # #step_01B_1,
-            # #step_01B_2,
-            # step_02B,
-            # step_03B_1,
-            # step_03B_2,
-            # step_03B_3,
+            step_01A_1,
+            #step_01A_2,
+            #step_01A_3,
+            step_01A_4,
+            #step_01B,
+            #step_01B_1,
+            #step_01B_2,
+            step_02B,
+            step_03B_1,
+            step_03B_2,
+            step_03B_3,
             step_04B,
             step_04B_2,
             StopNow(name="stop"),
