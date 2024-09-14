@@ -690,6 +690,7 @@ def build_behaviour_tree() -> BehaviourTree:
     dbr_loop_42 = Parallel(name="loop 42", policy=ParallelPolicy.SuccessOnOne())
     dbr_loop_43 = Parallel(name="loop 43", policy=ParallelPolicy.SuccessOnOne())
     dbr_loop_44 = Parallel(name="loop 44", policy=ParallelPolicy.SuccessOnOne())
+    dbr_loop_45 = Parallel(name="loop 44", policy=ParallelPolicy.SuccessOnOne())
     step_01A_1 = Parallel(name="step 01A_1", policy=ParallelPolicy.SuccessOnOne())
     step_01A_4 = Parallel(name="step 01A_4", policy=ParallelPolicy.SuccessOnOne())
     step_02B = Sequence(name="step 02B", memory=True)
@@ -1099,6 +1100,13 @@ def build_behaviour_tree() -> BehaviourTree:
             MoveStraightLR(name="move straight 4", right_power=0, left_power=60, target_distance=130),
         ]
     )
+    #スマートキャリーのボトルまで
+    dbr_loop_45.add_children(
+        [
+        TraceLineCam(name="trace normal edge", power=34, pid_p=1.0, pid_i=0.0015, pid_d=0.5,gs_min=0, gs_max=80, trace_side=TraceSide.CENTER),
+        IsRedColorDetected(name="check red color", threshold=18.0), 
+        ]
+    )
     # デブリからボトル取得
     step_01A_1.add_children(
         [
@@ -1155,19 +1163,19 @@ def build_behaviour_tree() -> BehaviourTree:
             calibration,
             start,
             # Wループ
-            wloop_01,
-            # wloop_02,
-            wloop_03,
-            wloop_04,
-            wloop_05,
-            wloop_06,
-            wloop_07,
-            wloop_08,
-            wloop_09,
-            wloop_10,
-            wloop_11,
-            wloop_12,
-            wloop_13,
+            # wloop_01,
+            # # wloop_02,
+            # wloop_03,
+            # wloop_04,
+            # wloop_05,
+            # wloop_06,
+            # wloop_07,
+            # wloop_08,
+            # wloop_09,
+            # wloop_10,
+            # wloop_11,
+            # wloop_12,
+            # wloop_13,
             # デブリ
             dbr_loop_01,
             dbr_loop_02,
@@ -1212,15 +1220,16 @@ def build_behaviour_tree() -> BehaviourTree:
             dbr_loop_41,
             dbr_loop_42,
             dbr_loop_43,
-            dbr_loop_44,
+            dbr_loop_44
+            dbr_loop_45,
             # スマートキャリー
-            step_01A_1,
-            step_01A_4,
-            step_02B,
-            step_03B_1,
-            step_03B_2,
-            step_03B_3,
-            step_04B,
+            # step_01A_1,
+            # step_01A_4,
+            # step_02B,
+            # step_03B_1,
+            # step_03B_2,
+            # step_03B_3,
+            # step_04B,
             StopNow(name="stop"),
             TheEnd(name="end"),
         ]
