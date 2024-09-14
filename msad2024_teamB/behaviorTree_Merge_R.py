@@ -693,15 +693,16 @@ def build_behaviour_tree() -> BehaviourTree:
     dbr_loop_15 = Parallel(name="loop 15", policy=ParallelPolicy.SuccessOnOne())
     dbr_loop_16 = Parallel(name="loop 16", policy=ParallelPolicy.SuccessOnOne())
     dbr_loop_17 = Parallel(name="loop 17", policy=ParallelPolicy.SuccessOnOne())
-    dbr_loop_18 = Parallel(name="loop 18", policy=ParallelPolicy.SuccessOnOne())
     dbr_loop_19 = Parallel(name="loop 19", policy=ParallelPolicy.SuccessOnOne())
     step_01A_1 = Parallel(name="step 01A_1", policy=ParallelPolicy.SuccessOnOne())
     step_01A_4 = Parallel(name="step 01A_4", policy=ParallelPolicy.SuccessOnOne())
     step_02B = Sequence(name="step 02B", memory=True)
+    step_01B = Sequence(name="step 02B", memory=True)
     step_03B_1 = Sequence(name="step 03B_1", memory=True)
     step_03B_2 = Parallel(name="step 03B_2", policy=ParallelPolicy.SuccessOnOne())
     step_03B_3 = Sequence(name="step 03B_3", memory=False)
     step_04B = Parallel(name="step 04B", policy=ParallelPolicy.SuccessOnOne())
+    step_04B_2= Parallel(name="step 04B", policy=ParallelPolicy.SuccessOnOne())
 
     calibration.add_children(
         [
@@ -922,13 +923,6 @@ def build_behaviour_tree() -> BehaviourTree:
         IsDistanceEarned_after(name="check distance"),
         ]
     )
-    # 指定距離走行
-    dbr_loop_18.add_children(
-        [
-        TraceLineCam(name="trace normal edge", power=34, pid_p=1.0, pid_i=0.0015, pid_d=0.1,gs_min=0, gs_max=80, trace_side=TraceSide.CENTER),
-        IsDistanceEarned(name="check distance", delta_dist=255),
-        ]
-    )
     #スマートキャリーのボトルまで
     dbr_loop_19.add_children(
         [
@@ -936,7 +930,6 @@ def build_behaviour_tree() -> BehaviourTree:
         IsRedColorDetected(name="check red color", threshold=17.0), 
         ]
     )
-    # デブリからボトル取得
     step_01A_1.add_children(
         [
             MoveStraight(name="free run 1", power=37, target_distance=110),
@@ -944,46 +937,63 @@ def build_behaviour_tree() -> BehaviourTree:
     )
     step_01A_4.add_children(
         [
-            TraceLineCam(name="trace buleline4", power=40, pid_p=1.0, pid_i=0.0015, pid_d=0.5,
-                 gs_min=0, gs_max=80, trace_side=TraceSide.CENTER),
-            IsDistanceEarned(name="check distance 1", delta_dist = 500),
+            TraceLineCam(name="trace buleline4", power=34, pid_p=1.0, pid_i=0.0015, pid_d=0.5,
+                gs_min=0, gs_max=80, trace_side=TraceSide.CENTER),
+            IsRedColorDetected(name="red", threshold=14),
         ]
     )
-    # ボトル取得からサークルへ配置
+
+    step_01B.add_children(
+        [
+            MoveStraight(name="free run 1B", power=50, target_distance=100)
+        ]
+    )
+    #ボトル取得からサークルへ配置
     step_02B.add_children(
         [
-            MoveStraightLR(name="Turn 1", right_power=15, left_power=90, target_distance=157),
-            MoveStraight(name="free run 2", power=70, target_distance=1000),
+            MoveStraightLR(name="Turn 1", right_power=83, left_power=10, target_distance=200), #LEFT
+            MoveStraight(name="free run 2", power=70, target_distance=1100),
             MoveStraight(name="free run 2-2", power=50, target_distance=250),
         ]
     )
     # サークルへ配置からライン復帰
     step_03B_1.add_children(
         [
-            MoveStraight(name="back", power=-40, target_distance=500),
-            MoveStraightLR(name="Turn 2", right_power=75, left_power=0, target_distance=200),
+            MoveStraightLR(name="back", right_power=-50, left_power=-50, target_distance=500),
+            MoveStraightLR(name="Turn 2", right_power=0, left_power=50, target_distance=150), #LEFT
         ]
     )
         # サークルへ配置からライン復帰
     step_03B_2.add_children(
         [
-            MoveStraight(name="free run 3", power=40, target_distance=10000),
+            MoveStraight(name="free run 3", power=45, target_distance=10000),
             IsColorDetected(name="black")
         ]
     )
 
     step_03B_3.add_children(
         [
-            MoveStraightLR(name="Turn 3", right_power=40, left_power=0, target_distance=50),
+            MoveStraightLR(name="Turn 3", right_power=0, left_power=50, target_distance=150),
+            MoveStraight(name="back", power=-40, target_distance=100),
         ]
     )
+
     # ライン復帰からゴール
     step_04B.add_children(
         [
             TraceLineCam(name="last run", power=40, pid_p=2.5, pid_i=0.0015, pid_d=0.1,
                          gs_min=0, gs_max=80, trace_side=TraceSide.CENTER),
-            IsColorDetected(name="blue"),
-            IsDistanceEarned(name="check distance 2", delta_dist = 1500),
+            IsDistanceEarned(name="check distance 2", delta_dist = 500),
+        ]
+    )
+
+    # ライン復帰からゴール
+    step_04B_2.add_children(
+        [
+            TraceLineCam(name="last run 2", power=40, pid_p=2.5, pid_i=0.0015, pid_d=0.1,
+                         gs_min=0, gs_max=80, trace_side=TraceSide.CENTER),
+            IsDistanceEarned(name="check distance 3", delta_dist = 1000),
+            IsBlueColorDetected(name="check blue color", threshold=2.0),
         ]
     )
 
@@ -1022,7 +1032,6 @@ def build_behaviour_tree() -> BehaviourTree:
             dbr_loop_15,
             dbr_loop_16,
             dbr_loop_17,
-            dbr_loop_18,
             dbr_loop_19,
             # スマートキャリー
             step_01A_1,
@@ -1032,6 +1041,7 @@ def build_behaviour_tree() -> BehaviourTree:
             step_03B_2,
             step_03B_3,
             step_04B,
+            step_04B_2,
             StopNow(name="stop"),
             TheEnd(name="end"),
         ]
