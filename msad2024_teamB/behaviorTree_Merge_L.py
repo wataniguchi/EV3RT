@@ -730,6 +730,7 @@ def build_behaviour_tree() -> BehaviourTree:
     step_03B_2 = Parallel(name="step 03B_2", policy=ParallelPolicy.SuccessOnOne())
     step_03B_3 = Sequence(name="step 03B_3", memory=False)
     step_04B = Parallel(name="step 04B", policy=ParallelPolicy.SuccessOnOne())
+    step_04B_2 = Parallel(name="step 04B", policy=ParallelPolicy.SuccessOnOne())
 
     calibration.add_children(
         [
@@ -1130,7 +1131,6 @@ def build_behaviour_tree() -> BehaviourTree:
         IsRedColorDetected(name="check red color", threshold=17.0), 
         ]
     )
-    # デブリからボトル取得
     step_01A_1.add_children(
         [
             MoveStraight(name="free run 1", power=37, target_distance=110),
@@ -1146,7 +1146,7 @@ def build_behaviour_tree() -> BehaviourTree:
     # ボトル取得からサークルへ配置
     step_02B.add_children(
         [
-            MoveStraightLR(name="Turn 1", right_power=15, left_power=90, target_distance=157),
+            MoveStraightLR(name="Turn 1", right_power=15, left_power=90, target_distance=157), #LEFT
             MoveStraight(name="free run 2", power=70, target_distance=1000),
             MoveStraight(name="free run 2-2", power=50, target_distance=250),
         ]
@@ -1155,7 +1155,7 @@ def build_behaviour_tree() -> BehaviourTree:
     step_03B_1.add_children(
         [
             MoveStraight(name="back", power=-40, target_distance=500),
-            MoveStraightLR(name="Turn 2", right_power=75, left_power=0, target_distance=200),
+            MoveStraightLR(name="Turn 2", right_power=75, left_power=0, target_distance=200), #LEFT
         ]
     )
         # サークルへ配置からライン復帰
@@ -1168,16 +1168,17 @@ def build_behaviour_tree() -> BehaviourTree:
 
     step_03B_3.add_children(
         [
-            MoveStraightLR(name="Turn 3", right_power=40, left_power=0, target_distance=50),
+            MoveStraightLR(name="Turn 3", right_power=50, left_power=0, target_distance=230),
+            MoveStraight(name="back", power=-40, target_distance=100),
         ]
     )
+
     # ライン復帰からゴール
     step_04B.add_children(
         [
             TraceLineCam(name="last run", power=40, pid_p=2.5, pid_i=0.0015, pid_d=0.1,
                          gs_min=0, gs_max=80, trace_side=TraceSide.CENTER),
-            IsColorDetected(name="blue"),
-            IsDistanceEarned(name="check distance 2", delta_dist = 1500),
+            IsDistanceEarned(name="check distance 2", delta_dist = 500),
         ]
     )
 
@@ -1252,6 +1253,7 @@ def build_behaviour_tree() -> BehaviourTree:
             step_03B_2,
             step_03B_3,
             step_04B,
+            step_04B_2,
             StopNow(name="stop"),
             TheEnd(name="end"),
         ]
