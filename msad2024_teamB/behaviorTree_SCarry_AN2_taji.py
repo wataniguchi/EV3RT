@@ -755,7 +755,7 @@ def build_behaviour_tree() -> BehaviourTree:
         [
             TraceLineCam(name="last run 2", power=40, pid_p=2.5, pid_i=0.0015, pid_d=0.1,
                          gs_min=0, gs_max=80, trace_side=TraceSide.CENTER),
-            IsDistanceEarned(name="check distance 3", delta_dist = 350),
+            IsDistanceEarned(name="check distance 3", delta_dist = 1000),
             IsBlueColorDetected(name="check blue color", threshold=2.0),
             # IsColorDetected(name="blue"),
         ]
