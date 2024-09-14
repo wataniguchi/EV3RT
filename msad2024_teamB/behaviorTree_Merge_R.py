@@ -459,7 +459,7 @@ class MoveStraightLR(Behaviour):
         if traveled_distance >= self.target_distance:
             g_right_motor.set_power(0)
             g_left_motor.set_power(0)
-            self.logger.info("%+06d %s.enddistance on" % (current_distance, self.__class__.__name__))
+            #self.logger.info("%+06d %s.enddistance on" % (current_distance, self.__class__.__name__))
             return Status.SUCCESS
         else:
             return Status.RUNNING
@@ -991,7 +991,7 @@ def build_behaviour_tree() -> BehaviourTree:
     #ボトル取得からサークルへ配置
     step_02B.add_children(
         [
-            MoveStraightLR(name="Turn 1", right_power=10, left_power=75, target_distance=160), #LEFT
+            MoveStraightLR(name="Turn 1", right_power=10, left_power=75, target_distance=240), #LEFT
             MoveStraight(name="free run 2", power=70, target_distance=1100),
             MoveStraight(name="free run 2-2", power=50, target_distance=250),
         ]
