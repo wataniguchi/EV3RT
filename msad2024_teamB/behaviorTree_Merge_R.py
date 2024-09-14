@@ -308,7 +308,40 @@ class TraceLineCam(Behaviour):
         g_right_motor.set_power(self.power - turn)
         g_left_motor.set_power(self.power + turn)
         return Status.RUNNING
+    
+class TraceLineCamWLoop(Behaviour):
+    def __init__(self, name: str, power: int, pid_p: float, pid_i: float, pid_d: float,
+                 gs_min: int, gs_max: int, trace_side: TraceSide) -> None:
+        super(TraceLineCamWLoop, self).__init__(name)
+        self.power = power
+        self.pid = PID(pid_p, pid_i, pid_d, setpoint=0, sample_time=EXEC_INTERVAL, output_limits=(-power, power))
+        self.gs_min = gs_min
+        self.gs_max = gs_max
+        self.trace_side = trace_side
+        self.running = False
 
+    def update(self) -> Status:
+        if not self.running:
+            self.running = True
+            g_video.set_thresholds(self.gs_min, self.gs_max)
+            if self.trace_side == TraceSide.NORMAL:
+                if g_course == -1: # right course
+                    g_video.set_trace_side(TraceSide.RIGHT)
+                else:
+                    g_video.set_trace_side(TraceSide.LEFT)
+            elif self.trace_side == TraceSide.OPPOSITE: 
+                if g_course == -1: # right course
+                    g_video.set_trace_side(TraceSide.LEFT)
+                else:
+                    g_video.set_trace_side(TraceSide.RIGHT)
+            else: # TraceSide.CENTER
+                g_video.set_trace_side(TraceSide.CENTER)
+            self.logger.info("%+06d %s.trace started with TS=%s" % (g_plotter.get_distance(), self.__class__.__name__, self.trace_side.name))
+        turn = (-1) * int(self.pid(g_video.get_theta()))
+        g_right_motor.set_power(self.power +1 - turn)
+        g_left_motor.set_power(self.power + turn)
+        return Status.RUNNING
+    
 # 旧Wループプログラムから流用
 class IsColorDetected(Behaviour):
     def __init__(self, name: str):
@@ -632,7 +665,6 @@ def build_behaviour_tree() -> BehaviourTree:
     calibration = Sequence(name="calibration", memory=True)
     start = Parallel(name="start", policy=ParallelPolicy.SuccessOnOne())
     wloop_01 = Parallel(name="loop 01", policy=ParallelPolicy.SuccessOnOne())
-    wloop_02 = Parallel(name="loop 02", policy=ParallelPolicy.SuccessOnOne())
     wloop_03 = Parallel(name="loop 03", policy=ParallelPolicy.SuccessOnOne())
     wloop_04 = Parallel(name="loop 04", policy=ParallelPolicy.SuccessOnOne())
     wloop_05 = Parallel(name="loop 05", policy=ParallelPolicy.SuccessOnOne())
@@ -686,18 +718,9 @@ def build_behaviour_tree() -> BehaviourTree:
     #最初のストレート最高速度
     wloop_01.add_children(
         [
-            TraceLineCam(name="trace normal edge", power=60, pid_p=0.4, pid_i=0.0010, pid_d=0.6,
+            TraceLineCam(name="trace normal edge", power=58, pid_p=0.4, pid_i=0.0010, pid_d=0.6,
                          gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
             IsDistanceEarned(name="check distance", delta_dist = 3500),
-        ]
-    )
-
-    #最初のストレート減速1段階目
-    wloop_02.add_children(
-        [
-            TraceLineCam(name="trace normal edge", power=60, pid_p=0.5, pid_i=0.0015, pid_d=0.4,
-                         gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
-            IsDistanceEarned(name="check distance", delta_dist = 1000),
         ]
     )
 
@@ -969,19 +992,18 @@ def build_behaviour_tree() -> BehaviourTree:
             calibration,
             start,
             # Wループ
-            # wloop_01,
-            # # wloop_02,
-            # wloop_03,
-            # wloop_04,
-            # wloop_05,
-            # wloop_06,
-            # wloop_07,
-            # wloop_08,
-            # wloop_09,
-            # wloop_10,
-            # wloop_11,
-            # wloop_12,
-            # wloop_13,
+            wloop_01,
+            wloop_03,
+            wloop_04,
+            wloop_05,
+            wloop_06,
+            wloop_07,
+            wloop_08,
+            wloop_09,
+            wloop_10,
+            wloop_11,
+            wloop_12,
+            wloop_13,
             # デブリ
             dbr_loop_01,
             dbr_loop_02,
@@ -1000,16 +1022,16 @@ def build_behaviour_tree() -> BehaviourTree:
             dbr_loop_15,
             dbr_loop_16,
             dbr_loop_17,
-            # dbr_loop_18,
+            dbr_loop_18,
             dbr_loop_19,
             # スマートキャリー
-            # step_01A_1,
-            # step_01A_4,
-            # step_02B,
-            # step_03B_1,
-            # step_03B_2,
-            # step_03B_3,
-            # step_04B,
+            step_01A_1,
+            step_01A_4,
+            step_02B,
+            step_03B_1,
+            step_03B_2,
+            step_03B_3,
+            step_04B,
             StopNow(name="stop"),
             TheEnd(name="end"),
         ]
