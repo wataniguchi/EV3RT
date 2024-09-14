@@ -864,7 +864,7 @@ def build_behaviour_tree() -> BehaviourTree:
 
         [
         TraceLineCam(name="trace normal edge", power=36, pid_p=0.8, pid_i=0.0015, pid_d=0.1,
-                         gs_min=0, gs_max=80, trace_side=TraceSide.CENTER),
+                         gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
         IsDistanceEarned_before(name="check distance", delta_dist = 1600),
         IsRedColorDetected(name="check red color", threshold=12.0), 
         IsBlueColorDetected(name="check blue color", threshold=12.0), 
@@ -877,7 +877,7 @@ def build_behaviour_tree() -> BehaviourTree:
     )
     dbr_loop_03.add_children(
         [
-            MoveStraightLR_dbr(name="move straight 4", right_power=10, left_power=60, target_distance=140),
+            MoveStraightLR_dbr(name="move straight 4", right_power=10, left_power=60, target_distance=100),
         ]
     )
     dbr_loop_04.add_children(
@@ -1048,18 +1048,18 @@ def build_behaviour_tree() -> BehaviourTree:
             calibration,
             start,
             # Wループ
-            wloop_01,
-            wloop_03,
-            wloop_04,
-            wloop_05,
-            wloop_06,
-            wloop_07,
-            wloop_08,
-            wloop_09,
-            wloop_10,
-            wloop_11,
-            wloop_12,
-            wloop_13,
+            # wloop_01,
+            # wloop_03,
+            # wloop_04,
+            # wloop_05,
+            # wloop_06,
+            # wloop_07,
+            # wloop_08,
+            # wloop_09,
+            # wloop_10,
+            # wloop_11,
+            # wloop_12,
+            # wloop_13,
             # デブリ
             dbr_loop_01,
             dbr_loop_02,
