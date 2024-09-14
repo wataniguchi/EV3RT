@@ -979,19 +979,19 @@ def build_behaviour_tree() -> BehaviourTree:
             TraceLineCam(name="trace buleline4", power=34, pid_p=1.0, pid_i=0.0015, pid_d=0.5,
                 gs_min=0, gs_max=80, trace_side=TraceSide.CENTER),
             # IsDistanceEarned(name="check distance",delta_dist=130),
-            IsRedColorDetected(name="red", threshold=14),
+            IsRedColorDetected(name="red", threshold=18),
         ]
     )
 
     step_01B.add_children(
         [
-            MoveStraight(name="free run 1B", power=50, target_distance=130)
+            MoveStraight(name="free run 1B", power=50, target_distance=100)
         ]
     )
     #ボトル取得からサークルへ配置
     step_02B.add_children(
         [
-            MoveStraightLR(name="Turn 1", right_power=10, left_power=83, target_distance=160), #LEFT
+            MoveStraightLR(name="Turn 1", right_power=10, left_power=75, target_distance=160), #LEFT
             MoveStraight(name="free run 2", power=70, target_distance=1100),
             MoveStraight(name="free run 2-2", power=50, target_distance=250),
         ]
