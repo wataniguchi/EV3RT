@@ -69,6 +69,7 @@ g_video: Video = None
 g_video_thread: threading.Thread = None
 g_course: int = 0
 g_dist: int = 1600
+g_earned_dist: int = 0
 
 
 
