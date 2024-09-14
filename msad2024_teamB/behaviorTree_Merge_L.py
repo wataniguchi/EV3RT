@@ -755,15 +755,15 @@ def build_behaviour_tree() -> BehaviourTree:
     dbr_loop_34 = Parallel(name="loop 34", policy=ParallelPolicy.SuccessOnOne())
     dbr_loop_35 = Parallel(name="loop 35", policy=ParallelPolicy.SuccessOnOne())
     dbr_loop_36 = Parallel(name="loop 36", policy=ParallelPolicy.SuccessOnOne())
-    dbr_loop_37 = Parallel(name="loop 37", policy=ParallelPolicy.SuccessOnOne())
-    dbr_loop_38 = Parallel(name="loop 38", policy=ParallelPolicy.SuccessOnOne())
-    dbr_loop_39 = Parallel(name="loop 39", policy=ParallelPolicy.SuccessOnOne())
-    dbr_loop_40 = Parallel(name="loop 40", policy=ParallelPolicy.SuccessOnOne())
-    dbr_loop_41 = Parallel(name="loop 41", policy=ParallelPolicy.SuccessOnOne())
-    dbr_loop_42 = Parallel(name="loop 42", policy=ParallelPolicy.SuccessOnOne())
-    dbr_loop_43 = Parallel(name="loop 43", policy=ParallelPolicy.SuccessOnOne())
-    dbr_loop_44 = Parallel(name="loop 44", policy=ParallelPolicy.SuccessOnOne())
-    dbr_loop_45 = Parallel(name="loop 44", policy=ParallelPolicy.SuccessOnOne())
+    # dbr_loop_37 = Parallel(name="loop 37", policy=ParallelPolicy.SuccessOnOne())
+    # dbr_loop_38 = Parallel(name="loop 38", policy=ParallelPolicy.SuccessOnOne())
+    # dbr_loop_39 = Parallel(name="loop 39", policy=ParallelPolicy.SuccessOnOne())
+    # dbr_loop_40 = Parallel(name="loop 40", policy=ParallelPolicy.SuccessOnOne())
+    # dbr_loop_41 = Parallel(name="loop 41", policy=ParallelPolicy.SuccessOnOne())
+    # dbr_loop_42 = Parallel(name="loop 42", policy=ParallelPolicy.SuccessOnOne())
+    # dbr_loop_43 = Parallel(name="loop 43", policy=ParallelPolicy.SuccessOnOne())
+    # dbr_loop_44 = Parallel(name="loop 44", policy=ParallelPolicy.SuccessOnOne())
+    # dbr_loop_45 = Parallel(name="loop 44", policy=ParallelPolicy.SuccessOnOne())
     step_01A_1 = Parallel(name="step 01A_1", policy=ParallelPolicy.SuccessOnOne())
     step_01A_4 = Parallel(name="step 01A_4", policy=ParallelPolicy.SuccessOnOne())
     step_01B =  Parallel(name="step 01B", policy=ParallelPolicy.SuccessOnOne())
@@ -790,7 +790,7 @@ def build_behaviour_tree() -> BehaviourTree:
     #最初のストレート最高速度
     wloop_01.add_children(
         [
-            TraceLineCamWLoop(name="trace normal edge", power=58, pid_p=0.7, pid_i=0.0015, pid_d=0.6,
+            TraceLineCamWLoop(name="trace normal edge", power=57, pid_p=0.7, pid_i=0.0015, pid_d=0.6,
                          gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
             IsDistanceEarned(name="check distance", delta_dist = 3500),
         ]
