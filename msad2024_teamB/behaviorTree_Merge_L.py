@@ -763,7 +763,7 @@ def build_behaviour_tree() -> BehaviourTree:
     # dbr_loop_42 = Parallel(name="loop 42", policy=ParallelPolicy.SuccessOnOne())
     # dbr_loop_43 = Parallel(name="loop 43", policy=ParallelPolicy.SuccessOnOne())
     # dbr_loop_44 = Parallel(name="loop 44", policy=ParallelPolicy.SuccessOnOne())
-    # dbr_loop_45 = Parallel(name="loop 44", policy=ParallelPolicy.SuccessOnOne())
+    dbr_loop_45 = Parallel(name="loop 44", policy=ParallelPolicy.SuccessOnOne())
     step_01A_1 = Parallel(name="step 01A_1", policy=ParallelPolicy.SuccessOnOne())
     step_01A_4 = Parallel(name="step 01A_4", policy=ParallelPolicy.SuccessOnOne())
     step_01B =  Parallel(name="step 01B", policy=ParallelPolicy.SuccessOnOne())
