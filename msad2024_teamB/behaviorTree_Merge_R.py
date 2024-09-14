@@ -1000,7 +1000,7 @@ def build_behaviour_tree() -> BehaviourTree:
             dbr_loop_15,
             dbr_loop_16,
             dbr_loop_17,
-            dbr_loop_18,
+            # dbr_loop_18,
             dbr_loop_19,
             # スマートキャリー
             # step_01A_1,
