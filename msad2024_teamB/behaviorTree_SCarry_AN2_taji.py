@@ -68,6 +68,8 @@ g_gyro_sensor: GyroSensor = None
 g_video: Video = None
 g_video_thread: threading.Thread = None
 g_course: int = 0
+g_dist: int = 1600
+g_earned_dist: int = 0
 
 
 
@@ -353,12 +355,14 @@ class IsColorDetected(Behaviour):
        
         #Blue判定
         if self.name == "blue" :
-            if((color[2] - color[0]>45) & (100 <= color[0] <= 256 & (color[1] <= 150)) & (200 < color[2] <= 256)):
+            if((color[0]<50)&(color[1]<100)&(100<color[2]<255)):
+            # if(((color[2] - color[0])>30) & (100 <= color[0] <= 256 & (color[1] <= 200)) & (200 < color[2] <= 256)):
             #if((100 < color[0] <=200) & (100 < color[1] <=200) & (100 < color[2] <=200)):
                 self.logger.info("%+06d %s.blue r=%d g=%d b=%d" % (g_plotter.get_distance(), self.__class__.__name__, color[0], color[1], color[2]))
                 self.logger.info("%+06d %s.detected blue" % (g_plotter.get_distance(), self.__class__.__name__))
                 return Status.SUCCESS
             else:
+                self.logger.info("%+06d %s.notblue r=%d g=%d b=%d" % (g_plotter.get_distance(), self.__class__.__name__, color[0], color[1], color[2]))
                 #指定色でないならRUNNINGを返却
                 return Status.RUNNING
         #Black判定
@@ -372,6 +376,33 @@ class IsColorDetected(Behaviour):
                 #指定色でないならRUNNINGを返却
                 return Status.RUNNING
 
+class IsBlueColorDetected(Behaviour):
+    def __init__(self, name: str, threshold: float):
+        super(IsBlueColorDetected, self).__init__(name)
+        self.threshold = threshold
+        self.running = False
+
+    def update(self) -> Status:
+        global g_dist
+        global g_earned_dist
+ 
+        if not self.running:
+            self.running = True
+            self.logger.info("%+06d %s.checking blue color ratio with threshold=%f" % (g_plotter.get_distance(), self.__class__.__name__, self.threshold))
+
+        blue_percentage = g_video.get_blue_ratio() * 100
+        if blue_percentage <= self.threshold:
+            self.logger.info("%+06d %s.blue color ratio exceeds threshold: %f" % (g_plotter.get_distance(), self.__class__.__name__, blue_percentage))
+            # g_dist = g_dist - g_earned_dist
+#            self.logger.info("グローバル変数更新 g_dist = g_dist - g_earned_dist")
+            # print("g_earned_dist:"+ str(g_earned_dist))
+            # print("g_dist:"+ str(g_dist))
+            # self.logger.info("OK Blue")
+            return Status.SUCCESS
+        else:
+            self.logger.info("%+06d %s.not blue color ratio exceeds threshold: %f" % (g_plotter.get_distance(), self.__class__.__name__, blue_percentage))
+            return Status.RUNNING
+        
 # デブリプログラムから流用
 class MoveStraight(Behaviour):
     def __init__(self, name: str, power: int, target_distance: int) -> None:
@@ -425,15 +456,15 @@ class MoveStraightLR(Behaviour):
                 g_right_motor.set_power(self.right_power)
                 g_left_motor.set_power(self.left_power)
             else:
-                g_right_motor.set_power(self.left_power)
-                g_left_motor.set_power(self.right_power)
+                g_right_motor.set_power(self.left_power) #90 0 0
+                g_left_motor.set_power(self.right_power) #15 75 40
             self.logger.info("%+06d %s.start rightpower=%d leftpower=%d enddistance=%d" % 
                              (self.start_distance, self.__class__.__name__, self.right_power, self.left_power, self.target_distance))
 
         current_distance = g_plotter.get_distance()
         traveled_distance = current_distance - self.start_distance
 
-        if traveled_distance >= self.target_distance:
+        if (5.0 > traveled_distance > self.target_distance):
             g_right_motor.set_power(0)
             g_left_motor.set_power(0)
             self.logger.info("%+06d %s.enddistance on" % (current_distance, self.__class__.__name__))
@@ -568,8 +599,10 @@ def build_behaviour_tree() -> BehaviourTree:
     step_02B = Sequence(name="step 02B", memory=True)
     step_03B_1 = Sequence(name="step 03B_1", memory=True)
     step_03B_2 = Parallel(name="step 03B_2", policy=ParallelPolicy.SuccessOnOne())
+    #step_03B_3 = Parallel(name="step 03B_3", policy=ParallelPolicy.SuccessOnOne())
     step_03B_3 = Sequence(name="step 03B_3", memory=True)
     step_04B = Parallel(name="step 04B", policy=ParallelPolicy.SuccessOnOne())
+    step_04B_2 = Parallel(name="step 04B_2", policy=ParallelPolicy.SuccessOnOne())
     #step_04B = Sequence(name="step 04B", memory=True)
  
     calibration.add_children(
@@ -589,7 +622,7 @@ def build_behaviour_tree() -> BehaviourTree:
             #TraceLineCam(name="trace buleline1", power=39, pid_p=2.5, pid_i=0.0015, pid_d=0.1,
             #     gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
             #IsDistanceEarned(name="check distance 1", delta_dist = 200),
-            MoveStraight(name="free run 1", power=37, target_distance=110)
+            MoveStraight(name="free run 1", power=37, target_distance=110),
             #Bottlecatch(name="trace PRE", target_state = BState.PRELINE)
             #Bottlecatch(name="linetrace", target_state = BState.LINE)
             #IsDistanceEarned(name="check distance 1", delta_dist = 100)
@@ -621,7 +654,7 @@ def build_behaviour_tree() -> BehaviourTree:
             #IsDistanceEarned(name="check distance 1", delta_dist = 200),
             #Bottlecatch(name="trace CATCHED", target_state = BState.CATCHED),
             #Bottlecatch(name="linetrace", target_state = BState.LINE)
-            IsDistanceEarned(name="check distance 1", delta_dist = 500)
+            IsDistanceEarned(name="check distance 1", delta_dist = 500),
         ]
     )
 
@@ -668,16 +701,19 @@ def build_behaviour_tree() -> BehaviourTree:
     step_02B.add_children(
         [
             #MoveStraightLR(name="Turn 1", right_power=15, left_power=90, target_distance=180),
-            MoveStraightLR(name="Turn 1", right_power=15, left_power=90, target_distance=157),
-            MoveStraight(name="free run 2", power=70, target_distance=1150)
+            MoveStraightLR(name="Turn 1", right_power=15, left_power=90, target_distance=157), #LEFT
+            # MoveStraightLR(name="Turn 1", right_power=15, left_power=70, target_distance=157), #RIGHT
+            MoveStraight(name="free run 2", power=70, target_distance=1000),
+            MoveStraight(name="free run 2-2", power=50, target_distance=250),
             # color sensor add
         ]
     )
     # サークルへ配置からライン復帰
     step_03B_1.add_children(
         [
-            MoveStraight(name="back", power=-40, target_distance=600),
-            MoveStraightLR(name="Turn 2", right_power=75, left_power=0, target_distance=200),
+            MoveStraight(name="back", power=-40, target_distance=500),
+            MoveStraightLR(name="Turn 2", right_power=75, left_power=0, target_distance=200), #LEFT
+            # MoveStraightLR(name="Turn 2", right_power=40, left_power=0, target_distance=200), #RIGHT
             #MoveStraight(name="free run 3", power=40, target_distance=10000),
             #IsColorDetected(name="black")
         ]
@@ -694,7 +730,8 @@ def build_behaviour_tree() -> BehaviourTree:
 
     step_03B_3.add_children(
         [
-            MoveStraightLR(name="Turn 3", right_power=60, left_power=-60, target_distance=50),
+            MoveStraightLR(name="Turn 3", right_power=50, left_power=0, target_distance=100),
+            # MoveStraightLR(name="back 2", right_power=-40, left_power=-30, target_distance=50),
         ]
     )
 
@@ -702,11 +739,24 @@ def build_behaviour_tree() -> BehaviourTree:
     step_04B.add_children(
         [
             #MoveStraightLR(name="Turn 3", right_power=70, left_power=35, target_distance=200),
-            TraceLineCam(name="trace center edge", power=40, pid_p=2.5, pid_i=0.0015, pid_d=0.1,
+            TraceLineCam(name="last run", power=40, pid_p=2.5, pid_i=0.0015, pid_d=0.1,
                          gs_min=0, gs_max=80, trace_side=TraceSide.CENTER),
-            IsDistanceEarned(name="check distance 1", delta_dist = 870),
+            IsDistanceEarned(name="check distance 2", delta_dist = 500),
+            # IsDistanceEarned(name="check distance 2", delta_dist = 870),
+            # IsBlueColorDetected(name="check blue color", threshold=12.0),
+            # IsColorDetected(name="blue"),
             # color sensor add
-            IsColorDetected(name="blue")
+        ]
+    )
+
+    # ライン復帰からゴール
+    step_04B_2.add_children(
+        [
+            TraceLineCam(name="last run 2", power=40, pid_p=2.5, pid_i=0.0015, pid_d=0.1,
+                         gs_min=0, gs_max=80, trace_side=TraceSide.CENTER),
+            IsDistanceEarned(name="check distance 3", delta_dist = 350),
+            IsBlueColorDetected(name="check blue color", threshold=2.0),
+            # IsColorDetected(name="blue"),
         ]
     )
 
@@ -726,6 +776,7 @@ def build_behaviour_tree() -> BehaviourTree:
             step_03B_2,
             step_03B_3,
             step_04B,
+            step_04B_2,
             StopNow(name="stop"),
             TheEnd(name="end"),
         ]
