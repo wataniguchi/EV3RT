@@ -662,6 +662,7 @@ def build_behaviour_tree() -> BehaviourTree:
     dbr_loop_16 = Parallel(name="loop 16", policy=ParallelPolicy.SuccessOnOne())
     dbr_loop_17 = Parallel(name="loop 17", policy=ParallelPolicy.SuccessOnOne())
     dbr_loop_18 = Parallel(name="loop 18", policy=ParallelPolicy.SuccessOnOne())
+    dbr_loop_19 = Parallel(name="loop 19", policy=ParallelPolicy.SuccessOnOne())
     step_01A_1 = Parallel(name="step 01A_1", policy=ParallelPolicy.SuccessOnOne())
     step_01A_4 = Parallel(name="step 01A_4", policy=ParallelPolicy.SuccessOnOne())
     step_02B = Sequence(name="step 02B", memory=True)
@@ -905,6 +906,13 @@ def build_behaviour_tree() -> BehaviourTree:
         IsDistanceEarned(name="check distance", delta_dist=255),
         ]
     )
+    #スマートキャリーのボトルまで
+    dbr_loop_19.add_children(
+        [
+        TraceLineCam(name="trace normal edge", power=35, pid_p=1.0, pid_i=0.0015, pid_d=0.1,gs_min=0, gs_max=80, trace_side=TraceSide.CENTER),
+        IsRedColorDetected(name="check red color", threshold=20.0), 
+        ]
+    )
     # デブリからボトル取得
     step_01A_1.add_children(
         [
@@ -993,6 +1001,7 @@ def build_behaviour_tree() -> BehaviourTree:
             dbr_loop_16,
             dbr_loop_17,
             dbr_loop_18,
+            dbr_loop_19,
             # スマートキャリー
             # step_01A_1,
             # step_01A_4,
