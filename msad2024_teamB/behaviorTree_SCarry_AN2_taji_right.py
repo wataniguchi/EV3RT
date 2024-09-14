@@ -639,7 +639,7 @@ def build_behaviour_tree() -> BehaviourTree:
     )
     start.add_children(
         [
-            IsSonarOn(name="soner start", alert_dist=30),
+            IsSonarOn(name="soner start", alert_dist=40),
             IsTouchOn(name="touch start"),
         ]
     )
