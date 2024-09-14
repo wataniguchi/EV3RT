@@ -1110,60 +1110,60 @@ def build_behaviour_tree() -> BehaviourTree:
             MoveStraightLR(name="move straight 4", right_power=0, left_power=60, target_distance=110),
         ]
     )
-    # 指定距離走行_3列目から4列目移動
-    dbr_loop_37.add_children(
-        [
-        TraceLineCam(name="trace normal edge", power=33, pid_p=1.0, pid_i=0.0015, pid_d=0.1,gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
-        IsDistanceEarned(name="check distance", delta_dist=245),
-        ]
-    )
-    # 右に90度回転
-    dbr_loop_38.add_children(
-        [
-            MoveStraightLR(name="move straight 4", right_power=0, left_power=60, target_distance=125),
-        ]
-    )
-# 4列目
-    # 指定距離走行
-    dbr_loop_39.add_children(
-        [
-        TraceLineCam(name="trace normal edge", power=39, pid_p=0.8, pid_i=0.0015, pid_d=0.1,
-                         gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
-        IsDistanceEarned(name="check distance", delta_dist = 1060),
-        ]
-    )
-    # 押し出し
-    dbr_loop_40.add_children(
-        [
-            MoveStraight(name="move straight", power=40, target_distance=380),
-        ]
-    )
-    # バック
-    dbr_loop_41.add_children(
-        [
-            MoveStraight(name="back", power=-30, target_distance=120)
-        ]
-    )
-    # 180度回転
-    dbr_loop_42.add_children(
-        [
-            MoveStraightLR(name="move straight 4", right_power=60, left_power=-60, target_distance=48),
-        ]
-    )
-    # 指定距離走行
-    dbr_loop_43.add_children(
-        [
-        TraceLineCam(name="trace normal edge", power=38, pid_p=0.8, pid_i=0.0015, pid_d=0.1,
-                         gs_min=0, gs_max=80, trace_side=TraceSide.OPPOSITE),
-        IsDistanceEarned(name="check distance", delta_dist = 1325),
-        ]
-    )
-    # 右に90度回転
-    dbr_loop_44.add_children(
-        [
-            MoveStraightLR(name="move straight 4", right_power=0, left_power=60, target_distance=130),
-        ]
-    )
+#     # 指定距離走行_3列目から4列目移動
+#     dbr_loop_37.add_children(
+#         [
+#         TraceLineCam(name="trace normal edge", power=33, pid_p=1.0, pid_i=0.0015, pid_d=0.1,gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
+#         IsDistanceEarned(name="check distance", delta_dist=245),
+#         ]
+#     )
+#     # 右に90度回転
+#     dbr_loop_38.add_children(
+#         [
+#             MoveStraightLR(name="move straight 4", right_power=0, left_power=60, target_distance=125),
+#         ]
+#     )
+# # 4列目
+#     # 指定距離走行
+#     dbr_loop_39.add_children(
+#         [
+#         TraceLineCam(name="trace normal edge", power=39, pid_p=0.8, pid_i=0.0015, pid_d=0.1,
+#                          gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
+#         IsDistanceEarned(name="check distance", delta_dist = 1060),
+#         ]
+#     )
+#     # 押し出し
+#     dbr_loop_40.add_children(
+#         [
+#             MoveStraight(name="move straight", power=40, target_distance=380),
+#         ]
+#     )
+#     # バック
+#     dbr_loop_41.add_children(
+#         [
+#             MoveStraight(name="back", power=-30, target_distance=120)
+#         ]
+#     )
+#     # 180度回転
+#     dbr_loop_42.add_children(
+#         [
+#             MoveStraightLR(name="move straight 4", right_power=60, left_power=-60, target_distance=48),
+#         ]
+#     )
+#     # 指定距離走行
+#     dbr_loop_43.add_children(
+#         [
+#         TraceLineCam(name="trace normal edge", power=38, pid_p=0.8, pid_i=0.0015, pid_d=0.1,
+#                          gs_min=0, gs_max=80, trace_side=TraceSide.OPPOSITE),
+#         IsDistanceEarned(name="check distance", delta_dist = 1325),
+#         ]
+#     )
+#     # 右に90度回転
+#     dbr_loop_44.add_children(
+#         [
+#             MoveStraightLR(name="move straight 4", right_power=0, left_power=60, target_distance=130),
+#         ]
+#     )
     #スマートキャリーのボトルまで
     dbr_loop_45.add_children(
         [
@@ -1293,14 +1293,14 @@ def build_behaviour_tree() -> BehaviourTree:
             dbr_loop_34,
             dbr_loop_35,
             dbr_loop_36,
-            dbr_loop_37,
-            dbr_loop_38,
-            dbr_loop_39,
-            dbr_loop_40,
-            dbr_loop_41,
-            dbr_loop_42,
-            dbr_loop_43,
-            dbr_loop_44,
+            # dbr_loop_37,
+            # dbr_loop_38,
+            # dbr_loop_39,
+            # dbr_loop_40,
+            # dbr_loop_41,
+            # dbr_loop_42,
+            # dbr_loop_43,
+            # dbr_loop_44,
             dbr_loop_45,
             # スマートキャリー
             step_01A_1,
