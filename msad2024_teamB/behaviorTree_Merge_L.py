@@ -889,7 +889,7 @@ def build_behaviour_tree() -> BehaviourTree:
     # 指定距離走行_1列目から2列目移動
     dbr_loop_11.add_children(
         [
-        TraceLineCam(name="trace normal edge", power=33, pid_p=1.0, pid_i=0.0015, pid_d=0.1,gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
+        TraceLineCam(name="trace normal edge", power=33, pid_p=1.0, pid_i=0.0015, pid_d=0.1,gs_min=0, gs_max=80, trace_side=TraceSide.CENTER),
         IsDistanceEarned(name="check distance", delta_dist=255),
         ]
     )
@@ -904,7 +904,7 @@ def build_behaviour_tree() -> BehaviourTree:
     dbr_loop_13.add_children(
         [
         TraceLineCam(name="trace normal edge", power=33, pid_p=0.8, pid_i=0.0015, pid_d=0.1,
-                         gs_min=0, gs_max=80, trace_side=TraceSide.OPPOSITE),
+                         gs_min=0, gs_max=80, trace_side=TraceSide.CENTER),
         IsDistanceEarned_before(name="check distance", delta_dist = 1050),
         IsRedColorDetected(name="check red color", threshold=12.0), 
         IsBlueColorDetected(name="check blue color", threshold=12.0), 
@@ -990,7 +990,7 @@ def build_behaviour_tree() -> BehaviourTree:
     dbr_loop_27.add_children(
         [
         TraceLineCam(name="trace normal edge", power=33, pid_p=0.8, pid_i=0.0015, pid_d=0.1,
-                         gs_min=0, gs_max=80, trace_side=TraceSide.OPPOSITE),
+                         gs_min=0, gs_max=80, trace_side=TraceSide.CENTER),
         IsDistanceEarned_before(name="check distance", delta_dist = 1050),
         IsRedColorDetected(name="check red color", threshold=12.0), 
         IsBlueColorDetected(name="check blue color", threshold=12.0), 
@@ -1215,12 +1215,12 @@ def build_behaviour_tree() -> BehaviourTree:
             dbr_loop_36,
             dbr_loop_37,
             dbr_loop_38,
-            dbr_loop_39,
-            dbr_loop_40,
-            dbr_loop_41,
-            dbr_loop_42,
-            dbr_loop_43,
-            dbr_loop_44,
+            # dbr_loop_39,
+            # dbr_loop_40,
+            # dbr_loop_41,
+            # dbr_loop_42,
+            # dbr_loop_43,
+            # dbr_loop_44,
             dbr_loop_45,
             # スマートキャリー
             # step_01A_1,
