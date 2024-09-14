@@ -979,7 +979,7 @@ def build_behaviour_tree() -> BehaviourTree:
     )
     dbr_loop_15.add_children(
         [
-            MoveStraightLR_dbr(name="move straight 4", right_power=-60, left_power=-10, target_distance=200),
+            MoveStraightLR_dbr(name="move straight 4", right_power=-60, left_power=-10, target_distance=190),
         ]
     )
     dbr_loop_16.add_children(
@@ -1029,7 +1029,7 @@ def build_behaviour_tree() -> BehaviourTree:
     step_02B.add_children(
         [
             MoveStraightLR(name="Turn 1", right_power=15, left_power=90, target_distance=205), #LEFT
-            MoveStraight(name="free run 2", power=70, target_distance=1000),
+            MoveStraight(name="free run 2", power=70, target_distance=1010),
             MoveStraight(name="free run 2-2", power=50, target_distance=250),
         ]
     )
