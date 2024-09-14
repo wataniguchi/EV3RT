@@ -338,8 +338,8 @@ class TraceLineCamWLoop(Behaviour):
                 g_video.set_trace_side(TraceSide.CENTER)
             self.logger.info("%+06d %s.trace started with TS=%s" % (g_plotter.get_distance(), self.__class__.__name__, self.trace_side.name))
         turn = (-1) * int(self.pid(g_video.get_theta()))
-        g_right_motor.set_power(self.power - turn)
-        g_left_motor.set_power(self.power + 1 + turn)
+        g_right_motor.set_power(self.power +1 - turn)
+        g_left_motor.set_power(self.power + turn)
         return Status.RUNNING
 
 # 旧Wループプログラムから流用
