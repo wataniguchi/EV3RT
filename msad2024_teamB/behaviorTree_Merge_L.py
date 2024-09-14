@@ -667,7 +667,6 @@ def build_behaviour_tree() -> BehaviourTree:
     calibration = Sequence(name="calibration", memory=True)
     start = Parallel(name="start", policy=ParallelPolicy.SuccessOnOne())
     wloop_01 = Parallel(name="loop 01", policy=ParallelPolicy.SuccessOnOne())
-    wloop_02 = Parallel(name="loop 02", policy=ParallelPolicy.SuccessOnOne())
     wloop_03 = Parallel(name="loop 03", policy=ParallelPolicy.SuccessOnOne())
     wloop_04 = Parallel(name="loop 04", policy=ParallelPolicy.SuccessOnOne())
     wloop_05 = Parallel(name="loop 05", policy=ParallelPolicy.SuccessOnOne())
@@ -750,15 +749,6 @@ def build_behaviour_tree() -> BehaviourTree:
             TraceLineCamWLoop(name="trace normal edge", power=60, pid_p=0.7, pid_i=0.0015, pid_d=0.6,
                          gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
             IsDistanceEarned(name="check distance", delta_dist = 3500),
-        ]
-    )
-
-    #最初のストレート減速1段階目
-    wloop_02.add_children(
-        [
-            TraceLineCam(name="trace normal edge", power=60, pid_p=0.5, pid_i=0.0015, pid_d=0.4,
-                         gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
-            IsDistanceEarned(name="check distance", delta_dist = 1000),
         ]
     )
 
@@ -1197,7 +1187,6 @@ def build_behaviour_tree() -> BehaviourTree:
             start,
             # Wループ
             wloop_01,
-            wloop_02,
             wloop_03,
             wloop_04,
             wloop_05,
