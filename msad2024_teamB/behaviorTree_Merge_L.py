@@ -802,7 +802,7 @@ def build_behaviour_tree() -> BehaviourTree:
     #コンタクトⅡ通過後、指定距離走行
     wloop_08.add_children(
         [
-            TraceLineCam(name="trace normal edge", power=45, pid_p=2.0, pid_i=0.0015, pid_d=0.35,
+            TraceLineCam(name="trace normal edge", power=44, pid_p=2.0, pid_i=0.0015, pid_d=0.35,
                          gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
             IsDistanceEarned(name="check distance", delta_dist = 2300),
         ]
