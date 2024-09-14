@@ -834,7 +834,7 @@ def build_behaviour_tree() -> BehaviourTree:
     )
     dbr_loop_02.add_children(
         [
-            MoveStraight_dbr(name="move straight", power=40, target_distance=195),
+            MoveStraight_dbr(name="move straight", power=40, target_distance=210),
         ]
     )
     dbr_loop_03.add_children(
