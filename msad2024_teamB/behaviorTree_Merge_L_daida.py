@@ -997,7 +997,7 @@ def build_behaviour_tree() -> BehaviourTree:
     #スマートキャリーのボトルまで
     dbr_loop_18.add_children(
         [
-        TraceLineCam(name="trace normal edge", power=34, pid_p=1.0, pid_i=0.0015, pid_d=0.5,gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
+        TraceLineCam(name="trace normal edge", power=33, pid_p=1.0, pid_i=0.0015, pid_d=0.5,gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
         IsRedColorDetected(name="check red color", threshold=13.0), 
         ]
     )
