@@ -264,3 +264,37 @@ class Video(object):
 
     def is_target_insight(self) -> bool:
         return self.target_insight
+
+    def get_blue_ratio(self) -> float:
+        # Capture an image frame from the camera
+        frame = self.pc2.capture_array()
+        
+        if len(frame) == 0:
+            return 0.0
+        
+        # Resize the image for OpenCV processing if necessary
+        if FRAME_WIDTH != IN_FRAME_WIDTH or FRAME_HEIGHT != IN_FRAME_HEIGHT:
+            frame = cv2.resize(frame, (FRAME_WIDTH, FRAME_HEIGHT))
+        
+        # Convert the image from BGR to HSV color space
+        hsv_image = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+        # hsv_image = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+        
+        # Define the blue color range in HSV
+        lower_blue1 = np.array([100, 150, 50])
+        upper_blue1 = np.array([140, 255, 255])
+        lower_blue2 = np.array([160, 100, 100])
+        upper_blue2 = np.array([180, 255, 255])
+        
+        # Create masks for the blue color ranges
+        mask1 = cv2.inRange(hsv_image, lower_blue1, upper_blue1)
+        mask2 = cv2.inRange(hsv_image, lower_blue2, upper_blue2)
+        blue_mask = mask1 | mask2
+        
+        # Calculate the blue pixel ratio
+        blue_pixels = np.sum(blue_mask > 0)
+        total_pixels = frame.shape[0] * frame.shape[1]
+        blue_ratio = blue_pixels / total_pixels
+        
+        return blue_ratio
+    
