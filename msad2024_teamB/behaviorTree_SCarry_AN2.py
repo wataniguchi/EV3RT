@@ -735,19 +735,19 @@ def build_behaviour_tree() -> BehaviourTree:
         ]
     )
 
-    # ライン復帰からゴール
-    step_04B.add_children(
-        [
-            #MoveStraightLR(name="Turn 3", right_power=70, left_power=35, target_distance=200),
-            TraceLineCam(name="last run", power=40, pid_p=2.5, pid_i=0.0015, pid_d=0.1,
-                         gs_min=0, gs_max=80, trace_side=TraceSide.CENTER),
-            IsDistanceEarned(name="check distance 2", delta_dist = 500),
-            # IsDistanceEarned(name="check distance 2", delta_dist = 870),
-            # IsBlueColorDetected(name="check blue color", threshold=12.0),
-            IsColorDetected(name="blue"),
-            # color sensor add
-        ]
-    )
+    # # ライン復帰からゴール
+    # step_04B.add_children(
+    #     [
+    #         #MoveStraightLR(name="Turn 3", right_power=70, left_power=35, target_distance=200),
+    #         TraceLineCam(name="last run", power=40, pid_p=2.5, pid_i=0.0015, pid_d=0.1,
+    #                      gs_min=0, gs_max=80, trace_side=TraceSide.CENTER),
+    #         IsDistanceEarned(name="check distance 2", delta_dist = 500),
+    #         # IsDistanceEarned(name="check distance 2", delta_dist = 870),
+    #         # IsBlueColorDetected(name="check blue color", threshold=12.0),
+    #         IsColorDetected(name="blue"),
+    #         # color sensor add
+    #     ]
+    # )
 
     # ライン復帰からゴール
     step_04B_2.add_children(
@@ -775,7 +775,7 @@ def build_behaviour_tree() -> BehaviourTree:
             step_03B_1,
             step_03B_2,
             step_03B_3,
-            step_04B,
+            #step_04B,
             step_04B_2,
             StopNow(name="stop"),
             TheEnd(name="end"),
