@@ -984,13 +984,13 @@ def build_behaviour_tree() -> BehaviourTree:
 
     step_01B.add_children(
         [
-            MoveStraight(name="free run 1B", power=50, target_distance=100)
+            MoveStraight(name="free run 1B", power=50, target_distance=110)
         ]
     )
     #ボトル取得からサークルへ配置
     step_02B.add_children(
         [
-            MoveStraightLR(name="Turn 1", right_power=10, left_power=75, target_distance=240), #LEFT
+            MoveStraightLR(name="Turn 1", right_power=10, left_power=75, target_distance=250), #LEFT
             MoveStraight(name="free run 2", power=70, target_distance=1100),
             MoveStraight(name="free run 2-2", power=50, target_distance=250),
         ]
@@ -1013,14 +1013,14 @@ def build_behaviour_tree() -> BehaviourTree:
     step_03B_3.add_children(
         [
             MoveStraightLR(name="Turn 3", right_power=50, left_power=0, target_distance=150),
-            MoveStraight(name="back", power=-40, target_distance=100),
+            MoveStraight(name="back", power=-50, target_distance=100),
         ]
     )
 
     # ライン復帰からゴール
     step_04B.add_children(
         [
-            TraceLineCam(name="last run", power=40, pid_p=2.5, pid_i=0.0015, pid_d=0.1,
+            TraceLineCam(name="last run", power=45, pid_p=2.5, pid_i=0.0015, pid_d=0.1,
                          gs_min=0, gs_max=80, trace_side=TraceSide.CENTER),
             IsDistanceEarned(name="check distance 2", delta_dist = 500),
         ]
