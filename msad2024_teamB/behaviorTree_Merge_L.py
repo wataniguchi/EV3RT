@@ -769,7 +769,8 @@ def build_behaviour_tree() -> BehaviourTree:
     step_03B_2 = Parallel(name="step 03B_2", policy=ParallelPolicy.SuccessOnOne())
     step_03B_3 = Sequence(name="step 03B_3", memory=True)
     step_04B = Parallel(name="step 04B", policy=ParallelPolicy.SuccessOnOne())
-    step_04B_2 = Parallel(name="step 04B", policy=ParallelPolicy.SuccessOnOne())
+    step_04B_2 = Parallel(name="step 04B_2", policy=ParallelPolicy.SuccessOnOne())
+    step_04B_3 = Parallel(name="step 04B_3", policy=ParallelPolicy.SuccessOnOne())
 
     calibration.add_children(
         [
@@ -1179,7 +1180,7 @@ def build_behaviour_tree() -> BehaviourTree:
         [
             TraceLineCam(name="trace buleline4", power=40, pid_p=1.0, pid_i=0.0015, pid_d=0.5,
                  gs_min=0, gs_max=80, trace_side=TraceSide.CENTER),
-            IsDistanceEarned(name="check distance 1", delta_dist = 500),
+            IsDistanceEarned(name="check distance 1", delta_dist = 400),
         ]
     )
     # ボトル取得からサークルへ配置
@@ -1218,6 +1219,14 @@ def build_behaviour_tree() -> BehaviourTree:
             TraceLineCam(name="last run", power=40, pid_p=2.5, pid_i=0.0015, pid_d=0.1,
                          gs_min=0, gs_max=80, trace_side=TraceSide.CENTER),
             IsDistanceEarned(name="check distance 2", delta_dist = 500),
+        ]
+    )
+
+    step_04B_3.add_children(
+        [
+            TraceLineCam(name="last run 2", power=40, pid_p=2.5, pid_i=0.0015, pid_d=0.1,
+                         gs_min=0, gs_max=80, trace_side=TraceSide.CENTER),
+            IsDistanceEarned(name="check distance 3", delta_dist = 300),
         ]
     )
 
@@ -1293,6 +1302,7 @@ def build_behaviour_tree() -> BehaviourTree:
             step_03B_3,
             step_04B,
             step_04B_2,
+            step_04B_3,
             StopNow(name="stop"),
             TheEnd(name="end"),
         ]
