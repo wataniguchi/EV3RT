@@ -733,10 +733,10 @@ def build_behaviour_tree() -> BehaviourTree:
     dbr_loop_16 = Parallel(name="loop 16", policy=ParallelPolicy.SuccessOnOne())
     dbr_loop_17 = Parallel(name="loop 17", policy=ParallelPolicy.SuccessOnOne())
     dbr_loop_19 = Parallel(name="loop 19", policy=ParallelPolicy.SuccessOnOne())
-    step_01A_1 = Parallel(name="step 01A_1", policy=ParallelPolicy.SuccessOnOne())
+    # step_01A_1 = Parallel(name="step 01A_1", policy=ParallelPolicy.SuccessOnOne())
     step_01A_4 = Parallel(name="step 01A_4", policy=ParallelPolicy.SuccessOnOne())
+    step_01B = Sequence(name="step 01B", memory=True)
     step_02B = Sequence(name="step 02B", memory=True)
-    step_01B = Sequence(name="step 02B", memory=True)
     step_03B_1 = Sequence(name="step 03B_1", memory=True)
     step_03B_2 = Parallel(name="step 03B_2", policy=ParallelPolicy.SuccessOnOne())
     step_03B_3 = Sequence(name="step 03B_3", memory=False)
@@ -966,18 +966,19 @@ def build_behaviour_tree() -> BehaviourTree:
     dbr_loop_19.add_children(
         [
         TraceLineCam(name="trace normal edge", power=34, pid_p=1.0, pid_i=0.0015, pid_d=0.5,gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
-        IsRedColorDetected(name="check red color", threshold=17.0), 
+        IsRedColorDetected(name="check red color", threshold=15.0), 
         ]
     )
-    step_01A_1.add_children(
-        [
-            MoveStraight(name="free run 1", power=37, target_distance=110),
-        ]
-    )
+    # step_01A_1.add_children(
+    #     [
+    #         MoveStraight(name="free run 1", power=37, target_distance=110),
+    #     ]
+    # )
     step_01A_4.add_children(
         [
             TraceLineCam(name="trace buleline4", power=34, pid_p=1.0, pid_i=0.0015, pid_d=0.5,
                 gs_min=0, gs_max=80, trace_side=TraceSide.CENTER),
+            # IsDistanceEarned(name="check distance",delta_dist=130),
             IsRedColorDetected(name="red", threshold=14),
         ]
     )
@@ -1073,8 +1074,9 @@ def build_behaviour_tree() -> BehaviourTree:
             dbr_loop_17,
             dbr_loop_19,
             # スマートキャリー
-            step_01A_1,
+            # step_01A_1,
             step_01A_4,
+            step_01B,
             step_02B,
             step_03B_1,
             step_03B_2,
