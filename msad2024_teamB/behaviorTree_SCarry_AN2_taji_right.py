@@ -377,6 +377,35 @@ class IsColorDetected(Behaviour):
                 #指定色でないならRUNNINGを返却
                 return Status.RUNNING
 
+
+class IsRedColorDetected(Behaviour):
+    def __init__(self, name: str, threshold: float):
+        super(IsRedColorDetected, self).__init__(name)
+        self.threshold = threshold
+        self.running = False
+
+    def update(self) -> Status:
+        global g_dist
+        global g_earned_dist
+ 
+        if not self.running:
+            self.running = True
+            self.logger.info("%+06d %s.checking red color ratio with threshold=%f" % (g_plotter.get_distance(), self.__class__.__name__, self.threshold))
+
+        red_percentage = g_video.get_red_ratio() * 100
+        if red_percentage <= self.threshold:
+            self.logger.info("%+06d %s.red color ratio exceeds threshold: %f" % (g_plotter.get_distance(), self.__class__.__name__, blue_percentage))
+            #g_dist = g_dist - g_earned_dist
+            #self.logger.info("グローバル変数更新 g_dist = g_dist - g_earned_dist")
+            # print("g_earned_dist:"+ str(g_earned_dist))
+            # print("g_dist:"+ str(g_dist))
+            #self.logger.info("青判定")
+            return Status.SUCCESS
+        else:
+            self.logger.info("%+06d %s.not red color ratio exceeds threshold: %f" % (g_plotter.get_distance(), self.__class__.__name__, blue_percentage))
+            return Status.RUNNING
+
+
 class IsBlueColorDetected(Behaviour):
     def __init__(self, name: str, threshold: float):
         super(IsBlueColorDetected, self).__init__(name)
