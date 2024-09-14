@@ -855,7 +855,7 @@ def build_behaviour_tree() -> BehaviourTree:
     # 左に90度回転
     dbr_loop_10.add_children(
         [
-            MoveStraightLR(name="move straight 4", right_power=0, left_power=60, target_distance=225),
+            MoveStraightLR(name="move straight 4", right_power=0, left_power=60, target_distance=230),
         ]
     )
     dbr_loop_11.add_children(
@@ -909,7 +909,7 @@ def build_behaviour_tree() -> BehaviourTree:
     #スマートキャリーのボトルまで
     dbr_loop_19.add_children(
         [
-        TraceLineCam(name="trace normal edge", power=34, pid_p=1.0, pid_i=0.0015, pid_d=0.1,gs_min=0, gs_max=80, trace_side=TraceSide.CENTER),
+        TraceLineCam(name="trace normal edge", power=34, pid_p=1.0, pid_i=0.0015, pid_d=0.5,gs_min=0, gs_max=80, trace_side=TraceSide.CENTER),
         IsRedColorDetected(name="check red color", threshold=18.0), 
         ]
     )
