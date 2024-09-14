@@ -611,6 +611,7 @@ class IsRedColorDetected(Behaviour):
             self.logger.info("赤判定")
             return Status.SUCCESS
         else:
+            self.logger.info("%+06d %s.not red color ratio exceeds threshold: %f" % (g_plotter.get_distance(), self.__class__.__name__, red_percentage))
             return Status.RUNNING
         
 class IsBlueColorDetected(Behaviour):
@@ -636,6 +637,7 @@ class IsBlueColorDetected(Behaviour):
             self.logger.info("青判定")
             return Status.SUCCESS
         else:
+            self.logger.info("%+06d %s.not blue color ratio exceeds threshold: %f" % (g_plotter.get_distance(), self.__class__.__name__, blue_percentage))
             return Status.RUNNING
 
 class IsDistanceEarned_before(Behaviour):
