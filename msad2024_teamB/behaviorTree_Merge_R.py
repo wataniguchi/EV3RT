@@ -917,7 +917,7 @@ def build_behaviour_tree() -> BehaviourTree:
     # 左に90度回転
     dbr_loop_10.add_children(
         [
-            MoveStraightLR(name="move straight 4", right_power=0, left_power=60, target_distance=230),
+            MoveStraightLR(name="move straight 4", right_power=0, left_power=60, target_distance=215),
         ]
     )
     dbr_loop_11.add_children(
