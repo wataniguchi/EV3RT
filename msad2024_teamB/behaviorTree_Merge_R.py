@@ -910,7 +910,7 @@ def build_behaviour_tree() -> BehaviourTree:
     dbr_loop_19.add_children(
         [
         TraceLineCam(name="trace normal edge", power=35, pid_p=1.0, pid_i=0.0015, pid_d=0.1,gs_min=0, gs_max=80, trace_side=TraceSide.CENTER),
-        IsRedColorDetected(name="check red color", threshold=20.0), 
+        IsRedColorDetected(name="check red color", threshold=18.0), 
         ]
     )
     # デブリからボトル取得
