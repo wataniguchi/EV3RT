@@ -965,7 +965,7 @@ def build_behaviour_tree() -> BehaviourTree:
     #スマートキャリーのボトルまで
     dbr_loop_19.add_children(
         [
-        TraceLineCam(name="trace normal edge", power=34, pid_p=1.0, pid_i=0.0015, pid_d=0.5,gs_min=0, gs_max=80, trace_side=TraceSide.CENTER),
+        TraceLineCam(name="trace normal edge", power=34, pid_p=1.0, pid_i=0.0015, pid_d=0.5,gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
         IsRedColorDetected(name="check red color", threshold=17.0), 
         ]
     )
@@ -984,13 +984,13 @@ def build_behaviour_tree() -> BehaviourTree:
 
     step_01B.add_children(
         [
-            MoveStraight(name="free run 1B", power=50, target_distance=100)
+            MoveStraight(name="free run 1B", power=50, target_distance=130)
         ]
     )
     #ボトル取得からサークルへ配置
     step_02B.add_children(
         [
-            MoveStraightLR(name="Turn 1", right_power=10, left_power=83, target_distance=200), #LEFT
+            MoveStraightLR(name="Turn 1", right_power=10, left_power=83, target_distance=160), #LEFT
             MoveStraight(name="free run 2", power=70, target_distance=1100),
             MoveStraight(name="free run 2-2", power=50, target_distance=250),
         ]
@@ -1041,18 +1041,18 @@ def build_behaviour_tree() -> BehaviourTree:
             calibration,
             start,
             # Wループ
-            wloop_01,
-            wloop_03,
-            wloop_04,
-            wloop_05,
-            wloop_06,
-            wloop_07,
-            wloop_08,
-            wloop_09,
-            wloop_10,
-            wloop_11,
-            wloop_12,
-            wloop_13,
+            # wloop_01,
+            # wloop_03,
+            # wloop_04,
+            # wloop_05,
+            # wloop_06,
+            # wloop_07,
+            # wloop_08,
+            # wloop_09,
+            # wloop_10,
+            # wloop_11,
+            # wloop_12,
+            # wloop_13,
             # デブリ
             dbr_loop_01,
             dbr_loop_02,
