@@ -355,7 +355,8 @@ class IsColorDetected(Behaviour):
        
         #Blue判定
         if self.name == "blue" :
-            if((color[0]<50)&(color[1]<100)&(100<color[2]<255)):
+            #if((color[0]<50)&(color[1]<100)&(100<color[2]<255)):
+            if((100<color[0])&(100<color[1])&(150<color[2]<255)):
             # if(((color[2] - color[0])>30) & (100 <= color[0] <= 256 & (color[1] <= 200)) & (200 < color[2] <= 256)):
             #if((100 < color[0] <=200) & (100 < color[1] <=200) & (100 < color[2] <=200)):
                 self.logger.info("%+06d %s.blue r=%d g=%d b=%d" % (g_plotter.get_distance(), self.__class__.__name__, color[0], color[1], color[2]))
@@ -394,10 +395,10 @@ class IsBlueColorDetected(Behaviour):
         if blue_percentage <= self.threshold:
             self.logger.info("%+06d %s.blue color ratio exceeds threshold: %f" % (g_plotter.get_distance(), self.__class__.__name__, blue_percentage))
             # g_dist = g_dist - g_earned_dist
-#            self.logger.info("グローバル変数更新 g_dist = g_dist - g_earned_dist")
+            self.logger.info("グローバル変数更新 g_dist = g_dist - g_earned_dist")
             # print("g_earned_dist:"+ str(g_earned_dist))
             # print("g_dist:"+ str(g_dist))
-            # self.logger.info("OK Blue")
+            self.logger.info("青判定")
             return Status.SUCCESS
         else:
             self.logger.info("%+06d %s.not blue color ratio exceeds threshold: %f" % (g_plotter.get_distance(), self.__class__.__name__, blue_percentage))
@@ -464,7 +465,7 @@ class MoveStraightLR(Behaviour):
         current_distance = g_plotter.get_distance()
         traveled_distance = current_distance - self.start_distance
 
-        if (5.0 > traveled_distance > self.target_distance):
+        if traveled_distance >= self.target_distance:
             g_right_motor.set_power(0)
             g_left_motor.set_power(0)
             self.logger.info("%+06d %s.enddistance on" % (current_distance, self.__class__.__name__))
@@ -599,8 +600,8 @@ def build_behaviour_tree() -> BehaviourTree:
     step_02B = Sequence(name="step 02B", memory=True)
     step_03B_1 = Sequence(name="step 03B_1", memory=True)
     step_03B_2 = Parallel(name="step 03B_2", policy=ParallelPolicy.SuccessOnOne())
-    #step_03B_3 = Parallel(name="step 03B_3", policy=ParallelPolicy.SuccessOnOne())
-    step_03B_3 = Sequence(name="step 03B_3", memory=True)
+    step_03B_3 = Parallel(name="step 03B_3", policy=ParallelPolicy.SuccessOnOne())
+    # step_03B_3 = Sequence(name="step 03B_3", memory=True)
     step_04B = Parallel(name="step 04B", policy=ParallelPolicy.SuccessOnOne())
     step_04B_2 = Parallel(name="step 04B_2", policy=ParallelPolicy.SuccessOnOne())
     #step_04B = Sequence(name="step 04B", memory=True)
