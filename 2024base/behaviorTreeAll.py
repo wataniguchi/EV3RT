@@ -825,12 +825,20 @@ def build_behaviour_tree() -> BehaviourTree:
             IsDistanceEarned(name="check distance02", delta_dist=290),
         ]
     )
-    debri_04.add_children(
-        [
-            RunAsInstructed(name="remove", pwm_r=40,pwm_l=40),
-            IsDistanceEarned(name="check distance", delta_dist = 300),
-        ]
-    )
+    if(g_course==-1):
+        debri_04.add_children(
+            [
+                RunAsInstructed(name="remove", pwm_r=40,pwm_l=40),
+                IsDistanceEarned(name="check distance", delta_dist = 300),
+            ]
+        )
+    else:
+        debri_04.add_children(
+            [
+                RunAsInstructed(name="remove", pwm_r=40,pwm_l=40),
+                IsDistanceEarned(name="check distance", delta_dist = 240),
+            ]
+        )
     debri_05.add_children(
         [
             RunAsInstructed(name="go back", pwm_r=-40,pwm_l=-40),
