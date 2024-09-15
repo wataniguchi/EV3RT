@@ -883,7 +883,7 @@ def build_behaviour_tree() -> BehaviourTree:
     debri_08_02_03.add_children(
         [
             RunAsInstructed(name="remove", pwm_r=-(DebriNum.POWER_REMOVE_RIGHT),pwm_l=-(DebriNum.POWER_REMOVE_LEFT)),
-            IsDistanceEarned(name="check distance", delta_dist = DebriNum.DISTANCE_REMOVE),
+            IsDistanceEarned(name="check distance", delta_dist = DebriNum.DISTANCE_REMOVE-50),
         ]
     )
     debri_08_02_04.add_children(
