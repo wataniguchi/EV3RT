@@ -790,7 +790,7 @@ def build_behaviour_tree() -> BehaviourTree:
     #最初のストレート最高速度
     wloop_01.add_children(
         [
-            TraceLineCamWLoop(name="trace normal edge", power=57, pid_p=0.7, pid_i=0.0015, pid_d=0.6,
+            TraceLineCam(name="trace normal edge", power=60, pid_p=0.4, pid_i=0.0010, pid_d=0.6,
                          gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
             IsDistanceEarned(name="check distance", delta_dist = 3500),
         ]
@@ -799,9 +799,9 @@ def build_behaviour_tree() -> BehaviourTree:
     #カーブ1つ目
     wloop_03.add_children(
         [
-            TraceLineCam(name="trace normal edge", power=50, pid_p=1.5, pid_i=0.0015, pid_d=0.3,
+            TraceLineCam(name="trace normal edge", power=45, pid_p=1.0, pid_i=0.0010, pid_d=0.3,
                          gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
-            IsDistanceEarned(name="check distance", delta_dist = 2000),
+            IsDistanceEarned(name="check distance", delta_dist = 1900),
         ]
     )
 
@@ -810,16 +810,16 @@ def build_behaviour_tree() -> BehaviourTree:
         [
             TraceLineCam(name="trace normal edge", power=60, pid_p=1.0, pid_i=0.0015, pid_d=0.6,
                          gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
-            IsDistanceEarned(name="check distance", delta_dist = 1500),
+            IsDistanceEarned(name="check distance", delta_dist = 1600),
         ]
     )
 
     #コンタクトⅠ直前
     wloop_05.add_children(
         [
-            TraceLineCam(name="trace normal edge", power=45, pid_p=1.5, pid_i=0.001, pid_d=0.30,
+            TraceLineCam(name="trace normal edge", power=48, pid_p=1.5, pid_i=0.001, pid_d=0.30,
                          gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
-           IsDistanceEarned(name="check distance", delta_dist = 800),
+           IsDistanceEarned(name="check distance", delta_dist = 500),
 
         #    IsDistanceEarned(name="check distance", delta_dist = 1000),
 
@@ -833,6 +833,51 @@ def build_behaviour_tree() -> BehaviourTree:
             IsJunction(name="scan joined junction", target_state = JState.JOINED),
         ]
     )
+    # wloop_01.add_children(
+    #     [
+    #         TraceLineCamWLoop(name="trace normal edge", power=57, pid_p=0.7, pid_i=0.0015, pid_d=0.6,
+    #                      gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
+    #         IsDistanceEarned(name="check distance", delta_dist = 3500),
+    #     ]
+    # )
+
+    # #カーブ1つ目
+    # wloop_03.add_children(
+    #     [
+    #         TraceLineCam(name="trace normal edge", power=50, pid_p=1.5, pid_i=0.0015, pid_d=0.3,
+    #                      gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
+    #         IsDistanceEarned(name="check distance", delta_dist = 2000),
+    #     ]
+    # )
+
+    # #カーブ後の短い直線
+    # wloop_04.add_children(
+    #     [
+    #         TraceLineCam(name="trace normal edge", power=60, pid_p=1.0, pid_i=0.0015, pid_d=0.6,
+    #                      gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
+    #         IsDistanceEarned(name="check distance", delta_dist = 1500),
+    #     ]
+    # )
+
+    # #コンタクトⅠ直前
+    # wloop_05.add_children(
+    #     [
+    #         TraceLineCam(name="trace normal edge", power=45, pid_p=1.5, pid_i=0.001, pid_d=0.30,
+    #                      gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
+    #        IsDistanceEarned(name="check distance", delta_dist = 800),
+
+    #     #    IsDistanceEarned(name="check distance", delta_dist = 1000),
+
+    #     ]
+    # )
+    # #コンタクトⅠ直前
+    # wloop_06.add_children(
+    #     [
+    #         TraceLineCam(name="trace normal edge", power=50, pid_p=1.5, pid_i=0.001, pid_d=0.30,
+    #                      gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
+    #         IsJunction(name="scan joined junction", target_state = JState.JOINED),
+    #     ]
+    # )
 
     #コンタクトⅠ通過後、コンタクトⅡまで
     wloop_07.add_children(
