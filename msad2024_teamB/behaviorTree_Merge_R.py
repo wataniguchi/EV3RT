@@ -1036,7 +1036,7 @@ def build_behaviour_tree() -> BehaviourTree:
     #ボトル取得からサークルへ配置
     step_02B.add_children(
         [
-            MoveStraightLR(name="Turn 1", right_power=10, left_power=75, target_distance=250), #LEFT
+            MoveStraightLR(name="Turn 1", right_power=10, left_power=65, target_distance=270), #LEFT
             MoveStraight(name="free run 2", power=70, target_distance=1100),
             MoveStraight(name="free run 2-2", power=50, target_distance=250),
         ]
@@ -1094,18 +1094,18 @@ def build_behaviour_tree() -> BehaviourTree:
             calibration,
             start,
             # Wループ
-            # wloop_01,
-            # wloop_03,
-            # wloop_04,
-            # wloop_05,
-            # wloop_06,
-            # wloop_07,
-            # wloop_08,
-            # wloop_09,
-            # wloop_10,
-            # wloop_11,
-            # wloop_12,
-            # wloop_13,
+            wloop_01,
+            wloop_03,
+            wloop_04,
+            wloop_05,
+            wloop_06,
+            wloop_07,
+            wloop_08,
+            wloop_09,
+            wloop_10,
+            wloop_11,
+            wloop_12,
+            wloop_13,
             # # デブリ
             dbr_loop_01,
             dbr_loop_02,
