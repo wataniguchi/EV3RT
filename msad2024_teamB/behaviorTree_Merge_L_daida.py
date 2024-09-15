@@ -795,6 +795,13 @@ def build_behaviour_tree() -> BehaviourTree:
             IsDistanceEarned(name="check distance", delta_dist = 3500),
         ]
     )
+    # wloop_01.add_children(
+    #     [
+    #         TraceLineCam(name="trace normal edge", power=65, pid_p=0.4, pid_i=0.0010, pid_d=0.6,
+    #                      gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
+    #         IsDistanceEarned(name="check distance", delta_dist = 3500),
+    #     ]
+    # )
 
     #カーブ1つ目
     wloop_03.add_children(
