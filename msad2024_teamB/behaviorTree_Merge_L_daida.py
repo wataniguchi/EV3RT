@@ -932,7 +932,7 @@ def build_behaviour_tree() -> BehaviourTree:
     wloop_13.add_children(
         [
             TraceLineCam(name="trace normal edge", power=46, pid_p=2.0, pid_i=0.0015, pid_d=0.3,
-                         gs_min=0, gs_max=80, trace_side=TraceSide.OPPOSITE),
+                         gs_min=0, gs_max=80, trace_side=TraceSide.CENTER),
             IsDistanceEarned(name="check distance", delta_dist = 300),
         ]
     )
