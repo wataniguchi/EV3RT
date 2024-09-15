@@ -54,7 +54,6 @@ g_debri_exist_bottle: bool = False
 
 now_color = []
 
-
 class TheEnd(Behaviour):
     def __init__(self, name: str):
         super(TheEnd, self).__init__(name)
