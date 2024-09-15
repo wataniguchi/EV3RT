@@ -276,10 +276,10 @@ class Video(object):
         self.theta = 180 * math.atan(vxm / 205) / math.pi
         #print(f"mx = {self.mx}, vxm = {vxm}, theta = {self.theta}")
 
-        # if(len(contours_red)>0):
-        #     img_orig = cv2.drawContours(img_orig, contours_red[target_red], -1, (255,0,0), LINE_THICKNESS)
-        # if(len(contours_blue)>0):
-        #     img_orig = cv2.drawContours(img_orig, contours_blue[target_blue], -1, (0,0,255), LINE_THICKNESS)
+        if(len(contours_red)>0):
+            img_orig = cv2.drawContours(img_orig, contours_red[target_red], -1, (255,0,0), LINE_THICKNESS)
+        if(len(contours_blue)>0):
+            img_orig = cv2.drawContours(img_orig, contours_blue[target_blue], -1, (0,0,255), LINE_THICKNESS)
 
         # prepare text area
         img_text = np.zeros((FRAME_HEIGHT, FRAME_WIDTH, 3), np.uint8)
