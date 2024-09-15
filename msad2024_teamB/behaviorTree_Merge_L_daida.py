@@ -1080,7 +1080,7 @@ def build_behaviour_tree() -> BehaviourTree:
     # ボトル取得からサークルへ配置
     step_02B.add_children(
         [
-            MoveStraightLR(name="Turn 1", right_power=15, left_power=70, target_distance=260), #LEFT
+            MoveStraightLR(name="Turn 1", right_power=15, left_power=70, target_distance=275), #LEFT
             MoveStraight(name="free run 2", power=70, target_distance=1020),
             MoveStraight(name="free run 2-2", power=50, target_distance=250),
         ]
