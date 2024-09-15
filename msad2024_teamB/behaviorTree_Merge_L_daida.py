@@ -965,7 +965,7 @@ def build_behaviour_tree() -> BehaviourTree:
     )
     dbr_loop_05.add_children(
         [
-            MoveStraightLR_dbr(name="move straight 4", right_power=-60, left_power=-10, target_distance=150),
+            MoveStraightLR_dbr(name="move straight 4", right_power=-60, left_power=-10, target_distance=140),
         ]
     )
     dbr_loop_06.add_children(
@@ -995,7 +995,7 @@ def build_behaviour_tree() -> BehaviourTree:
     # 右に90度回転
     dbr_loop_10.add_children(
         [
-            MoveStraightLR(name="move straight 4", right_power=0, left_power=60, target_distance=115),
+            MoveStraightLR(name="move straight 4", right_power=0, left_power=60, target_distance=110),
         ]
     )
     dbr_loop_11.add_children(
@@ -1024,7 +1024,7 @@ def build_behaviour_tree() -> BehaviourTree:
     )
     dbr_loop_15.add_children(
         [
-            MoveStraightLR_dbr(name="move straight 4", right_power=-60, left_power=-10, target_distance=185),
+            MoveStraightLR_dbr(name="move straight 4", right_power=-60, left_power=-10, target_distance=170),
         ]
     )
     dbr_loop_16.add_children(
@@ -1067,13 +1067,13 @@ def build_behaviour_tree() -> BehaviourTree:
     )
     step_01B.add_children(
         [
-            MoveStraight(name="free run 1B", power=50, target_distance=130)
+            MoveStraight(name="free run 1B", power=50, target_distance=150)
         ]
     )
     # ボトル取得からサークルへ配置
     step_02B.add_children(
         [
-            MoveStraightLR(name="Turn 1", right_power=15, left_power=90, target_distance=190), #LEFT
+            MoveStraightLR(name="Turn 1", right_power=15, left_power=70, target_distance=210), #LEFT
             MoveStraight(name="free run 2", power=70, target_distance=1010),
             MoveStraight(name="free run 2-2", power=50, target_distance=250),
         ]
