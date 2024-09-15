@@ -799,7 +799,7 @@ def build_behaviour_tree() -> BehaviourTree:
     debri_02_01_04.add_children(
         [
             RunAsInstructed(name="remove", pwm_r=-(DebriNum.POWER_REMOVE_RIGHT),pwm_l=-(DebriNum.POWER_REMOVE_LEFT)),
-            IsDistanceEarned(name="check distance", delta_dist = DebriNum.DISTANCE_REMOVE),
+            IsDistanceEarned(name="check distance", delta_dist = DebriNum.DISTANCE_REMOVE-50),
         ]
     )
     debri_02_01_05.add_children(
@@ -834,7 +834,7 @@ def build_behaviour_tree() -> BehaviourTree:
     debri_05.add_children(
         [
             RunAsInstructed(name="go back", pwm_r=-40,pwm_l=-40),
-            IsDistanceEarned(name="check distance", delta_dist = 130),
+            IsDistanceEarned(name="check distance", delta_dist = 150),
         ]
     )
 
@@ -974,7 +974,7 @@ def build_behaviour_tree() -> BehaviourTree:
     carry_09.add_children(
         [
             RunAsInstructed(name="rotate", pwm_r=-35,pwm_l=-35),
-            IsRotated(name="check rotated", delta_dire=50),
+            IsRotated(name="check rotated", delta_dire=55),
         ]
     )
     carry_10.add_children(
