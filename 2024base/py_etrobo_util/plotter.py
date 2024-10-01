@@ -1,8 +1,6 @@
 import math
 from etrobo_python import ETRobo, Hub, Motor, ColorSensor, TouchSensor, SonarSensor, GyroSensor
-
-TIRE_DIAMETER: float = 100.0
-WHEEL_TREAD: float = 120.0
+from const import Wheel
 
 class Plotter(object):
     def __init__(self) -> None:
@@ -34,8 +32,8 @@ class Plotter(object):
         # accumulate distance
         cur_ang_r = right_motor.get_count()
         cur_ang_l = left_motor.get_count()
-        delta_dist_r = math.pi * TIRE_DIAMETER * (cur_ang_r - self.prev_ang_r) / 360.0
-        delta_dist_l = math.pi * TIRE_DIAMETER * (cur_ang_l - self.prev_ang_l) / 360.0
+        delta_dist_r = math.pi * Wheel.TIRE_DIAMETER * (cur_ang_r - self.prev_ang_r) / 360.0
+        delta_dist_l = math.pi * Wheel.TIRE_DIAMETER * (cur_ang_l - self.prev_ang_l) / 360.0
         delta_dist = (delta_dist_r + delta_dist_l / 2.0)
         if (delta_dist >= 0.0):
             self.distance += delta_dist
@@ -44,7 +42,7 @@ class Plotter(object):
         self.prev_ang_r = cur_ang_r
         self.prev_ang_l = cur_ang_l
         # calculate azimuth
-        delta_azi =  (delta_dist_l - delta_dist_r) / WHEEL_TREAD
+        delta_azi =  (delta_dist_l - delta_dist_r) / Wheel.WHEEL_TREAD
         self.azimuth += delta_azi
         if (self.azimuth > 2*math.pi):
             self.azimuth -= 2*math.pi

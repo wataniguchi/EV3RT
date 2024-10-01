@@ -1,5 +1,4 @@
 import argparse
-import sys
 import time
 import math
 import threading
@@ -17,14 +16,26 @@ from py_trees.common import ParallelPolicy
 from py_trees import (
     display as display_tree,
     logging as log_tree
-)   
+)
 from py_etrobo_util import Video, TraceSide, Plotter
 
 EXEC_INTERVAL: float = 0.04
 VIDEO_INTERVAL: float = 0.02
 ARM_SHIFT_PWM = 30
 JUNCT_UPPER_THRESH = 50
-JUNCT_LOWER_THRESH = 30
+JUNCT_LOWER_THRESH = 40
+
+PID_P_FAST: float = 1.2
+PID_I_FAST: float = 0.0011
+PID_D_FAST: float = 0.3
+POWER_FAST: int = 60
+
+PID_P_SLOW: float = 1.95
+PID_I_SLOW: float = 0.002
+PID_D_SLOW: float = 0.35
+POWER_SLOW: int = 45
+
+POWER_JUNCTION: int = 40
 
 class ArmDirection(IntEnum):
     UP = -1
@@ -239,8 +250,13 @@ class IsJunction(Behaviour):
 class RunAsInstructed(Behaviour):
     def __init__(self, name: str, pwm_l: int, pwm_r: int) -> None:
         super(RunAsInstructed, self).__init__(name)
-        self.pwm_l = g_course * pwm_l
-        self.pwm_r = g_course * pwm_r
+        if(g_course==-1):
+            self.pwm_r = pwm_r
+            self.pwm_l = pwm_l
+        else:
+            self.pwm_r = pwm_l
+            self.pwm_l = pwm_r
+
         self.running = False
 
     def update(self) -> Status:
@@ -304,7 +320,7 @@ class TraceLineCam(Behaviour):
             self.logger.info("%+06d %s.trace started with TS=%s" % (g_plotter.get_distance(), self.__class__.__name__, self.trace_side.name))
         turn = (-1) * int(self.pid(g_video.get_theta()))
         g_right_motor.set_power(self.power - turn)
-        g_left_motor.set_power(self.power + turn)
+        g_left_motor.set_power(self.power + turn-(self.power/20))
         return Status.RUNNING
 
 
@@ -377,6 +393,15 @@ def build_behaviour_tree() -> BehaviourTree:
     loop_05 = Parallel(name="loop 05", policy=ParallelPolicy.SuccessOnOne())
     loop_06 = Parallel(name="loop 06", policy=ParallelPolicy.SuccessOnOne())
     loop_07 = Parallel(name="loop 07", policy=ParallelPolicy.SuccessOnOne())
+    loop_08 = Parallel(name="loop 08", policy=ParallelPolicy.SuccessOnOne())
+    loop_09 = Parallel(name="loop 09", policy=ParallelPolicy.SuccessOnOne())
+    loop_10 = Parallel(name="loop 10", policy=ParallelPolicy.SuccessOnOne())
+    loop_11 = Parallel(name="loop 11", policy=ParallelPolicy.SuccessOnOne())
+    loop_12 = Parallel(name="loop 12", policy=ParallelPolicy.SuccessOnOne())
+    loop_13 = Parallel(name="loop 13", policy=ParallelPolicy.SuccessOnOne())
+    loop_14 = Parallel(name="loop 14", policy=ParallelPolicy.SuccessOnOne())
+    loop_15 = Parallel(name="loop 15", policy=ParallelPolicy.SuccessOnOne())
+    loop_16 = Parallel(name="loop 16", policy=ParallelPolicy.SuccessOnOne())
     calibration.add_children(
         [
             ArmUpDownFull(name="arm down", direction=ArmDirection.DOWN),
@@ -391,51 +416,128 @@ def build_behaviour_tree() -> BehaviourTree:
     )
     loop_01.add_children(
         [
-            TraceLineCam(name="trace normal edge", power=60, pid_p=1.5, pid_i=0.0015, pid_d=0.4,
-                         gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
-            IsDistanceEarned(name="check distance", delta_dist = 2500),
+            RunAsInstructed(name="run", pwm_r=40, pwm_l=35),
+            IsDistanceEarned(name="check distance", delta_dist = 150),
         ]
     )
     loop_02.add_children(
         [
-            TraceLineCam(name="trace normal edge", power=50, pid_p=2.0, pid_i=0.001, pid_d=0.35,
+            TraceLineCam(name="straight 01", power=POWER_FAST,                    
+                         pid_p=PID_P_FAST, pid_i=PID_I_FAST, pid_d=PID_D_FAST,
                          gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
-            IsJunction(name="scan joined junction", target_state = JState.JOINED),
+            IsDistanceEarned(name="check distance", delta_dist = 3700),
         ]
     )
     loop_03.add_children(
         [
-            TraceLineCam(name="trace opposite edge", power=40, pid_p=2.0, pid_i=0.0011, pid_d=0.35,
-                         gs_min=0, gs_max=80, trace_side=TraceSide.OPPOSITE),
-            IsJunction(name="scan joined junction", target_state = JState.JOINED),
+            TraceLineCam(name="curve 01", power=POWER_SLOW,                    
+                         pid_p=PID_P_SLOW, pid_i=PID_I_SLOW, pid_d=PID_D_SLOW,
+                         gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
+            IsDistanceEarned(name="check distance", delta_dist = 1200),
         ]
     )
     loop_04.add_children(
         [
-            TraceLineCam(name="trace normal edge", power=40, pid_p=2.5, pid_i=0.0015, pid_d=0.35,
+            TraceLineCam(name="straight 02", power=POWER_FAST,
+                         pid_p=PID_P_FAST, pid_i=PID_I_FAST, pid_d=PID_D_FAST,
                          gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
-            IsDistanceEarned(name="check distance", delta_dist = 2000),
+            IsDistanceEarned(name="check distance", delta_dist = 2100),
         ]
     )
     loop_05.add_children(
         [
-            TraceLineCam(name="trace normal edge", power=40, pid_p=2.0, pid_i=0.0011, pid_d=0.35,
+            TraceLineCam(name="curve 02", power=POWER_SLOW,                    
+                         pid_p=PID_P_SLOW, pid_i=PID_I_SLOW, pid_d=PID_D_SLOW,
                          gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
-            IsJunction(name="scan joined junction", target_state = JState.JOINED),
+            IsDistanceEarned(name="check distance", delta_dist = 1200),
         ]
     )
     loop_06.add_children(
         [
-            TraceLineCam(name="trace opposite edge", power=40, pid_p=2.0, pid_i=0.0011, pid_d=0.35,
-                         gs_min=0, gs_max=80, trace_side=TraceSide.OPPOSITE),
-            IsJunction(name="scan joined junction", target_state = JState.JOINED),
+            TraceLineCam(name="straight 03", power=POWER_SLOW,                    
+                         pid_p=PID_P_SLOW, pid_i=PID_I_SLOW, pid_d=PID_D_SLOW,
+                         gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
+            IsDistanceEarned(name="check distance", delta_dist = 500),
         ]
     )
     loop_07.add_children(
         [
-            TraceLineCam(name="trace normal edge", power=40, pid_p=2.0, pid_i=0.0015, pid_d=0.3,
+            TraceLineCam(name="junction 01", power=POWER_JUNCTION,                    
+                         pid_p=PID_P_SLOW, pid_i=PID_I_SLOW, pid_d=PID_D_SLOW,
                          gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
+            IsJunction(name="scan joined junction", target_state = JState.JOINED),
+        ]
+    )
+    loop_08.add_children(
+        [
+            TraceLineCam(name="circle 01", power=POWER_SLOW,                    
+                         pid_p=PID_P_SLOW, pid_i=PID_I_SLOW, pid_d=PID_D_SLOW,
+                         gs_min=0, gs_max=80, trace_side=TraceSide.OPPOSITE),
+            IsDistanceEarned(name="check distance", delta_dist = 2200),
+        ]
+    )
+    loop_09.add_children(
+        [
+            TraceLineCam(name="junction 02", power=POWER_JUNCTION,                    
+                         pid_p=PID_P_SLOW, pid_i=PID_I_SLOW, pid_d=PID_D_SLOW,
+                         gs_min=0, gs_max=80, trace_side=TraceSide.OPPOSITE),
+            IsJunction(name="scan joined junction", target_state = JState.JOINED),
+        ]
+    )
+    loop_10.add_children(
+        [
+            TraceLineCam(name="ellipse 01", power=POWER_SLOW,                    
+                         pid_p=PID_P_SLOW, pid_i=PID_I_SLOW, pid_d=PID_D_SLOW,
+                         gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
+            IsDistanceEarned(name="check distance", delta_dist = 1500),
+        ]
+    )
+    loop_11.add_children(
+        [
+            TraceLineCam(name="junction 03", power=POWER_JUNCTION,                    
+                         pid_p=PID_P_SLOW, pid_i=PID_I_SLOW, pid_d=PID_D_SLOW,
+                         gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
+            IsDistanceEarned(name="check distance", delta_dist = 400),
+        ]
+    )
+    loop_12.add_children(
+        [
+            TraceLineCam(name="ellipse 02", power=POWER_SLOW,                    
+                         pid_p=PID_P_SLOW, pid_i=PID_I_SLOW, pid_d=PID_D_SLOW,
+                         gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
+            IsDistanceEarned(name="check distance", delta_dist = 900),
+        ]
+    )
+    loop_13.add_children(
+        [
+            TraceLineCam(name="junction 04", power=POWER_JUNCTION,                    
+                         pid_p=PID_P_SLOW, pid_i=PID_I_SLOW, pid_d=PID_D_SLOW,
+                         gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
+            IsJunction(name="scan joined junction", target_state = JState.JOINED),
+        ]
+    )
+    loop_14.add_children(
+        [
+            TraceLineCam(name="circle 02", power=POWER_SLOW,                    
+                         pid_p=PID_P_SLOW, pid_i=PID_I_SLOW, pid_d=PID_D_SLOW,
+                         gs_min=0, gs_max=80, trace_side=TraceSide.OPPOSITE),
             IsDistanceEarned(name="check distance", delta_dist = 600),
+        ]
+    )
+    loop_15.add_children(
+        [
+            TraceLineCam(name="junction 05", power=POWER_JUNCTION,                    
+                         pid_p=PID_P_SLOW, pid_i=PID_I_SLOW, pid_d=PID_D_SLOW,
+                         gs_min=0, gs_max=80, trace_side=TraceSide.OPPOSITE),
+            IsJunction(name="scan joined junction", target_state = JState.JOINED),
+        ]
+    )
+    loop_16.add_children(
+        [
+            TraceLineCam(name="straight 04", power=POWER_SLOW,                    
+                         pid_p=PID_P_SLOW, pid_i=PID_I_SLOW, pid_d=PID_D_SLOW,
+                         gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
+            IsDistanceEarned(name="check distance", delta_dist = 1500),
         ]
     )
     root.add_children(
@@ -449,6 +551,15 @@ def build_behaviour_tree() -> BehaviourTree:
             loop_05,
             loop_06,
             loop_07,
+            loop_08,
+            loop_09,
+            loop_10,
+            loop_11,
+            loop_12,
+            loop_13,
+            loop_14,
+            loop_15,
+            loop_16,
             StopNow(name="stop"),
             TheEnd(name="end"),
         ]
