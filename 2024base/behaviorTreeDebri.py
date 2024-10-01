@@ -10,7 +10,7 @@ import py_trees.common
 from py_trees.trees import BehaviourTree
 from py_trees.behaviour import Behaviour
 from py_trees.common import Status
-from py_trees.composites import Sequence
+from py_trees.composites import Selector, Sequence
 from py_trees.composites import Parallel
 from py_trees.common import ParallelPolicy
 from py_trees import (
@@ -25,17 +25,15 @@ ARM_SHIFT_PWM = 30
 JUNCT_UPPER_THRESH = 50
 JUNCT_LOWER_THRESH = 40
 
-PID_P_FAST: float = 1.2
-PID_I_FAST: float = 0.0011
-PID_D_FAST: float = 0.3
-POWER_FAST: int = 60
+TIRE_DIAMETER: float = 100.0
+WHEEL_TREAD: float = 120.0
 
-PID_P_SLOW: float = 1.95
-PID_I_SLOW: float = 0.002
-PID_D_SLOW: float = 0.35
-POWER_SLOW: int = 45
+BOTTLE_RANGE_LOWER = 6700
+DEBRI_DISTANCE_SIDE = 1400
+DEBRI_DISTANCE_VERTICAL = 1550
+DEBRI_DISTANCE_CATCH = 150
+DEBRI_DISTANCE_REMOVE = 350
 
-POWER_JUNCTION: int = 40
 
 class ArmDirection(IntEnum):
     UP = -1
@@ -69,6 +67,8 @@ g_gyro_sensor: GyroSensor = None
 g_video: Video = None
 g_video_thread: threading.Thread = None
 g_course: int = 0
+
+g_earned_dist: int = 0
 
 
 class TheEnd(Behaviour):
@@ -149,6 +149,34 @@ class IsDistanceEarned(Behaviour):
         if (earned_dist >= self.delta_dist or -earned_dist <= -self.delta_dist):
             if not self.earned:
                 self.earned = True
+                self.logger.info("%+06d %s.delta distance earned" % (cur_dist, self.__class__.__name__))
+            return Status.SUCCESS
+        else:
+            return Status.RUNNING
+
+
+class IsDistanceEarnedTrace(Behaviour):
+    def __init__(self, name: str, delta_dist: int):
+        super(IsDistanceEarnedTrace, self).__init__(name)
+        self.logger.debug("%s.__init__()" % (self.__class__.__name__))
+        self.delta_dist = delta_dist
+        self.running = False
+        self.earned = False
+
+    def update(self) -> Status:
+        global g_earned_dist
+        if not self.running:
+            self.running = True
+            self.orig_dist = g_plotter.get_distance()
+            self.g_earned_dist = g_earned_dist
+            self.logger.info("%+06d %s.accumulation started for delta=%d" % (self.orig_dist, self.__class__.__name__, self.delta_dist))
+        cur_dist = g_plotter.get_distance()
+        earned_dist = cur_dist - self.orig_dist + self.g_earned_dist
+        g_earned_dist=earned_dist
+        if (earned_dist >= self.delta_dist or -earned_dist <= -self.delta_dist):
+            if not self.earned:
+                self.earned = True
+                g_earned_dist = 0
                 self.logger.info("%+06d %s.delta distance earned" % (cur_dist, self.__class__.__name__))
             return Status.SUCCESS
         else:
@@ -268,6 +296,20 @@ class RunAsInstructed(Behaviour):
         return Status.RUNNING
 
 
+class IsExistBottle(Behaviour):
+    def __init__(self, name: str) -> None:
+        super(IsExistBottle, self).__init__(name)
+        self.running = False
+
+    def update(self) -> Status:
+        if not self.running:
+            self.running = True
+        if(g_video.get_range_of_blue()>BOTTLE_RANGE_LOWER or 
+           g_video.get_range_of_red()>BOTTLE_RANGE_LOWER):
+            return Status.SUCCESS
+        return Status.RUNNING
+
+
 class TraceLine(Behaviour):
     def __init__(self, name: str, target: int, power: int, pid_p: float, pid_i: float, pid_d: float,
                  trace_side: TraceSide) -> None:
@@ -320,7 +362,7 @@ class TraceLineCam(Behaviour):
             self.logger.info("%+06d %s.trace started with TS=%s" % (g_plotter.get_distance(), self.__class__.__name__, self.trace_side.name))
         turn = (-1) * int(self.pid(g_video.get_theta()))
         g_right_motor.set_power(self.power - turn)
-        g_left_motor.set_power(self.power + turn-3)
+        g_left_motor.set_power(self.power + turn)
         return Status.RUNNING
 
 
@@ -382,26 +424,58 @@ class VideoThread(threading.Thread):
             time.sleep(VIDEO_INTERVAL)
 
 
+class IsRotated(Behaviour):
+    def __init__(self, name: str):
+        super(IsRotated, self).__init__(name)
+        self.logger.debug("%s.__init__()" % (self.__class__.__name__))
+        self.running = False
+        self.delta = 90*WHEEL_TREAD/TIRE_DIAMETER*2
+        self.rStart = 0
+        self.lStart = 0
+
+    def update(self) -> Status:
+        if not self.running:
+            self.running = True
+            self.rStart = g_right_motor.get_count()
+            self.lStart = g_left_motor.get_count()
+        rDiff = abs(g_right_motor.get_count() - self.rStart)
+        lDiff = abs(g_left_motor.get_count() - self.lStart)
+
+        if((rDiff>self.delta) or (lDiff>self.delta)):
+            self.running = False
+            return Status.SUCCESS
+        else:
+            return Status.RUNNING
+        
+class IsEndDebri(Behaviour):
+    def __init__(self, name: str):
+        super(IsEndDebri, self).__init__(name)
+        self.logger.debug("%s.__init__()" % (self.__class__.__name__))
+
+    def update(self) -> Status:
+        if(g_earned_dist>DEBRI_DISTANCE_SIDE):
+            return Status.SUCCESS
+        else:
+            return Status.FAILURE
+
 def build_behaviour_tree() -> BehaviourTree:
     root = Sequence(name="competition", memory=True)
     calibration = Sequence(name="calibration", memory=True)
     start = Parallel(name="start", policy=ParallelPolicy.SuccessOnOne())
-    loop_01 = Parallel(name="loop 01", policy=ParallelPolicy.SuccessOnOne())
-    loop_02 = Parallel(name="loop 02", policy=ParallelPolicy.SuccessOnOne())
-    loop_03 = Parallel(name="loop 03", policy=ParallelPolicy.SuccessOnOne())
-    loop_04 = Parallel(name="loop 04", policy=ParallelPolicy.SuccessOnOne())
-    loop_05 = Parallel(name="loop 05", policy=ParallelPolicy.SuccessOnOne())
-    loop_06 = Parallel(name="loop 06", policy=ParallelPolicy.SuccessOnOne())
-    loop_07 = Parallel(name="loop 07", policy=ParallelPolicy.SuccessOnOne())
-    loop_08 = Parallel(name="loop 08", policy=ParallelPolicy.SuccessOnOne())
-    loop_09 = Parallel(name="loop 09", policy=ParallelPolicy.SuccessOnOne())
-    loop_10 = Parallel(name="loop 10", policy=ParallelPolicy.SuccessOnOne())
-    loop_11 = Parallel(name="loop 11", policy=ParallelPolicy.SuccessOnOne())
-    loop_12 = Parallel(name="loop 12", policy=ParallelPolicy.SuccessOnOne())
-    loop_13 = Parallel(name="loop 13", policy=ParallelPolicy.SuccessOnOne())
-    loop_14 = Parallel(name="loop 14", policy=ParallelPolicy.SuccessOnOne())
-    loop_15 = Parallel(name="loop 15", policy=ParallelPolicy.SuccessOnOne())
-    loop_16 = Parallel(name="loop 16", policy=ParallelPolicy.SuccessOnOne())
+    debri_01 = Parallel(name="debri 01", policy=ParallelPolicy.SuccessOnOne())
+    debri_02 = Parallel(name="debri 02", policy=ParallelPolicy.SuccessOnOne())
+    debri_03 = Parallel(name="debri 03", policy=ParallelPolicy.SuccessOnOne())
+    debri_04 = Parallel(name="debri 04", policy=ParallelPolicy.SuccessOnOne())
+    debri_05 = Parallel(name="debri 05", policy=ParallelPolicy.SuccessOnOne())
+    debri_06 = Parallel(name="debri 06", policy=ParallelPolicy.SuccessOnOne())
+    debri_07 = Parallel(name="debri 07", policy=ParallelPolicy.SuccessOnOne())
+    debri_08 = Selector(name="debri 08", memory=True)
+    debri_08_02 = Sequence(name="debri 08 02", memory=True)
+    debri_08_02_01 = Parallel(name="debri 08 02 01", policy=ParallelPolicy.SuccessOnOne())
+    debri_08_02_02 = Parallel(name="debri 08 02 02", policy=ParallelPolicy.SuccessOnOne())
+    debri_08_02_03 = Parallel(name="debri 08 02 03", policy=ParallelPolicy.SuccessOnOne())
+    debri_08_02_04 = Parallel(name="debri 08 02 04", policy=ParallelPolicy.SuccessOnOne())
+
     calibration.add_children(
         [
             ArmUpDownFull(name="arm down", direction=ArmDirection.DOWN),
@@ -414,152 +488,105 @@ def build_behaviour_tree() -> BehaviourTree:
             IsTouchOn(name="touch start"),
         ]
     )
-    loop_01.add_children(
+    debri_01.add_children(
         [
-            RunAsInstructed(name="run", pwm_r=40, pwm_l=35),
-            IsDistanceEarned(name="check distance", delta_dist = 150),
+            TraceLineCam(name="trace normal edge", power=40, pid_p=1.7, pid_i=0.0015, pid_d=0.1,
+                         gs_min=0, gs_max=80, trace_side=TraceSide.CENTER),
+            IsDistanceEarnedTrace(name="check distance01", delta_dist=DEBRI_DISTANCE_VERTICAL),
+            IsExistBottle(name="check bottle"),
         ]
     )
-    loop_02.add_children(
+    debri_02.add_children(
         [
-            TraceLineCam(name="straight 01", power=POWER_FAST,                    
-                         pid_p=PID_P_FAST, pid_i=PID_I_FAST, pid_d=PID_D_FAST,
-                         gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
-            IsDistanceEarned(name="check distance", delta_dist = 3700),
+            RunAsInstructed(name="run", pwm_r=40,pwm_l=40),
+            IsDistanceEarned(name="check distance", delta_dist = DEBRI_DISTANCE_CATCH),
         ]
     )
-    loop_03.add_children(
+    debri_03.add_children(
         [
-            TraceLineCam(name="curve 01", power=POWER_SLOW,                    
-                         pid_p=PID_P_SLOW, pid_i=PID_I_SLOW, pid_d=PID_D_SLOW,
-                         gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
-            IsDistanceEarned(name="check distance", delta_dist = 1200),
+            RunAsInstructed(name="remove", pwm_r=60,pwm_l=20),
+            IsDistanceEarned(name="check distance", delta_dist = DEBRI_DISTANCE_REMOVE),
         ]
     )
-    loop_04.add_children(
+    debri_04.add_children(
         [
-            TraceLineCam(name="straight 02", power=POWER_FAST,
-                         pid_p=PID_P_FAST, pid_i=PID_I_FAST, pid_d=PID_D_FAST,
-                         gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
-            IsDistanceEarned(name="check distance", delta_dist = 2100),
+            RunAsInstructed(name="go back", pwm_r=-60,pwm_l=-20),
+            IsDistanceEarned(name="check distance", delta_dist = DEBRI_DISTANCE_REMOVE),
         ]
     )
-    loop_05.add_children(
+    debri_05.add_children(
         [
-            TraceLineCam(name="curve 03", power=POWER_SLOW,                    
-                         pid_p=PID_P_SLOW, pid_i=PID_I_SLOW, pid_d=PID_D_SLOW,
-                         gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
-            IsDistanceEarned(name="check distance", delta_dist = 1200),
+            TraceLineCam(name="trace normal edge", power=40, pid_p=1.7, pid_i=0.0015, pid_d=0.1,
+                         gs_min=0, gs_max=80, trace_side=TraceSide.CENTER),
+            IsDistanceEarnedTrace(name="check distance02", delta_dist = DEBRI_DISTANCE_VERTICAL),
         ]
     )
-    loop_06.add_children(
+    debri_06.add_children(
         [
-            TraceLineCam(name="curve 03", power=POWER_SLOW,                    
-                         pid_p=PID_P_SLOW, pid_i=PID_I_SLOW, pid_d=PID_D_SLOW,
-                         gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
-            IsDistanceEarned(name="check distance", delta_dist = 500),
+            RunAsInstructed(name="rotate", pwm_r=50,pwm_l=0),
+            IsRotated(name="check rotated"),
         ]
     )
-    loop_07.add_children(
+    debri_07.add_children(
         [
-            TraceLineCam(name="junction 01", power=POWER_JUNCTION,                    
-                         pid_p=PID_P_SLOW, pid_i=PID_I_SLOW, pid_d=PID_D_SLOW,
-                         gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
-            IsJunction(name="scan joined junction", target_state = JState.JOINED),
+            TraceLineCam(name="trace normal edge", power=40, pid_p=1.5, pid_i=0.0015, pid_d=0.1,
+                         gs_min=0, gs_max=80, trace_side=TraceSide.CENTER),
+            IsDistanceEarnedTrace(name="check distance03", delta_dist = DEBRI_DISTANCE_SIDE),
+            IsExistBottle(name="check bottle"),
         ]
     )
-    loop_08.add_children(
+    debri_08.add_children(
         [
-            TraceLineCam(name="circle 01", power=POWER_SLOW,                    
-                         pid_p=PID_P_SLOW, pid_i=PID_I_SLOW, pid_d=PID_D_SLOW,
-                         gs_min=0, gs_max=80, trace_side=TraceSide.OPPOSITE),
-            IsDistanceEarned(name="check distance", delta_dist = 2200),
+            IsEndDebri(name="judge end"),
+            debri_08_02,
         ]
     )
-    loop_09.add_children(
+    debri_08_02.add_children(
         [
-            TraceLineCam(name="junction 02", power=POWER_JUNCTION,                    
-                         pid_p=PID_P_SLOW, pid_i=PID_I_SLOW, pid_d=PID_D_SLOW,
-                         gs_min=0, gs_max=80, trace_side=TraceSide.OPPOSITE),
-            IsJunction(name="scan joined junction", target_state = JState.JOINED),
+            debri_08_02_01,
+            debri_08_02_02,
+            debri_08_02_03,
+            debri_08_02_04,
         ]
     )
-    loop_10.add_children(
+    debri_08_02_01.add_children(
         [
-            TraceLineCam(name="ellipse 01", power=POWER_SLOW,                    
-                         pid_p=PID_P_SLOW, pid_i=PID_I_SLOW, pid_d=PID_D_SLOW,
-                         gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
-            IsDistanceEarned(name="check distance", delta_dist = 1500),
+            RunAsInstructed(name="run", pwm_r=40,pwm_l=40),
+            IsDistanceEarned(name="check distance", delta_dist = DEBRI_DISTANCE_CATCH),
         ]
     )
-    loop_11.add_children(
+    debri_08_02_02.add_children(
         [
-            TraceLineCam(name="junction 03", power=POWER_JUNCTION,                    
-                         pid_p=PID_P_SLOW, pid_i=PID_I_SLOW, pid_d=PID_D_SLOW,
-                         gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
-            IsDistanceEarned(name="check distance", delta_dist = 400),
+            RunAsInstructed(name="remove", pwm_r=60,pwm_l=20),
+            IsDistanceEarned(name="check distance", delta_dist = DEBRI_DISTANCE_REMOVE),
         ]
     )
-    loop_12.add_children(
+    debri_08_02_03.add_children(
         [
-            TraceLineCam(name="ellipse 02", power=POWER_SLOW,                    
-                         pid_p=PID_P_SLOW, pid_i=PID_I_SLOW, pid_d=PID_D_SLOW,
-                         gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
-            IsDistanceEarned(name="check distance", delta_dist = 900),
+            RunAsInstructed(name="go back", pwm_r=-60,pwm_l=-20),
+            IsDistanceEarned(name="check distance", delta_dist = DEBRI_DISTANCE_REMOVE),
         ]
     )
-    loop_13.add_children(
+    debri_08_02_04.add_children(
         [
-            TraceLineCam(name="junction 04", power=POWER_JUNCTION,                    
-                         pid_p=PID_P_SLOW, pid_i=PID_I_SLOW, pid_d=PID_D_SLOW,
-                         gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
-            IsJunction(name="scan joined junction", target_state = JState.JOINED),
+            TraceLineCam(name="trace normal edge", power=40, pid_p=1.7, pid_i=0.0015, pid_d=0.1,
+                         gs_min=0, gs_max=80, trace_side=TraceSide.CENTER),
+            IsDistanceEarnedTrace(name="check distance04", delta_dist = DEBRI_DISTANCE_SIDE),
         ]
     )
-    loop_14.add_children(
-        [
-            TraceLineCam(name="circle 02", power=POWER_SLOW,                    
-                         pid_p=PID_P_SLOW, pid_i=PID_I_SLOW, pid_d=PID_D_SLOW,
-                         gs_min=0, gs_max=80, trace_side=TraceSide.OPPOSITE),
-            IsDistanceEarned(name="check distance", delta_dist = 600),
-        ]
-    )
-    loop_15.add_children(
-        [
-            TraceLineCam(name="junction 05", power=POWER_JUNCTION,                    
-                         pid_p=PID_P_SLOW, pid_i=PID_I_SLOW, pid_d=PID_D_SLOW,
-                         gs_min=0, gs_max=80, trace_side=TraceSide.OPPOSITE),
-            IsJunction(name="scan joined junction", target_state = JState.JOINED),
-        ]
-    )
-    loop_16.add_children(
-        [
-            TraceLineCam(name="junction 05", power=POWER_SLOW,                    
-                         pid_p=PID_P_SLOW, pid_i=PID_I_SLOW, pid_d=PID_D_SLOW,
-                         gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
-            IsDistanceEarned(name="check distance", delta_dist = 1500),
-        ]
-    )
+    
     root.add_children(
         [
             calibration,
             start,
-            loop_01,
-            loop_02,
-            loop_03,
-            loop_04,
-            loop_05,
-            loop_06,
-            loop_07,
-            loop_08,
-            loop_09,
-            loop_10,
-            loop_11,
-            loop_12,
-            loop_13,
-            loop_14,
-            loop_15,
-            loop_16,
+            debri_01,
+            debri_02,
+            debri_03,
+            debri_04,
+            debri_05,
+            debri_06,
+            debri_07,
+            debri_08,
             StopNow(name="stop"),
             TheEnd(name="end"),
         ]
