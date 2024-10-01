@@ -68,7 +68,7 @@ g_video: Video = None
 g_video_thread: threading.Thread = None
 g_course: int = 0
 
-g_earned_dist: int = 0
+g_earned_dist_debri: int = 0
 
 
 class TheEnd(Behaviour):
@@ -164,19 +164,19 @@ class IsDistanceEarnedTrace(Behaviour):
         self.earned = False
 
     def update(self) -> Status:
-        global g_earned_dist
+        global g_earned_dist_debri
         if not self.running:
             self.running = True
             self.orig_dist = g_plotter.get_distance()
-            self.g_earned_dist = g_earned_dist
+            self.g_earned_dist = g_earned_dist_debri
             self.logger.info("%+06d %s.accumulation started for delta=%d" % (self.orig_dist, self.__class__.__name__, self.delta_dist))
         cur_dist = g_plotter.get_distance()
         earned_dist = cur_dist - self.orig_dist + self.g_earned_dist
-        g_earned_dist=earned_dist
+        g_earned_dist_debri=earned_dist
         if (earned_dist >= self.delta_dist or -earned_dist <= -self.delta_dist):
             if not self.earned:
                 self.earned = True
-                g_earned_dist = 0
+                g_earned_dist_debri = 0
                 self.logger.info("%+06d %s.delta distance earned" % (cur_dist, self.__class__.__name__))
             return Status.SUCCESS
         else:
@@ -453,7 +453,7 @@ class IsEndDebri(Behaviour):
         self.logger.debug("%s.__init__()" % (self.__class__.__name__))
 
     def update(self) -> Status:
-        if(g_earned_dist>DEBRI_DISTANCE_SIDE):
+        if(g_earned_dist_debri>DEBRI_DISTANCE_SIDE):
             return Status.SUCCESS
         else:
             return Status.FAILURE
