@@ -2,10 +2,10 @@ import os
 import cv2
 import math
 import numpy as np
+from enum import Enum
 from picamera2 import Picamera2, Preview
 from .plotter import Plotter
 from etrobo_python import Hub, Motor, ColorSensor, TouchSensor, SonarSensor, GyroSensor
-from const import TraceSide
 
 def round_up_to_odd(f) -> int:
     return int(np.ceil(f / 2.) * 2 + 1)
@@ -39,6 +39,14 @@ SCAN_V_POS     = int(12*FRAME_HEIGHT/16 - LINE_THICKNESS) # for full angle
 # frame size for X11 painting
 OUT_FRAME_WIDTH  = 160
 OUT_FRAME_HEIGHT = 120
+
+
+class TraceSide(Enum):
+    NORMAL = "Normal"
+    OPPOSITE = "Opposite"
+    RIGHT = "Right"
+    LEFT = "Left"
+    CENTER = "Center"
 
 
 class Video(object):
@@ -103,11 +111,7 @@ class Video(object):
 
         hsv = cv2.cvtColor(img_orig, cv2.COLOR_BGR2HSV)
         hsv_min = np.array([0, 64, 64])
-<<<<<<< HEAD
         hsv_max = np.array([30, 255, 200])
-=======
-        hsv_max = np.array([25, 255, 200])
->>>>>>> 22bdee26268e5c1f992137f9f2b909ceac2ba9e2
         red1 = cv2.inRange(hsv, hsv_min, hsv_max)
         hsv_min = np.array([150, 64, 64])
         hsv_max = np.array([179, 255, 200])
@@ -115,12 +119,6 @@ class Video(object):
         hsv_min = np.array([90, 64, 64])
         hsv_max = np.array([150, 255, 200])
         blue = cv2.inRange(hsv, hsv_min, hsv_max)
-<<<<<<< HEAD
-=======
-        hsv_min = np.array([30, 64, 64])
-        hsv_max = np.array([90, 255, 200])
-        green = cv2.inRange(hsv, hsv_min, hsv_max)
->>>>>>> 22bdee26268e5c1f992137f9f2b909ceac2ba9e2
 
         red = red1 + red2
         img_bin_red = np.zeros((FRAME_HEIGHT, FRAME_WIDTH), np.uint8)
@@ -154,15 +152,8 @@ class Video(object):
                         target_blue = i
         self.range_of_blue = area_blue
 
-<<<<<<< HEAD
-=======
-        mask = cv2.cvtColor(green, cv2.COLOR_GRAY2BGR)
-        img_orig = cv2.bitwise_or(img_orig, mask)
-
->>>>>>> 22bdee26268e5c1f992137f9f2b909ceac2ba9e2
         # convert the image from BGR to grayscale
         img_gray = cv2.cvtColor(img_orig, cv2.COLOR_BGR2GRAY)
-        #img_gray = cv2.bitwise_or(img_gray, green)
         # crop a part of image for binarization
         img_gray_part = img_gray[CROP_U_LIMIT:CROP_D_LIMIT, CROP_L_LIMIT:CROP_R_LIMIT]
         # binarize the image
@@ -286,17 +277,10 @@ class Video(object):
         self.theta = 180 * math.atan(vxm / 205) / math.pi
         #print(f"mx = {self.mx}, vxm = {vxm}, theta = {self.theta}")
 
-<<<<<<< HEAD
         if(len(contours_red)>0):
             img_orig = cv2.drawContours(img_orig, contours_red[target_red], -1, (255,0,0), LINE_THICKNESS)
         if(len(contours_blue)>0):
             img_orig = cv2.drawContours(img_orig, contours_blue[target_blue], -1, (0,0,255), LINE_THICKNESS)
-=======
-        # if(len(contours_red)>0):
-        #     img_orig = cv2.drawContours(img_orig, contours_red[target_red], -1, (255,0,0), LINE_THICKNESS)
-        # if(len(contours_blue)>0):
-        #     img_orig = cv2.drawContours(img_orig, contours_blue[target_blue], -1, (0,0,255), LINE_THICKNESS)
->>>>>>> 22bdee26268e5c1f992137f9f2b909ceac2ba9e2
 
         # prepare text area
         img_text = np.zeros((FRAME_HEIGHT, FRAME_WIDTH, 3), np.uint8)
