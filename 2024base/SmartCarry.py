@@ -16,6 +16,7 @@ from py_trees import (
     display as display_tree,
     logging as log_tree
 )
+
 from py_etrobo_util import Video, Plotter
 
 from const import (
