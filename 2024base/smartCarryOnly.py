@@ -981,7 +981,7 @@ def build_behaviour_tree() -> BehaviourTree:
     # 曲がりたい方向のモーターのみ後退させて90度ターン
     carry_04.add_children(
         [
-            RunAsInstructed(name="rotate", pwm_r=0,pwm_l=-35),
+            RunAsInstructed(name="rotate", pwm_r=35,pwm_l=-60),
             IsRotated(name="check rotated", delta_dire=90),
         ]
     )
