@@ -955,7 +955,7 @@ def build_behaviour_tree() -> BehaviourTree:
     carry_02.add_children(
         [
             #TraceLineCam(name="trace normal edge", power=34, pid_p=1.9, pid_i=0.001, pid_d=0.1,scene=Scene.DEBRI, gs_min=0, gs_max=80, trace_side=TraceSide.CENTER),
-            TraceLineCam(name="trace normal edge", power=45, pid_p=1.9, pid_i=0.001, pid_d=0.1,scene=Scene.DEBRI, gs_min=0, gs_max=80, trace_side=TraceSide.CENTER),
+            TraceLineCam(name="trace normal edge", power=45, pid_p=1.9, pid_i=0.001, pid_d=0.1,scene=Scene.DEBRI, gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
             IsDistanceEarned(name="check distance", delta_dist = 250),
         ]
     )
@@ -980,7 +980,7 @@ def build_behaviour_tree() -> BehaviourTree:
     carry_05.add_children(
         [
             RunAsInstructed(name="go straight",pwm_l=50,pwm_r=50),
-            IsDistanceEarned(name="check distance", delta_dist = 1100),
+            IsDistanceEarned(name="check distance", delta_dist = 1300),
         ]
     )
     
