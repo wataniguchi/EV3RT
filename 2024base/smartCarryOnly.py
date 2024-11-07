@@ -922,69 +922,87 @@ def build_behaviour_tree() -> BehaviourTree:
         carry_10,
     ])
 
+    # カメラで青ラインを補足できる距離まで決め打ち走行
     carry_01.add_children(
         [
             RunAsInstructed(name="go straight",pwm_l=38,pwm_r=38),
             IsDistanceEarned(name="check distance", delta_dist = 400),
         ]
     )
-    
+
+    # ライン中央トレースでボトルを捕まえに行く
     carry_02.add_children(
         [
             TraceLineCam(name="trace normal edge", power=34, pid_p=1.9, pid_i=0.001, pid_d=0.1,scene=Scene.DEBRI, gs_min=0, gs_max=80, trace_side=TraceSide.CENTER),
             IsDistanceEarned(name="check distance", delta_dist = 500),
         ]
     )
-    if(g_course==-1):
-        carry_03.add_children(
-                [
-                    RunAsInstructed(name="rotate", pwm_r=60,pwm_l=20),
-                    IsDistanceEarned(name="check distance", delta_dist = 550),
-                ]
-        )
-    else:
-        carry_03.add_children(
-                [
-                    RunAsInstructed(name="rotate", pwm_r=60,pwm_l=20),
-                    IsDistanceEarned(name="check distance", delta_dist = 400),
-                ]
-        )
-    carry_04.add_children(
+    
+    # ピンク検知までモーター出力指定で前進(一旦黒検知のコードでお試し)
+    carry_03.add_children(
         [
             RunAsInstructed(name="go straight",pwm_l=45,pwm_r=45),
+            CheckBrackColor(name="checkBrackColor"),
+        ]
+    )
+
+    # 曲がりたい方向のモーターのみ後退させて90度ターン
+    carry_04.add_children(
+        [
+            RunAsInstructed(name="rotate", pwm_r=0,pwm_l=-60),
+            IsRotated(name="check rotated", delta_dire=-90),
+        ]
+    )
+
+    # スマートキャリーまで直進
+    carry_05.add_children(
+        [
+            RunAsInstructed(name="go straight",pwm_l=50,pwm_r=50),
             IsDistanceEarned(name="check distance", delta_dist = 1100),
         ]
     )
-    carry_05.add_children(
+    
+    # ボトルをおいて後退
+    carry_06.add_children(
         [
             RunAsInstructed(name="go straight",pwm_l=-40,pwm_r=-40),
             IsDistanceEarned(name="check distance", delta_dist = 250),
         ]
     )
+    
+    # 黒ライン方向にターン
     carry_06.add_children(
         [
             RunAsInstructed(name="rotate", pwm_r=0,pwm_l=60),
             IsRotated(name="check rotated", delta_dire=100),
         ]
     )
+    
+    # 黒ライン検知までモーター出力指定走行
     carry_07.add_children(
         [
             RunAsInstructed(name="go straight",pwm_l=38,pwm_r=38),
             CheckBrackColor(name="checkBrackColor")
         ]   
     )
+    
+    # ゴールに向かってターン
     carry_08.add_children(
         [
             RunAsInstructed(name="rotate", pwm_r=0,pwm_l=60),
             IsRotated(name="check rotated", delta_dire=100),
         ]
     )
+    
+    # カメラでラインを補足するため短距離後退
     carry_09.add_children(
         [
             RunAsInstructed(name="rotate", pwm_r=-35,pwm_l=-35),
             IsRotated(name="check rotated", delta_dire=55),
         ]
     )
+    
+    # カメラでライントレースしてゴールへ走行
     carry_10.add_children(
         [
             TraceLineCam(name="trace normal edge", power=36, pid_p=1.7, pid_i=0.0015, pid_d=0.1,scene=Scene.DEBRI, gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
