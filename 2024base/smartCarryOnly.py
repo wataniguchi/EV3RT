@@ -301,7 +301,7 @@ class CheckBrackColor(Behaviour):
         
 class CheckPinkColor(Behaviour):
     def __init__(self, name: str):
-        super(CheckBrackColor, self).__init__(name)
+        super(CheckPinkColor, self).__init__(name)
         self.logger.debug("%s.__init__()" % (self.__class__.__name__))
         self.running = False
     def update(self) -> Status:
