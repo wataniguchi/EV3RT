@@ -570,6 +570,7 @@ def build_behaviour_tree() -> BehaviourTree:
     carry_01 = Parallel(name="carry 01", policy=ParallelPolicy.SuccessOnOne())
     carry_02 = Parallel(name="carry 01", policy=ParallelPolicy.SuccessOnOne())
     carry_03 = Parallel(name="carry 01", policy=ParallelPolicy.SuccessOnOne())
+    carry_030 = Parallel(name="carry 01", policy=ParallelPolicy.SuccessOnOne())
     carry_04 = Parallel(name="carry 01", policy=ParallelPolicy.SuccessOnOne())
     carry_05 = Parallel(name="carry 01", policy=ParallelPolicy.SuccessOnOne())
     carry_06 = Parallel(name="carry 01", policy=ParallelPolicy.SuccessOnOne())
@@ -935,6 +936,7 @@ def build_behaviour_tree() -> BehaviourTree:
         carry_01,
         carry_02,
         carry_03,
+        carry_030,
         carry_04,
         carry_05,
         carry_06,
@@ -961,7 +963,13 @@ def build_behaviour_tree() -> BehaviourTree:
             IsDistanceEarned(name="check distance", delta_dist = 250),
         ]
     )
-    
+    # 一瞬速度を上げてボトルを挟む
+    carry_030.add_children(
+        [
+            RunAsInstructed(name="go straight",pwm_l=90,pwm_r=90),
+            IsDistanceEarned(name="check distance", delta_dist = 50),
+        ]
+    )    
     # ピンク検知までモーター出力指定で前進
     carry_03.add_children(
         [
