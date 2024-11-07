@@ -314,7 +314,7 @@ class CheckPinkColor(Behaviour):
         now_color = [r,g,b]
         self.logger.info('now_color:{}'.format(now_color))
 
-        if 105<r<120 and 60<g<75 and 80<b<93:
+        if 100<r<120 and 60<g<75 and 75<b<93:
                 return Status.SUCCESS
         else:
             return Status.RUNNING
