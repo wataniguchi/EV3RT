@@ -935,8 +935,8 @@ def build_behaviour_tree() -> BehaviourTree:
     carry.add_children([
         carry_01,
         carry_02,
-        carry_03,
         carry_030,
+        carry_03,
         carry_04,
         carry_05,
         carry_06,
