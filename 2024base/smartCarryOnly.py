@@ -577,6 +577,7 @@ def build_behaviour_tree() -> BehaviourTree:
     carry_08 = Parallel(name="carry 01", policy=ParallelPolicy.SuccessOnOne())
     carry_09 = Parallel(name="carry 01", policy=ParallelPolicy.SuccessOnOne())
     carry_10 = Parallel(name="carry 01", policy=ParallelPolicy.SuccessOnOne())
+    carry_11 = Parallel(name="carry 01", policy=ParallelPolicy.SuccessOnOne())
     
     calibration.add_children(
         [
@@ -941,6 +942,7 @@ def build_behaviour_tree() -> BehaviourTree:
         carry_08,
         carry_09,
         carry_10,
+        carry_11,
     ])
 
     # カメラで青ラインを補足できる距離まで決め打ち走行
@@ -960,7 +962,7 @@ def build_behaviour_tree() -> BehaviourTree:
         ]
     )
     
-    # ピンク検知までモーター出力指定で前進(一旦黒検知のコードでお試し)
+    # ピンク検知までモーター出力指定で前進
     carry_03.add_children(
         [
             RunAsInstructed(name="go straight",pwm_l=45,pwm_r=45),
@@ -993,7 +995,7 @@ def build_behaviour_tree() -> BehaviourTree:
     )
     
     # 黒ライン方向にターン
-    carry_06.add_children(
+    carry_07.add_children(
         [
             RunAsInstructed(name="rotate", pwm_r=0,pwm_l=60),
             IsRotated(name="check rotated", delta_dire=100),
@@ -1001,7 +1003,7 @@ def build_behaviour_tree() -> BehaviourTree:
     )
     
     # 黒ライン検知までモーター出力指定走行
-    carry_07.add_children(
+    carry_08.add_children(
         [
             RunAsInstructed(name="go straight",pwm_l=38,pwm_r=38),
             CheckBrackColor(name="checkBrackColor")
@@ -1009,7 +1011,7 @@ def build_behaviour_tree() -> BehaviourTree:
     )
     
     # ゴールに向かってターン
-    carry_08.add_children(
+    carry_09.add_children(
         [
             RunAsInstructed(name="rotate", pwm_r=0,pwm_l=60),
             IsRotated(name="check rotated", delta_dire=100),
@@ -1017,7 +1019,7 @@ def build_behaviour_tree() -> BehaviourTree:
     )
     
     # カメラでラインを補足するため短距離後退
-    carry_09.add_children(
+    carry_10.add_children(
         [
             RunAsInstructed(name="rotate", pwm_r=-35,pwm_l=-35),
             IsRotated(name="check rotated", delta_dire=55),
@@ -1025,7 +1027,7 @@ def build_behaviour_tree() -> BehaviourTree:
     )
     
     # カメラでライントレースしてゴールへ走行
-    carry_10.add_children(
+    carry_11.add_children(
         [
             TraceLineCam(name="trace normal edge", power=36, pid_p=1.7, pid_i=0.0015, pid_d=0.1,scene=Scene.DEBRI, gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
         ]
