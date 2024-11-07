@@ -973,7 +973,7 @@ def build_behaviour_tree() -> BehaviourTree:
     # ピンク検知までモーター出力指定で前進
     carry_03.add_children(
         [
-            RunAsInstructed(name="go straight",pwm_l=45,pwm_r=45),
+            RunAsInstructed(name="go straight",pwm_l=40,pwm_r=40),
             CheckPinkColor(name="checkPinkColor"),
         ]
     )
