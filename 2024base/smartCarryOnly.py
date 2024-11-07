@@ -298,6 +298,26 @@ class CheckBrackColor(Behaviour):
             now_color = [r,g,b]
         return Status.RUNNING
 
+        
+class CheckPinkColor(Behaviour):
+    def __init__(self, name: str):
+        super(CheckBrackColor, self).__init__(name)
+        self.logger.debug("%s.__init__()" % (self.__class__.__name__))
+        self.running = False
+    def update(self) -> Status:
+        r, g, b = [x for x in g_color_sensor.get_raw_color()]
+        if not self.running:
+            self.running = True
+            self.logger.info("%+06d %s.started" % (g_plotter.get_distance(), self.__class__.__name__))
+
+        global now_color
+        now_color = [r,g,b]
+
+        if 105<r<120 and 60<g<75 and 80<b<93:
+                return Status.SUCCESS
+
+        return Status.RUNNING
+
 
 class StopNow(Behaviour):
     def __init__(self, name: str):
@@ -942,7 +962,7 @@ def build_behaviour_tree() -> BehaviourTree:
     carry_03.add_children(
         [
             RunAsInstructed(name="go straight",pwm_l=45,pwm_r=45),
-            CheckBrackColor(name="checkBrackColor"),
+            CheckPinkColor(name="checkPinkColor"),
         ]
     )
 
