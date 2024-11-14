@@ -1014,7 +1014,7 @@ def build_behaviour_tree() -> BehaviourTree:
     carry_04.add_children(
         [
             RunAsInstructed(name="rotate", pwm_r=50,pwm_l=-50),
-            IsRotated(name="check rotated", delta_dire=100),
+            IsRotated(name="check rotated", delta_dire=80),
         ]
     )
 
