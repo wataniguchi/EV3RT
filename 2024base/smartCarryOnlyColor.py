@@ -1011,7 +1011,7 @@ def build_behaviour_tree() -> BehaviourTree:
     # 曲がりたい方向のモーターのみ後退させて90度ターン
     carry_04.add_children(
         [
-            RunAsInstructed(name="rotate", pwm_r=40,pwm_l=-40),
+            RunAsInstructed(name="rotate", pwm_r=50,pwm_l=-50),
             IsRotated(name="check rotated", delta_dire=60),
         ]
     )
@@ -1028,7 +1028,7 @@ def build_behaviour_tree() -> BehaviourTree:
     carry_051.add_children(
         [
             TraceLineColor(name="run", interval=EXEC_INTERVAL, target=20, power=35, pid_p=0.56, pid_i=0.005, pid_d=0.015),
-            IsDistanceEarned(name="check distance", delta_dist = 150),
+            IsDistanceEarned(name="check distance", delta_dist = 250),
         ]
     )
     
