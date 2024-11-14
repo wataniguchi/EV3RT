@@ -20,6 +20,11 @@ class Wheel:
 
 
 class TraceNum:
+    PID_P_TOPSPEED: float = 0.75
+    PID_I_TOPSPEED: float = 0.0020
+    PID_D_TOPSPEED: float = 0.28
+    POWER_TOPSPEED: int = 80
+    
     PID_P_FAST: float = 0.95
     PID_I_FAST: float = 0.001
     PID_D_FAST: float = 0.1

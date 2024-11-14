@@ -503,23 +503,27 @@ def build_behaviour_tree() -> BehaviourTree:
     start = Parallel(name="start", policy=ParallelPolicy.SuccessOnOne())
 
     loop = Sequence(name="loop", memory=True)
-    loop_01 = Parallel(name="start loop", policy=ParallelPolicy.SuccessOnOne())
-    loop_02 = Parallel(name="straight 01", policy=ParallelPolicy.SuccessOnOne())
-    loop_03 = Parallel(name="curve 01", policy=ParallelPolicy.SuccessOnOne())
-    loop_04 = Parallel(name="straight 02", policy=ParallelPolicy.SuccessOnOne())
-    loop_05 = Parallel(name="curve 02", policy=ParallelPolicy.SuccessOnOne())
-    loop_06 = Parallel(name="straight 03", policy=ParallelPolicy.SuccessOnOne())
-    loop_07 = Parallel(name="junction 01", policy=ParallelPolicy.SuccessOnOne())
-    loop_08 = Parallel(name="circle 01", policy=ParallelPolicy.SuccessOnOne())
-    loop_09 = Parallel(name="junction 02", policy=ParallelPolicy.SuccessOnOne())
-    loop_10 = Parallel(name="ellipse 01", policy=ParallelPolicy.SuccessOnOne())
-    loop_11 = Parallel(name="junction 03", policy=ParallelPolicy.SuccessOnOne())
-    loop_12 = Parallel(name="ellipse 02", policy=ParallelPolicy.SuccessOnOne())
-    loop_13 = Parallel(name="junction 04", policy=ParallelPolicy.SuccessOnOne())
-    loop_14 = Parallel(name="circle 02", policy=ParallelPolicy.SuccessOnOne())
-    loop_15 = Parallel(name="junction 05", policy=ParallelPolicy.SuccessOnOne())
-    loop_16 = Parallel(name="straight 04", policy=ParallelPolicy.SuccessOnOne())
-    loop_17 = Parallel(name="end loop", policy=ParallelPolicy.SuccessOnOne())
+    loop_01 = Parallel(name="loop_01", policy=ParallelPolicy.SuccessOnOne())
+    loop_02 = Parallel(name="loop_02", policy=ParallelPolicy.SuccessOnOne())
+    loop_03 = Parallel(name="loop_03", policy=ParallelPolicy.SuccessOnOne())
+    loop_04 = Parallel(name="loop_04", policy=ParallelPolicy.SuccessOnOne())
+    loop_05 = Parallel(name="loop_05", policy=ParallelPolicy.SuccessOnOne())
+    loop_06 = Parallel(name="loop_06", policy=ParallelPolicy.SuccessOnOne())
+    loop_07 = Parallel(name="loop_07", policy=ParallelPolicy.SuccessOnOne())
+    #loop_08 = Parallel(name="loop_08", policy=ParallelPolicy.SuccessOnOne())
+    #loop_09 = Parallel(name="loop_09", policy=ParallelPolicy.SuccessOnOne())
+    loop_10 = Parallel(name="loop_10", policy=ParallelPolicy.SuccessOnOne())
+    loop_11 = Parallel(name="loop_11", policy=ParallelPolicy.SuccessOnOne())
+    loop_12 = Parallel(name="loop_12", policy=ParallelPolicy.SuccessOnOne())
+    loop_13 = Parallel(name="loop_13", policy=ParallelPolicy.SuccessOnOne())
+    loop_14 = Parallel(name="loop_14", policy=ParallelPolicy.SuccessOnOne())
+    loop_15 = Parallel(name="loop_15", policy=ParallelPolicy.SuccessOnOne())
+    loop_16 = Parallel(name="loop_16", policy=ParallelPolicy.SuccessOnOne())
+    loop_17 = Parallel(name="loop_17", policy=ParallelPolicy.SuccessOnOne())
+    loop_18 = Parallel(name="loop_18", policy=ParallelPolicy.SuccessOnOne())
+    loop_19 = Parallel(name="loop_19", policy=ParallelPolicy.SuccessOnOne())
+    loop_20 = Parallel(name="loop_20", policy=ParallelPolicy.SuccessOnOne())
+
 
     debri = Sequence(name="debri", memory=True)
     debri_01 = Parallel(name="vertical 01", policy=ParallelPolicy.SuccessOnOne())
@@ -577,8 +581,8 @@ def build_behaviour_tree() -> BehaviourTree:
         loop_05,
         loop_06,
         loop_07,
-        loop_08,
-        loop_09,
+        #loop_08,
+        #loop_09,
         loop_10,
         loop_11,
         loop_12,
@@ -587,62 +591,63 @@ def build_behaviour_tree() -> BehaviourTree:
         loop_15,
         loop_16,
         loop_17,
+        loop_18,
+        loop_19,
+        loop_20,
     ])
     loop_01.add_children(
         [
-            TraceLineCam(name="straight 01", power=TraceNum.POWER_JUNCTION,                    
-                         pid_p=TraceNum.PID_P_SLOW, pid_i=TraceNum.PID_I_SLOW, pid_d=TraceNum.PID_D_SLOW,
+            TraceLineCam(name="straight 01", power=TraceNum.POWER_FAST,                    
+                         pid_p=TraceNum.PID_P_TOPSPEED, pid_i=TraceNum.PID_I_TOPSPEED, pid_d=TraceNum.PID_D_TOPSPEED,
                          scene=Scene.LOOP,
                          gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
-            IsDistanceEarned(name="check distance", delta_dist = 250),
+            IsDistanceEarned(name="check distance", delta_dist = 120),
         ]
     )
     loop_02.add_children(
         [
-            TraceLineCam(name="straight 01", power=TraceNum.POWER_FAST,                    
-                         pid_p=TraceNum.PID_P_FAST, pid_i=TraceNum.PID_I_FAST, pid_d=TraceNum.PID_D_FAST,
+            TraceLineCam(name="straight 01", power=TraceNum.POWER_TOPSPEED,                    
+                         pid_p=TraceNum.PID_P_TOPSPEED, pid_i=TraceNum.PID_I_TOPSPEED, pid_d=TraceNum.PID_D_TOPSPEED,
                          scene=Scene.LOOP,
                          gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
-            IsDistanceEarned(name="check distance", delta_dist = 3300),
+            IsDistanceEarned(name="check distance", delta_dist = 3550),
         ]
     )
     loop_03.add_children(
         [
-            TraceLineCam(name="curve 01", power=TraceNum.POWER_SLOW,                    
-                         pid_p=TraceNum.PID_P_SLOW, pid_i=TraceNum.PID_I_SLOW, pid_d=TraceNum.PID_D_SLOW,
-                         scene=Scene.LOOP,
-                         gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
-            IsDistanceEarned(name="check distance", delta_dist = 1300),
+            RunAsInstructed(name="race normal edge", pwm_l=45, pwm_r=60),
+            IsDistanceEarned(name="check distance", delta_dist = 1350),
         ]
     )
     loop_04.add_children(
         [
-            TraceLineCam(name="straight 02", power=TraceNum.POWER_FAST,
-                         pid_p=TraceNum.PID_P_FAST, pid_i=TraceNum.PID_I_FAST, pid_d=TraceNum.PID_D_FAST,
-                         scene=Scene.LOOP,
-                         gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
-            IsDistanceEarned(name="check distance", delta_dist = 2100),
+            RunAsInstructed(name="race normal edge", pwm_l=60, pwm_r=60),
+            IsDistanceEarned(name="check distance", delta_dist = 100),
         ]
     )
     loop_05.add_children(
         [
-            TraceLineCam(name="curve 02", power=TraceNum.POWER_SLOW,                    
-                         pid_p=TraceNum.PID_P_SLOW, pid_i=TraceNum.PID_I_SLOW, pid_d=TraceNum.PID_D_SLOW,
+            TraceLineCam(name="straight 02", power=TraceNum.POWER_TOPSPEED,                    
+                         pid_p=TraceNum.PID_P_TOPSPEED, pid_i=TraceNum.PID_I_TOPSPEED, pid_d=TraceNum.PID_D_TOPSPEED,
                          scene=Scene.LOOP,
                          gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
-            IsDistanceEarned(name="check distance", delta_dist = 1200),
+            IsDistanceEarned(name="check distance", delta_dist = 1530),
         ]
     )
     loop_06.add_children(
         [
-            TraceLineCam(name="straight 03", power=TraceNum.POWER_SLOW,                    
-                         pid_p=TraceNum.PID_P_SLOW, pid_i=TraceNum.PID_I_SLOW, pid_d=TraceNum.PID_D_SLOW,
-                         scene=Scene.LOOP,
-                         gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
-            IsDistanceEarned(name="check distance", delta_dist = 450),
+            RunAsInstructed(name="race normal edge", pwm_l=45, pwm_r=62),
+            IsDistanceEarned(name="check distance", delta_dist = 1300),
         ]
     )
     loop_07.add_children(
+        [
+            RunAsInstructed(name="race normal edge", pwm_l=60, pwm_r=60),
+            IsDistanceEarned(name="check distance", delta_dist = 300),
+        ]
+    )
+    
+    loop_10.add_children(
         [
             TraceLineCam(name="junction 01", power=TraceNum.POWER_JUNCTION,                    
                          pid_p=TraceNum.PID_P_SLOW, pid_i=TraceNum.PID_I_SLOW, pid_d=TraceNum.PID_D_SLOW,
@@ -651,96 +656,98 @@ def build_behaviour_tree() -> BehaviourTree:
             IsJunction(name="scan joined junction", target_state = JState.JOINED),
         ]
     )
-    loop_08.add_children(
-        [
-            TraceLineCam(name="circle 01", power=TraceNum.POWER_CIRCLE,                    
-                         pid_p=TraceNum.PID_P_CIRCLE, pid_i=TraceNum.PID_I_CIRCLE, pid_d=TraceNum.PID_D_CIRCLE,
-                         scene=Scene.LOOP,
-                         gs_min=0, gs_max=80, trace_side=TraceSide.OPPOSITE),
-            IsDistanceEarned(name="check distance", delta_dist = 2400),
-        ]
-    )
-    loop_09.add_children(
-        [
-            TraceLineCam(name="junction 02", power=TraceNum.POWER_JUNCTION,                    
-                         pid_p=TraceNum.PID_P_CIRCLE, pid_i=TraceNum.PID_I_CIRCLE, pid_d=TraceNum.PID_D_CIRCLE,
-                         scene=Scene.LOOP,
-                         gs_min=0, gs_max=80, trace_side=TraceSide.OPPOSITE),
-            IsJunction(name="scan joined junction", target_state = JState.JOINED),
-        ]
-    )
-    loop_10.add_children(
-        [
-            TraceLineCam(name="ellipse 01", power=TraceNum.POWER_ELLIPSE,                    
-                         pid_p=TraceNum.PID_P_ELLIPSE, pid_i=TraceNum.PID_I_ELLIPSE, pid_d=TraceNum.PID_D_ELLIPSE,
-                         scene=Scene.LOOP,
-                         gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
-            IsDistanceEarned(name="check distance", delta_dist = 1400),
-        ]
-    )
     loop_11.add_children(
-        [
-            TraceLineCam(name="junction 03", power=TraceNum.POWER_JUNCTION,                    
-                         pid_p=TraceNum.PID_P_ELLIPSE, pid_i=TraceNum.PID_I_ELLIPSE, pid_d=TraceNum.PID_D_ELLIPSE,
-                         scene=Scene.LOOP,
-                         gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
-            IsDistanceEarned(name="check distance", delta_dist = 700),
-        ]
-    )
+            [
+                TraceLineCam(name="circle 01", power=TraceNum.POWER_CIRCLE,                    
+                            pid_p=TraceNum.PID_P_CIRCLE, pid_i=TraceNum.PID_I_CIRCLE, pid_d=TraceNum.PID_D_CIRCLE,
+                            scene=Scene.LOOP,
+                            gs_min=0, gs_max=80, trace_side=TraceSide.OPPOSITE),
+                IsDistanceEarned(name="check distance", delta_dist = 2400),
+            ]
+        )
     loop_12.add_children(
         [
-            TraceLineCam(name="ellipse 02", power=TraceNum.POWER_ELLIPSE,                    
-                         pid_p=TraceNum.PID_P_ELLIPSE, pid_i=TraceNum.PID_I_ELLIPSE, pid_d=TraceNum.PID_D_ELLIPSE,
-                         scene=Scene.LOOP,
-                         gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
-            IsDistanceEarned(name="check distance", delta_dist = 1000),
+            TraceLineCam(name="junction 02", power=TraceNum.POWER_JUNCTION,                    
+                            pid_p=TraceNum.PID_P_CIRCLE, pid_i=TraceNum.PID_I_CIRCLE, pid_d=TraceNum.PID_D_CIRCLE,
+                            scene=Scene.LOOP,
+                            gs_min=0, gs_max=80, trace_side=TraceSide.OPPOSITE),
+            IsJunction(name="scan joined junction", target_state = JState.JOINED),
         ]
     )
     loop_13.add_children(
         [
-            TraceLineCam(name="junction 04", power=TraceNum.POWER_JUNCTION,                    
-                         pid_p=TraceNum.PID_P_ELLIPSE, pid_i=TraceNum.PID_I_ELLIPSE, pid_d=TraceNum.PID_D_ELLIPSE,
-                         scene=Scene.LOOP,
-                         gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
-            IsJunction(name="scan joined junction", target_state = JState.JOINED),
+            TraceLineCam(name="ellipse 01", power=TraceNum.POWER_ELLIPSE,                    
+                            pid_p=TraceNum.PID_P_ELLIPSE, pid_i=TraceNum.PID_I_ELLIPSE, pid_d=TraceNum.PID_D_ELLIPSE,
+                            scene=Scene.LOOP,
+                            gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
+            IsDistanceEarned(name="check distance", delta_dist = 1400),
         ]
     )
     loop_14.add_children(
         [
-            TraceLineCam(name="circle 02", power=TraceNum.POWER_CIRCLE,                    
-                         pid_p=TraceNum.PID_P_CIRCLE, pid_i=TraceNum.PID_I_CIRCLE, pid_d=TraceNum.PID_D_CIRCLE,
-                         scene=Scene.LOOP,
-                         gs_min=0, gs_max=80, trace_side=TraceSide.OPPOSITE),
-            IsDistanceEarned(name="check distance", delta_dist = 900),
+            TraceLineCam(name="junction 03", power=TraceNum.POWER_JUNCTION,                    
+                            pid_p=TraceNum.PID_P_ELLIPSE, pid_i=TraceNum.PID_I_ELLIPSE, pid_d=TraceNum.PID_D_ELLIPSE,
+                            scene=Scene.LOOP,
+                            gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
+            IsDistanceEarned(name="check distance", delta_dist = 700),
         ]
     )
     loop_15.add_children(
         [
-            TraceLineCam(name="junction 05", power=TraceNum.POWER_JUNCTION,                    
-                         pid_p=TraceNum.PID_P_CIRCLE, pid_i=TraceNum.PID_I_CIRCLE, pid_d=TraceNum.PID_D_CIRCLE,
-                         scene=Scene.LOOP,
-                         gs_min=0, gs_max=80, trace_side=TraceSide.OPPOSITE),
-            IsJunction(name="scan joined junction", target_state = JState.JOINED),
+            TraceLineCam(name="ellipse 02", power=TraceNum.POWER_ELLIPSE,                    
+                            pid_p=TraceNum.PID_P_ELLIPSE, pid_i=TraceNum.PID_I_ELLIPSE, pid_d=TraceNum.PID_D_ELLIPSE,
+                            scene=Scene.LOOP,
+                            gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
+            IsDistanceEarned(name="check distance", delta_dist = 1000),
         ]
     )
     loop_16.add_children(
         [
-            TraceLineCam(name="straight 04", power=TraceNum.POWER_SLOW,                    
-                         pid_p=TraceNum.PID_P_SLOW, pid_i=TraceNum.PID_I_SLOW, pid_d=TraceNum.PID_D_SLOW,
-                         scene=Scene.LOOP,
-                         gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
-            IsDistanceEarned(name="check distance", delta_dist = 500),
+            TraceLineCam(name="junction 04", power=TraceNum.POWER_JUNCTION,                    
+                            pid_p=TraceNum.PID_P_ELLIPSE, pid_i=TraceNum.PID_I_ELLIPSE, pid_d=TraceNum.PID_D_ELLIPSE,
+                            scene=Scene.LOOP,
+                            gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
+            IsJunction(name="scan joined junction", target_state = JState.JOINED),
         ]
     )
     loop_17.add_children(
         [
-            TraceLineCam(name="straight 04", power=TraceNum.POWER_SLOW,                    
-                         pid_p=TraceNum.PID_P_SLOW, pid_i=TraceNum.PID_I_SLOW, pid_d=TraceNum.PID_D_SLOW,
-                         scene=Scene.DEBRI,
-                         gs_min=0, gs_max=80, trace_side=TraceSide.CENTER),
-            IsDistanceEarned(name="check distance", delta_dist = 700),
+            TraceLineCam(name="circle 02", power=TraceNum.POWER_CIRCLE,                    
+                            pid_p=TraceNum.PID_P_CIRCLE, pid_i=TraceNum.PID_I_CIRCLE, pid_d=TraceNum.PID_D_CIRCLE,
+                            scene=Scene.LOOP,
+                            gs_min=0, gs_max=80, trace_side=TraceSide.OPPOSITE),
+            IsDistanceEarned(name="check distance", delta_dist = 900),
         ]
     )
+    loop_18.add_children(
+        [
+            TraceLineCam(name="junction 05", power=TraceNum.POWER_JUNCTION,                    
+                            pid_p=TraceNum.PID_P_CIRCLE, pid_i=TraceNum.PID_I_CIRCLE, pid_d=TraceNum.PID_D_CIRCLE,
+                            scene=Scene.LOOP,
+                            gs_min=0, gs_max=80, trace_side=TraceSide.OPPOSITE),
+            IsJunction(name="scan joined junction", target_state = JState.JOINED),
+        ]
+    )
+    loop_19.add_children(
+        [
+            TraceLineCam(name="straight 04", power=TraceNum.POWER_SLOW,                    
+                            pid_p=TraceNum.PID_P_SLOW, pid_i=TraceNum.PID_I_SLOW, pid_d=TraceNum.PID_D_SLOW,
+                            scene=Scene.LOOP,
+                            gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
+            IsDistanceEarned(name="check distance", delta_dist = 500),
+        ]
+    )
+    loop_20.add_children(
+        [
+            TraceLineCam(name="straight 04", power=TraceNum.POWER_SLOW,                    
+                            pid_p=TraceNum.PID_P_SLOW, pid_i=TraceNum.PID_I_SLOW, pid_d=TraceNum.PID_D_SLOW,
+                            scene=Scene.DEBRI,
+                            gs_min=0, gs_max=80, trace_side=TraceSide.CENTER),
+            IsDistanceEarned(name="check distance", delta_dist = 700),
+        ]
+    )    
+    
+    
 
     debri.add_children([
         debri_01,
