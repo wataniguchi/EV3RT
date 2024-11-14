@@ -599,6 +599,7 @@ def build_behaviour_tree() -> BehaviourTree:
     carry_030 = Parallel(name="carry 01", policy=ParallelPolicy.SuccessOnOne())
     carry_04 = Parallel(name="carry 01", policy=ParallelPolicy.SuccessOnOne())
     carry_05 = Parallel(name="carry 01", policy=ParallelPolicy.SuccessOnOne())
+    carry_050 = Parallel(name="carry 01", policy=ParallelPolicy.SuccessOnOne())
     carry_051 = Parallel(name="carry 01", policy=ParallelPolicy.SuccessOnOne())
     carry_052 = Parallel(name="carry 01", policy=ParallelPolicy.SuccessOnOne())
     carry_06 = Parallel(name="carry 01", policy=ParallelPolicy.SuccessOnOne())
@@ -967,6 +968,7 @@ def build_behaviour_tree() -> BehaviourTree:
         carry_03,
         carry_04,
         carry_05,
+        carry_050,
         carry_051,
         carry_052,
         carry_06,
@@ -1024,11 +1026,18 @@ def build_behaviour_tree() -> BehaviourTree:
         ]
     )
     
+    carry_050.add_children(
+        [
+            RunAsInstructed(name="rotate", pwm_r=50,pwm_l=-50),
+            IsRotated(name="check rotated", delta_dire=30),
+        ]
+    )
+    
     # 青ライントレースして角度合わせ
     carry_051.add_children(
         [
             TraceLineColor(name="run", interval=EXEC_INTERVAL, target=20, power=35, pid_p=0.56, pid_i=0.005, pid_d=0.015),
-            IsDistanceEarned(name="check distance", delta_dist = 250),
+            IsDistanceEarned(name="check distance", delta_dist = 200),
         ]
     )
     
