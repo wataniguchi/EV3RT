@@ -20,15 +20,25 @@ class Wheel:
 
 
 class TraceNum:
-    PID_P_FAST: float = 0.95
-    PID_I_FAST: float = 0.001
-    PID_D_FAST: float = 0.1
-    POWER_FAST: int = 60
+    PID_P_TOPSPEED: float = 0.75
+    PID_I_TOPSPEED: float = 0.0018
+    PID_D_TOPSPEED: float = 0.28
+    POWER_TOPSPEED: int = 80
+    
+    PID_P_FAST: float = 0.75
+    PID_I_FAST: float = 0.0018
+    PID_D_FAST: float = 0.28
+    POWER_FAST: int = 75
 
     PID_P_SLOW: float = 1.4
     PID_I_SLOW: float = 0.0012
     PID_D_SLOW: float = 0.3
-    POWER_SLOW: int = 45
+    POWER_SLOW: int = 47
+
+    PID_P_SLOW1: float = 1.4
+    PID_I_SLOW1: float = 0.0012
+    PID_D_SLOW1: float = 0.3
+    POWER_SLOW1: int = 50
 
     PID_P_CIRCLE: float = 1.45
     PID_I_CIRCLE: float = 0.0011
@@ -57,7 +67,7 @@ class DebriNum:
     PID_I: float = 0.0015
     PID_D: float = 0.1
     POWER_NORMAL: int = 40
-    POWER_SLOW: int = 33
+    POWER_SLOW: int = 39
 
 
 class TraceSide(Enum):
@@ -70,4 +80,3 @@ class TraceSide(Enum):
 class Scene(Enum):
     LOOP = auto()
     DEBRI = auto()
-

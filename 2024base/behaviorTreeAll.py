@@ -1,3 +1,4 @@
+
 import argparse
 import time
 import math
@@ -27,7 +28,8 @@ from const import (
     Wheel,
     Scene
 )
-
+from datetime import datetime
+# aa
 EXEC_INTERVAL: float = 0.04
 VIDEO_INTERVAL: float = 0.02
 ARM_SHIFT_PWM = 30
@@ -501,12 +503,15 @@ def build_behaviour_tree() -> BehaviourTree:
 
     calibration = Sequence(name="calibration", memory=True)
     start = Parallel(name="start", policy=ParallelPolicy.SuccessOnOne())
-
+    
     loop = Sequence(name="loop", memory=True)
     loop_01 = Parallel(name="start loop", policy=ParallelPolicy.SuccessOnOne())
     loop_02 = Parallel(name="straight 01", policy=ParallelPolicy.SuccessOnOne())
+    loop_021 = Parallel(name="straight 01", policy=ParallelPolicy.SuccessOnOne())
+    loop_031 = Parallel(name="curve 00", policy=ParallelPolicy.SuccessOnOne())
     loop_03 = Parallel(name="curve 01", policy=ParallelPolicy.SuccessOnOne())
     loop_04 = Parallel(name="straight 02", policy=ParallelPolicy.SuccessOnOne())
+    loop_051 = Parallel(name="curve 020", policy=ParallelPolicy.SuccessOnOne())
     loop_05 = Parallel(name="curve 02", policy=ParallelPolicy.SuccessOnOne())
     loop_06 = Parallel(name="straight 03", policy=ParallelPolicy.SuccessOnOne())
     loop_07 = Parallel(name="junction 01", policy=ParallelPolicy.SuccessOnOne())
@@ -571,11 +576,14 @@ def build_behaviour_tree() -> BehaviourTree:
 
     loop.add_children([
         loop_01,
-        loop_02,
+        loop_02,      
+        loop_021,
+        loop_031,
         loop_03,
         loop_04,
+        loop_051,
         loop_05,
-        loop_06,
+    #    loop_06,
         loop_07,
         loop_08,
         loop_09,
@@ -590,64 +598,136 @@ def build_behaviour_tree() -> BehaviourTree:
     ])
     loop_01.add_children(
         [
-            TraceLineCam(name="straight 01", power=TraceNum.POWER_JUNCTION,                    
-                         pid_p=TraceNum.PID_P_SLOW, pid_i=TraceNum.PID_I_SLOW, pid_d=TraceNum.PID_D_SLOW,
-                         scene=Scene.LOOP,
+            TraceLineCam(name="straight 01", power=TraceNum.POWER_SLOW1,                    
+                         pid_p=TraceNum.PID_P_SLOW1, pid_i=TraceNum.PID_I_SLOW1, pid_d=TraceNum.PID_D_SLOW1,
+                         scene=Scene.DEBRI,
                          gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
-            IsDistanceEarned(name="check distance", delta_dist = 250),
+            #IsDistanceEarned(name="check distance", delta_dist = 250),
+            IsDistanceEarned(name="check distance", delta_dist = 120),
+            #TraceLineCam(name="trace normal edge", power=60, pid_p=0.75, pid_i=0.0020, pid_d=0.28,
+            #             scene=Scene.LOOP,
+            #             gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
+            #IsDistanceEarned(name="check distance", delta_dist = 120),
         ]
     )
     loop_02.add_children(
         [
-            TraceLineCam(name="straight 01", power=TraceNum.POWER_FAST,                    
-                         pid_p=TraceNum.PID_P_FAST, pid_i=TraceNum.PID_I_FAST, pid_d=TraceNum.PID_D_FAST,
-                         scene=Scene.LOOP,
+            TraceLineCam(name="straight 020", power=TraceNum.POWER_TOPSPEED,                    
+                          pid_p=TraceNum.PID_P_TOPSPEED, pid_i=TraceNum.PID_I_TOPSPEED, pid_d=TraceNum.PID_D_TOPSPEED,
+                         scene=Scene.DEBRI,
                          gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
-            IsDistanceEarned(name="check distance", delta_dist = 3300),
+            IsDistanceEarned(name="check distance", delta_dist = 3000),
+            #TraceLineCam(name="trace normal edge", power=80, pid_p=0.75, pid_i=0.0020, pid_d=0.28,
+            #             scene=Scene.LOOP,           
+            #             gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
+            #IsDistanceEarned(name="check distance", delta_dist = 3700),
+        ]
+    )
+    loop_021.add_children(
+        [
+            TraceLineCam(name="straight 021", power=TraceNum.POWER_FAST,                    
+                         pid_p=TraceNum.PID_P_TOPSPEED, pid_i=TraceNum.PID_I_TOPSPEED, pid_d=TraceNum.PID_D_TOPSPEED,
+                         scene=Scene.DEBRI,
+                         gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
+            IsDistanceEarned(name="check distance", delta_dist = 700),
+            #TraceLineCam(name="trace normal edge", power=80, pid_p=0.75, pid_i=0.0020, pid_d=0.28,
+            #             scene=Scene.LOOP,           
+            #             gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
+            #IsDistanceEarned(name="check distance", delta_dist = 3700),
+        ]
+    )
+    loop_031.add_children(
+        [
+            TraceLineCam(name="curve 010", power=TraceNum.POWER_SLOW1,                    
+                         pid_p=TraceNum.PID_P_SLOW1, pid_i=TraceNum.PID_I_SLOW1, pid_d=TraceNum.PID_D_SLOW1,
+                         scene=Scene.DEBRI,
+                         gs_min=0, gs_max=80, trace_side=TraceSide.OPPOSITE),
+            IsDistanceEarned(name="check distance", delta_dist =900),
+     
+            #青佐さんコード
+            #RunAsInstructed(name="race normal edge", pwm_l=45, pwm_r=60),
+            #IsDistanceEarned(name="check distance", delta_dist = 1300),
+            #TraceLineCam(name="trace normal edge", power=40, pid_p=0.75, pid_i=0.0020, pid_d=0.28,
+            #             scene=Scene.LOOP,           
+            #             gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
+            #IsDistanceEarned(name="check distance", delta_dist = 3700),
         ]
     )
     loop_03.add_children(
         [
-            TraceLineCam(name="curve 01", power=TraceNum.POWER_SLOW,                    
-                         pid_p=TraceNum.PID_P_SLOW, pid_i=TraceNum.PID_I_SLOW, pid_d=TraceNum.PID_D_SLOW,
-                         scene=Scene.LOOP,
+            TraceLineCam(name="curve 011", power=TraceNum.POWER_SLOW1,                    
+                         pid_p=TraceNum.PID_P_SLOW1, pid_i=TraceNum.PID_I_SLOW1, pid_d=TraceNum.PID_D_SLOW1,
+                         scene=Scene.DEBRI,
                          gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
-            IsDistanceEarned(name="check distance", delta_dist = 1300),
+            #IsDistanceEarned(name="check distance", delta_dist = 1300),
+            IsDistanceEarned(name="check distance", delta_dist = 300),
+     
+            #青佐さんコード
+            #RunAsInstructed(name="race normal edge", pwm_l=45, pwm_r=60),
+            #IsDistanceEarned(name="check distance", delta_dist = 1300),
+            #TraceLineCam(name="trace normal edge", power=40, pid_p=0.75, pid_i=0.0020, pid_d=0.28,
+            #             scene=Scene.LOOP,           
+            #             gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
+            #IsDistanceEarned(name="check distance", delta_dist = 3700),
         ]
     )
     loop_04.add_children(
         [
-            TraceLineCam(name="straight 02", power=TraceNum.POWER_FAST,
-                         pid_p=TraceNum.PID_P_FAST, pid_i=TraceNum.PID_I_FAST, pid_d=TraceNum.PID_D_FAST,
-                         scene=Scene.LOOP,
+            TraceLineCam(name="straight 04", power=TraceNum.POWER_FAST,                    
+                         pid_p=TraceNum.PID_P_TOPSPEED, pid_i=TraceNum.PID_I_TOPSPEED, pid_d=TraceNum.PID_D_TOPSPEED,
+                         scene=Scene.DEBRI,
                          gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
-            IsDistanceEarned(name="check distance", delta_dist = 2100),
+            #IsDistanceEarned(name="check distance", delta_dist = 2100),
+            IsDistanceEarned(name="check distance", delta_dist = 1800),
+            #RunAsInstructed(name="race normal edge", pwm_l=60, pwm_r=60),
+            #IsDistanceEarned(name="check distance", delta_dist = 100),
+        ]
+    )
+    loop_051.add_children(
+        [
+            TraceLineCam(name="curve 051", power=TraceNum.POWER_SLOW1,                    
+                         pid_p=TraceNum.PID_P_SLOW1, pid_i=TraceNum.PID_I_SLOW1, pid_d=TraceNum.PID_D_SLOW1,
+                         scene=Scene.DEBRI,
+                         gs_min=0, gs_max=80, trace_side=TraceSide.OPPOSITE),
+            IsDistanceEarned(name="check distance", delta_dist = 950),
+            #TraceLineCam(name="trace normal edge", power=80, pid_p=0.75, pid_i=0.0020, pid_d=0.28,
+            #             scene=Scene.LOOP,
+            #             gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
+            #IsDistanceEarned(name="check distance", delta_dist = 1400),
         ]
     )
     loop_05.add_children(
         [
-            TraceLineCam(name="curve 02", power=TraceNum.POWER_SLOW,                    
+            TraceLineCam(name="curve 050", power=TraceNum.POWER_SLOW,                    
                          pid_p=TraceNum.PID_P_SLOW, pid_i=TraceNum.PID_I_SLOW, pid_d=TraceNum.PID_D_SLOW,
-                         scene=Scene.LOOP,
-                         gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
-            IsDistanceEarned(name="check distance", delta_dist = 1200),
+                         scene=Scene.DEBRI,
+                         gs_min=0, gs_max=80, trace_side=TraceSide.OPPOSITE),
+            #IsDistanceEarned(name="check distance", delta_dist = 1200),
+            IsDistanceEarned(name="check distance", delta_dist = 300),
+            #TraceLineCam(name="trace normal edge", power=80, pid_p=0.75, pid_i=0.0020, pid_d=0.28,
+            #             scene=Scene.LOOP,
+            #             gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
+            #IsDistanceEarned(name="check distance", delta_dist = 1400),
         ]
     )
-    loop_06.add_children(
-        [
-            TraceLineCam(name="straight 03", power=TraceNum.POWER_SLOW,                    
-                         pid_p=TraceNum.PID_P_SLOW, pid_i=TraceNum.PID_I_SLOW, pid_d=TraceNum.PID_D_SLOW,
-                         scene=Scene.LOOP,
-                         gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
-            IsDistanceEarned(name="check distance", delta_dist = 450),
-        ]
-    )
+#    loop_06.add_children(
+#        [
+#            TraceLineCam(name="straight 06", power=TraceNum.POWER_SLOW1,                    
+#                         pid_p=TraceNum.PID_P_TOPSPEED, pid_i=TraceNum.PID_I_TOPSPEED, pid_d=TraceNum.PID_D_TOPSPEED,
+#                         scene=Scene.DEBRI,
+#                         gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
+#            #IsDistanceEarned(name="check distance", delta_dist = 450),
+#            IsDistanceEarned(name="check distance", delta_dist = 100),
+#            #RunAsInstructed(name="race normal edge", pwm_l=45, pwm_r=60),
+#            #IsDistanceEarned(name="check distance", delta_dist = 1200),
+#        ]
+#    )
     loop_07.add_children(
         [
             TraceLineCam(name="junction 01", power=TraceNum.POWER_JUNCTION,                    
                          pid_p=TraceNum.PID_P_SLOW, pid_i=TraceNum.PID_I_SLOW, pid_d=TraceNum.PID_D_SLOW,
                          scene=Scene.LOOP,
-                         gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
+                         gs_min=0, gs_max=80, trace_side=TraceSide.OPPOSITE),
             IsJunction(name="scan joined junction", target_state = JState.JOINED),
         ]
     )
@@ -665,7 +745,7 @@ def build_behaviour_tree() -> BehaviourTree:
             TraceLineCam(name="junction 02", power=TraceNum.POWER_JUNCTION,                    
                          pid_p=TraceNum.PID_P_CIRCLE, pid_i=TraceNum.PID_I_CIRCLE, pid_d=TraceNum.PID_D_CIRCLE,
                          scene=Scene.LOOP,
-                         gs_min=0, gs_max=80, trace_side=TraceSide.OPPOSITE),
+                         gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
             IsJunction(name="scan joined junction", target_state = JState.JOINED),
         ]
     )
@@ -675,7 +755,7 @@ def build_behaviour_tree() -> BehaviourTree:
                          pid_p=TraceNum.PID_P_ELLIPSE, pid_i=TraceNum.PID_I_ELLIPSE, pid_d=TraceNum.PID_D_ELLIPSE,
                          scene=Scene.LOOP,
                          gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
-            IsDistanceEarned(name="check distance", delta_dist = 1400),
+            IsDistanceEarned(name="check distance", delta_dist = 1600),
         ]
     )
     loop_11.add_children(
@@ -692,7 +772,7 @@ def build_behaviour_tree() -> BehaviourTree:
             TraceLineCam(name="ellipse 02", power=TraceNum.POWER_ELLIPSE,                    
                          pid_p=TraceNum.PID_P_ELLIPSE, pid_i=TraceNum.PID_I_ELLIPSE, pid_d=TraceNum.PID_D_ELLIPSE,
                          scene=Scene.LOOP,
-                         gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
+                         gs_min=0, gs_max=80, trace_side=TraceSide.OPPOSITE),
             IsDistanceEarned(name="check distance", delta_dist = 1000),
         ]
     )
@@ -737,7 +817,7 @@ def build_behaviour_tree() -> BehaviourTree:
             TraceLineCam(name="straight 04", power=TraceNum.POWER_SLOW,                    
                          pid_p=TraceNum.PID_P_SLOW, pid_i=TraceNum.PID_I_SLOW, pid_d=TraceNum.PID_D_SLOW,
                          scene=Scene.DEBRI,
-                         gs_min=0, gs_max=80, trace_side=TraceSide.CENTER),
+                         gs_min=0, gs_max=80, trace_side=TraceSide.NORMAL),
             IsDistanceEarned(name="check distance", delta_dist = 700),
         ]
     )
@@ -1020,12 +1100,14 @@ def setup_thread():
     g_video = Video()
 
     print(" -- starting VideoThread...")
+    print(time.strftime("%M:%S"))
     g_video_thread = VideoThread()
     g_video_thread.start()
 
 def cleanup_thread():
     global g_video, g_video_thread
     print(" -- stopping VideoThread...")
+    print(time.strftime("%M:%S"))
     g_video_thread.stop()
     g_video_thread.join()
 
