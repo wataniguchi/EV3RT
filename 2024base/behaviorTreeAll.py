@@ -400,7 +400,22 @@ class IsExecuteRemoveBottle(Behaviour):
             return Status.SUCCESS
         else:
             return Status.FAILURE
+        
+class CheckRedColor(Behaviour):
+    def __init__(self, name: str):
+        super(CheckRedColor, self).__init__(name)
+        self.logger.debug("%s.__init__()" % (self.__class__.__name__))
+        self.running = False
+    def update(self) -> Status:
+        r, g, b = [x for x in g_color_sensor.get_raw_color()]
+        if not self.running:
+            self.running = True
+            self.logger.info("%+06d %s.started" % (g_plotter.get_distance(), self.__class__.__name__))
 
+        global smart_carry_color
+
+        if r >= 100:
+                return Status.SUCCESS
 
 class TraceLineCam(Behaviour):
     def __init__(self, name: str, power: int, pid_p: float, pid_i: float, pid_d: float,
@@ -1011,7 +1026,7 @@ def build_behaviour_tree() -> BehaviourTree:
     carry_02.add_children(
         [
             TraceLineCam(name="trace normal edge", power=34, pid_p=1.9, pid_i=0.001, pid_d=0.1,scene=Scene.DEBRI, gs_min=0, gs_max=80, trace_side=TraceSide.CENTER),
-            IsDistanceEarned(name="check distance", delta_dist = 500),
+            CheckRedColor(name="check red color"),
         ]
     )
     if(g_course==-1):
