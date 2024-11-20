@@ -63,7 +63,7 @@ class Video(object):
         self.mx = self.cx
         # default values
         self.gsmin = 0
-        self.gsmax = 100
+        self.gsmax = 50
         self.trace_side = TraceSide.NORMAL
         self.range_of_edges = 0
         self.theta:float = 0.0
@@ -296,10 +296,10 @@ class Video(object):
             except Exception as e:
                 pass
         # concatinate the images - original + text area
-        img_comm = cv2.vconcat([img_orig,img_text])
+        img_comm = cv2.vconcat([img_orig,img_bin_rgb,img_text])
         # shrink the image to avoid delay in transmission
         if OUT_FRAME_WIDTH != FRAME_WIDTH or OUT_FRAME_HEIGHT != FRAME_HEIGHT:
-            img_comm = cv2.resize(img_comm, (OUT_FRAME_WIDTH,2*OUT_FRAME_HEIGHT))
+            img_comm = cv2.resize(img_comm, (OUT_FRAME_WIDTH,3*OUT_FRAME_HEIGHT))
         # transmit and display the image
         cv2.imshow("video monitor", img_comm)
 

@@ -23,7 +23,7 @@ class TraceNum:
     PID_P_TOPSPEED: float = 0.75
     PID_I_TOPSPEED: float = 0.0018
     PID_D_TOPSPEED: float = 0.28
-    POWER_TOPSPEED: int = 80
+    POWER_TOPSPEED: int = 77
     
     PID_P_FAST: float = 0.75
     PID_I_FAST: float = 0.0018
@@ -33,7 +33,7 @@ class TraceNum:
     PID_P_SLOW: float = 1.4
     PID_I_SLOW: float = 0.0012
     PID_D_SLOW: float = 0.3
-    POWER_SLOW: int = 47
+    POWER_SLOW: int = 45
 
     PID_P_SLOW1: float = 1.4
     PID_I_SLOW1: float = 0.0012
