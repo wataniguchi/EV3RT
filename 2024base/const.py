@@ -52,7 +52,7 @@ class TraceNum:
 
     POWER_JUNCTION: int = 37
 
-    GS_MAX: int = 40
+    GS_MAX: int = 50
     GS_MIN: int = 0
 
 

@@ -414,7 +414,7 @@ class CheckRedColor(Behaviour):
 
         global smart_carry_color
 
-        if r >= 100:
+        if r >= 95 and g < 85 and b < 85:
                 return Status.SUCCESS
         return Status.RUNNING
 
