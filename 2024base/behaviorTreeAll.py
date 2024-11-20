@@ -416,7 +416,8 @@ class CheckRedColor(Behaviour):
 
         if r >= 100:
                 return Status.SUCCESS
-
+        return Status.RUNNING
+        
 class TraceLineCam(Behaviour):
     def __init__(self, name: str, power: int, pid_p: float, pid_i: float, pid_d: float,
                  gs_min: int, gs_max: int, trace_side: TraceSide, scene: Scene) -> None:
@@ -616,12 +617,12 @@ def build_behaviour_tree() -> BehaviourTree:
             TraceLineCam(name="straight 01", power=TraceNum.POWER_SLOW1,                    
                          pid_p=TraceNum.PID_P_SLOW1, pid_i=TraceNum.PID_I_SLOW1, pid_d=TraceNum.PID_D_SLOW1,
                          scene=Scene.DEBRI,
-                         gs_min=0, gs_max=50, trace_side=TraceSide.NORMAL),
+                         gs_min=TraceNum.GS_MIN, gs_max=TraceNum.GS_MAX, trace_side=TraceSide.NORMAL),
             #IsDistanceEarned(name="check distance", delta_dist = 250),
             IsDistanceEarned(name="check distance", delta_dist = 120),
             #TraceLineCam(name="trace normal edge", power=60, pid_p=0.75, pid_i=0.0020, pid_d=0.28,
             #             scene=Scene.LOOP,
-            #             gs_min=0, gs_max=50, trace_side=TraceSide.NORMAL),
+            #             gs_min=TraceNum.GS_MIN, gs_max=TraceNum.GS_MAX, trace_side=TraceSide.NORMAL),
             #IsDistanceEarned(name="check distance", delta_dist = 120),
         ]
     )
@@ -630,11 +631,11 @@ def build_behaviour_tree() -> BehaviourTree:
             TraceLineCam(name="straight 020", power=TraceNum.POWER_TOPSPEED,                    
                           pid_p=TraceNum.PID_P_TOPSPEED, pid_i=TraceNum.PID_I_TOPSPEED, pid_d=TraceNum.PID_D_TOPSPEED,
                          scene=Scene.DEBRI,
-                         gs_min=0, gs_max=50, trace_side=TraceSide.NORMAL),
+                         gs_min=TraceNum.GS_MIN, gs_max=TraceNum.GS_MAX, trace_side=TraceSide.NORMAL),
             IsDistanceEarned(name="check distance", delta_dist = 3000),
             #TraceLineCam(name="trace normal edge", power=80, pid_p=0.75, pid_i=0.0020, pid_d=0.28,
             #             scene=Scene.LOOP,           
-            #             gs_min=0, gs_max=50, trace_side=TraceSide.NORMAL),
+            #             gs_min=TraceNum.GS_MIN, gs_max=TraceNum.GS_MAX, trace_side=TraceSide.NORMAL),
             #IsDistanceEarned(name="check distance", delta_dist = 3700),
         ]
     )
@@ -643,11 +644,11 @@ def build_behaviour_tree() -> BehaviourTree:
             TraceLineCam(name="straight 021", power=TraceNum.POWER_FAST,                    
                          pid_p=TraceNum.PID_P_TOPSPEED, pid_i=TraceNum.PID_I_TOPSPEED, pid_d=TraceNum.PID_D_TOPSPEED,
                          scene=Scene.DEBRI,
-                         gs_min=0, gs_max=50, trace_side=TraceSide.NORMAL),
+                         gs_min=TraceNum.GS_MIN, gs_max=TraceNum.GS_MAXgs_min=TraceNum.GS_MIN, gs_max=TraceNum.GS_MAX, trace_side=TraceSide.NORMAL),
             IsDistanceEarned(name="check distance", delta_dist = 700),
             #TraceLineCam(name="trace normal edge", power=80, pid_p=0.75, pid_i=0.0020, pid_d=0.28,
             #             scene=Scene.LOOP,           
-            #             gs_min=0, gs_max=50, trace_side=TraceSide.NORMAL),
+            #             gs_min=TraceNum.GS_MIN, gs_max=TraceNum.GS_MAX, trace_side=TraceSide.NORMAL),
             #IsDistanceEarned(name="check distance", delta_dist = 3700),
         ]
     )
@@ -656,7 +657,7 @@ def build_behaviour_tree() -> BehaviourTree:
             TraceLineCam(name="curve 010", power=TraceNum.POWER_SLOW1,                    
                          pid_p=TraceNum.PID_P_SLOW1, pid_i=TraceNum.PID_I_SLOW1, pid_d=TraceNum.PID_D_SLOW1,
                          scene=Scene.DEBRI,
-                         gs_min=0, gs_max=50, trace_side=TraceSide.OPPOSITE),
+                         gs_min=TraceNum.GS_MIN, gs_max=TraceNum.GS_MAX, trace_side=TraceSide.OPPOSITE),
             IsDistanceEarned(name="check distance", delta_dist =900),
      
             #青佐さんコード
@@ -664,7 +665,7 @@ def build_behaviour_tree() -> BehaviourTree:
             #IsDistanceEarned(name="check distance", delta_dist = 1300),
             #TraceLineCam(name="trace normal edge", power=40, pid_p=0.75, pid_i=0.0020, pid_d=0.28,
             #             scene=Scene.LOOP,           
-            #             gs_min=0, gs_max=50, trace_side=TraceSide.NORMAL),
+            #             gs_min=TraceNum.GS_MIN, gs_max=TraceNum.GS_MAX, trace_side=TraceSide.NORMAL),
             #IsDistanceEarned(name="check distance", delta_dist = 3700),
         ]
     )
@@ -673,7 +674,7 @@ def build_behaviour_tree() -> BehaviourTree:
             TraceLineCam(name="curve 011", power=TraceNum.POWER_SLOW1,                    
                          pid_p=TraceNum.PID_P_SLOW1, pid_i=TraceNum.PID_I_SLOW1, pid_d=TraceNum.PID_D_SLOW1,
                          scene=Scene.DEBRI,
-                         gs_min=0, gs_max=50, trace_side=TraceSide.NORMAL),
+                         gs_min=TraceNum.GS_MIN, gs_max=TraceNum.GS_MAX, trace_side=TraceSide.NORMAL),
             #IsDistanceEarned(name="check distance", delta_dist = 1300),
             IsDistanceEarned(name="check distance", delta_dist = 300),
      
@@ -682,7 +683,7 @@ def build_behaviour_tree() -> BehaviourTree:
             #IsDistanceEarned(name="check distance", delta_dist = 1300),
             #TraceLineCam(name="trace normal edge", power=40, pid_p=0.75, pid_i=0.0020, pid_d=0.28,
             #             scene=Scene.LOOP,           
-            #             gs_min=0, gs_max=50, trace_side=TraceSide.NORMAL),
+            #             gs_min=TraceNum.GS_MIN, gs_max=TraceNum.GS_MAX, trace_side=TraceSide.NORMAL),
             #IsDistanceEarned(name="check distance", delta_dist = 3700),
         ]
     )
@@ -691,7 +692,7 @@ def build_behaviour_tree() -> BehaviourTree:
             TraceLineCam(name="straight 04", power=TraceNum.POWER_FAST,                    
                          pid_p=TraceNum.PID_P_TOPSPEED, pid_i=TraceNum.PID_I_TOPSPEED, pid_d=TraceNum.PID_D_TOPSPEED,
                          scene=Scene.DEBRI,
-                         gs_min=0, gs_max=50, trace_side=TraceSide.NORMAL),
+                         gs_min=TraceNum.GS_MIN, gs_max=TraceNum.GS_MAX, trace_side=TraceSide.NORMAL),
             #IsDistanceEarned(name="check distance", delta_dist = 2100),
             IsDistanceEarned(name="check distance", delta_dist = 1800),
             #RunAsInstructed(name="race normal edge", pwm_l=60, pwm_r=60),
@@ -703,11 +704,11 @@ def build_behaviour_tree() -> BehaviourTree:
             TraceLineCam(name="curve 051", power=TraceNum.POWER_SLOW1,                    
                          pid_p=TraceNum.PID_P_SLOW1, pid_i=TraceNum.PID_I_SLOW1, pid_d=TraceNum.PID_D_SLOW1,
                          scene=Scene.DEBRI,
-                         gs_min=0, gs_max=50, trace_side=TraceSide.OPPOSITE),
+                         gs_min=TraceNum.GS_MIN, gs_max=TraceNum.GS_MAX, trace_side=TraceSide.OPPOSITE),
             IsDistanceEarned(name="check distance", delta_dist = 950),
             #TraceLineCam(name="trace normal edge", power=80, pid_p=0.75, pid_i=0.0020, pid_d=0.28,
             #             scene=Scene.LOOP,
-            #             gs_min=0, gs_max=50, trace_side=TraceSide.NORMAL),
+            #             gs_min=TraceNum.GS_MIN, gs_max=TraceNum.GS_MAX, trace_side=TraceSide.NORMAL),
             #IsDistanceEarned(name="check distance", delta_dist = 1400),
         ]
     )
@@ -716,12 +717,12 @@ def build_behaviour_tree() -> BehaviourTree:
             TraceLineCam(name="curve 050", power=TraceNum.POWER_SLOW,                    
                          pid_p=TraceNum.PID_P_SLOW, pid_i=TraceNum.PID_I_SLOW, pid_d=TraceNum.PID_D_SLOW,
                          scene=Scene.DEBRI,
-                         gs_min=0, gs_max=50, trace_side=TraceSide.OPPOSITE),
+                         gs_min=TraceNum.GS_MIN, gs_max=TraceNum.GS_MAX, trace_side=TraceSide.OPPOSITE),
             #IsDistanceEarned(name="check distance", delta_dist = 1200),
             IsDistanceEarned(name="check distance", delta_dist = 300),
             #TraceLineCam(name="trace normal edge", power=80, pid_p=0.75, pid_i=0.0020, pid_d=0.28,
             #             scene=Scene.LOOP,
-            #             gs_min=0, gs_max=50, trace_side=TraceSide.NORMAL),
+            #             gs_min=TraceNum.GS_MIN, gs_max=TraceNum.GS_MAX, trace_side=TraceSide.NORMAL),
             #IsDistanceEarned(name="check distance", delta_dist = 1400),
         ]
     )
@@ -730,7 +731,7 @@ def build_behaviour_tree() -> BehaviourTree:
 #            TraceLineCam(name="straight 06", power=TraceNum.POWER_SLOW1,                    
 #                         pid_p=TraceNum.PID_P_TOPSPEED, pid_i=TraceNum.PID_I_TOPSPEED, pid_d=TraceNum.PID_D_TOPSPEED,
 #                         scene=Scene.DEBRI,
-#                         gs_min=0, gs_max=50, trace_side=TraceSide.NORMAL),
+#                         gs_min=TraceNum.GS_MIN, gs_max=TraceNum.GS_MAX, trace_side=TraceSide.NORMAL),
 #            #IsDistanceEarned(name="check distance", delta_dist = 450),
 #            IsDistanceEarned(name="check distance", delta_dist = 100),
 #            #RunAsInstructed(name="race normal edge", pwm_l=45, pwm_r=60),
@@ -742,7 +743,7 @@ def build_behaviour_tree() -> BehaviourTree:
             TraceLineCam(name="junction 01", power=TraceNum.POWER_JUNCTION,                    
                          pid_p=TraceNum.PID_P_SLOW, pid_i=TraceNum.PID_I_SLOW, pid_d=TraceNum.PID_D_SLOW,
                          scene=Scene.LOOP,
-                         gs_min=0, gs_max=50, trace_side=TraceSide.OPPOSITE),
+                         gs_min=TraceNum.GS_MIN, gs_max=TraceNum.GS_MAX, trace_side=TraceSide.OPPOSITE),
             IsJunction(name="scan joined junction", target_state = JState.JOINED),
         ]
     )
@@ -751,7 +752,7 @@ def build_behaviour_tree() -> BehaviourTree:
             TraceLineCam(name="circle 01", power=TraceNum.POWER_CIRCLE,                    
                          pid_p=TraceNum.PID_P_CIRCLE, pid_i=TraceNum.PID_I_CIRCLE, pid_d=TraceNum.PID_D_CIRCLE,
                          scene=Scene.LOOP,
-                         gs_min=0, gs_max=50, trace_side=TraceSide.OPPOSITE),
+                         gs_min=TraceNum.GS_MIN, gs_max=TraceNum.GS_MAX, trace_side=TraceSide.OPPOSITE),
             IsDistanceEarned(name="check distance", delta_dist = 2400),
         ]
     )
@@ -760,7 +761,7 @@ def build_behaviour_tree() -> BehaviourTree:
             TraceLineCam(name="junction 02", power=TraceNum.POWER_JUNCTION,                    
                          pid_p=TraceNum.PID_P_CIRCLE, pid_i=TraceNum.PID_I_CIRCLE, pid_d=TraceNum.PID_D_CIRCLE,
                          scene=Scene.LOOP,
-                         gs_min=0, gs_max=50, trace_side=TraceSide.NORMAL),
+                         gs_min=TraceNum.GS_MIN, gs_max=TraceNum.GS_MAX, trace_side=TraceSide.NORMAL),
             IsJunction(name="scan joined junction", target_state = JState.JOINED),
         ]
     )
@@ -769,7 +770,7 @@ def build_behaviour_tree() -> BehaviourTree:
             TraceLineCam(name="ellipse 01", power=TraceNum.POWER_ELLIPSE,                    
                          pid_p=TraceNum.PID_P_ELLIPSE, pid_i=TraceNum.PID_I_ELLIPSE, pid_d=TraceNum.PID_D_ELLIPSE,
                          scene=Scene.LOOP,
-                         gs_min=0, gs_max=50, trace_side=TraceSide.NORMAL),
+                         gs_min=TraceNum.GS_MIN, gs_max=TraceNum.GS_MAX, trace_side=TraceSide.NORMAL),
             IsDistanceEarned(name="check distance", delta_dist = 1600),
         ]
     )
@@ -778,7 +779,7 @@ def build_behaviour_tree() -> BehaviourTree:
             TraceLineCam(name="junction 03", power=TraceNum.POWER_JUNCTION,                    
                          pid_p=TraceNum.PID_P_ELLIPSE, pid_i=TraceNum.PID_I_ELLIPSE, pid_d=TraceNum.PID_D_ELLIPSE,
                          scene=Scene.LOOP,
-                         gs_min=0, gs_max=50, trace_side=TraceSide.NORMAL),
+                         gs_min=TraceNum.GS_MIN, gs_max=TraceNum.GS_MAX, trace_side=TraceSide.NORMAL),
             IsDistanceEarned(name="check distance", delta_dist = 700),
         ]
     )
@@ -787,7 +788,7 @@ def build_behaviour_tree() -> BehaviourTree:
             TraceLineCam(name="ellipse 02", power=TraceNum.POWER_ELLIPSE,                    
                          pid_p=TraceNum.PID_P_ELLIPSE, pid_i=TraceNum.PID_I_ELLIPSE, pid_d=TraceNum.PID_D_ELLIPSE,
                          scene=Scene.LOOP,
-                         gs_min=0, gs_max=50, trace_side=TraceSide.OPPOSITE),
+                         gs_min=TraceNum.GS_MIN, gs_max=TraceNum.GS_MAX, trace_side=TraceSide.OPPOSITE),
             IsDistanceEarned(name="check distance", delta_dist = 1000),
         ]
     )
@@ -796,7 +797,7 @@ def build_behaviour_tree() -> BehaviourTree:
             TraceLineCam(name="junction 04", power=TraceNum.POWER_JUNCTION,                    
                          pid_p=TraceNum.PID_P_ELLIPSE, pid_i=TraceNum.PID_I_ELLIPSE, pid_d=TraceNum.PID_D_ELLIPSE,
                          scene=Scene.LOOP,
-                         gs_min=0, gs_max=50, trace_side=TraceSide.NORMAL),
+                         gs_min=TraceNum.GS_MIN, gs_max=TraceNum.GS_MAX, trace_side=TraceSide.NORMAL),
             IsJunction(name="scan joined junction", target_state = JState.JOINED),
         ]
     )
@@ -805,7 +806,7 @@ def build_behaviour_tree() -> BehaviourTree:
             TraceLineCam(name="circle 02", power=TraceNum.POWER_CIRCLE,                    
                          pid_p=TraceNum.PID_P_CIRCLE, pid_i=TraceNum.PID_I_CIRCLE, pid_d=TraceNum.PID_D_CIRCLE,
                          scene=Scene.LOOP,
-                         gs_min=0, gs_max=50, trace_side=TraceSide.OPPOSITE),
+                         gs_min=TraceNum.GS_MIN, gs_max=TraceNum.GS_MAX, trace_side=TraceSide.OPPOSITE),
             IsDistanceEarned(name="check distance", delta_dist = 900),
         ]
     )
@@ -814,7 +815,7 @@ def build_behaviour_tree() -> BehaviourTree:
             TraceLineCam(name="junction 05", power=TraceNum.POWER_JUNCTION,                    
                          pid_p=TraceNum.PID_P_CIRCLE, pid_i=TraceNum.PID_I_CIRCLE, pid_d=TraceNum.PID_D_CIRCLE,
                          scene=Scene.LOOP,
-                         gs_min=0, gs_max=50, trace_side=TraceSide.OPPOSITE),
+                         gs_min=TraceNum.GS_MIN, gs_max=TraceNum.GS_MAX, trace_side=TraceSide.OPPOSITE),
             IsJunction(name="scan joined junction", target_state = JState.JOINED),
         ]
     )
@@ -823,7 +824,7 @@ def build_behaviour_tree() -> BehaviourTree:
             TraceLineCam(name="straight 04", power=TraceNum.POWER_SLOW,                    
                          pid_p=TraceNum.PID_P_SLOW, pid_i=TraceNum.PID_I_SLOW, pid_d=TraceNum.PID_D_SLOW,
                          scene=Scene.LOOP,
-                         gs_min=0, gs_max=50, trace_side=TraceSide.NORMAL),
+                         gs_min=TraceNum.GS_MIN, gs_max=TraceNum.GS_MAX, trace_side=TraceSide.NORMAL),
             IsDistanceEarned(name="check distance", delta_dist = 500),
         ]
     )
@@ -832,7 +833,7 @@ def build_behaviour_tree() -> BehaviourTree:
             TraceLineCam(name="straight 04", power=TraceNum.POWER_SLOW,                    
                          pid_p=TraceNum.PID_P_SLOW, pid_i=TraceNum.PID_I_SLOW, pid_d=TraceNum.PID_D_SLOW,
                          scene=Scene.DEBRI,
-                         gs_min=0, gs_max=50, trace_side=TraceSide.NORMAL),
+                         gs_min=TraceNum.GS_MIN, gs_max=TraceNum.GS_MAX, trace_side=TraceSide.NORMAL),
             IsDistanceEarned(name="check distance", delta_dist = 700),
         ]
     )
@@ -851,7 +852,7 @@ def build_behaviour_tree() -> BehaviourTree:
         [
             TraceLineCam(name="run vertical", power=DebriNum.POWER_NORMAL, 
                          pid_p=DebriNum.PID_P, pid_i=DebriNum.PID_I, pid_d=DebriNum.PID_D,
-                         gs_min=0, gs_max=50, scene=Scene.DEBRI, trace_side=TraceSide.CENTER),
+                         gs_min=TraceNum.GS_MIN, gs_max=TraceNum.GS_MAX, scene=Scene.DEBRI, trace_side=TraceSide.CENTER),
             IsDistanceEarnedTrace(name="check distance01", delta_dist=DebriNum.DISTANCE_PASSED_THIRD),
             IsExistBottle(name="check bottle"),
         ]
@@ -906,7 +907,7 @@ def build_behaviour_tree() -> BehaviourTree:
         [
             TraceLineCam(name="run vertical", power=DebriNum.POWER_NORMAL, 
                          pid_p=DebriNum.PID_P, pid_i=DebriNum.PID_I, pid_d=DebriNum.PID_D,
-                         gs_min=0, gs_max=50, scene=Scene.DEBRI, trace_side=TraceSide.CENTER),
+                         gs_min=TraceNum.GS_MIN, gs_max=TraceNum.GS_MAX, scene=Scene.DEBRI, trace_side=TraceSide.CENTER),
             IsDistanceEarnedTrace(name="check distance01", delta_dist=DebriNum.DISTANCE_PASSED_THIRD),
         ]
     )
@@ -915,7 +916,7 @@ def build_behaviour_tree() -> BehaviourTree:
         [
             TraceLineCam(name="run vertical", power=DebriNum.POWER_NORMAL, 
                          pid_p=DebriNum.PID_P, pid_i=DebriNum.PID_I, pid_d=DebriNum.PID_D,
-                         gs_min=0, gs_max=50, scene=Scene.DEBRI, trace_side=TraceSide.CENTER),
+                         gs_min=TraceNum.GS_MIN, gs_max=TraceNum.GS_MAX, scene=Scene.DEBRI, trace_side=TraceSide.CENTER),
             IsDistanceEarned(name="check distance02", delta_dist=290),
         ]
     )
@@ -950,7 +951,7 @@ def build_behaviour_tree() -> BehaviourTree:
         [
             TraceLineCam(name="run side", power=DebriNum.POWER_SLOW, 
                          pid_p=DebriNum.PID_P, pid_i=DebriNum.PID_I, pid_d=DebriNum.PID_D,
-                         gs_min=0, gs_max=50, scene=Scene.DEBRI, trace_side=TraceSide.CENTER),
+                         gs_min=TraceNum.GS_MIN, gs_max=TraceNum.GS_MAX, scene=Scene.DEBRI, trace_side=TraceSide.CENTER),
             IsDistanceEarnedTrace(name="check distance04", delta_dist = DebriNum.DISTANCE_SIDE),
             IsExistBottle(name="check bottle"),
         ]
@@ -998,7 +999,7 @@ def build_behaviour_tree() -> BehaviourTree:
         [
             TraceLineCam(name="run side", power=DebriNum.POWER_SLOW, 
                          pid_p=DebriNum.PID_P, pid_i=DebriNum.PID_I, pid_d=DebriNum.PID_D,
-                         gs_min=0, gs_max=50, scene=Scene.DEBRI, trace_side=TraceSide.CENTER),
+                         gs_min=TraceNum.GS_MIN, gs_max=TraceNum.GS_MAX, scene=Scene.DEBRI, trace_side=TraceSide.CENTER),
             IsDistanceEarnedTrace(name="check distance04", delta_dist = DebriNum.DISTANCE_SIDE),
         ]
     )
@@ -1025,7 +1026,7 @@ def build_behaviour_tree() -> BehaviourTree:
     
     carry_02.add_children(
         [
-            TraceLineCam(name="trace normal edge", power=34, pid_p=1.9, pid_i=0.001, pid_d=0.1,scene=Scene.DEBRI, gs_min=0, gs_max=50, trace_side=TraceSide.CENTER),
+            TraceLineCam(name="trace normal edge", power=34, pid_p=1.9, pid_i=0.001, pid_d=0.1,scene=Scene.DEBRI, gs_min=TraceNum.GS_MIN, gs_max=TraceNum.GS_MAX, trace_side=TraceSide.CENTER),
             CheckRedColor(name="check red color"),
         ]
     )
@@ -1081,7 +1082,7 @@ def build_behaviour_tree() -> BehaviourTree:
     )
     carry_10.add_children(
         [
-            TraceLineCam(name="trace normal edge", power=36, pid_p=1.7, pid_i=0.0015, pid_d=0.1,scene=Scene.DEBRI, gs_min=0, gs_max=50, trace_side=TraceSide.NORMAL),
+            TraceLineCam(name="trace normal edge", power=36, pid_p=1.7, pid_i=0.0015, pid_d=0.1,scene=Scene.DEBRI, gs_min=TraceNum.GS_MIN, gs_max=TraceNum.GS_MAX, trace_side=TraceSide.NORMAL),
         ]
     )
 
