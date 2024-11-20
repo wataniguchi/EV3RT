@@ -416,6 +416,7 @@ class CheckRedColor(Behaviour):
 
         if r >= 100:
                 return Status.SUCCESS
+        return Status.RUNNING
 
 class TraceLineCam(Behaviour):
     def __init__(self, name: str, power: int, pid_p: float, pid_i: float, pid_d: float,
