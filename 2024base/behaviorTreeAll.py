@@ -644,7 +644,7 @@ def build_behaviour_tree() -> BehaviourTree:
             TraceLineCam(name="straight 021", power=TraceNum.POWER_FAST,                    
                          pid_p=TraceNum.PID_P_TOPSPEED, pid_i=TraceNum.PID_I_TOPSPEED, pid_d=TraceNum.PID_D_TOPSPEED,
                          scene=Scene.DEBRI,
-                         gs_min=TraceNum.GS_MIN, gs_max=TraceNum.GS_MAXgs_min=TraceNum.GS_MIN, gs_max=TraceNum.GS_MAX, trace_side=TraceSide.NORMAL),
+                         gs_min=TraceNum.GS_MIN, gs_max=TraceNum.GS_MAX, trace_side=TraceSide.NORMAL),
             IsDistanceEarned(name="check distance", delta_dist = 700),
             #TraceLineCam(name="trace normal edge", power=80, pid_p=0.75, pid_i=0.0020, pid_d=0.28,
             #             scene=Scene.LOOP,           
