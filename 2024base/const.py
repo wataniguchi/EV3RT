@@ -54,7 +54,9 @@ class TraceNum:
 
     GS_MAX: int = 50
     GS_MIN: int = 0
-
+    
+    GS_MAX1: int = 40
+    GS_MIN1: int = 0
 
 class DebriNum:
     BOTTLE_RANGE_LOWER = 8700
