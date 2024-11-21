@@ -614,16 +614,18 @@ def build_behaviour_tree() -> BehaviourTree:
     ])
     loop_01.add_children(
         [
-            TraceLineCam(name="straight 01", power=TraceNum.POWER_SLOW1,                    
-                         pid_p=TraceNum.PID_P_SLOW1, pid_i=TraceNum.PID_I_SLOW1, pid_d=TraceNum.PID_D_SLOW1,
-                         scene=Scene.DEBRI,
-                         gs_min=TraceNum.GS_MIN, gs_max=TraceNum.GS_MAX, trace_side=TraceSide.NORMAL),
+            #TraceLineCam(name="straight 01", power=TraceNum.POWER_SLOW1,                    
+            #             pid_p=TraceNum.PID_P_SLOW1, pid_i=TraceNum.PID_I_SLOW1, pid_d=TraceNum.PID_D_SLOW1,
+            #             scene=Scene.DEBRI,
+            #             gs_min=TraceNum.GS_MIN, gs_max=TraceNum.GS_MAX, trace_side=TraceSide.NORMAL),
             #IsDistanceEarned(name="check distance", delta_dist = 250),
-            IsDistanceEarned(name="check distance", delta_dist = 120),
-            #TraceLineCam(name="trace normal edge", power=60, pid_p=0.75, pid_i=0.0020, pid_d=0.28,
-            #             scene=Scene.LOOP,
+            #IsDistanceEarned(name="check distance", delta_dist = 200),
+            #TraceLineCam(name="trace normal edge", power=45, pid_p=0.75, pid_i=0.0020, pid_d=0.28,
+            #             scene=Scene.DEBRI,
             #             gs_min=TraceNum.GS_MIN, gs_max=TraceNum.GS_MAX, trace_side=TraceSide.NORMAL),
             #IsDistanceEarned(name="check distance", delta_dist = 120),
+            RunAsInstructed(name="race normal edge", pwm_l=35, pwm_r=35),
+            IsDistanceEarned(name="check distance", delta_dist = 120),
         ]
     )
     loop_02.add_children(
@@ -761,7 +763,7 @@ def build_behaviour_tree() -> BehaviourTree:
             TraceLineCam(name="junction 02", power=TraceNum.POWER_JUNCTION,                    
                          pid_p=TraceNum.PID_P_CIRCLE, pid_i=TraceNum.PID_I_CIRCLE, pid_d=TraceNum.PID_D_CIRCLE,
                          scene=Scene.LOOP,
-                         gs_min=TraceNum.GS_MIN, gs_max=TraceNum.GS_MAX, trace_side=TraceSide.OPPOSITE),
+                         gs_min=TraceNum.GS_MIN, gs_max=TraceNum.GS_MAX, trace_side=TraceSide.NORMAL),
             IsJunction(name="scan joined junction", target_state = JState.JOINED),
         ]
     )
@@ -788,8 +790,8 @@ def build_behaviour_tree() -> BehaviourTree:
             TraceLineCam(name="ellipse 02", power=TraceNum.POWER_ELLIPSE,                    
                          pid_p=TraceNum.PID_P_ELLIPSE, pid_i=TraceNum.PID_I_ELLIPSE, pid_d=TraceNum.PID_D_ELLIPSE,
                          scene=Scene.LOOP,
-                         gs_min=TraceNum.GS_MIN, gs_max=TraceNum.GS_MAX, trace_side=TraceSide.OPPOSITE),
-            IsDistanceEarned(name="check distance", delta_dist = 1000),
+                         gs_min=TraceNum.GS_MIN, gs_max=TraceNum.GS_MAX, trace_side=TraceSide.NORMAL),
+            IsDistanceEarned(name="check distance", delta_dist = 500),
         ]
     )
     loop_13.add_children(
@@ -798,8 +800,7 @@ def build_behaviour_tree() -> BehaviourTree:
                          pid_p=TraceNum.PID_P_ELLIPSE, pid_i=TraceNum.PID_I_ELLIPSE, pid_d=TraceNum.PID_D_ELLIPSE,
                          scene=Scene.LOOP,
                          gs_min=TraceNum.GS_MIN, gs_max=TraceNum.GS_MAX, trace_side=TraceSide.NORMAL),
-            # IsJunction(name="scan joined junction", target_state = JState.JOINED),
-            IsDistanceEarned(name="check distance", delta_dist = 600),
+            IsJunction(name="scan joined junction", target_state = JState.JOINED),
         ]
     )
     loop_14.add_children(
@@ -938,7 +939,7 @@ def build_behaviour_tree() -> BehaviourTree:
     debri_05.add_children(
         [
             RunAsInstructed(name="go back", pwm_r=-40,pwm_l=-40),
-            IsDistanceEarned(name="check distance", delta_dist = 150),
+            IsDistanceEarned(name="check distance", delta_dist = 100),
         ]
     )
 
@@ -952,7 +953,7 @@ def build_behaviour_tree() -> BehaviourTree:
         [
             TraceLineCam(name="run side", power=DebriNum.POWER_SLOW, 
                          pid_p=DebriNum.PID_P, pid_i=DebriNum.PID_I, pid_d=DebriNum.PID_D,
-                         gs_min=TraceNum.GS_MIN, gs_max=TraceNum.GS_MAX, scene=Scene.DEBRI, trace_side=TraceSide.NORMAL),
+                         gs_min=TraceNum.GS_MIN, gs_max=TraceNum.GS_MAX, scene=Scene.DEBRI, trace_side=TraceSide.CENTER),
             IsDistanceEarnedTrace(name="check distance04", delta_dist = DebriNum.DISTANCE_SIDE),
             IsExistBottle(name="check bottle"),
         ]
@@ -1000,7 +1001,7 @@ def build_behaviour_tree() -> BehaviourTree:
         [
             TraceLineCam(name="run side", power=DebriNum.POWER_SLOW, 
                          pid_p=DebriNum.PID_P, pid_i=DebriNum.PID_I, pid_d=DebriNum.PID_D,
-                         gs_min=TraceNum.GS_MIN, gs_max=TraceNum.GS_MAX, scene=Scene.DEBRI, trace_side=TraceSide.NORMAL),
+                         gs_min=TraceNum.GS_MIN, gs_max=TraceNum.GS_MAX, scene=Scene.DEBRI, trace_side=TraceSide.CENTER),
             IsDistanceEarnedTrace(name="check distance04", delta_dist = DebriNum.DISTANCE_SIDE),
         ]
     )
@@ -1021,7 +1022,7 @@ def build_behaviour_tree() -> BehaviourTree:
     carry_01.add_children(
         [
             RunAsInstructed(name="go straight",pwm_l=38,pwm_r=38),
-            IsDistanceEarned(name="check distance", delta_dist = 400),
+            IsDistanceEarned(name="check distance", delta_dist = 500),
         ]
     )
     
@@ -1041,13 +1042,13 @@ def build_behaviour_tree() -> BehaviourTree:
     else:
         carry_03.add_children(
                 [
-                    RunAsInstructed(name="rotate", pwm_r=60,pwm_l=20),
+                    RunAsInstructed(name="rotate", pwm_r=70,pwm_l=20),
                     IsDistanceEarned(name="check distance", delta_dist = 400),
                 ]
         )
     carry_04.add_children(
         [
-            RunAsInstructed(name="go straight",pwm_l=45,pwm_r=45),
+            RunAsInstructed(name="go straight",pwm_l=50,pwm_r=50),
             IsDistanceEarned(name="check distance", delta_dist = 1100),
         ]
     )

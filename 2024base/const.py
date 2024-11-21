@@ -23,12 +23,12 @@ class TraceNum:
     PID_P_TOPSPEED: float = 0.75
     PID_I_TOPSPEED: float = 0.0018
     PID_D_TOPSPEED: float = 0.28
-    POWER_TOPSPEED: int = 77
+    POWER_TOPSPEED: int = 60
     
     PID_P_FAST: float = 0.75
     PID_I_FAST: float = 0.0018
     PID_D_FAST: float = 0.28
-    POWER_FAST: int = 75
+    POWER_FAST: int = 60
 
     PID_P_SLOW: float = 1.4
     PID_I_SLOW: float = 0.0012
@@ -70,7 +70,7 @@ class DebriNum:
     PID_I: float = 0.0015
     PID_D: float = 0.1
     POWER_NORMAL: int = 40
-    POWER_SLOW: int = 39
+    POWER_SLOW: int = 45
 
 
 class TraceSide(Enum):
