@@ -63,7 +63,7 @@ class Video(object):
         self.mx = self.cx
         # default values
         self.gsmin = 0
-        self.gsmax = 50
+        self.gsmax = 38
         self.trace_side = TraceSide.NORMAL
         self.range_of_edges = 0
         self.theta:float = 0.0
