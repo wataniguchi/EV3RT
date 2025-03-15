@@ -9,6 +9,10 @@
 /2024base/*.dot
 /2024base/*.png
 /2024base/*.svg
+!/2025prebase/
+/2025prebase/*.dot
+/2025prebase/*.png
+/2025prebase/*.svg
 !/aflac2019/
 !/aflac2020/
 !/ms2021/
@@ -36,6 +40,9 @@
 /test-opencv-cam3/*
 !/test-opencv-cam3/*.py
 !/test-opencv-cam3/*.cpp
+!/test-opencv-usbcam/
+/test-opencv-usbcam/*
+!/test-opencv-usbcam/*.py
 !/test-sensor/
 !/test-thread/
 !/test-thread2/
