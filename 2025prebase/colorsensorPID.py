@@ -23,7 +23,9 @@ class LineTracer(object):
         if not self.running:
             return
 
-        turn = int(self.pid(color_sensor.get_brightness()))
+        brightness = color_sensor.get_brightness()
+        turn = int(self.pid(brightness))
+        print(f'brightness = {brightness}, turn = {turn}')
 
         right_motor.set_power(self.power - turn)
         left_motor.set_power(self.power + turn)
@@ -43,4 +45,4 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--logfile', type=str, default=None, help='Path to log file')
     args = parser.parse_args()
-    run(backend='raspike_art', interval=0.04, target=60, power=35, pid_p=0.56, pid_i=0.005, pid_d=0.015, logfile=args.logfile)
+    run(backend='raspike_art', interval=0.04, target=45, power=45, pid_p=0.85, pid_i=0.1, pid_d=0.05, logfile=args.logfile)
