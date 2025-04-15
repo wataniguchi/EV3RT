@@ -44,6 +44,7 @@
 /test-opencv-usbcam/*
 !/test-opencv-usbcam/*.py
 !/test-sensor/
+!/test-sim/
 !/test-thread/
 !/test-thread2/
 !/ev3way-cpp/
