@@ -26,9 +26,6 @@
 !/msad2023_pri/
 /msad2023_pri/batch_stitch
 /msad2023_pri/work/
-!/msad2024_teamA/
-!/msad2024_teamB/
-!/msad2024_teamC/
 !/test-asyncio/
 /test-asyncio/*
 !/test-asyncio/*.py
