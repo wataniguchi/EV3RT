@@ -13,6 +13,10 @@
 /2025prebase/*.dot
 /2025prebase/*.png
 /2025prebase/*.svg
+!/2025base/
+/2025base/*.dot
+/2025base/*.png
+/2025base/*.svg
 !/aflac2019/
 !/aflac2020/
 !/ms2021/
