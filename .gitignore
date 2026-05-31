@@ -17,6 +17,10 @@
 /2025base/*.dot
 /2025base/*.png
 /2025base/*.svg
+!/2026base/
+/2026base/*.dot
+/2026base/*.png
+/2026base/*.svg
 !/aflac2019/
 !/aflac2020/
 !/ms2021/
@@ -48,6 +52,7 @@
 !/test-sim/
 !/test-thread/
 !/test-thread2/
+!/test-QRcode/
 !/ev3way-cpp/
 !/sample_cpp5/
 !/EV3way_EV3RT/
