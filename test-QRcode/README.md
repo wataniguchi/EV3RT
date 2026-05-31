@@ -1,4 +1,4 @@
-# claude-QRcode
+# test-QRcode
 
 ETrobocon 2026 向けQRコード検出スクリプト。
 カメラ画像からQRコードを高精度・低遅延でデコードする。
@@ -124,8 +124,8 @@ hint2_32 の残り44%（23枚）はボケ・部分遮蔽など撮影品質の問
 
 ```bash
 # バッチ評価
-uv run QR_zxing_loaddata.py
+pypy3 QR_zxing_loaddata.py
 
 # カメラモニタリング（q キーで終了）
-uv run QR_tuned.py
+pypy3 QR_tuned.py
 ```
