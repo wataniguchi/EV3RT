@@ -53,9 +53,7 @@
 !/test-thread/
 !/test-thread2/
 !/test-QRcode/
-!/ev3way-cpp/
-!/sample_cpp5/
-!/EV3way_EV3RT/
+!/test-colorSensor/
 !/loganalysis/
 *~
 *.swp
