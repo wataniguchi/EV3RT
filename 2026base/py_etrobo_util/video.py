@@ -17,9 +17,6 @@ from etrobo_python import Hub, Motor, ColorSensor, SonarSensor, GyroSensor
 def round_up_to_odd(f) -> int:
     return int(np.ceil(f / 2.) * 2 + 1)
 
-# distance from axle to the closest horizontal line on ground the camera can see
-HORIZON_DISTANCE = 225
-
 # frame size for Raspberry Pi USB camera capture
 IN_FRAME_WIDTH  = 1920
 IN_FRAME_HEIGHT = 1080
@@ -43,6 +40,8 @@ LINE_THICKNESS = int(FRAME_WIDTH/160)
 CIRCLE_RADIUS  = int(FRAME_WIDTH/80)
 SCAN_V_POS     = int(13*FRAME_HEIGHT/16 - LINE_THICKNESS) # for full angle
 #SCAN_V_POS     = int(16*FRAME_HEIGHT/16 - LINE_THICKNESS)
+HORIZON_DISTANCE = 270 # length of the closest horizontal line on ground within the camera vision
+AXLE_TO_HORIZON_DISTANCE = 230 # distance from axle to the closest horizontal line on ground the camera can see
 
 # constants for TargetInterested.QRCODE
 CROP_X1   = 360
@@ -393,11 +392,11 @@ class Video(object):
             # calculate variance of mx from the center in pixel
             vxp = self.mx - int(FRAME_WIDTH/2)
             # convert the variance from pixel to milimeters
-            # 138 is length of the closest horizontal line on ground within the camera vision
-            vxm = vxp * 138 / FRAME_WIDTH
+            # HORIZON_DISTANCE is length of the closest horizontal line on ground within the camera vision
+            vxm = vxp * HORIZON_DISTANCE / FRAME_WIDTH
             # calculate the rotation in radians (z-axis)
-            # HORIZON_DISTANCE is distance from axle to the closest horizontal line on ground the camera can see
-            self.theta = 180 * math.atan(vxm / HORIZON_DISTANCE) / math.pi
+            # AXLE_TO_HORIZON_DISTANCE is distance from axle to the closest horizontal line on ground the camera can see
+            self.theta = 180 * math.atan(vxm / AXLE_TO_HORIZON_DISTANCE) / math.pi
             #print(f"mx = {self.mx}, vxm = {vxm}, theta = {self.theta}")
 
         # BELOW IS COMMON FOR ALL TARGETS

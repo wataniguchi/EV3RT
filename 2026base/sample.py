@@ -21,6 +21,8 @@ from py_etrobo_util import Video, TraceSide, TargetInterested, Plotter, Symmetri
 EXEC_INTERVAL: float = 0.03
 VIDEO_INTERVAL: float = 0.02
 ARM_SHIFT_PWM = 30
+JUNCT_UPPER_THREAH = 50
+JUNCT_LOWER_THREAH = 30
 SPIN_MAX_POWER = 55
 SPIN_MIN_POWER = 45
 TRACELINE_TARGET_V = 70
@@ -224,9 +226,9 @@ class IsColorDetected(Behaviour):
             return Status.RUNNING
 
 
-class IsQRDetected(Behaviour):
+class IsQRDecoded(Behaviour):
     def __init__(self, name: str):
-        super(IsQRDetected, self).__init__(name)
+        super(IsQRDecoded, self).__init__(name)
         self.logger.debug("%s.__init__()" % (self.__class__.__name__))
         self.running = False
         self.detected = False
@@ -240,7 +242,7 @@ class IsQRDetected(Behaviour):
         if text != "":
             if not self.detected:
                 self.detected = True
-                self.logger.info("%+06d %s.QR code detected: %s" % (g_plotter.get_distance(), self.__class__.__name__, text))
+                self.logger.info("%+06d %s.QR code decoded: %s" % (g_plotter.get_distance(), self.__class__.__name__, text))
             return Status.SUCCESS
         else:
             return Status.RUNNING
@@ -331,41 +333,6 @@ class TraceLine(Behaviour):
             turn = (-1) * g_course * int(self.pid(v))
         else: # TraceSide.OPPOSITE
             turn = g_course * int(self.pid(v))
-        g_right_motor.set_power(self.power - turn)
-        g_left_motor.set_power(self.power + turn)
-        return Status.RUNNING
-
-
-class TraceLineCam(Behaviour):
-    def __init__(self, name: str, power: int, pid_p: float, pid_i: float, pid_d: float,
-                 gs_min: int, gs_max: int, trace_side: TraceSide) -> None:
-        super(TraceLineCam, self).__init__(name)
-        self.power = power
-        self.pid = PID(pid_p, pid_i, pid_d, setpoint=0, sample_time=EXEC_INTERVAL, output_limits=(-power, power))
-        self.gs_min = gs_min
-        self.gs_max = gs_max
-        self.trace_side = trace_side
-        self.running = False
-
-    def update(self) -> Status:
-        if not self.running:
-            self.running = True
-            g_video.set_thresholds(self.gs_min, self.gs_max)
-            g_video.set_target_interested(TargetInterested.LINE)
-            if self.trace_side == TraceSide.NORMAL:
-                if g_course == -1: # right course
-                    g_video.set_trace_side(TraceSide.RIGHT)
-                else:
-                    g_video.set_trace_side(TraceSide.LEFT)
-            elif self.trace_side == TraceSide.OPPOSITE: 
-                if g_course == -1: # right course
-                    g_video.set_trace_side(TraceSide.LEFT)
-                else:
-                    g_video.set_trace_side(TraceSide.RIGHT)
-            else: # TraceSide.CENTER
-                g_video.set_trace_side(TraceSide.CENTER)
-            self.logger.info("%+06d %s.trace started with TS=%s" % (g_plotter.get_distance(), self.__class__.__name__, self.trace_side.name))
-        turn = (-1) * int(self.pid(g_video.get_theta()))
         g_right_motor.set_power(self.power - turn)
         g_left_motor.set_power(self.power + turn)
         return Status.RUNNING
@@ -496,6 +463,84 @@ class RunByGyro(Behaviour):
         g_left_motor.set_power(self.power - g_course * turn)
         self.count += 1
         return Status.RUNNING
+
+
+class TraceLineCam(Behaviour):
+    def __init__(self, name: str, power: int, pid_p: float, pid_i: float, pid_d: float,
+                 gs_min: int, gs_max: int, trace_side: TraceSide) -> None:
+        super(TraceLineCam, self).__init__(name)
+        self.power = power
+        self.pid = PID(pid_p, pid_i, pid_d, setpoint=0, sample_time=EXEC_INTERVAL, output_limits=(-power, power))
+        self.gs_min = gs_min
+        self.gs_max = gs_max
+        self.trace_side = trace_side
+        self.running = False
+
+    def update(self) -> Status:
+        if not self.running:
+            self.running = True
+            g_video.set_thresholds(self.gs_min, self.gs_max)
+            g_video.set_target_interested(TargetInterested.LINE)
+            if self.trace_side == TraceSide.NORMAL:
+                if g_course == -1: # right course
+                    g_video.set_trace_side(TraceSide.RIGHT)
+                else:
+                    g_video.set_trace_side(TraceSide.LEFT)
+            elif self.trace_side == TraceSide.OPPOSITE: 
+                if g_course == -1: # right course
+                    g_video.set_trace_side(TraceSide.LEFT)
+                else:
+                    g_video.set_trace_side(TraceSide.RIGHT)
+            else: # TraceSide.CENTER
+                g_video.set_trace_side(TraceSide.CENTER)
+            self.logger.info("%+06d %s.trace started with TS=%s" % (g_plotter.get_distance(), self.__class__.__name__, self.trace_side.name))
+        turn = (-1) * int(self.pid(g_video.get_theta()))
+        g_right_motor.set_power(self.power - turn)
+        g_left_motor.set_power(self.power + turn)
+        return Status.RUNNING
+
+
+class IsJunction(Behaviour):
+    def __init__(self, name: str, target_state: JState) -> None:
+        super(IsJunction, self).__init__(name)
+        self.target_state = target_state
+        self.reached = False
+        self.prev_roe = 0
+        self.state:JState = JState.INITIAL
+        self.running = False
+
+    def update(self) -> Status:
+        if not self.running:
+            self.running = True
+            self.logger.info("%+06d %s.scan started" % (g_plotter.get_distance(), self.__class__.__name__))
+        roe = g_video.get_range_of_edges()
+        if roe != 0:
+            if self.state == JState.INITIAL:
+                if (self.target_state == JState.JOINING or self.target_state == JState.JOINED) and roe >= JUNCT_UPPER_THRESH and self.prev_roe <= JUNCT_LOWER_THRESH:
+                    self.logger.info("%+06d %s.lines are joining" % (g_plotter.get_distance(), self.__class__.__name__))
+                    self.state = JState.JOINING
+                elif (self.target_state == JState.FORKING or self.target_state == JState.FORKED) and roe >= JUNCT_LOWER_THRESH and self.prev_roe <= JUNCT_LOWER_THRESH:
+                    self.logger.info("%+06d %s.lines are forking" % (g_plotter.get_distance(), self.__class__.__name__))
+                    self.state = JState.FORKING
+            elif self.state == JState.JOINING:
+                if roe <= JUNCT_LOWER_THRESH:
+                    self.logger.info("%+06d %s.the join completed" % (g_plotter.get_distance(), self.__class__.__name__))
+                    self.state = JState.JOINED
+                    
+            elif self.state == JState.FORKING:
+                if roe <= JUNCT_LOWER_THRESH and self.prev_roe >= JUNCT_UPPER_THRESH:
+                    self.logger.info("%+06d %s.the fork completed" % (g_plotter.get_distance(), self.__class__.__name__))
+                    self.state = JState.FORKED
+            else:
+                pass
+        self.prev_roe = roe
+
+        if not self.reached and self.state == self.target_state:
+            self.reached = True
+            self.logger.info("%+06d %s.target state reached" % (g_plotter.get_distance(), self.__class__.__name__))
+            return Status.SUCCESS
+        else:
+            return Status.RUNNING
 
 
 class TraverseBehaviourTree(object):
@@ -679,7 +724,7 @@ def build_behaviour_tree() -> BehaviourTree:
     )
     qr_read.add_children(
         [
-            IsQRDetected(name="check QR code"),
+            IsQRDecoded(name="check QR code"),
             qr_scan_shake,
         ]
     )
