@@ -331,28 +331,28 @@ def build_behaviour_tree() -> BehaviourTree:
         [
             RunByGyro(name="run straight", target=0, power=60,
                 pid_p=1.1, pid_i=0.001, pid_d=0.03, target_type=HeadingType.ABSOLUTE),
-            IsDistanceEarned(name="check distance", delta_dist = 1500),
+            IsDistanceEarned(name="check distance", delta_dist = 800),
         ]
     )
     edge_02.add_children(
         [
             RunByGyro(name="run straight", target=90, power=60,
                 pid_p=1.1, pid_i=0.001, pid_d=0.03, target_type=HeadingType.ABSOLUTE),
-            IsDistanceEarned(name="check distance", delta_dist = 1500),
+            IsDistanceEarned(name="check distance", delta_dist = 800),
         ]
     )
     edge_03.add_children(
         [
             RunByGyro(name="run straight", target=180, power=60,
                 pid_p=1.1, pid_i=0.001, pid_d=0.03, target_type=HeadingType.ABSOLUTE),
-            IsDistanceEarned(name="check distance", delta_dist = 1500),
+            IsDistanceEarned(name="check distance", delta_dist = 800),
         ]
     )
     edge_04.add_children(
         [
             RunByGyro(name="run straight", target=270, power=60,
                 pid_p=1.1, pid_i=0.001, pid_d=0.03, target_type=HeadingType.ABSOLUTE),
-            IsDistanceEarned(name="check distance", delta_dist = 1500),
+            IsDistanceEarned(name="check distance", delta_dist = 800),
         ]
     )
     square.add_children(
@@ -407,7 +407,7 @@ if __name__ == '__main__':
 
     #py_trees.logging.level = py_trees.logging.Level.DEBUG
     tree = build_behaviour_tree()
-    display_tree.render_dot_tree(tree)
+    #display_tree.render_dot_tree(tree)
     
     etrobo = initialize_etrobo(backend='raspike_art')
     etrobo.add_handler(TraverseBehaviourTree(tree))

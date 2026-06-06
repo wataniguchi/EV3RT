@@ -23,9 +23,9 @@ VIDEO_INTERVAL: float = 0.02
 ARM_SHIFT_PWM = 30
 JUNCT_UPPER_THREAH = 50
 JUNCT_LOWER_THREAH = 30
-SPIN_MAX_POWER = 55
-SPIN_MIN_POWER = 45
-TRACELINE_TARGET_V = 70
+SPIN_MAX_POWER = 57
+SPIN_MIN_POWER = 47
+TRACELINE_TARGET_V = 65
 
 class ArmDirection(IntEnum):
     UP = -1
@@ -101,7 +101,9 @@ class ArmUpDownFull(Behaviour):
         if not self.running:
             self.running = True
             self.prev_degree = g_arm_motor.get_count()
+            self.logger.info("%+06d %s.start position is %d" % (g_plotter.get_distance(), self.__class__.__name__, self.prev_degree))
             self.count = 0
+            g_arm_motor.set_power(ARM_SHIFT_PWM * self.direction)
         else:
             cur_degree = g_arm_motor.get_count()
             if abs(cur_degree - self.prev_degree) < 5:
@@ -113,7 +115,6 @@ class ArmUpDownFull(Behaviour):
                 else:
                     self.count += 1
             self.prev_degree = cur_degree
-        g_arm_motor.set_power(ARM_SHIFT_PWM * self.direction)
         return Status.RUNNING
 
 
@@ -635,7 +636,7 @@ def build_behaviour_tree() -> BehaviourTree:
         [
             RunByGyro(name="run straight to catch the bottle", target=5, power=33,
                 pid_p=1.1, pid_i=0.00075, pid_d=0.04, target_type=HeadingType.ABSOLUTE),
-            IsDistanceEarned(name="check distance", delta_dist = 350),
+            IsDistanceEarned(name="check distance", delta_dist = 370),
         ]
     )
     carry1.add_children(
@@ -649,7 +650,7 @@ def build_behaviour_tree() -> BehaviourTree:
         [
             RunByGyro(name="run straight to pass the blue line", target=90, power=33,
                 pid_p=1.1, pid_i=0.00075, pid_d=0.04, target_type=HeadingType.ABSOLUTE),
-            IsDistanceEarned(name="check distance", delta_dist = 100),
+            IsDistanceEarned(name="check distance", delta_dist = 120),
         ]
     )
     carry3.add_children(
@@ -676,13 +677,13 @@ def build_behaviour_tree() -> BehaviourTree:
     qr3.add_children(
         [
             TraceLine(name="sensor trace opposite edge", target=TRACELINE_TARGET_V+10, power=33,
-                pid_p=0.65, pid_i=0.000001, pid_d=0.011, trace_side=TraceSide.OPPOSITE),
+                pid_p=0.655, pid_i=0.0000011, pid_d=0.012, trace_side=TraceSide.OPPOSITE),
             IsColorDetected(name="check color", color=Color.BLUE),
         ]
     )
     qr4.add_children(
         [
-            RunByGyro(name="run straight to pass half the blue line", target=0, power=33,
+            RunByGyro(name="run straight to pass half the blue line", target=-90, power=33,
                 pid_p=1.1, pid_i=0.00075, pid_d=0.04, target_type=HeadingType.ABSOLUTE),
             IsDistanceEarned(name="check distance", delta_dist = 100),
         ]
@@ -741,19 +742,23 @@ def build_behaviour_tree() -> BehaviourTree:
                 pid_p=0.2, pid_i=0.00075, pid_d=0.03, target_type=HeadingType.ABSOLUTE),
             StopNow(name="stop"),
             IsTimePassed(name="wait for a moment", delta_time=1.0),
-            qr1,
+            #qr1,
             qr2,
             StopNow(name="stop"),
             IsTimePassed(name="wait for a moment", delta_time=1.0),
-            SpinAndLocateLine(name="spin and locate line", target=TRACELINE_TARGET_V, max_power=SPIN_MAX_POWER, min_power=SPIN_MIN_POWER,
+            SpinAndLocateLine(name="spin and locate line", target=TRACELINE_TARGET_V-20, max_power=SPIN_MAX_POWER, min_power=SPIN_MIN_POWER,
                 pid_p=0.2, pid_i=0.00075, pid_d=0.03, trace_side=TraceSide.OPPOSITE),
             StopNow(name="stop"),
             IsTimePassed(name="wait for a moment", delta_time=1.0),
             qr3,
             qr4,
+            StopNow(name="stop"),
+            IsTimePassed(name="wait for a moment", delta_time=1.0),
+            ArmUpDownFull(name="arm up", direction=ArmDirection.UP),
             SpinAround(name="align for QR code scanning", target=0, max_power=SPIN_MAX_POWER, min_power=SPIN_MIN_POWER,
                 pid_p=0.2, pid_i=0.00075, pid_d=0.03, target_type=HeadingType.ABSOLUTE),
             qr_read,
+            ArmUpDownFull(name="arm down", direction=ArmDirection.DOWN),
             StopNow(name="stop"),
             TheEnd(name="end"),
         ]
