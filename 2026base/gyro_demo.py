@@ -248,22 +248,21 @@ class RunByGyro(Behaviour):
         self.pid_p = pid_p
         self.pid_i = pid_i
         self.pid_d = pid_d
-        self.count = None
+        self.last_log_time = None
         self.running = False
 
     def update(self) -> Status:
         current_heading = (-1) * g_course * g_gyro_sensor.get_angle()
         # log every 1 second
-        if not self.count == None and self.count % (1000.0 / EXEC_INTERVAL) == 0:
+        if self.last_log_time == None or time.time() - self.last_log_time >= 1.0:
             self.logger.info("%+06d %s.current heading=%d" % (g_plotter.get_distance(), self.__class__.__name__, current_heading))
-            self.count = 0
+            self.last_log_time = time.time()
         if not self.running:
             if self.target_type == HeadingType.RELATIVE:
                 self.target_heading = current_heading + self.target
             else:
                 self.target_heading = self.target
             self.pid = PID(self.pid_p, self.pid_i, self.pid_d, setpoint=self.target_heading, sample_time=EXEC_INTERVAL, output_limits=(-self.power, self.power))
-            self.count = 0
             self.logger.info("%+06d %s.gyro run started toward heading=%d" % (g_plotter.get_distance(),
                                                                               self.__class__.__name__, self.target_heading))
             self.running = True
