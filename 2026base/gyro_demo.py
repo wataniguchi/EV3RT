@@ -1,4 +1,5 @@
 import argparse
+import time
 from enum import IntEnum, Enum
 from etrobo_python import ETRobo, Hub, Motor, TouchSensor, ColorSensor, SonarSensor, GyroSensor
 from simple_pid import PID
@@ -275,6 +276,7 @@ class RunByGyro(Behaviour):
 class TraverseBehaviourTree(object):
     def __init__(self, tree: BehaviourTree) -> None:
         self.tree = tree
+        self.last_log_time = None
         self.running = False
     def __call__(
         self,
@@ -303,6 +305,10 @@ class TraverseBehaviourTree(object):
         else:
             self.tree.tick_once()
             g_plotter.plot(hub, arm_motor, right_motor, left_motor, touch_sensor, color_sensor, sonar_sensor, gyro_sensor)
+            # log estimated position every 1 second
+            #if self.last_log_time == None or time.time() - self.last_log_time >= 1.0:
+            #    print(" --  estimated position X=%d, Y=%d" % (g_plotter.get_loc_x(), g_plotter.get_loc_y()))
+            #    self.last_log_time = time.time()
 
 
 def build_behaviour_tree() -> BehaviourTree:
