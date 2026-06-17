@@ -1,5 +1,6 @@
 from enum import Enum
 from collections import deque
+import math
 
 class SymmetricClamper:
     def __init__(self, min_val: float, max_val: float):
@@ -88,3 +89,49 @@ class ColorClassifier:
         single = self.classify_single(h, s, v)
         self.window.append(single)
         return self.classify_robust(self.window)
+
+class LowPassFilter:
+    """First-order IIR (exponential) low-pass filter.
+ 
+    The cutoff is given in Hz so it carries physical meaning independent of the
+    loop rate, then converted once to an EMA coefficient `alpha`:
+ 
+        w     = 2*pi * cutoff_hz * sample_time
+        alpha = w / (w + 1)
+        y[n]  = y[n-1] + alpha * (x[n] - y[n-1])
+ 
+    Higher cutoff -> alpha -> 1 -> less smoothing, less phase lag.
+    Lower  cutoff -> alpha -> 0 -> more smoothing, more phase lag.
+ 
+    Phase lag added at a frequency f is approximately atan(f / cutoff_hz);
+    keep cutoff_hz well above the loop's working bandwidth (~2 Hz here) so the
+    filter removes sensor spikes without eating the phase margin the PID needs.
+    """
+ 
+    def __init__(self, cutoff_hz: float, sample_time: float,
+                 median_window: int = 0) -> None:
+        w = 2.0 * math.pi * cutoff_hz * sample_time
+        self.alpha = w / (w + 1.0)
+        self.y = None                      # lazy init -> no start-up ramp from 0
+        # optional tiny median pre-stage to reject single-sample spikes
+        # (line crossings, glare). 0 disables it; 3 is a good value if enabled.
+        self._mwin = median_window
+        self._buf = []
+ 
+    def reset(self) -> None:
+        self.y = None
+        self._buf = []
+ 
+    def __call__(self, x: float) -> float:
+        # optional spike rejection before smoothing
+        if self._mwin > 1:
+            self._buf.append(x)
+            if len(self._buf) > self._mwin:
+                self._buf.pop(0)
+            x = sorted(self._buf)[len(self._buf) // 2]
+        # exponential low-pass
+        if self.y is None:
+            self.y = x                     # seed with the first real sample
+        else:
+            self.y += self.alpha * (x - self.y)
+        return self.y
