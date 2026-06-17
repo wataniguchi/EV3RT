@@ -3,6 +3,7 @@ import argparse
 import time
 import threading
 import signal
+import math
 from enum import IntEnum, Enum, auto
 from etrobo_python import ETRobo, Hub, Motor, TouchSensor, ColorSensor, SonarSensor, GyroSensor
 from simple_pid import PID
@@ -20,7 +21,7 @@ from py_etrobo_util import Video, TraceSide, TargetInterested, Plotter, Symmetri
 
 EXEC_INTERVAL: float = 0.02
 VIDEO_INTERVAL: float = 0.02
-ARM_SHIFT_PWM = 30
+ARM_SHIFT_PWM = 35
 JUNCT_UPPER_THREAH = 50
 JUNCT_LOWER_THREAH = 30
 SPIN_MAX_POWER = 57
@@ -107,7 +108,7 @@ class ArmUpDownFull(Behaviour):
         else:
             cur_degree = g_arm_motor.get_count()
             if abs(cur_degree - self.prev_degree) < 5:
-                if self.count > 10:
+                if self.count > 20:
                     g_arm_motor.set_power(0)
                     g_arm_motor.set_brake(True)
                     self.logger.info("%+06d %s.position set to %d" % (g_plotter.get_distance(), self.__class__.__name__, cur_degree))
@@ -332,7 +333,11 @@ class TraceLine(Behaviour):
                  # give (Kp, Kd) at the slow (curve) end and the fast (straight) end;
                  # None -> no scheduling, the fixed pid_p/pid_d above are used everywhere.
                  gains_slow: tuple = None,       # (Kp, Kd) at power_min
-                 gains_fast: tuple = None        # (Kp, Kd) at power_max
+                 gains_fast: tuple = None,       # (Kp, Kd) at power_max
+                 # ---- line-lost recovery (outer-edge curve rescue) ----
+                 recover_v: int = None,           # bright-rail v that means "line lost to floor"; None = off
+                 recover_after: int = 3,          # consecutive lost samples before hard recovery
+                 recover_turn: int = None         # recovery steering magnitude; None = power_max
                 ) -> None:
         super(TraceLine, self).__init__(name)
         # power is treated as the MAX/nominal speed. The PID output limit is
@@ -359,6 +364,12 @@ class TraceLine(Behaviour):
         self.gains_fast = gains_fast
         self.schedule = (gains_slow is not None and gains_fast is not None
                          and self.power_max > self.power_min)
+        # line-lost recovery
+        self.recover_v = recover_v
+        self.recover_after = recover_after
+        self.recover_turn = recover_turn
+        self._lost_count = 0
+
         self.running = False
 
     def update(self) -> Status:
@@ -402,11 +413,29 @@ class TraceLine(Behaviour):
         else: # TraceSide.OPPOSITE
             turn = g_course * int(self.pid(v))
 
+        # ---- line-lost recovery --------------------------------------------
+        # When the sensor pins at the bright rail, target=75 only yields a weak
+        # clamped-P turn (Kp*(75-100) ~= -16), too gentle to curl back to a line
+        # that curved away on an OUTER edge -> the robot drives off. Detect a
+        # SUSTAINED bright-rail pin (not a 1-2 sample weave touch) and steer at
+        # full authority in the direction P already (correctly) chose, until the
+        # edge is reacquired. The dark rail already recovers on its own.
+        if self.recover_v is not None:
+            if v_raw >= self.recover_v:
+                self._lost_count += 1
+            else:
+                self._lost_count = 0
+            if self._lost_count >= self.recover_after and turn != 0:
+                mag = self.power_max if self.recover_turn is None else self.recover_turn
+                turn = int(math.copysign(mag, turn))
+
         # On a sharp slow curve, |turn| may exceed the reduced base speed, so the
         # inner wheel can go to zero/negative -> a tight pivot. That's desired.
         p = int(round(self.power))
-        g_right_motor.set_power(p - turn)
-        g_left_motor.set_power(p + turn)
+        left  = max(-100, min(100, p + turn))    # motors cap at +-100
+        right = max(-100, min(100, p - turn))
+        g_right_motor.set_power(right)
+        g_left_motor.set_power(left)
 
         # log raw v, filtered vf, error-metric, commanded power, gains, and turn
         self.logger.info("%+06d %s.color sensor HSV=(%d, %d, %d) vf=%d, em=%d, pwr=%d, kp=%.3f, kd=%.3f, turn=%d" % (
@@ -683,6 +712,7 @@ def build_behaviour_tree() -> BehaviourTree:
     calibration.add_children(
         [
             ArmUpDownFull(name="arm up", direction=ArmDirection.UP),
+            IsTimePassed(name="wait for a moment", delta_time=0.5),
             ArmUpDownFull(name="arm down", direction=ArmDirection.DOWN),
             ResetDevice(name="device reset"),
             #ReadKey(name="read key"),
@@ -699,6 +729,7 @@ def build_behaviour_tree() -> BehaviourTree:
                 power=70, power_min=33,
                 pid_p=0.65, pid_i=0.000001, pid_d=0.045,
                 err_lo=6, err_hi=16, decel_per_s=350, gains_slow=(0.65, 0.045), gains_fast=(0.55, 0.065),
+                recover_v=97, recover_after=3, recover_turn=35,
                 trace_side=TraceSide.NORMAL),
             IsColorDetected(name="check color", color=Color.RED),
             IsDistanceEarned(name="check distance", delta_dist=2000),
