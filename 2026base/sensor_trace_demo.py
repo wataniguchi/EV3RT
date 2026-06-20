@@ -334,12 +334,6 @@ class TraceLine(Behaviour):
                  # None -> no scheduling, the fixed pid_p/pid_d above are used everywhere.
                  gains_slow: tuple = None,       # (Kp, Kd) at power_min
                  gains_fast: tuple = None,       # (Kp, Kd) at power_max
-                 # ---- color-aware setpoint: shift target when a marker color is seen ----
-                 color_classifier=ColorClassifier(), # object with .classify(h,s,v)->Color; None = off
-                 shift_color=Color.BLUE,          # the Color that triggers the shift (e.g. Color.BLUE)
-                 target_shift: int = 0,           # added to target while shift_color is held (signed)
-                 shift_release: int = 2,          # samples of non-shift color before reverting (hysteresis)
-                 shift_power: int = None,         # cap speed to this while shift_color is held (None = no cap)
                  # ---- line-lost recovery (outer-edge curve rescue) ----
                  recover_v: int = None,           # bright-rail v that means "line lost to floor"; None = off
                  recover_after: int = 3,          # consecutive lost samples before hard recovery
@@ -353,8 +347,7 @@ class TraceLine(Behaviour):
         self.power_min = power if power_min is None else power_min
         self.power = power
         self.adapt = power_min is not None
-        self.target = target            # current (possibly shifted) setpoint
-        self.base_target = target       # nominal setpoint to return to
+        self.target = target
         self.pid = PID(pid_p, pid_i, pid_d, setpoint=target, sample_time=EXEC_INTERVAL, output_limits=(-self.power_max, self.power_max))
         self.trace_side = trace_side
         self.lpf = (LowPassFilter(cutoff_hz, EXEC_INTERVAL, median_window) if cutoff_hz else None) # when cutoff_hz = None, no low-pass filter is applied and the raw PID output is used
@@ -371,14 +364,6 @@ class TraceLine(Behaviour):
         self.gains_fast = gains_fast
         self.schedule = (gains_slow is not None and gains_fast is not None
                          and self.power_max > self.power_min)
-        # color-aware setpoint shift (e.g. nudge target up over blue markers)
-        self.classifier = color_classifier
-        self.shift_color = shift_color
-        self.target_shift = target_shift
-        self.shift_release = shift_release
-        self.shift_power = shift_power
-        self._since_shift = shift_release   # counter of consecutive non-shift samples
-        self.color_active = False
         # line-lost recovery
         self.recover_v = recover_v
         self.recover_after = recover_after
@@ -398,22 +383,6 @@ class TraceLine(Behaviour):
         h, s, v_raw = g_color_sensor.get_raw_color_hsv()
         v = self.lpf(v_raw) if self.lpf else v_raw
 
-        # ---- color-aware setpoint: shift target while marker color is held ----
-        # classify on RAW h,s,v (saturation is the blue/black discriminator);
-        # hysteresis: engage immediately on the color, revert only after
-        # `shift_release` consecutive non-marker samples, so one noisy sample
-        # can't chatter the setpoint. simple-pid does NOT differentiate the
-        # setpoint (differential_on_measurement), so the step causes no D kick.
-        if self.classifier is not None and self.shift_color is not None:
-            if self.classifier.classify(h, s, v_raw) == self.shift_color:
-                self._since_shift = 0
-            else:
-                self._since_shift = min(self._since_shift + 1, self.shift_release)
-            active = self._since_shift < self.shift_release
-            if active != self.color_active:               # only touch setpoint on change
-                self.color_active = active
-                self.target = self.base_target + (self.target_shift if active else 0)
-                self.pid.setpoint = self.target
         # ---- adaptive base speed -------------------------------------------
         # Use the TRUE tracking error (target - raw v) as the instability metric,
         # smoothed so the speed reacts to course shape, not to every wobble.
@@ -423,11 +392,6 @@ class TraceLine(Behaviour):
             frac = (self.err_metric - self.err_lo) / (self.err_hi - self.err_lo)
             frac = 0.0 if frac < 0.0 else (1.0 if frac > 1.0 else frac)
             target_power = self.power_max - frac * (self.power_max - self.power_min)
-            # over a marker the loop sees v ~= target and wrongly reads "easy
-            # straight" -> it speeds up and then overshoots the marker's exit
-            # transition. Force a slowdown while the marker color is held.
-            if self.color_active and self.shift_power is not None:
-                target_power = min(target_power, self.shift_power)
             # rate-limit the change (slow down quickly, speed up gently)
             dp = target_power - self.power
             if dp > self.accel_step:
@@ -474,9 +438,9 @@ class TraceLine(Behaviour):
         g_left_motor.set_power(left)
 
         # log raw v, filtered vf, error-metric, commanded power, gains, and turn
-        #self.logger.info("%+06d %s.color sensor HSV=(%d, %d, %d) vf=%d, em=%d, pwr=%d, tgt=%d, kp=%.3f, kd=%.3f, turn=%d" % (
+        #self.logger.info("%+06d %s.color sensor HSV=(%d, %d, %d) vf=%d, em=%d, pwr=%d, kp=%.3f, kd=%.3f, turn=%d" % (
         #    g_plotter.get_distance(), self.__class__.__name__,
-        #    h, s, v_raw, int(v), int(self.err_metric), p, self.target, kp_now, kd_now, turn))
+        #    h, s, v_raw, int(v), int(self.err_metric), p, kp_now, kd_now, turn))
 
         return Status.RUNNING
 
@@ -766,7 +730,7 @@ def build_behaviour_tree() -> BehaviourTree:
                 power=70, power_min=33,
                 pid_p=0.65, pid_i=0.000001, pid_d=0.045,
                 err_lo=6, err_hi=16, decel_per_s=350, gains_slow=(0.65, 0.045), gains_fast=(0.55, 0.065),
-                recover_v=97, recover_after=3, recover_turn=35, target_shift=-17, shift_power=33,
+                recover_v=97, recover_after=3, recover_turn=35,
                 trace_side=TraceSide.NORMAL),
             IsColorDetected(name="check color", color=Color.RED),
             IsDistanceEarned(name="check distance", delta_dist=3500),
