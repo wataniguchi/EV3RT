@@ -26,7 +26,7 @@ JUNCT_UPPER_THREAH = 50
 JUNCT_LOWER_THREAH = 30
 SPIN_MAX_POWER = 57
 SPIN_MIN_POWER = 47
-TRACELINE_TARGET_V = 65
+TRACELINE_TARGET_V = 75
 
 class ArmDirection(IntEnum):
     UP = -1
@@ -762,7 +762,7 @@ def build_behaviour_tree() -> BehaviourTree:
     )
     loop.add_children(
         [
-            TraceLine(name="sensor trace normal edge", target=TRACELINE_TARGET_V+10,
+            TraceLine(name="sensor trace normal edge", target=TRACELINE_TARGET_V,
                 power=70, power_min=33,
                 pid_p=0.65, pid_i=0.000001, pid_d=0.045,
                 err_lo=6, err_hi=16, decel_per_s=350, gains_slow=(0.65, 0.045), gains_fast=(0.55, 0.065),

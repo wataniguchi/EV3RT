@@ -3,6 +3,7 @@ import argparse
 import time
 import threading
 import signal
+import math
 from enum import IntEnum, Enum, auto
 from etrobo_python import ETRobo, Hub, Motor, TouchSensor, ColorSensor, SonarSensor, GyroSensor
 from simple_pid import PID
@@ -16,16 +17,16 @@ from py_trees import (
     display as display_tree,
     logging as log_tree
 )
-from py_etrobo_util import Video, TraceSide, TargetInterested, Plotter, SymmetricClamper, Color, ColorClassifier
+from py_etrobo_util import Video, TraceSide, TargetInterested, Plotter, SymmetricClamper, Color, ColorClassifier, LowPassFilter
 
-EXEC_INTERVAL: float = 0.03
+EXEC_INTERVAL: float = 0.02
 VIDEO_INTERVAL: float = 0.02
-ARM_SHIFT_PWM = 30
+ARM_SHIFT_PWM = 35
 JUNCT_UPPER_THREAH = 50
 JUNCT_LOWER_THREAH = 30
 SPIN_MAX_POWER = 57
-SPIN_MIN_POWER = 47
-TRACELINE_TARGET_V = 65
+SPIN_MIN_POWER = 49
+TRACELINE_TARGET_V = 75
 
 class ArmDirection(IntEnum):
     UP = -1
@@ -107,7 +108,7 @@ class ArmUpDownFull(Behaviour):
         else:
             cur_degree = g_arm_motor.get_count()
             if abs(cur_degree - self.prev_degree) < 5:
-                if self.count > 10:
+                if self.count > 20:
                     g_arm_motor.set_power(0)
                     g_arm_motor.set_brake(True)
                     self.logger.info("%+06d %s.position set to %d" % (g_plotter.get_distance(), self.__class__.__name__, cur_degree))
@@ -318,24 +319,159 @@ class RunAsInstructed(Behaviour):
 
 class TraceLine(Behaviour):
     def __init__(self, name: str, target: int, power: int, pid_p: float, pid_i: float, pid_d: float,
-                 trace_side: TraceSide) -> None:
+                 trace_side: TraceSide,
+                 # low-pass filter parameters
+                 cutoff_hz: float = 12.0, median_window: int = 0,
+                 # adaptive speed parameters
+                 power_min: int = None,          # floor speed; None = constant speed (old behaviour)
+                 err_lo: float = 6.0,            # rolling |err| at/below which we run full speed
+                 err_hi: float = 22.0,           # rolling |err| at/above which we run power_min
+                 accel_per_s: float = 60.0,      # how fast we may speed up   (gentle)
+                 decel_per_s: float = 180.0,     # how fast we may slow down  (quick = pseudo lookahead)
+                 metric_hz: float = 2.0,
+                 # ---- gain scheduling: interpolate gains on current speed ----
+                 # give (Kp, Kd) at the slow (curve) end and the fast (straight) end;
+                 # None -> no scheduling, the fixed pid_p/pid_d above are used everywhere.
+                 gains_slow: tuple = None,       # (Kp, Kd) at power_min
+                 gains_fast: tuple = None,       # (Kp, Kd) at power_max
+                 # ---- color-aware setpoint: shift target when a marker color is seen ----
+                 color_classifier=ColorClassifier(), # object with .classify(h,s,v)->Color; None = off
+                 shift_color=Color.BLUE,          # the Color that triggers the shift (e.g. Color.BLUE)
+                 target_shift: int = 0,           # added to target while shift_color is held (signed)
+                 shift_release: int = 2,          # samples of non-shift color before reverting (hysteresis)
+                 shift_power: int = None,         # cap speed to this while shift_color is held (None = no cap)
+                 # ---- line-lost recovery (outer-edge curve rescue) ----
+                 recover_v: int = None,           # bright-rail v that means "line lost to floor"; None = off
+                 recover_after: int = 3,          # consecutive lost samples before hard recovery
+                 recover_turn: int = None         # recovery steering magnitude; None = power_max
+                ) -> None:
         super(TraceLine, self).__init__(name)
+        # power is treated as the MAX/nominal speed. The PID output limit is
+        # pinned to +/-power_max so steering authority does NOT shrink when the
+        # base speed drops on a curve (that was the trap in the original code).
+        self.power_max = power
+        self.power_min = power if power_min is None else power_min
         self.power = power
-        self.pid = PID(pid_p, pid_i, pid_d, setpoint=target, sample_time=EXEC_INTERVAL, output_limits=(-power, power))
+        self.adapt = power_min is not None
+        self.target = target            # current (possibly shifted) setpoint
+        self.base_target = target       # nominal setpoint to return to
+        self.pid = PID(pid_p, pid_i, pid_d, setpoint=target, sample_time=EXEC_INTERVAL, output_limits=(-self.power_max, self.power_max))
         self.trace_side = trace_side
+        self.lpf = (LowPassFilter(cutoff_hz, EXEC_INTERVAL, median_window) if cutoff_hz else None) # when cutoff_hz = None, no low-pass filter is applied and the raw PID output is used
+        # instability/curviness estimate = smoothed |tracking error|
+        self.err_lo, self.err_hi = err_lo, err_hi
+        self.metric_lpf = LowPassFilter(metric_hz, EXEC_INTERVAL)
+        self.err_metric = 0.0
+        # per-step power slew limits (asymmetric: brake fast, accelerate slow)
+        self.accel_step = accel_per_s * EXEC_INTERVAL
+        self.decel_step = decel_per_s * EXEC_INTERVAL
+        # gain schedule: linearly interpolate (Kp, Kd) between the slow and fast
+        # anchors as a function of self.power. Ki is left fixed at pid_i.
+        self.gains_slow = gains_slow
+        self.gains_fast = gains_fast
+        self.schedule = (gains_slow is not None and gains_fast is not None
+                         and self.power_max > self.power_min)
+        # color-aware setpoint shift (e.g. nudge target up over blue markers)
+        self.classifier = color_classifier
+        self.shift_color = shift_color
+        self.target_shift = target_shift
+        self.shift_release = shift_release
+        self.shift_power = shift_power
+        self._since_shift = shift_release   # counter of consecutive non-shift samples
+        self.color_active = False
+        # line-lost recovery
+        self.recover_v = recover_v
+        self.recover_after = recover_after
+        self.recover_turn = recover_turn
+        self._lost_count = 0
+
         self.running = False
 
     def update(self) -> Status:
         if not self.running:
+            if self.lpf:
+                self.lpf.reset()
+            self.metric_lpf.reset()
             self.running = True
             self.logger.info("%+06d %s.trace started with TS=%s" % (g_plotter.get_distance(), self.__class__.__name__, self.trace_side.name))
-        h, s, v = g_color_sensor.get_raw_color_hsv()
+
+        h, s, v_raw = g_color_sensor.get_raw_color_hsv()
+        v = self.lpf(v_raw) if self.lpf else v_raw
+
+        # ---- color-aware setpoint: shift target while marker color is held ----
+        # classify on RAW h,s,v (saturation is the blue/black discriminator);
+        # hysteresis: engage immediately on the color, revert only after
+        # `shift_release` consecutive non-marker samples, so one noisy sample
+        # can't chatter the setpoint. simple-pid does NOT differentiate the
+        # setpoint (differential_on_measurement), so the step causes no D kick.
+        if self.classifier is not None and self.shift_color is not None:
+            if self.classifier.classify(h, s, v_raw) == self.shift_color:
+                self._since_shift = 0
+            else:
+                self._since_shift = min(self._since_shift + 1, self.shift_release)
+            active = self._since_shift < self.shift_release
+            if active != self.color_active:               # only touch setpoint on change
+                self.color_active = active
+                self.target = self.base_target + (self.target_shift if active else 0)
+                self.pid.setpoint = self.target
+        # ---- adaptive base speed -------------------------------------------
+        # Use the TRUE tracking error (target - raw v) as the instability metric,
+        # smoothed so the speed reacts to course shape, not to every wobble.
+        self.err_metric = self.metric_lpf(abs(self.target - v_raw))
+        if self.adapt:
+            # map smoothed |error| in [err_lo, err_hi] -> power in [max, min]
+            frac = (self.err_metric - self.err_lo) / (self.err_hi - self.err_lo)
+            frac = 0.0 if frac < 0.0 else (1.0 if frac > 1.0 else frac)
+            target_power = self.power_max - frac * (self.power_max - self.power_min)
+            # over a marker the loop sees v ~= target and wrongly reads "easy
+            # straight" -> it speeds up and then overshoots the marker's exit
+            # transition. Force a slowdown while the marker color is held.
+            if self.color_active and self.shift_power is not None:
+                target_power = min(target_power, self.shift_power)
+            # rate-limit the change (slow down quickly, speed up gently)
+            dp = target_power - self.power
+            if dp > self.accel_step:
+                dp = self.accel_step
+            elif dp < -self.decel_step:
+                dp = -self.decel_step
+            self.power += dp
+        # ---- gain scheduling: gains track the current speed -----------------
+        kp_now, kd_now = self.pid.Kp, self.pid.Kd
+        if self.schedule:
+            f = (self.power - self.power_min) / (self.power_max - self.power_min)
+            f = 0.0 if f < 0.0 else (1.0 if f > 1.0 else f)
+            kp_now = self.gains_slow[0] + f * (self.gains_fast[0] - self.gains_slow[0])
+            kd_now = self.gains_slow[1] + f * (self.gains_fast[1] - self.gains_slow[1])
+            self.pid.tunings = (kp_now, self.pid.Ki, kd_now)
+        # ---- steering (PID already clamped to +/-power_max) ----------------
         if self.trace_side == TraceSide.NORMAL:
             turn = (-1) * g_course * int(self.pid(v))
         else: # TraceSide.OPPOSITE
             turn = g_course * int(self.pid(v))
-        g_right_motor.set_power(self.power - turn)
-        g_left_motor.set_power(self.power + turn)
+
+        # ---- line-lost recovery --------------------------------------------
+        # When the sensor pins at the bright rail, target=75 only yields a weak
+        # clamped-P turn (Kp*(75-100) ~= -16), too gentle to curl back to a line
+        # that curved away on an OUTER edge -> the robot drives off. Detect a
+        # SUSTAINED bright-rail pin (not a 1-2 sample weave touch) and steer at
+        # full authority in the direction P already (correctly) chose, until the
+        # edge is reacquired. The dark rail already recovers on its own.
+        if self.recover_v is not None:
+            if v_raw >= self.recover_v:
+                self._lost_count += 1
+            else:
+                self._lost_count = 0
+            if self._lost_count >= self.recover_after and turn != 0:
+                mag = self.power_max if self.recover_turn is None else self.recover_turn
+                turn = int(math.copysign(mag, turn))
+
+        # On a sharp slow curve, |turn| may exceed the reduced base speed, so the
+        # inner wheel can go to zero/negative -> a tight pivot. That's desired.
+        p = int(round(self.power))
+        left  = max(-100, min(100, p + turn))    # motors cap at +-100
+        right = max(-100, min(100, p - turn))
+        g_right_motor.set_power(right)
+        g_left_motor.set_power(left)
         return Status.RUNNING
 
 
@@ -608,10 +744,11 @@ def build_behaviour_tree() -> BehaviourTree:
     carry1 = Parallel(name="carry1", policy=ParallelPolicy.SuccessOnOne())
     carry2 = Parallel(name="carry2", policy=ParallelPolicy.SuccessOnOne())
     carry3 = Parallel(name="carry3", policy=ParallelPolicy.SuccessOnOne())
-    qr1 = Parallel(name="qr1", policy=ParallelPolicy.SuccessOnOne())
+    carry4 = Parallel(name="carry4", policy=ParallelPolicy.SuccessOnOne())
     qr2 = Parallel(name="qr2", policy=ParallelPolicy.SuccessOnOne())
     qr3 = Parallel(name="qr3", policy=ParallelPolicy.SuccessOnOne())
     qr4 = Parallel(name="qr4", policy=ParallelPolicy.SuccessOnOne())
+    qr5 = Parallel(name="qr4", policy=ParallelPolicy.SuccessOnOne())
     qr_read = Parallel(name="qr_read", policy=ParallelPolicy.SuccessOnOne())
     qr_scan_shake = Sequence(name="qr_scan_shake", memory=True)
     qr_scan_move_back = Parallel(name="qr_scan_move_back2", policy=ParallelPolicy.SuccessOnOne())
@@ -630,64 +767,95 @@ def build_behaviour_tree() -> BehaviourTree:
     )
     lap2.add_children(
         [
-            TraceLine(name="sensor trace normal edge", target=TRACELINE_TARGET_V, power=33,
-                pid_p=0.55, pid_i=0.0000009, pid_d=0.015, trace_side=TraceSide.NORMAL),
+            TraceLine(name="sensor trace normal edge", target=TRACELINE_TARGET_V,
+                power=70, power_min=33,
+                pid_p=0.65, pid_i=0.000001, pid_d=0.045,
+                err_lo=6, err_hi=16, decel_per_s=350, gains_slow=(0.65, 0.045), gains_fast=(0.55, 0.065),
+                recover_v=97, recover_after=3, recover_turn=35, target_shift=-17, shift_power=33,
+                trace_side=TraceSide.NORMAL),
             IsColorDetected(name="check color", color=Color.BLUE),
         ]
     )
     lap3.add_children(
         [
-            RunByGyro(name="run straight to catch the bottle", target=5, power=33,
-                pid_p=1.1, pid_i=0.00075, pid_d=0.04, target_type=HeadingType.ABSOLUTE),
+            RunByGyro(name="run straight to catch the bottle", target=3, power=33,
+                pid_p=1.1, pid_i=0.1, pid_d=0.03, target_type=HeadingType.ABSOLUTE),
             IsDistanceEarned(name="check distance", delta_dist = 370),
         ]
     )
     carry1.add_children(
         [
-            TraceLine(name="sensor trace normal edge", target=TRACELINE_TARGET_V, power=33,
-                pid_p=0.55, pid_i=0.0000009, pid_d=0.015, trace_side=TraceSide.NORMAL),
+            TraceLine(name="sensor trace normal edge", target=TRACELINE_TARGET_V,
+                power=70, power_min=33,
+                pid_p=0.65, pid_i=0.000001, pid_d=0.045,
+                err_lo=6, err_hi=16, decel_per_s=350, gains_slow=(0.65, 0.045), gains_fast=(0.55, 0.065),
+                recover_v=97, recover_after=3, recover_turn=35, target_shift=-17, shift_power=33,
+                trace_side=TraceSide.NORMAL),
             IsColorDetected(name="check color", color=Color.BLUE),
         ]
     )
     carry2.add_children(
         [
             RunByGyro(name="run straight to pass the blue line", target=90, power=33,
-                pid_p=1.1, pid_i=0.00075, pid_d=0.04, target_type=HeadingType.ABSOLUTE),
+                pid_p=1.1, pid_i=0.1, pid_d=0.03, target_type=HeadingType.ABSOLUTE),
             IsDistanceEarned(name="check distance", delta_dist = 120),
         ]
     )
     carry3.add_children(
         [
-            TraceLine(name="sensor trace normal edge", target=TRACELINE_TARGET_V+10, power=33,
-                pid_p=0.65, pid_i=0.000001, pid_d=0.011, trace_side=TraceSide.NORMAL),
-            IsColorDetected(name="check color", color=Color.BLUE),
+            TraceLine(name="sensor trace normal edge", target=TRACELINE_TARGET_V,
+                power=70, power_min=33,
+                pid_p=0.65, pid_i=0.000001, pid_d=0.045,
+                err_lo=6, err_hi=16, decel_per_s=350, gains_slow=(0.65, 0.045), gains_fast=(0.55, 0.065),
+                recover_v=97, recover_after=3, recover_turn=35, target_shift=-17, shift_power=33,
+                trace_side=TraceSide.NORMAL),
+            IsDistanceEarned(name="check distance", delta_dist = 1100),
         ]
     )
-    qr1.add_children(
+    carry4.add_children(
         [
-            RunByGyro(name="run straight to align with opposite edge", target=5, power=33,
-                pid_p=1.1, pid_i=0.00075, pid_d=0.04, target_type=HeadingType.ABSOLUTE),
-            IsDistanceEarned(name="check distance", delta_dist = 50),
+            TraceLine(name="sensor trace normal edge", target=TRACELINE_TARGET_V,
+                power=33,
+                pid_p=0.65, pid_i=0.000001, pid_d=0.045,
+                err_lo=6, err_hi=16, decel_per_s=350, gains_slow=(0.65, 0.045), gains_fast=(0.55, 0.065),
+                recover_v=97, recover_after=3, recover_turn=35, target_shift=-17, shift_power=33,
+                trace_side=TraceSide.NORMAL),
+            IsColorDetected(name="check color", color=Color.BLUE),
         ]
     )
     qr2.add_children(
         [
             RunByGyro(name="run straight to correct heading", target=0, power=33,
-                pid_p=1.1, pid_i=0.00075, pid_d=0.04, target_type=HeadingType.ABSOLUTE),
+                pid_p=1.1, pid_i=0.1, pid_d=0.03, target_type=HeadingType.ABSOLUTE),
             IsDistanceEarned(name="check distance", delta_dist = 50),
         ]
     )
     qr3.add_children(
         [
-            TraceLine(name="sensor trace opposite edge", target=TRACELINE_TARGET_V+10, power=33,
-                pid_p=0.655, pid_i=0.0000011, pid_d=0.012, trace_side=TraceSide.OPPOSITE),
-            IsColorDetected(name="check color", color=Color.BLUE),
+            TraceLine(name="sensor trace opposite edge", target=TRACELINE_TARGET_V,
+                power=33,
+                pid_p=0.65, pid_i=0.000001, pid_d=0.045,
+                err_lo=6, err_hi=16, decel_per_s=350, gains_slow=(0.65, 0.045), gains_fast=(0.55, 0.065),
+                recover_v=97, recover_after=3, recover_turn=35, target_shift=-17, shift_power=33,
+                trace_side=TraceSide.OPPOSITE),
+            IsDistanceEarned(name="check distance", delta_dist = 500),
         ]
     )
     qr4.add_children(
         [
+            TraceLine(name="sensor trace opposite edge", target=TRACELINE_TARGET_V,
+                power=70, power_min=33,
+                pid_p=0.65, pid_i=0.000001, pid_d=0.045,
+                err_lo=6, err_hi=16, decel_per_s=350, gains_slow=(0.65, 0.045), gains_fast=(0.55, 0.065),
+                recover_v=97, recover_after=3, recover_turn=35, target_shift=-17, shift_power=33,
+                trace_side=TraceSide.OPPOSITE),
+            IsColorDetected(name="check color", color=Color.BLUE),
+        ]
+    )
+    qr5.add_children(
+        [
             RunByGyro(name="run straight to pass half the blue line", target=-90, power=33,
-                pid_p=1.1, pid_i=0.00075, pid_d=0.04, target_type=HeadingType.ABSOLUTE),
+                pid_p=1.1, pid_i=0.1, pid_d=0.03, target_type=HeadingType.ABSOLUTE),
             IsDistanceEarned(name="check distance", delta_dist = 100),
         ]
     )
@@ -699,31 +867,22 @@ def build_behaviour_tree() -> BehaviourTree:
     )
     qr_scan_shake.add_children(
         [
-            SpinAround(name="scan for QR code", target=4, max_power=SPIN_MAX_POWER, min_power=SPIN_MIN_POWER,
-                pid_p=0.2, pid_i=0.00075, pid_d=0.03, target_type=HeadingType.RELATIVE),
-            StopNow(name="stop"),
-            IsTimePassed(name="wait for a moment", delta_time=0.8),
-            SpinAround(name="scan for QR code", target=-8, max_power=SPIN_MAX_POWER, min_power=SPIN_MIN_POWER,
-                pid_p=0.2, pid_i=0.00075, pid_d=0.03, target_type=HeadingType.RELATIVE),
-            StopNow(name="stop"),
-            IsTimePassed(name="wait for a moment", delta_time=0.8),
-            SpinAround(name="scan for QR code", target=4, max_power=SPIN_MAX_POWER, min_power=SPIN_MIN_POWER,
-                pid_p=0.2, pid_i=0.00075, pid_d=0.03, target_type=HeadingType.RELATIVE),
-            StopNow(name="stop"),
-            IsTimePassed(name="wait for a moment", delta_time=2.0),
+            IsTimePassed(name="wait for a moment", delta_time=3.0),
             qr_scan_move_back,
-            SpinAround(name="scan for QR code", target=3, max_power=SPIN_MAX_POWER, min_power=SPIN_MIN_POWER,
-                pid_p=0.2, pid_i=0.00075, pid_d=0.03, target_type=HeadingType.RELATIVE),
             StopNow(name="stop"),
-            IsTimePassed(name="wait for a moment", delta_time=0.8),
-            SpinAround(name="scan for QR code", target=-6, max_power=SPIN_MAX_POWER, min_power=SPIN_MIN_POWER,
-                pid_p=0.2, pid_i=0.00075, pid_d=0.03, target_type=HeadingType.RELATIVE),
-            StopNow(name="stop"),
-            IsTimePassed(name="wait for a moment", delta_time=0.8),
+            IsTimePassed(name="wait for a moment", delta_time=3.0),
             SpinAround(name="scan for QR code", target=3, max_power=SPIN_MAX_POWER, min_power=SPIN_MIN_POWER,
-                pid_p=0.2, pid_i=0.00075, pid_d=0.03, target_type=HeadingType.RELATIVE),
+                pid_p=0.4, pid_i=0.001, pid_d=0.03, target_type=HeadingType.RELATIVE),
             StopNow(name="stop"),
             IsTimePassed(name="wait for a moment", delta_time=2.0),
+            SpinAround(name="scan for QR code", target=-6, max_power=SPIN_MAX_POWER, min_power=SPIN_MIN_POWER,
+                pid_p=0.4, pid_i=0.001, pid_d=0.03, target_type=HeadingType.RELATIVE),
+            StopNow(name="stop"),
+            IsTimePassed(name="wait for a moment", delta_time=2.0),
+            SpinAround(name="scan for QR code", target=3, max_power=SPIN_MAX_POWER, min_power=SPIN_MIN_POWER,
+                pid_p=0.4, pid_i=0.001, pid_d=0.03, target_type=HeadingType.RELATIVE),
+            StopNow(name="stop"),
+            IsTimePassed(name="wait for a moment", delta_time=3.0),
         ]
     )
     qr_read.add_children(
@@ -741,25 +900,22 @@ def build_behaviour_tree() -> BehaviourTree:
             carry1,
             carry2,
             carry3,
+            carry4,
             SpinAround(name="about the face", target=10, max_power=SPIN_MAX_POWER, min_power=SPIN_MIN_POWER,
-                pid_p=0.2, pid_i=0.00075, pid_d=0.03, target_type=HeadingType.ABSOLUTE),
-            StopNow(name="stop"),
-            IsTimePassed(name="wait for a moment", delta_time=1.0),
-            #qr1,
+                pid_p=0.4, pid_i=0.001, pid_d=0.03, target_type=HeadingType.ABSOLUTE),
             qr2,
             StopNow(name="stop"),
-            IsTimePassed(name="wait for a moment", delta_time=1.0),
             SpinAndLocateLine(name="spin and locate line", target=TRACELINE_TARGET_V-20, max_power=SPIN_MAX_POWER, min_power=SPIN_MIN_POWER,
-                pid_p=0.2, pid_i=0.00075, pid_d=0.03, trace_side=TraceSide.OPPOSITE),
+                pid_p=0.4, pid_i=0.001, pid_d=0.03, trace_side=TraceSide.OPPOSITE),
             StopNow(name="stop"),
-            IsTimePassed(name="wait for a moment", delta_time=1.0),
             qr3,
             qr4,
+            qr5,
             StopNow(name="stop"),
-            IsTimePassed(name="wait for a moment", delta_time=1.0),
             ArmUpDownFull(name="arm up", direction=ArmDirection.UP),
             SpinAround(name="align for QR code scanning", target=0, max_power=SPIN_MAX_POWER, min_power=SPIN_MIN_POWER,
-                pid_p=0.2, pid_i=0.00075, pid_d=0.03, target_type=HeadingType.ABSOLUTE),
+                pid_p=0.4, pid_i=0.001, pid_d=0.03, target_type=HeadingType.ABSOLUTE),
+            StopNow(name="stop"),
             qr_read,
             ArmUpDownFull(name="arm down", direction=ArmDirection.DOWN),
             StopNow(name="stop"),
