@@ -15,8 +15,8 @@ from py_trees import (
 )
 from py_etrobo_util import TraceSide, Plotter, SymmetricClamper
 
-EXEC_INTERVAL: float = 0.04
-ARM_SHIFT_PWM = 30
+EXEC_INTERVAL: float = 0.02
+ARM_SHIFT_PWM = 35
 MAX_POWER = 100
 MIN_POWER = 50
 
@@ -86,11 +86,13 @@ class ArmUpDownFull(Behaviour):
         if not self.running:
             self.running = True
             self.prev_degree = g_arm_motor.get_count()
+            self.logger.info("%+06d %s.start position is %d" % (g_plotter.get_distance(), self.__class__.__name__, self.prev_degree))
             self.count = 0
+            g_arm_motor.set_power(ARM_SHIFT_PWM * self.direction)
         else:
             cur_degree = g_arm_motor.get_count()
             if abs(cur_degree - self.prev_degree) < 5:
-                if self.count > 10:
+                if self.count > 20:
                     g_arm_motor.set_power(0)
                     g_arm_motor.set_brake(True)
                     self.logger.info("%+06d %s.position set to %d" % (g_plotter.get_distance(), self.__class__.__name__, cur_degree))
@@ -98,7 +100,6 @@ class ArmUpDownFull(Behaviour):
                 else:
                     self.count += 1
             self.prev_degree = cur_degree
-        g_arm_motor.set_power(ARM_SHIFT_PWM * self.direction)
         return Status.RUNNING
 
 
@@ -235,6 +236,12 @@ class SpinAround(Behaviour):
         power = int(self.clamper.clamp(self.pid(current_heading)))
         g_right_motor.set_power(g_course * power)
         g_left_motor.set_power((-1) * g_course * power)
+
+        # log current heading, target heading, and power
+        #self.logger.info("%+06d %s.gyro=%d, tgt=%d, pwr=%d" % (
+        #    g_plotter.get_distance(), self.__class__.__name__,
+        #    current_heading, self.target_heading, power))
+
         return Status.RUNNING    
 
 
@@ -269,6 +276,12 @@ class RunByGyro(Behaviour):
         turn = int(self.pid(current_heading))
         g_right_motor.set_power(self.power + g_course * turn)
         g_left_motor.set_power(self.power - g_course * turn)
+
+        # log current heading, target heading, and turn
+        #self.logger.info("%+06d %s.gyro=%d, tgt=%d, turn=%d" % (
+        #    g_plotter.get_distance(), self.__class__.__name__,
+        #    current_heading, self.target_heading, turn))
+
         return Status.RUNNING
 
 
@@ -335,28 +348,28 @@ def build_behaviour_tree() -> BehaviourTree:
     edge_01.add_children(
         [
             RunByGyro(name="run straight", target=0, power=60,
-                pid_p=1.1, pid_i=0.001, pid_d=0.03, target_type=HeadingType.ABSOLUTE),
+                pid_p=1.1, pid_i=0.1, pid_d=0.03, target_type=HeadingType.ABSOLUTE),
             IsDistanceEarned(name="check distance", delta_dist = 800),
         ]
     )
     edge_02.add_children(
         [
             RunByGyro(name="run straight", target=90, power=60,
-                pid_p=1.1, pid_i=0.001, pid_d=0.03, target_type=HeadingType.ABSOLUTE),
+                pid_p=1.1, pid_i=0.1, pid_d=0.03, target_type=HeadingType.ABSOLUTE),
             IsDistanceEarned(name="check distance", delta_dist = 800),
         ]
     )
     edge_03.add_children(
         [
             RunByGyro(name="run straight", target=180, power=60,
-                pid_p=1.1, pid_i=0.001, pid_d=0.03, target_type=HeadingType.ABSOLUTE),
+                pid_p=1.1, pid_i=0.1, pid_d=0.03, target_type=HeadingType.ABSOLUTE),
             IsDistanceEarned(name="check distance", delta_dist = 800),
         ]
     )
     edge_04.add_children(
         [
             RunByGyro(name="run straight", target=270, power=60,
-                pid_p=1.1, pid_i=0.001, pid_d=0.03, target_type=HeadingType.ABSOLUTE),
+                pid_p=1.1, pid_i=0.1, pid_d=0.03, target_type=HeadingType.ABSOLUTE),
             IsDistanceEarned(name="check distance", delta_dist = 800),
         ]
     )
