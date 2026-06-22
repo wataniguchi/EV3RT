@@ -22,14 +22,22 @@ IN_FRAME_WIDTH  = 1920
 IN_FRAME_HEIGHT = 1080
 
 # frame size for OpenCV
-FRAME_WIDTH  = 1920
-FRAME_HEIGHT = 1080
+FRAME_WIDTH  = 320
+FRAME_HEIGHT = 180
+
+# frame size for X11 painting
+OUT_FRAME_WIDTH  = 320
+OUT_FRAME_HEIGHT = 180
+
+# text overlay scale, relative to the original 1920-wide overlay design.
+# Tying the overlay to OUT_FRAME (fixed) instead of FRAME_* (now freely
+# changeable) lets FRAME_WIDTH/FRAME_HEIGHT be set to anything without
+# re-placing a single putText.
+TEXT_SCALE = OUT_FRAME_WIDTH / IN_FRAME_WIDTH   # = 0.25
 
 # constants for TargetInterested.LINE
-CROP_WIDTH     = int(13*FRAME_WIDTH/16) # for full angle
-#CROP_WIDTH     = int(9*FRAME_WIDTH/16)
-CROP_HEIGHT    = int(3*FRAME_HEIGHT/8) # for full angle
-#CROP_HEIGHT    = int(2*FRAME_HEIGHT/8)
+CROP_WIDTH     = int(9*FRAME_WIDTH/16)
+CROP_HEIGHT    = int(3*FRAME_HEIGHT/8)
 CROP_U_LIMIT   = FRAME_HEIGHT-CROP_HEIGHT
 CROP_D_LIMIT   = FRAME_HEIGHT
 CROP_L_LIMIT   = int((FRAME_WIDTH-CROP_WIDTH)/2)
@@ -38,8 +46,7 @@ MORPH_KERNEL_SIZE = round_up_to_odd(int(FRAME_WIDTH/48))
 ROI_BOUNDARY   = int(FRAME_WIDTH/10)
 LINE_THICKNESS = int(FRAME_WIDTH/160)
 CIRCLE_RADIUS  = int(FRAME_WIDTH/80)
-SCAN_V_POS     = int(13*FRAME_HEIGHT/16 - LINE_THICKNESS) # for full angle
-#SCAN_V_POS     = int(16*FRAME_HEIGHT/16 - LINE_THICKNESS)
+SCAN_V_POS     = int(13*FRAME_HEIGHT/16 - LINE_THICKNESS)
 HORIZON_DISTANCE = 270 # length of the closest horizontal line on ground within the camera vision
 AXLE_TO_HORIZON_DISTANCE = 230 # distance from axle to the closest horizontal line on ground the camera can see
 
@@ -47,6 +54,7 @@ AXLE_TO_HORIZON_DISTANCE = 230 # distance from axle to the closest horizontal li
 CROP_X1   = 360
 CROP_X2   = 1560
 QR_ROI_MARGIN = 40
+QR_LINE_THICKNESS = int(IN_FRAME_WIDTH / 160)   # = 12
 TEXT_EXPIRY_SEC = 2.0     # clear decoded text after this many seconds
 # internal constants for QR detection and decode pipeline
 _QR_ONLY = zxingcpp.BarcodeFormat.QRCode
@@ -63,10 +71,6 @@ _CL_ROI = [
     cv2.createCLAHE(clipLimit=6,  tileGridSize=(4, 4)),
 ]
 
-# frame size for X11 painting
-OUT_FRAME_WIDTH  = 480
-OUT_FRAME_HEIGHT = 270
-
 class TraceSide(Enum):
     NORMAL = "Normal"
     OPPOSITE = "Opposite"
@@ -79,19 +83,28 @@ class TargetInterested(Enum):
     QRCODE = "QR Code"
     BOTTLE = "Bottle"
 
+# capture format per interest: (fourcc, width, height, fps)
+# MJPG = compressed, high fps for line tracing; YUYV = uncompressed, fine
+# detail for small QR codes (low fps at 1080p over USB is expected).
+_CAP_CONFIG = {
+    TargetInterested.LINE:   ("MJPG", IN_FRAME_WIDTH, IN_FRAME_HEIGHT, 30),
+    TargetInterested.BOTTLE: ("MJPG", IN_FRAME_WIDTH, IN_FRAME_HEIGHT, 30),
+    TargetInterested.QRCODE: ("YUYV", IN_FRAME_WIDTH, IN_FRAME_HEIGHT, 5),
+}
+
 class Video(object):
     def __init__(self):
         cv2.setLogLevel(3) # LOG_LEVEL_WARNING
         # set number of threads
         #cv2.setNumThreads(0)
         # prepare the camera
-        self.cap = cv2.VideoCapture(0)
-        self.cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*'YUYV'))
-        self.cap.set(cv2.CAP_PROP_FRAME_WIDTH,IN_FRAME_WIDTH)
-        self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT,IN_FRAME_HEIGHT)
-        self.cap.set(cv2.CAP_PROP_FPS, 30)
-        self.cap.set(cv2.CAP_PROP_AUTOFOCUS, 1)
-        self.cap.set(cv2.CAP_PROP_AUTO_EXPOSURE, 3)
+        self.cap = None
+        self._cap_cfg = None
+        self._pending_lock = threading.Lock()
+        self._pending_cap_cfg = None
+        # initial mode is LINE → open in MJPG
+        self._open_cap(*_CAP_CONFIG[TargetInterested.LINE])
+        self.target_interested = TargetInterested.LINE
 
         # ----- internal state for TargetInterested.LINE        
         # initial region of interest
@@ -109,6 +122,11 @@ class Video(object):
         self.range_of_edges = 0
         self.theta:float = 0.0
 
+        # ----- frame id as the common key across the producer and consumers in logging
+        self.frame_id = 0
+        self._theta_lock = threading.Lock()
+        self._theta_stamped = (0.0, 0, 0.0)   # (theta, frame_id, capture_time)
+
         # ----- shared state between capture thread and detection thread for TargetInterested.QRCODE
         self._frame_lock  = threading.Lock()
         self._latest_gray = None   # latest grayscale frame for detection thread to consume
@@ -118,13 +136,41 @@ class Video(object):
         self._is_detecting     = False # True while detection thread is busy
         self._last_decode_time = 0.0   # time.time() of last successful decode
 
-        self.target_interested = TargetInterested.LINE
         self.target_insight = False
 
     def __del__(self):
         cv2.destroyAllWindows()
         self.cap.release()
 
+    def _open_cap(self, fourcc, width, height, fps):
+        """(Re)open the V4L2 capture in the given pixel format.
+        MUST run on the capture thread (called from __init__ before threads
+        start, and from the top of process()). Never call from a behavior thread."""
+        if self.cap is not None:
+            self.cap.release()
+        cap = cv2.VideoCapture(0, cv2.CAP_V4L2)
+        # FOURCC first: setting resolution can reset the format and vice-versa.
+        cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*fourcc))
+        cap.set(cv2.CAP_PROP_FRAME_WIDTH,  width)
+        cap.set(cv2.CAP_PROP_FRAME_HEIGHT, height)
+        cap.set(cv2.CAP_PROP_FPS, fps)
+        cap.set(cv2.CAP_PROP_AUTOFOCUS, 1)
+        cap.set(cv2.CAP_PROP_AUTO_EXPOSURE, 3)
+
+        if not cap.isOpened():
+            print("WARN cap failed to open for fourcc=%s" % fourcc)
+
+        # verify what the driver actually applied
+        got = int(cap.get(cv2.CAP_PROP_FOURCC))
+        got_str = "".join(chr((got >> 8 * i) & 0xFF) for i in range(4))
+        if got_str != fourcc:
+            print("WARN cap fourcc requested=%s got=%s" % (fourcc, got_str))
+
+        for _ in range(5):          # discard warm-up frames while AE/format settle
+            cap.read()
+        self.cap = cap
+        self._cap_cfg = (fourcc, width, height, fps)
+        print("VID cap opened fourcc=%s %dx%d fps=%d" % (fourcc, width, height, fps))
 
     def _result_pos_to_corners(self, r):
         """Return 4 corner points (x, y) in crop coordinates, or None."""
@@ -229,26 +275,32 @@ class Video(object):
                 color_sensor: ColorSensor,
                 sonar_sensor: SonarSensor,
                 gyro_sensor: GyroSensor) -> None:
-        
+
+        # apply any pending capture-format switch on THIS (capture) thread
+        with self._pending_lock:
+            cfg = self._pending_cap_cfg
+            self._pending_cap_cfg = None
+        if cfg is not None:
+            self._open_cap(*cfg)
+
         ret, frame = self.cap.read()
 
         if frame is None:
             cv2.waitKey(1)
             return
+        t_cap = time.time()          # capture time for this frame
+        self.frame_id += 1
 
-        # clone the image if exists, otherwise use the previous image
-        if len(frame) != 0:
-            img_orig = frame.copy()
-            # resize the image for OpenCV processing
-            if FRAME_WIDTH != IN_FRAME_WIDTH or FRAME_HEIGHT != IN_FRAME_HEIGHT:
-                img_orig = cv2.resize(img_orig, (FRAME_WIDTH,FRAME_HEIGHT))
-        if img_orig.shape[1] != FRAME_WIDTH or img_orig.shape[0] != FRAME_HEIGHT:
-            sys.exit(-1)
-
-        # convert the image from BGR to grayscale
-        img_gray = cv2.cvtColor(img_orig, cv2.COLOR_BGR2GRAY)
+        # full-resolution capture: used as-is for QR, downsized for LINE/BOTTLE
+        img_full = frame
+        if img_full.shape[1] != IN_FRAME_WIDTH or img_full.shape[0] != IN_FRAME_HEIGHT:
+            img_full = cv2.resize(img_full, (IN_FRAME_WIDTH, IN_FRAME_HEIGHT))
 
         if self.target_interested == TargetInterested.QRCODE:
+            # ---- QR needs the original full-resolution image ----
+            img_orig = img_full.copy()
+            img_gray = cv2.cvtColor(img_orig, cv2.COLOR_BGR2GRAY)
+
             with self._frame_lock:
                 self._latest_gray = img_gray
 
@@ -275,8 +327,15 @@ class Video(object):
                 self.target_insight = False
 
         elif self.target_interested == TargetInterested.BOTTLE:
-            pass
+            # ---- BOTTLE can run on the downsized frame ----
+            img_orig = cv2.resize(img_full, (FRAME_WIDTH, FRAME_HEIGHT))
+            # (bottle detection on img_orig / its grayscale goes here)
+
         else: # TargetInterested.LINE
+            # ---- LINE runs on the downsized frame ----
+            img_orig = cv2.resize(img_full, (FRAME_WIDTH, FRAME_HEIGHT))
+            img_gray = cv2.cvtColor(img_orig, cv2.COLOR_BGR2GRAY)
+
             # crop a part of image for binarization
             img_gray_part = img_gray[CROP_U_LIMIT:CROP_D_LIMIT, CROP_L_LIMIT:CROP_R_LIMIT]
             # binarize the image
@@ -397,38 +456,54 @@ class Video(object):
             # calculate the rotation in radians (z-axis)
             # AXLE_TO_HORIZON_DISTANCE is distance from axle to the closest horizontal line on ground the camera can see
             self.theta = 180 * math.atan(vxm / AXLE_TO_HORIZON_DISTANCE) / math.pi
-            #print(f"mx = {self.mx}, vxm = {vxm}, theta = {self.theta}")
+            # publish theta with its frame id + capture time (consumed by TraceLineCam)
+            with self._theta_lock:
+                self._theta_stamped = (self.theta, self.frame_id, t_cap)
+            dist = plotter.get_distance() if plotter is not None else 0
+            print(
+                "%+06d VID fid=%06d cap=%.3f cx=%d mx=%d roi=(%d,%d,%d,%d) roe=%03d theta=%+06.1f insight=%d lat=%.1f" % (
+                    dist, self.frame_id, t_cap, self.cx, self.mx,
+                    x, y, w, h, self.range_of_edges, self.theta,
+                    int(self.target_insight), (time.time() - t_cap) * 1000))
 
         # BELOW IS COMMON FOR ALL TARGETS
-        # prepare text area
-        img_text = np.zeros((FRAME_HEIGHT, FRAME_WIDTH, 3), np.uint8)
-        # put the information on the text area
+        # shrink the processed image straight to the monitor (transmission) size.
+        # img_orig may be IN_FRAME (QR branch) or FRAME_* (LINE/BOTTLE); resizing
+        # directly to OUT_FRAME means no per-branch upscaling is needed.
+        img_mon = cv2.resize(img_orig, (OUT_FRAME_WIDTH, OUT_FRAME_HEIGHT))
+
+        # prepare text area at the monitor width (must match img_mon width for vconcat)
+        img_text = np.zeros((OUT_FRAME_HEIGHT, OUT_FRAME_WIDTH, 3), np.uint8)
+        ts     = TEXT_SCALE
+        f_norm = 1.8 * ts          # normal line font scale
+        f_fid  = 2.6 * ts          # FID font scale
         if plotter is not None:
             try:
-                cv2.putText(img_text, f"ODO={plotter.get_distance():+06}", (0,60), cv2.FONT_HERSHEY_DUPLEX, 1.8, (255,255,255), 1, cv2.LINE_AA)
-                cv2.putText(img_text, f"x={plotter.get_loc_x():+05} y={plotter.get_loc_y():+05}", (0,120), cv2.FONT_HERSHEY_DUPLEX, 1.8, (255,255,255), 1, cv2.LINE_AA)
-                cv2.putText(img_text, f"gyro={gyro_sensor.get_angle():+04}", (0,180), cv2.FONT_HERSHEY_DUPLEX, 1.8, (255,255,255), 1, cv2.LINE_AA)
-                cv2.putText(img_text, f"cx={self.cx:} cy={self.cy} theta={self.theta:+06.1f}", (0,240), cv2.FONT_HERSHEY_DUPLEX, 1.8, (255,255,255), 1, cv2.LINE_AA)
-                cv2.putText(img_text, f"roe={self.range_of_edges:03}", (0,300), cv2.FONT_HERSHEY_DUPLEX, 1.8, (255,255,255), 1, cv2.LINE_AA)
+                cv2.putText(img_text, f"ODO={plotter.get_distance():+06}", (0,int(60*ts)),  cv2.FONT_HERSHEY_DUPLEX, f_norm, (255,255,255), 1, cv2.LINE_AA)
+                cv2.putText(img_text, f"x={plotter.get_loc_x():+05} y={plotter.get_loc_y():+05}", (0,int(120*ts)), cv2.FONT_HERSHEY_DUPLEX, f_norm, (255,255,255), 1, cv2.LINE_AA)
+                cv2.putText(img_text, f"gyro={gyro_sensor.get_angle():+04}", (0,int(180*ts)), cv2.FONT_HERSHEY_DUPLEX, f_norm, (255,255,255), 1, cv2.LINE_AA)
+                cv2.putText(img_text, f"cx={self.cx:} cy={self.cy} theta={self.theta:+06.1f}", (0,int(240*ts)), cv2.FONT_HERSHEY_DUPLEX, f_norm, (255,255,255), 1, cv2.LINE_AA)
+                cv2.putText(img_text, f"roe={self.range_of_edges:03}", (0,int(300*ts)), cv2.FONT_HERSHEY_DUPLEX, f_norm, (255,255,255), 1, cv2.LINE_AA)
                 h, s, v = color_sensor.get_raw_color_hsv()
-                cv2.putText(img_text, f"h={h:03} s={s:03} v={v:03}", (0,360), cv2.FONT_HERSHEY_DUPLEX, 1.8, (255,255,255), 1, cv2.LINE_AA)
-                cv2.putText(img_text, f"mV={hub.get_battery_voltage():04} mA={hub.get_battery_current():04}", (0,420), cv2.FONT_HERSHEY_DUPLEX, 1.8, (255,255,255), 1, cv2.LINE_AA)
-                cv2.putText(img_text, f"QR={self.get_QR_text()}", (0,480), cv2.FONT_HERSHEY_DUPLEX, 1.8, (255,255,255), 1, cv2.LINE_AA)
+                cv2.putText(img_text, f"h={h:03} s={s:03} v={v:03}", (0,int(360*ts)), cv2.FONT_HERSHEY_DUPLEX, f_norm, (255,255,255), 1, cv2.LINE_AA)
+                cv2.putText(img_text, f"mV={hub.get_battery_voltage():04} mA={hub.get_battery_current():04}", (0,int(420*ts)), cv2.FONT_HERSHEY_DUPLEX, f_norm, (255,255,255), 1, cv2.LINE_AA)
+                cv2.putText(img_text, f"QR={self.get_QR_text()}", (0,int(480*ts)), cv2.FONT_HERSHEY_DUPLEX, f_norm, (255,255,255), 1, cv2.LINE_AA)
+                cv2.putText(img_text, f"FID={self.frame_id:06}", (0,int(1000*ts)), cv2.FONT_HERSHEY_DUPLEX, f_fid, (0,255,255), 1, cv2.LINE_AA)
             except Exception as e:
                 pass
-        # concatinate the images - original + text area
-        img_comm = cv2.vconcat([img_orig,img_text])
-        # shrink the image to avoid delay in transmission
-        if OUT_FRAME_WIDTH != FRAME_WIDTH or OUT_FRAME_HEIGHT != FRAME_HEIGHT:
-            img_comm = cv2.resize(img_comm, (OUT_FRAME_WIDTH,2*OUT_FRAME_HEIGHT))
+        # concatenate the images - shrunk original + text area
+        img_comm = cv2.vconcat([img_mon, img_text])
         # transmit and display the image
         cv2.imshow("video monitor", img_comm)
-
         cv2.waitKey(1) # show the window
         return
         
     def get_theta(self) -> float:
         return self.theta
+
+    def get_theta_stamped(self):
+        with self._theta_lock:
+            return self._theta_stamped   # (theta, frame_id, capture_time)
 
     def get_range_of_edges(self) -> int:
         return self.range_of_edges
@@ -441,8 +516,8 @@ class Video(object):
             return ""
 
     def set_thresholds(self, gs_min: int, gs_max: int) -> None:
-        self.gs_min = gs_min
-        self.gs_max = gs_max
+        self.gsmin = gs_min
+        self.gsmax = gs_max
         return
 
     def set_trace_side(self, trace_side: TraceSide) -> None:
@@ -451,6 +526,14 @@ class Video(object):
 
     def set_target_interested(self, target_interested: TargetInterested) -> None:
         self.target_interested = target_interested
+
+        # request the matching capture format; the reopen itself happens on the
+        # capture thread, at the top of process()
+        cfg = _CAP_CONFIG.get(target_interested)
+        if cfg is not None and cfg != self._cap_cfg:
+            with self._pending_lock:
+                self._pending_cap_cfg = cfg
+
         if self.target_interested == TargetInterested.QRCODE and not hasattr(self, "_detection_thread"):
             # Start detection thread
             self._detection_thread = threading.Thread(target=self._detection_worker, daemon=True)
