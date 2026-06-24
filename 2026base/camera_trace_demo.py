@@ -19,14 +19,23 @@ from py_trees import (
 )
 from py_etrobo_util import Video, TraceSide, TargetInterested, Plotter, SymmetricClamper, Color, ColorClassifier, LowPassFilter
 
-EXEC_INTERVAL: float = 0.02
+# constants for defining execution intervals
+EXEC_INTERVAL: float  = 0.02
 VIDEO_INTERVAL: float = 0.02
-ARM_SHIFT_PWM = 35
-JUNCT_UPPER_THREAH = 50
-JUNCT_LOWER_THREAH = 30
-SPIN_MAX_POWER = 57
-SPIN_MIN_POWER = 47
+
+# constants useful for behavior tree definition
+SPIN_MAX_POWER     = 57
+SPIN_MIN_POWER     = 47
 TRACELINE_TARGET_V = 75
+
+# constants for specific action classes
+GS_MIN_DEFAULT     = 0
+GS_MAX_DEFAULT     = 55
+ARM_SHIFT_PWM      = 35   # ArmUpDownFull
+JUNCT_UPPER_THRESH = 50   # IsJunction 
+JUNCT_LOWER_THRESH = 40   # IsJunction
+ROE_DEGEN          = 90   # TraceLineCam: span above this = line ~tangent
+CURV_MIN_ROWS_SEP  = 15   # TraceLineCam: need this many rows between near/far to trust the slope
 
 class ArmDirection(IntEnum):
     UP = -1
@@ -81,6 +90,8 @@ class ResetDevice(Behaviour):
             g_right_motor.reset_count()
             g_left_motor.reset_count()
             g_gyro_sensor.reset()
+            g_video.set_thresholds(GS_MIN_DEFAULT, GS_MAX_DEFAULT)
+            g_video.set_target_interested(TargetInterested.LINE)
             self.logger.info("%+06d %s.resetting..." % (g_plotter.get_distance(), self.__class__.__name__))
             self.logger.info("%+06d %s.waiting for IMU to be stationary..." % (g_plotter.get_distance(), self.__class__.__name__))
         elif self.count > 3:
@@ -572,12 +583,21 @@ class RunByGyro(Behaviour):
 
 class TraceLineCam(Behaviour):
     def __init__(self, name: str, power: int, pid_p: float, pid_i: float, pid_d: float,
-                 gs_min: int, gs_max: int, trace_side: TraceSide) -> None:
+                 gs_min: int, gs_max: int, trace_side: TraceSide,
+                 tilt_ff_gain: float = 0.0,     # feed-forward turn per unit tilt
+                 ff_cap: float = 8.0,           # hard clamp on |tilt_ff|
+                 blind_hold_frames: int = 3,    # blind frames before easing the pivot
+                 blind_turn_frac: float = 0.55, # fraction of power for the blind hold
+                 ) -> None:
         super(TraceLineCam, self).__init__(name)
         self.power = power
         self.pid = PID(pid_p, pid_i, pid_d, setpoint=0, sample_time=EXEC_INTERVAL, output_limits=(-power, power))
         self.gs_min = gs_min
         self.gs_max = gs_max
+        self._tilt_ff_gain = tilt_ff_gain
+        self._ff_cap = ff_cap
+        self._blind_hold_frames = blind_hold_frames
+        self._blind_turn_frac = blind_turn_frac
         self.trace_side = trace_side
         self.running = False
 
@@ -599,16 +619,58 @@ class TraceLineCam(Behaviour):
             else: # TraceSide.CENTER
                 g_video.set_trace_side(TraceSide.CENTER)
             self.logger.info("%+06d %s.trace started with TS=%s" % (g_plotter.get_distance(), self.__class__.__name__, self.trace_side.name))
-        theta, fid, cap_t = g_video.get_theta_stamped()
-        turn = (-1) * int(self.pid(theta))
-        p, i, d = self.pid.components          # simple-pid P/I/D split
-        g_right_motor.set_power(self.power - turn)
-        g_left_motor.set_power(self.power + turn)
+
+        theta, fid, cap_t, odo_cap = g_video.get_theta_stamped()
+        odo_now = g_plotter.get_distance()
+
+        # ----- live tilt feed-forward (anti-cut) -----
+        # Driven by the CURRENT frame's band tilt, not a buffered past value,
+        # so it tracks the curve as it tightens and can't invert at the exit
+        # the way the fixed delay did. Gated OFF when the band is degenerate
+        # (line tangent / wall-clipped), exactly where tilt stops being a
+        # trustworthy curvature signal (FID128: roe=60, n=5).
+        tilt = g_video.get_line_tilt()
+        roe  = g_video.get_range_of_edges()
+        tilt_ff = 0.0
+        ff_gated = (roe == 0
+                    or roe > ROE_DEGEN
+                    or g_video.get_band_sep() < CURV_MIN_ROWS_SEP)
+        if not ff_gated:
+            tilt_ff = self._tilt_ff_gain * tilt
+            tilt_ff = max(-self._ff_cap, min(self._ff_cap, tilt_ff))   # don't let FF override the PID's sign
+
+        # PID runs on theta; feed-forward is ADDED to the turn output.
+        turn_pid = self.pid(theta)
+        turn = turn_pid + tilt_ff
+
+        # ----- blind-pivot cap -----
+        # When the band is blind (no usable target) the PID is running on a
+        # stale saturated theta -> full-power open-loop pivot. Keep rotating the
+        # SAME direction but ease the magnitude so it doesn't spin past the line.
+        if not g_video.is_target_insight():
+            self._blind += 1
+        else:
+            self._blind = 0
+        blind_capped = False
+        if self._blind > self._blind_hold_frames:
+            hold = self.power * self._blind_turn_frac
+            if turn > hold:
+                turn = hold; blind_capped = True
+            elif turn < -hold:
+                turn = -hold; blind_capped = True
+
+        g_right_motor.set_power(self.power + int(turn))
+        g_left_motor.set_power(self.power - int(turn))
+
+        # ----- single per-tick line: FF, PID split, motors, frame state -----
+        p, i, d = self.pid.components
         self.logger.info(
-            "%+06d CAM fid=%06d theta=%+06.1f P=%+.1f I=%+.1f D=%+.1f turn=%+d L=%d R=%d roe=%03d insight=%d age=%.1f" % (
-                g_plotter.get_distance(), fid, theta, p, i, d, turn,
-                self.power + turn, self.power - turn,
-                g_video.get_range_of_edges(), int(g_video.is_target_insight()),
+            "%+06d CAM fid=%06d theta=%+06.1f P=%+.1f I=%+.1f D=%+.1f "
+            "tilt=%+05.2f ff=%+06.1f g=%d turn=%+d L=%d R=%d roe=%03d insight=%d bc=%d age=%.1f" % (
+                odo_now, fid, theta, p, i, d,
+                tilt, tilt_ff, int(ff_gated),
+                int(turn), self.power + int(turn), self.power - int(turn),
+                roe, int(g_video.is_target_insight()), int(blind_capped),
                 (time.time() - cap_t) * 1000))
         return Status.RUNNING
 
@@ -734,9 +796,9 @@ def build_behaviour_tree() -> BehaviourTree:
     )
     loop.add_children(
         [
-            TraceLineCam(name="camera trace normal edge", power=45,
-                pid_p=2.0, pid_i=0.0012, pid_d=0.18,
-                gs_min=0, gs_max=60, trace_side=TraceSide.NORMAL),
+            TraceLineCam(name="camera trace normal edge", power=40,
+                pid_p=2.0, pid_i=0.0, pid_d=0.06, tilt_ff_gain=8.0, ff_cap=8.0,
+                gs_min=GS_MIN_DEFAULT, gs_max=GS_MAX_DEFAULT, trace_side=TraceSide.NORMAL),
             IsDistanceEarned(name="check distance", delta_dist=3500),
         ]
     )

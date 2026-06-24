@@ -18,9 +18,10 @@ def round_up_to_odd(f) -> int:
     return int(np.ceil(f / 2.) * 2 + 1)
 
 # frame size for Raspberry Pi USB camera capture
-IN_FRAME_WIDTH  = 1920
-IN_FRAME_HEIGHT = 1080
-
+IN_FRAME_WIDTH_QR  = 1920
+IN_FRAME_HEIGHT_QR = 1080
+IN_FRAME_WIDTH     = 640
+IN_FRAME_HEIGHT    = 480
 # frame size for OpenCV
 FRAME_WIDTH  = 320
 FRAME_HEIGHT = 180
@@ -29,14 +30,11 @@ FRAME_HEIGHT = 180
 OUT_FRAME_WIDTH  = 320
 OUT_FRAME_HEIGHT = 180
 
-# text overlay scale, relative to the original 1920-wide overlay design.
-# Tying the overlay to OUT_FRAME (fixed) instead of FRAME_* (now freely
-# changeable) lets FRAME_WIDTH/FRAME_HEIGHT be set to anything without
-# re-placing a single putText.
-TEXT_SCALE = OUT_FRAME_WIDTH / IN_FRAME_WIDTH   # = 0.25
+# text overlay scale, relative to OUT_FRAME_WIDTH
+TEXT_SCALE = OUT_FRAME_WIDTH / 2000.0
 
 # constants for TargetInterested.LINE
-CROP_WIDTH     = int(9*FRAME_WIDTH/16)
+CROP_WIDTH     = int(15*FRAME_WIDTH/16)
 CROP_HEIGHT    = int(3*FRAME_HEIGHT/8)
 CROP_U_LIMIT   = FRAME_HEIGHT-CROP_HEIGHT
 CROP_D_LIMIT   = FRAME_HEIGHT
@@ -46,9 +44,18 @@ MORPH_KERNEL_SIZE = round_up_to_odd(int(FRAME_WIDTH/48))
 ROI_BOUNDARY   = int(FRAME_WIDTH/10)
 LINE_THICKNESS = int(FRAME_WIDTH/160)
 CIRCLE_RADIUS  = int(FRAME_WIDTH/80)
-SCAN_V_POS     = int(13*FRAME_HEIGHT/16 - LINE_THICKNESS)
+SCAN_V_POS     = int(16*FRAME_HEIGHT/16 - LINE_THICKNESS)
+
 HORIZON_DISTANCE = 270 # length of the closest horizontal line on ground within the camera vision
 AXLE_TO_HORIZON_DISTANCE = 230 # distance from axle to the closest horizontal line on ground the camera can see
+
+SCAN_BAND_TOP     = CROP_U_LIMIT # highest row the band may climb to
+ROI_HOLD_FRAMES   = 3            # keep last ROI this long before full-crop reset
+ROE_DEGEN         = 90           # span above this = line ~tangent, cx unusable
+CURV_COMP_GAIN    = 8.0   # THE tunable. 0 == today's behavior (no compensation).
+CURV_MIN_ROWS_SEP = 15    # need this many rows between near/far to trust the slope
+CURV_BAND_ROWS    = 40    # cap the curvature baseline -> keep the estimate local
+CURV_MAX_BIAS     = 60    # px clamp on the applied outward bias
 
 # constants for TargetInterested.QRCODE
 CROP_X1   = 360
@@ -89,7 +96,7 @@ class TargetInterested(Enum):
 _CAP_CONFIG = {
     TargetInterested.LINE:   ("MJPG", IN_FRAME_WIDTH, IN_FRAME_HEIGHT, 30),
     TargetInterested.BOTTLE: ("MJPG", IN_FRAME_WIDTH, IN_FRAME_HEIGHT, 30),
-    TargetInterested.QRCODE: ("YUYV", IN_FRAME_WIDTH, IN_FRAME_HEIGHT, 5),
+    TargetInterested.QRCODE: ("YUYV", IN_FRAME_WIDTH_QR, IN_FRAME_HEIGHT_QR, 5),
 }
 
 class Video(object):
@@ -115,9 +122,12 @@ class Video(object):
         self.cx = int(FRAME_WIDTH/2)
         self.cy = SCAN_V_POS
         self.mx = self.cx
+        self._blind_frames = 0          # consecutive frames with no contour
         # default values
         self.gsmin = 0
-        self.gsmax = 100
+        self.gsmax = 50
+        self.line_tilt = 0.0     # band slope (px/row); cut symptom for delay tuning
+        self.band_sep  = 0       # rows between near/far clean samples; 0 = band collapsed
         self.trace_side = TraceSide.NORMAL
         self.range_of_edges = 0
         self.theta:float = 0.0
@@ -125,7 +135,7 @@ class Video(object):
         # ----- frame id as the common key across the producer and consumers in logging
         self.frame_id = 0
         self._theta_lock = threading.Lock()
-        self._theta_stamped = (0.0, 0, 0.0)   # (theta, frame_id, capture_time)
+        self._theta_stamped = (0.0, 0, 0.0, 0)   # (theta, frame_id, capture_time, odo_mm)
 
         # ----- shared state between capture thread and detection thread for TargetInterested.QRCODE
         self._frame_lock  = threading.Lock()
@@ -166,11 +176,18 @@ class Video(object):
         if got_str != fourcc:
             print("WARN cap fourcc requested=%s got=%s" % (fourcc, got_str))
 
+        got_w   = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+        got_h   = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+        got_fps = cap.get(cv2.CAP_PROP_FPS)
+        if (got_w, got_h) != (width, height):
+            print("WARN cap size requested=%dx%d got=%dx%d" % (width, height, got_w, got_h))
+
         for _ in range(5):          # discard warm-up frames while AE/format settle
             cap.read()
         self.cap = cap
         self._cap_cfg = (fourcc, width, height, fps)
-        print("VID cap opened fourcc=%s %dx%d fps=%d" % (fourcc, width, height, fps))
+        print("VID cap opened fourcc=%s req=%dx%d@%d got=%dx%d@%.1f" % (
+            got_str, width, height, fps, got_w, got_h, got_fps))
 
     def _result_pos_to_corners(self, r):
         """Return 4 corner points (x, y) in crop coordinates, or None."""
@@ -291,14 +308,9 @@ class Video(object):
         t_cap = time.time()          # capture time for this frame
         self.frame_id += 1
 
-        # full-resolution capture: used as-is for QR, downsized for LINE/BOTTLE
-        img_full = frame
-        if img_full.shape[1] != IN_FRAME_WIDTH or img_full.shape[0] != IN_FRAME_HEIGHT:
-            img_full = cv2.resize(img_full, (IN_FRAME_WIDTH, IN_FRAME_HEIGHT))
-
         if self.target_interested == TargetInterested.QRCODE:
             # ---- QR needs the original full-resolution image ----
-            img_orig = img_full.copy()
+            img_orig = frame.copy()
             img_gray = cv2.cvtColor(img_orig, cv2.COLOR_BGR2GRAY)
 
             with self._frame_lock:
@@ -327,13 +339,31 @@ class Video(object):
                 self.target_insight = False
 
         elif self.target_interested == TargetInterested.BOTTLE:
-            # ---- BOTTLE can run on the downsized frame ----
-            img_orig = cv2.resize(img_full, (FRAME_WIDTH, FRAME_HEIGHT))
+            # ---- BOTTLE runs on the downsized frame ----
+            # 640x480 (4:3) capture -> center-crop to 16:9 -> 320x180.
+            # Cropping (not squashing) preserves the pixel->angle/mm geometry
+            # that SCAN_V_POS, theta, roe, tilt all depend on.
+            if self.frame_id == 1:
+                print("VID first BOTTLE frame shape=%s" % (frame.shape,))
+            fh, fw = frame.shape[:2]
+            crop_h = int(fw * 9 / 16)             # 360 for a 640-wide frame
+            y0 = (fh - crop_h) // 2               # center band
+            frame_169 = frame[y0:y0 + crop_h, :]
+            img_orig = cv2.resize(frame_169, (FRAME_WIDTH, FRAME_HEIGHT))
             # (bottle detection on img_orig / its grayscale goes here)
 
         else: # TargetInterested.LINE
             # ---- LINE runs on the downsized frame ----
-            img_orig = cv2.resize(img_full, (FRAME_WIDTH, FRAME_HEIGHT))
+            # 640x480 (4:3) capture -> center-crop to 16:9 -> 320x180.
+            # Cropping (not squashing) preserves the pixel->angle/mm geometry
+            # that SCAN_V_POS, theta, roe, tilt all depend on.
+            if self.frame_id == 1:
+                print("VID first LINE frame shape=%s" % (frame.shape,))
+            fh, fw = frame.shape[:2]
+            crop_h = int(fw * 9 / 16)             # 360 for a 640-wide frame
+            y0 = (fh - crop_h) // 2               # center band
+            frame_169 = frame[y0:y0 + crop_h, :]
+            img_orig = cv2.resize(frame_169, (FRAME_WIDTH, FRAME_HEIGHT))
             img_gray = cv2.cvtColor(img_orig, cv2.COLOR_BGR2GRAY)
 
             # crop a part of image for binarization
@@ -347,7 +377,7 @@ class Video(object):
             # remove noise
             img_bin_mor = cv2.morphologyEx(img_bin, cv2.MORPH_CLOSE, self.kernel)
             # convert the binary image from grayscale to BGR for later
-            img_bin_rgb = cv2.cvtColor(img_bin_mor, cv2.COLOR_GRAY2BGR)
+            #img_bin_rgb = cv2.cvtColor(img_bin_mor, cv2.COLOR_GRAY2BGR)
 
             # focus on the region of interest
             x, y, w, h = self.roi
@@ -415,28 +445,115 @@ class Video(object):
                 img_cnt = np.zeros_like(img_orig)
                 img_cnt = cv2.drawContours(img_cnt, [contours[i_target]], 0, (0,255,0), 1)
                 img_cnt_gray = cv2.cvtColor(img_cnt, cv2.COLOR_BGR2GRAY)
-                # scan the line at SCAN_V_POS to find edges
-                scan_line = img_cnt_gray[SCAN_V_POS]
-                edges = np.flatnonzero(scan_line)
-                # calculate the trace target using the edges
-                if len(edges) >= 2:
-                    self.range_of_edges = edges[len(edges)-1] - edges[0]
-                    if self.trace_side == TraceSide.LEFT:
-                        self.cx = edges[0]
-                    elif self.trace_side == TraceSide.RIGHT:
-                        self.cx = edges[len(edges)-1]
-                    else:
-                        self.cx = int((edges[0]+edges[len(edges)-1]) / 2)
-                elif len(edges) == 1:
+
+                # ---- banded scan + live curvature pre-compensation ----
+                # Bottom (nearest) row still defines range_of_edges for IsJunction.
+                b_edges = np.flatnonzero(img_cnt_gray[SCAN_V_POS])
+                if len(b_edges) >= 2:
+                    self.range_of_edges = int(b_edges[-1] - b_edges[0])
+                elif len(b_edges) == 1:
                     self.range_of_edges = 1
-                    self.cx = edges[0]
-                self.mx = self.cx
-                self.target_insight = True
+                else:
+                    self.range_of_edges = 0
+
+                # Collect the line center at every CLEAN (non-tangent) height of the
+                # band, bottom row first. Tangent rows (span > ROE_DEGEN) are skipped,
+                # so they can neither be the steering target nor pollute the slope.
+                samples = []   # (row, cx_row), nearest first
+                for row in range(SCAN_V_POS, SCAN_BAND_TOP - 1, -1):
+                    edges = np.flatnonzero(img_cnt_gray[row])
+                    if len(edges) >= 2:
+                        if int(edges[-1] - edges[0]) > ROE_DEGEN:
+                            continue
+                        if self.trace_side == TraceSide.LEFT:
+                            cx_row = int(edges[0])
+                        elif self.trace_side == TraceSide.RIGHT:
+                            cx_row = int(edges[-1])
+                        else:
+                            cx_row = (int(edges[0]) + int(edges[-1])) // 2
+                    elif len(edges) == 1:
+                        cx_row = int(edges[0])
+                    else:
+                        continue
+                    samples.append((row, cx_row))
+
+                if samples:
+                    near_row, cx_raw = samples[0]      # base target == today's behavior
+
+                    # Pick the farthest clean row WITHIN the local curvature window.
+                    # Local-only keeps the "locally circular" assumption honest and
+                    # avoids reaching into a diverging branch at a fork.
+                    far_row, cx_far = near_row, cx_raw
+                    for r, c in samples:
+                        if (near_row - r) <= CURV_BAND_ROWS:
+                            far_row, cx_far = r, c
+                        else:
+                            break
+
+                    bias = 0
+                    sep = near_row - far_row
+                    self.band_sep = sep          # publish for the feed-forward gate
+
+                    # Line tilt across the band (px/row): how far the line drifts
+                    # per row from the near (axle-side) row to the far (look-ahead)
+                    # row. This is the cut symptom — a robot on the line reads a
+                    # small tilt, a robot cutting ~100mm inside reads a steep one.
+                    # Measured whenever the band is long enough, regardless of
+                    # whether the curvature BIAS is gated off below.
+                    self.line_tilt = ((cx_raw - cx_far) / float(sep)
+                                      if sep >= CURV_MIN_ROWS_SEP else 0.0)
+
+                    bottom_clean = (0 < self.range_of_edges <= ROE_DEGEN)
+                    WALL_MARGIN = 30
+                    near_wall = (cx_raw <= CROP_L_LIMIT + WALL_MARGIN or
+                                 cx_raw >= CROP_R_LIMIT - WALL_MARGIN or
+                                 cx_far <= CROP_L_LIMIT + WALL_MARGIN or
+                                 cx_far >= CROP_R_LIMIT - WALL_MARGIN)
+                    if sep >= CURV_MIN_ROWS_SEP and bottom_clean and not near_wall:
+                        slope = self.line_tilt
+                        bias  = int(CURV_COMP_GAIN * slope)
+                        bias  = max(-CURV_MAX_BIAS, min(CURV_MAX_BIAS, bias))
+
+                    cx_comp = max(CROP_L_LIMIT, min(CROP_R_LIMIT, cx_raw + bias))
+                    self.cx = cx_comp
+                    self.mx = self.cx
+                    self._blind_frames = 0
+                    self.target_insight = True
+
+                    # tuning log: raw vs compensated, the bias, and how the estimate
+                    # was formed (clean-row count and the baseline used)
+                    if bias != 0:
+                        print("%+06d CRV fid=%06d cx_raw=%03d bias=%+03d cx=%03d n=%02d sep=%02d" % (
+                            plotter.get_distance() if plotter is not None else 0,
+                            self.frame_id, cx_raw, bias, self.cx, len(samples), sep))
+                else:
+                    # whole band tangent/empty: target meaningless -> hold heading.
+                    self.target_insight = False
+
             else: # len(contours) == 0
+                self._blind_frames += 1
                 self.range_of_edges = 0
-                self.roi = (CROP_L_LIMIT, CROP_U_LIMIT, CROP_WIDTH, CROP_HEIGHT)
-                # keep mx in order to maintain the current move of robot
-                self.cx = int(FRAME_WIDTH/2)
+                self.line_tilt = 0.0
+                self.band_sep = 0
+                if self._blind_frames <= ROI_HOLD_FRAMES:
+                    # brief dropout (e.g. bottom-row tangent on a sharp turn):
+                    # don't reset to full crop, but GROW the last ROI outward each
+                    # blind frame so a line that slipped just past the box edge is
+                    # re-acquired where it actually went, not where it was.
+                    x, y, w, h = self.roi
+                    x -= ROI_BOUNDARY; y -= ROI_BOUNDARY
+                    w += 2*ROI_BOUNDARY; h += 2*ROI_BOUNDARY
+                    if x < CROP_L_LIMIT: x = CROP_L_LIMIT
+                    if y < CROP_U_LIMIT: y = CROP_U_LIMIT
+                    if x + w > CROP_R_LIMIT: w = CROP_R_LIMIT - x
+                    if y + h > CROP_D_LIMIT: h = CROP_D_LIMIT - y
+                    self.roi = (x, y, w, h)
+                else:
+                    # sustained loss: fall back to full-crop search
+                    self.roi = (CROP_L_LIMIT, CROP_U_LIMIT, CROP_WIDTH, CROP_HEIGHT)
+                # keep mx (heading) so the robot maintains its current move;
+                # mirror cx to mx so the two stay coherent on re-acquisition
+                self.cx = self.mx
                 self.cy = SCAN_V_POS
                 self.target_insight = False
             
@@ -457,9 +574,9 @@ class Video(object):
             # AXLE_TO_HORIZON_DISTANCE is distance from axle to the closest horizontal line on ground the camera can see
             self.theta = 180 * math.atan(vxm / AXLE_TO_HORIZON_DISTANCE) / math.pi
             # publish theta with its frame id + capture time (consumed by TraceLineCam)
-            with self._theta_lock:
-                self._theta_stamped = (self.theta, self.frame_id, t_cap)
             dist = plotter.get_distance() if plotter is not None else 0
+            with self._theta_lock:
+                self._theta_stamped = (self.theta, self.frame_id, t_cap, dist)
             print(
                 "%+06d VID fid=%06d cap=%.3f cx=%d mx=%d roi=(%d,%d,%d,%d) roe=%03d theta=%+06.1f insight=%d lat=%.1f" % (
                     dist, self.frame_id, t_cap, self.cx, self.mx,
@@ -503,7 +620,13 @@ class Video(object):
 
     def get_theta_stamped(self):
         with self._theta_lock:
-            return self._theta_stamped   # (theta, frame_id, capture_time)
+            return self._theta_stamped   # (theta, frame_id, capture_time, odo_mm)
+
+    def get_line_tilt(self) -> float:
+        return self.line_tilt
+
+    def get_band_sep(self) -> int:
+        return self.band_sep
 
     def get_range_of_edges(self) -> int:
         return self.range_of_edges
