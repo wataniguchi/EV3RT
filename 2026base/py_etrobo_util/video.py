@@ -522,10 +522,10 @@ class Video(object):
 
                     # tuning log: raw vs compensated, the bias, and how the estimate
                     # was formed (clean-row count and the baseline used)
-                    if bias != 0:
-                        print("%+06d CRV fid=%06d cx_raw=%03d bias=%+03d cx=%03d n=%02d sep=%02d" % (
-                            plotter.get_distance() if plotter is not None else 0,
-                            self.frame_id, cx_raw, bias, self.cx, len(samples), sep))
+                    #if bias != 0:
+                    #    print("%+06d CRV fid=%06d cx_raw=%03d bias=%+03d cx=%03d n=%02d sep=%02d" % (
+                    #        plotter.get_distance() if plotter is not None else 0,
+                    #        self.frame_id, cx_raw, bias, self.cx, len(samples), sep))
                 else:
                     # whole band tangent/empty: target meaningless -> hold heading.
                     self.target_insight = False
@@ -577,11 +577,11 @@ class Video(object):
             dist = plotter.get_distance() if plotter is not None else 0
             with self._theta_lock:
                 self._theta_stamped = (self.theta, self.frame_id, t_cap, dist)
-            print(
-                "%+06d VID fid=%06d cap=%.3f cx=%d mx=%d roi=(%d,%d,%d,%d) roe=%03d theta=%+06.1f insight=%d lat=%.1f" % (
-                    dist, self.frame_id, t_cap, self.cx, self.mx,
-                    x, y, w, h, self.range_of_edges, self.theta,
-                    int(self.target_insight), (time.time() - t_cap) * 1000))
+            #print(
+            #    "%+06d VID fid=%06d cap=%.3f cx=%d mx=%d roi=(%d,%d,%d,%d) roe=%03d theta=%+06.1f insight=%d lat=%.1f" % (
+            #        dist, self.frame_id, t_cap, self.cx, self.mx,
+            #        x, y, w, h, self.range_of_edges, self.theta,
+            #        int(self.target_insight), (time.time() - t_cap) * 1000))
 
         # BELOW IS COMMON FOR ALL TARGETS
         # shrink the processed image straight to the monitor (transmission) size.

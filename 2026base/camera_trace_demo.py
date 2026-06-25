@@ -663,15 +663,15 @@ class TraceLineCam(Behaviour):
         g_left_motor.set_power(self.power - int(turn))
 
         # ----- single per-tick line: FF, PID split, motors, frame state -----
-        p, i, d = self.pid.components
-        self.logger.info(
-            "%+06d CAM fid=%06d theta=%+06.1f P=%+.1f I=%+.1f D=%+.1f "
-            "tilt=%+05.2f ff=%+06.1f g=%d turn=%+d L=%d R=%d roe=%03d insight=%d bc=%d age=%.1f" % (
-                odo_now, fid, theta, p, i, d,
-                tilt, tilt_ff, int(ff_gated),
-                int(turn), self.power + int(turn), self.power - int(turn),
-                roe, int(g_video.is_target_insight()), int(blind_capped),
-                (time.time() - cap_t) * 1000))
+        #p, i, d = self.pid.components
+        #self.logger.info(
+        #    "%+06d CAM fid=%06d theta=%+06.1f P=%+.1f I=%+.1f D=%+.1f "
+        #    "tilt=%+05.2f ff=%+06.1f g=%d turn=%+d L=%d R=%d roe=%03d insight=%d bc=%d age=%.1f" % (
+        #        odo_now, fid, theta, p, i, d,
+        #        tilt, tilt_ff, int(ff_gated),
+        #        int(turn), self.power + int(turn), self.power - int(turn),
+        #        roe, int(g_video.is_target_insight()), int(blind_capped),
+        #        (time.time() - cap_t) * 1000))
         return Status.RUNNING
 
 
@@ -799,7 +799,7 @@ def build_behaviour_tree() -> BehaviourTree:
             TraceLineCam(name="camera trace normal edge", power=40,
                 pid_p=2.0, pid_i=0.0, pid_d=0.06, tilt_ff_gain=8.0, ff_cap=8.0,
                 gs_min=GS_MIN_DEFAULT, gs_max=GS_MAX_DEFAULT, trace_side=TraceSide.NORMAL),
-            IsDistanceEarned(name="check distance", delta_dist=3500),
+            IsDistanceEarned(name="check distance", delta_dist=4000),
         ]
     )
     root.add_children(
