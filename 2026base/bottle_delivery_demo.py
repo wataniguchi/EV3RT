@@ -11,6 +11,7 @@ from py_trees.trees import BehaviourTree
 from py_trees.behaviour import Behaviour
 from py_trees.common import Status
 from py_trees.composites import Sequence
+from py_trees.composites import Selector
 from py_trees.composites import Parallel
 from py_trees.common import ParallelPolicy
 from py_trees import (
@@ -979,19 +980,25 @@ def build_behaviour_tree() -> BehaviourTree:
     root = Sequence(name="2026 base", memory=True)
     calibration = Sequence(name="calibration", memory=True)
     start = Parallel(name="start", policy=ParallelPolicy.SuccessOnOne())
-    lap2 = Parallel(name="lap2", policy=ParallelPolicy.SuccessOnOne())
-    lap3 = Parallel(name="lap3", policy=ParallelPolicy.SuccessOnOne())
+    curve = Parallel(name="curve", policy=ParallelPolicy.SuccessOnOne())
+    tilblue = Parallel(name="until blue marker 1", policy=ParallelPolicy.SuccessOnOne())
+    catch = Parallel(name="catch bottle", policy=ParallelPolicy.SuccessOnOne())
+    carry0 = Parallel(name="carry0", policy=ParallelPolicy.SuccessOnOne())
     carry1 = Parallel(name="carry1", policy=ParallelPolicy.SuccessOnOne())
     carry2 = Parallel(name="carry2", policy=ParallelPolicy.SuccessOnOne())
     carry3 = Parallel(name="carry3", policy=ParallelPolicy.SuccessOnOne())
-    carry4 = Parallel(name="carry4", policy=ParallelPolicy.SuccessOnOne())
-    qr2 = Parallel(name="qr2", policy=ParallelPolicy.SuccessOnOne())
-    qr3 = Parallel(name="qr3", policy=ParallelPolicy.SuccessOnOne())
-    qr4 = Parallel(name="qr4", policy=ParallelPolicy.SuccessOnOne())
-    qr5 = Parallel(name="qr4", policy=ParallelPolicy.SuccessOnOne())
-    qr_read = Parallel(name="qr_read", policy=ParallelPolicy.SuccessOnOne())
-    qr_scan_shake = Sequence(name="qr_scan_shake", memory=True)
-    qr_scan_move_back = Parallel(name="qr_scan_move_back2", policy=ParallelPolicy.SuccessOnOne())
+    case_yellow = Selector(name="case yellow", memory=True)
+    go_blue = Sequence(name="advance to case blue", memory=True)
+    go_blue1 = Parallel(name="go_blue1", policy=ParallelPolicy.SuccessOnOne())
+    go_blue2 = Parallel(name="go_blue1", policy=ParallelPolicy.SuccessOnOne())
+    case_blue = Selector(name="case blue", memory=True)
+    go_red = Sequence(name="advance to case red", memory=True)
+    go_red1 = Parallel(name="go_red1", policy=ParallelPolicy.SuccessOnOne())
+    go_red2 = Parallel(name="go_red2", policy=ParallelPolicy.SuccessOnOne())
+    case_red = Selector(name="case red", memory=True)
+    land = Sequence(name="land bottle", memory=True)
+    land1 = Parallel(name="land1", policy=ParallelPolicy.SuccessOnOne())
+    land2 = Parallel(name="land2", policy=ParallelPolicy.SuccessOnOne())
     calibration.add_children(
         [
             ArmUpDownFull(name="arm up", direction=ArmDirection.UP),
@@ -1005,7 +1012,15 @@ def build_behaviour_tree() -> BehaviourTree:
             IsTouchOn(name="touch start"),
         ]
     )
-    lap2.add_children(
+    curve.add_children(
+        [
+            TraceLineCam(name="camera trace normal", power=40,
+                pid_p=2.0, pid_i=0.0, pid_d=0.06, tilt_ff_gain=8.0, ff_cap=8.0,
+                gs_min=GS_MIN_DEFAULT, gs_max=GS_MAX_DEFAULT, trace_side=TraceSide.NORMAL),
+            IsDistanceEarned(name="check distance", delta_dist = 600),
+        ]
+    )
+    tilblue.add_children(
         [
             TraceLine(name="sensor trace normal edge", target=TRACELINE_TARGET_V,
                 power=70, power_min=33,
@@ -1016,11 +1031,17 @@ def build_behaviour_tree() -> BehaviourTree:
             IsColorDetected(name="check color", color=Color.BLUE),
         ]
     )
-    lap3.add_children(
+    catch.add_children(
         [
-            RunByGyro(name="run straight to catch the bottle", target=3, power=33,
+            CatchBottle(name="run toward and catch bottle", power=33,
+                pid_p=1.1, pid_i=0.1, pid_d=0.03, catch_run_mm = 150),
+        ]
+    )
+    carry0.add_children(
+        [
+            RunByGyro(name="run slightly toword NORMAL edge", target=8, power=33,
                 pid_p=1.1, pid_i=0.1, pid_d=0.03, target_type=HeadingType.ABSOLUTE),
-            IsDistanceEarned(name="check distance", delta_dist = 370),
+            IsDistanceEarned(name="check distance", delta_dist = 150),
         ]
     )
     carry1.add_children(
@@ -1036,7 +1057,7 @@ def build_behaviour_tree() -> BehaviourTree:
     )
     carry2.add_children(
         [
-            RunByGyro(name="run straight to pass the blue line", target=90, power=33,
+            RunByGyro(name="run straight to pass blue marker 2", target=90, power=33,
                 pid_p=1.1, pid_i=0.1, pid_d=0.03, target_type=HeadingType.ABSOLUTE),
             IsDistanceEarned(name="check distance", delta_dist = 120),
         ]
@@ -1044,15 +1065,28 @@ def build_behaviour_tree() -> BehaviourTree:
     carry3.add_children(
         [
             TraceLine(name="sensor trace normal edge", target=TRACELINE_TARGET_V,
-                power=70, power_min=33,
+                power=33,
                 pid_p=0.65, pid_i=0.000001, pid_d=0.045,
                 err_lo=6, err_hi=16, decel_per_s=350, gains_slow=(0.65, 0.045), gains_fast=(0.55, 0.065),
                 recover_v=97, recover_after=3, recover_turn=35,
                 trace_side=TraceSide.NORMAL),
-            IsDistanceEarned(name="check distance", delta_dist = 1100),
+            IsColorDetected(name="check color", color=Color.BLUE),
         ]
     )
-    carry4.add_children(
+    case_red.add_children(
+        [
+            HasCaughtBottle(name="check if bottle is RED",
+                color=BottleColor.RED),
+        ]
+    )
+    go_red1.add_children(
+        [
+            RunByGyro(name="run straight to pass blue marker 4", target=180, power=33,
+                pid_p=1.1, pid_i=0.1, pid_d=0.03, target_type=HeadingType.ABSOLUTE),
+            IsDistanceEarned(name="check distance", delta_dist = 120),
+        ]
+    )
+    go_red2.add_children(
         [
             TraceLine(name="sensor trace normal edge", target=TRACELINE_TARGET_V,
                 power=33,
@@ -1063,101 +1097,85 @@ def build_behaviour_tree() -> BehaviourTree:
             IsColorDetected(name="check color", color=Color.BLUE),
         ]
     )
-    qr2.add_children(
+    go_red.add_children(
         [
-            RunByGyro(name="run straight to correct heading", target=0, power=33,
-                pid_p=1.1, pid_i=0.1, pid_d=0.03, target_type=HeadingType.ABSOLUTE),
-            IsDistanceEarned(name="check distance", delta_dist = 50),
+            go_red1,
+            go_red2,
+            case_red,
         ]
     )
-    qr3.add_children(
+    case_blue.add_children(
         [
-            TraceLine(name="sensor trace opposite edge", target=TRACELINE_TARGET_V,
+            HasCaughtBottle(name="check if bottle is BLUE",
+                color=BottleColor.BLUE),
+            go_red,
+        ]
+    )
+    go_blue1.add_children(
+        [
+            RunByGyro(name="run straight to pass blue marker 3", target=180, power=33,
+                pid_p=1.1, pid_i=0.1, pid_d=0.03, target_type=HeadingType.ABSOLUTE),
+            IsDistanceEarned(name="check distance", delta_dist = 120),
+        ]
+    )
+    go_blue2.add_children(
+        [
+            TraceLine(name="sensor trace normal edge", target=TRACELINE_TARGET_V,
                 power=33,
                 pid_p=0.65, pid_i=0.000001, pid_d=0.045,
                 err_lo=6, err_hi=16, decel_per_s=350, gains_slow=(0.65, 0.045), gains_fast=(0.55, 0.065),
                 recover_v=97, recover_after=3, recover_turn=35,
-                trace_side=TraceSide.OPPOSITE),
-            IsDistanceEarned(name="check distance", delta_dist = 500),
-        ]
-    )
-    qr4.add_children(
-        [
-            TraceLine(name="sensor trace opposite edge", target=TRACELINE_TARGET_V,
-                power=70, power_min=33,
-                pid_p=0.65, pid_i=0.000001, pid_d=0.045,
-                err_lo=6, err_hi=16, decel_per_s=350, gains_slow=(0.65, 0.045), gains_fast=(0.55, 0.065),
-                recover_v=97, recover_after=3, recover_turn=35,
-                trace_side=TraceSide.OPPOSITE),
+                trace_side=TraceSide.NORMAL),
             IsColorDetected(name="check color", color=Color.BLUE),
         ]
     )
-    qr5.add_children(
+    go_blue.add_children(
         [
-            RunByGyro(name="run straight to pass half the blue line", target=-90, power=33,
+            go_blue1,
+            go_blue2,
+            case_blue,
+        ]
+    )
+    case_yellow.add_children(
+        [
+            HasCaughtBottle(name="check if bottle is YELLOW",
+                color=BottleColor.YELLOW),
+            go_blue,
+        ]
+    )
+    land1.add_children(
+        [
+            RunByGyro(name="run straight to pass half blue marker", target=180, power=33,
                 pid_p=1.1, pid_i=0.1, pid_d=0.03, target_type=HeadingType.ABSOLUTE),
-            IsDistanceEarned(name="check distance", delta_dist = 100),
+            IsDistanceEarned(name="check distance", delta_dist = 60),
         ]
     )
-    qr_scan_move_back.add_children(
+    land2.add_children(
         [
-            RunAsInstructed(name="move back a little", pwm_l=-SPIN_MIN_POWER, pwm_r=-SPIN_MIN_POWER),
-            IsDistanceEarned(name="check distance", delta_dist = 50),
+            RunByGyro(name="place bottle in landing zone", target=90, power=33,
+                pid_p=1.1, pid_i=0.1, pid_d=0.03, target_type=HeadingType.ABSOLUTE),
+            IsDistanceEarned(name="check distance", delta_dist = 250),
         ]
     )
-    qr_scan_shake.add_children(
+    land.add_children(
         [
-            IsTimePassed(name="wait for a moment", delta_time=3.0),
-            qr_scan_move_back,
-            StopNow(name="stop"),
-            IsTimePassed(name="wait for a moment", delta_time=3.0),
-            SpinAround(name="scan for QR code", target=3, max_power=SPIN_MAX_POWER, min_power=SPIN_MIN_POWER,
-                pid_p=0.4, pid_i=0.001, pid_d=0.03, target_type=HeadingType.RELATIVE),
-            StopNow(name="stop"),
-            IsTimePassed(name="wait for a moment", delta_time=2.0),
-            SpinAround(name="scan for QR code", target=-6, max_power=SPIN_MAX_POWER, min_power=SPIN_MIN_POWER,
-                pid_p=0.4, pid_i=0.001, pid_d=0.03, target_type=HeadingType.RELATIVE),
-            StopNow(name="stop"),
-            IsTimePassed(name="wait for a moment", delta_time=2.0),
-            SpinAround(name="scan for QR code", target=3, max_power=SPIN_MAX_POWER, min_power=SPIN_MIN_POWER,
-                pid_p=0.4, pid_i=0.001, pid_d=0.03, target_type=HeadingType.RELATIVE),
-            StopNow(name="stop"),
-            IsTimePassed(name="wait for a moment", delta_time=3.0),
-        ]
-    )
-    qr_read.add_children(
-        [
-            IsQRDecoded(name="check QR code"),
-            qr_scan_shake,
+            land1,
+            land2,
         ]
     )
     root.add_children(
         [
             calibration,
             start,
-            lap2,
-            lap3,
+            curve,
+            tilblue,
+            catch,
+            carry0,
             carry1,
             carry2,
             carry3,
-            carry4,
-            SpinAround(name="about the face", target=10, max_power=SPIN_MAX_POWER, min_power=SPIN_MIN_POWER,
-                pid_p=0.4, pid_i=0.001, pid_d=0.03, target_type=HeadingType.ABSOLUTE),
-            qr2,
-            StopNow(name="stop"),
-            SpinAndLocateLine(name="spin and locate line", target=TRACELINE_TARGET_V, max_power=SPIN_MAX_POWER, min_power=SPIN_MIN_POWER,
-                pid_p=0.4, pid_i=0.001, pid_d=0.03, trace_side=TraceSide.OPPOSITE),
-            StopNow(name="stop"),
-            qr3,
-            qr4,
-            qr5,
-            StopNow(name="stop"),
-            ArmUpDownFull(name="arm up", direction=ArmDirection.UP),
-            SpinAround(name="align for QR code scanning", target=0, max_power=SPIN_MAX_POWER, min_power=SPIN_MIN_POWER,
-                pid_p=0.4, pid_i=0.001, pid_d=0.03, target_type=HeadingType.ABSOLUTE),
-            StopNow(name="stop"),
-            qr_read,
-            ArmUpDownFull(name="arm down", direction=ArmDirection.DOWN),
+            case_yellow,
+            land,
             StopNow(name="stop"),
             TheEnd(name="end"),
         ]

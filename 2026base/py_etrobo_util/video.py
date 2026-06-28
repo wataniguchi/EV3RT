@@ -57,6 +57,14 @@ CURV_MIN_ROWS_SEP = 15    # need this many rows between near/far to trust the sl
 CURV_BAND_ROWS    = 40    # cap the curvature baseline -> keep the estimate local
 CURV_MAX_BIAS     = 60    # px clamp on the applied outward bias
 
+# constants for TargetInterested.BOTTLE
+BOTTLE_MIN_AREA         = 150   # px^2 contour-area floor (reject specks)
+BOTTLE_MIN_EXTENT       = 0.45  # area / bbox-area; a tape band is fairly solid
+BOTTLE_BLACK_MAX_W      = int(FRAME_WIDTH * 0.55)  # black blob wider than this = the line
+BOTTLE_BLACK_MAX_ASPECT = 4.0   # w/h; the line is far more elongated than a band
+BOTTLE_BLIND_ROW        = FRAME_HEIGHT - 4  # band bottom at/below this row => the band is
+                                            # crossing into the camera blind spot (~220 mm)
+
 # constants for TargetInterested.QRCODE
 CROP_X1   = 360
 CROP_X2   = 1560
@@ -99,6 +107,24 @@ _CAP_CONFIG = {
     TargetInterested.QRCODE: ("YUYV", IN_FRAME_WIDTH_QR, IN_FRAME_HEIGHT_QR, 5),
 }
 
+class BottleColor(Enum):
+    NONE   = "None"
+    RED    = "Red"
+    BLUE   = "Blue"
+    YELLOW = "Yellow"
+    BLACK  = "Black"
+
+# HSV (OpenCV: H 0-179, S/V 0-255) gates per tape colour. RED needs two ranges
+# because its hue wraps across 0/180. RED is the only sample-tuned entry; the
+# others are tentative and must be re-measured once real samples exist.
+BOTTLE_HSV = {
+    BottleColor.RED:    [((  0, 120,  70), ( 10, 255, 255)),
+                         ((170, 120,  70), (179, 255, 255))],
+    BottleColor.BLUE:   [((100, 100,  60), (130, 255, 255))],   # tentative
+    BottleColor.YELLOW: [(( 20, 100,  80), ( 35, 255, 255))],   # tentative
+    BottleColor.BLACK:  [((  0,   0,   0), (179, 120,  60))],   # tentative; shape-gated
+}
+
 class Video(object):
     def __init__(self):
         cv2.setLogLevel(3) # LOG_LEVEL_WARNING
@@ -131,6 +157,17 @@ class Video(object):
         self.trace_side = TraceSide.NORMAL
         self.range_of_edges = 0
         self.theta:float = 0.0
+
+        # ----- internal state for TargetInterested.BOTTLE
+        self._bottle_lock_color = None          # None = auto-scan all colours
+        self.bottle_color  = BottleColor.NONE
+        self.bottle_cx     = int(FRAME_WIDTH/2)
+        self.bottle_theta  = 0.0
+        self.bottle_bottom_row = 0
+        self.bottle_area   = 0
+        self._bottle_lock  = threading.Lock()
+        # (insight, color, cx, theta, bottom_row, area, in_blindspot)
+        self._bottle_stamped = (False, BottleColor.NONE, int(FRAME_WIDTH/2), 0.0, 0, 0, False)
 
         # ----- frame id as the common key across the producer and consumers in logging
         self.frame_id = 0
@@ -350,7 +387,68 @@ class Video(object):
             y0 = (fh - crop_h) // 2               # center band
             frame_169 = frame[y0:y0 + crop_h, :]
             img_orig = cv2.resize(frame_169, (FRAME_WIDTH, FRAME_HEIGHT))
-            # (bottle detection on img_orig / its grayscale goes here)
+            img_hsv  = cv2.cvtColor(img_orig, cv2.COLOR_BGR2HSV)
+            # Track the locked colour once identified, else scan all four.
+            if self._bottle_lock_color is not None:
+                candidates = [self._bottle_lock_color]
+            else:
+                candidates = [BottleColor.RED, BottleColor.BLUE,
+                              BottleColor.YELLOW, BottleColor.BLACK]
+
+            best = None   # (area, color, cx, bottom_row, (x,y,w,h), cnt)
+            for color in candidates:
+                mask = self._bottle_mask(img_hsv, color)
+                mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN,  self.kernel)
+                mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, self.kernel)
+                cnts, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+                for cnt in cnts:
+                    area = cv2.contourArea(cnt)
+                    if area < BOTTLE_MIN_AREA:
+                        continue
+                    x, y, w, h = cv2.boundingRect(cnt)
+                    extent = area / float(w * h)
+                    aspect = w / float(h) if h > 0 else 999.0
+                    # A BLACK band must be told apart from the course line: the
+                    # line is long, thin and spans much of the width; the band is
+                    # a compact, fairly solid blob.
+                    if color == BottleColor.BLACK:
+                        if w > BOTTLE_BLACK_MAX_W:           continue
+                        if aspect > BOTTLE_BLACK_MAX_ASPECT: continue
+                        if extent < BOTTLE_MIN_EXTENT:       continue
+                    if best is None or area > best[0]:
+                        best = (area, color, x + w // 2, y + h, (x, y, w, h), cnt)
+
+            if best is not None:
+                area, color, bcx, bbottom, (bx, by, bw, bh), cnt = best
+                self.target_insight    = True
+                self.bottle_color      = color
+                self.bottle_cx         = bcx
+                self.bottle_area       = int(area)
+                self.bottle_bottom_row = bbottom
+                # bearing to the band, reusing the LINE pixel->angle conversion
+                vxp = bcx - int(FRAME_WIDTH / 2)
+                vxm = vxp * HORIZON_DISTANCE / FRAME_WIDTH
+                self.bottle_theta = 180 * math.atan(vxm / AXLE_TO_HORIZON_DISTANCE) / math.pi
+                in_blind = bbottom >= BOTTLE_BLIND_ROW
+                # feed the shared text/overlay block below
+                self.cx, self.cy, self.theta = bcx, bbottom, self.bottle_theta
+                col = {BottleColor.RED:(0,0,255), BottleColor.BLUE:(255,0,0),
+                       BottleColor.YELLOW:(0,255,255), BottleColor.BLACK:(60,60,60)}[color]
+                cv2.rectangle(img_orig, (bx,by), (bx+bw, by+bh), col, LINE_THICKNESS)
+                cv2.drawContours(img_orig, [cnt], 0, (0,255,0), 1)
+                if in_blind:
+                    cv2.line(img_orig, (0, BOTTLE_BLIND_ROW),
+                             (FRAME_WIDTH, BOTTLE_BLIND_ROW), (0,0,255), 1)
+            else:
+                self.target_insight    = False
+                self.bottle_area       = 0
+                self.bottle_bottom_row = 0
+                in_blind = False
+
+            with self._bottle_lock:
+                self._bottle_stamped = (self.target_insight, self.bottle_color,
+                                        self.bottle_cx, self.bottle_theta,
+                                        self.bottle_bottom_row, self.bottle_area, in_blind)
 
         else: # TargetInterested.LINE
             # ---- LINE runs on the downsized frame ----
@@ -630,6 +728,24 @@ class Video(object):
 
     def get_range_of_edges(self) -> int:
         return self.range_of_edges
+
+    def _bottle_mask(self, img_hsv, color):
+        mask = None
+        for lo, hi in BOTTLE_HSV[color]:
+            m = cv2.inRange(img_hsv, np.array(lo, np.uint8), np.array(hi, np.uint8))
+            mask = m if mask is None else cv2.bitwise_or(mask, m)
+        return mask
+
+    def get_bottle_stamped(self):
+        with self._bottle_lock:
+            return self._bottle_stamped  # (insight, color, cx, theta, bottom_row, area, in_blind)
+
+    def get_bottle_color(self) -> 'BottleColor':
+        with self._bottle_lock:
+            return self._bottle_stamped[1]
+
+    def set_bottle_color(self, color) -> None:
+        self._bottle_lock_color = color
 
     def get_QR_text(self) -> str:
         if self.target_interested == TargetInterested.QRCODE:

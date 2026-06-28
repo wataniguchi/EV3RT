@@ -1,6 +1,7 @@
 from .video import Video
 from .video import TraceSide
 from .video import TargetInterested
+from .video import BottleColor
 from .plotter import Plotter
 from .util import SymmetricClamper
 from .util import Color
