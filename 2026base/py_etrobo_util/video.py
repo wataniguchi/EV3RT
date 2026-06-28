@@ -752,7 +752,9 @@ class Video(object):
             with self._result_lock:
                 return self._detected_text
         else:
-            return ""
+            # latch the detected text until set_target_interest(TargetInterested.QRCODE) is invoked,
+            # or TEXT_EXPIRY_SEC is exhausted while self.target_interested == TargetInterested.QRCODE.
+            return self._detected_text
 
     def set_thresholds(self, gs_min: int, gs_max: int) -> None:
         self.gsmin = gs_min
@@ -774,6 +776,7 @@ class Video(object):
                 self._pending_cap_cfg = cfg
 
         if self.target_interested == TargetInterested.QRCODE and not hasattr(self, "_detection_thread"):
+            self._detected_text    = ""    # initialize the detected text for safety
             # Start detection thread
             self._detection_thread = threading.Thread(target=self._detection_worker, daemon=True)
             self._detection_thread.start()

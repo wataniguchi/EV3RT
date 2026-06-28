@@ -7,3 +7,5 @@ from .util import SymmetricClamper
 from .util import Color
 from .util import ColorClassifier
 from .util import LowPassFilter
+from .hint import Hint
+from .hint import HintType

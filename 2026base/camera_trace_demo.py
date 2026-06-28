@@ -11,13 +11,14 @@ from py_trees.trees import BehaviourTree
 from py_trees.behaviour import Behaviour
 from py_trees.common import Status
 from py_trees.composites import Sequence
+from py_trees.composites import Selector
 from py_trees.composites import Parallel
 from py_trees.common import ParallelPolicy
 from py_trees import (
     display as display_tree,
     logging as log_tree
 )
-from py_etrobo_util import Video, TraceSide, TargetInterested, Plotter, SymmetricClamper, Color, ColorClassifier, LowPassFilter
+from py_etrobo_util import Video, TraceSide, TargetInterested, Plotter, SymmetricClamper, Color, ColorClassifier, LowPassFilter, BottleColor, Hint, HintType
 
 # constants for defining execution intervals
 EXEC_INTERVAL: float  = 0.02
@@ -62,7 +63,10 @@ g_color_sensor: ColorSensor = None
 g_sonar_sensor: SonarSensor = None
 g_gyro_sensor: GyroSensor = None
 g_course: int = 0
-g_key: str = None
+g_key: str = None                   # written by ReadKey.update()
+g_bottle_color = BottleColor.NONE   # written by CatchBottle.update()
+g_hint1: str = None                 # written by IsQRDecoded
+g_hint2: str = None                 # written by IsQRDecoded
 
 
 class TheEnd(Behaviour):
@@ -247,6 +251,7 @@ class IsQRDecoded(Behaviour):
         self.detected = False
 
     def update(self) -> Status:
+        global g_key, g_hint1, g_hint2
         if not self.running:
             self.running = True
             g_video.set_target_interested(TargetInterested.QRCODE)
@@ -255,10 +260,17 @@ class IsQRDecoded(Behaviour):
         if text != "":
             if not self.detected:
                 self.detected = True
-                self.logger.info("%+06d %s.QR code decoded: %s" % (g_plotter.get_distance(), self.__class__.__name__, text))
+                hint_type, hint_text = Hint(text).resolve(password=g_key)
+                if hint_type == HintType.HINT1:
+                    g_hint1 = hint_text
+                elif hint_type == HintType.HINT2:
+                    g_hint2 = hint_text
+                self.logger.info("%+06d %s.QR code decoded: %s" % (g_plotter.get_distance(), self.__class__.__name__, hint_text))
+                g_video.set_target_interested(TargetInterested.LINE)  # set target back to default as it takes for camera to settle 
             return Status.SUCCESS
         else:
             return Status.RUNNING
+
 
 class IsSonarOn(Behaviour):
     def __init__(self, name: str, alert_dist: int):
@@ -598,6 +610,7 @@ class TraceLineCam(Behaviour):
         self._ff_cap = ff_cap
         self._blind_hold_frames = blind_hold_frames
         self._blind_turn_frac = blind_turn_frac
+        self._blind = 0
         self.trace_side = trace_side
         self.running = False
 
