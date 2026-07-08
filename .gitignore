@@ -21,6 +21,8 @@
 /2026base/*.dot
 /2026base/*.png
 /2026base/*.svg
+!/2026-Alpha/
+!/2026-Bravo/
 !/aflac2019/
 !/aflac2020/
 !/ms2021/
